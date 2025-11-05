@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { getRandomThinker } from '@/lib/games/timeless-minds/thinkers'
+import { getRandomThinker, thinkers as allThinkers, getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
-import { PhoneOff, Send, Loader2, Mic, VideoIcon, MoreVertical } from 'lucide-react'
-import Image from 'next/image'
+import { PhoneOff, Send, Loader2, Mic, VideoIcon, MoreVertical, Book, Plus } from 'lucide-react'
+import ThinkerPhoneBook from './ThinkerPhoneBook'
+import RequestThinkerModal from './RequestThinkerModal'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -18,6 +19,9 @@ export default function TimelessMinds() {
   const [isLoading, setIsLoading] = useState(false)
   const [showEndCallDialog, setShowEndCallDialog] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const [showPhoneBook, setShowPhoneBook] = useState(false)
+  const [showRequestModal, setShowRequestModal] = useState(false)
+  const [hasPhoneBookAccess] = useState(false) // TODO: Check from API based on user email
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
 
@@ -99,7 +103,31 @@ export default function TimelessMinds() {
   }
 
   const confirmEndCall = () => {
-    window.location.reload()
+    // Reset to random thinker
+    const newThinker = getRandomThinker()
+    setThinker(newThinker)
+    setImageError(false)
+    setMessages([
+      {
+        role: 'assistant',
+        content: newThinker.openingLine
+      }
+    ])
+    setShowEndCallDialog(false)
+  }
+
+  const handleSelectThinker = (thinkerId: string) => {
+    const selectedThinker = getThinkerById(thinkerId)
+    if (selectedThinker) {
+      setThinker(selectedThinker)
+      setImageError(false)
+      setMessages([
+        {
+          role: 'assistant',
+          content: selectedThinker.openingLine
+        }
+      ])
+    }
   }
 
   const cancelEndCall = () => {
@@ -122,7 +150,7 @@ export default function TimelessMinds() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto h-[calc(100vh-12rem)] sm:h-[calc(100vh-10rem)] flex flex-col bg-black rounded-xl overflow-hidden shadow-2xl">
+    <div className="max-w-7xl mx-auto h-[calc(100vh-12rem)] sm:h-[calc(100vh-10rem)] flex flex-col bg-black rounded-xl overflow-hidden shadow-2xl sticky top-24 sm:top-20">
       {/* Main Video Area */}
       <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3">
         {/* Video Window */}
@@ -131,13 +159,12 @@ export default function TimelessMinds() {
           <div className="absolute inset-0 flex items-center justify-center">
             {!imageError && thinker ? (
               <div className="relative w-full h-full">
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={`/games/timeless-minds/avatars/${thinker.id}.png`}
                   alt={thinker.name}
-                  fill
-                  className="object-cover"
+                  className="w-full h-full object-cover"
                   onError={() => setImageError(true)}
-                  priority
                 />
               </div>
             ) : (
@@ -166,7 +193,7 @@ export default function TimelessMinds() {
         </div>
 
         {/* Chat Sidebar (Zoom/Teams style) - stacks on mobile */}
-        <div className="w-full lg:w-96 bg-white rounded-lg flex flex-col shadow-xl max-h-[300px] lg:max-h-none">
+        <div className="w-full lg:w-96 bg-white rounded-lg flex flex-col shadow-xl min-h-[300px] max-h-[400px] lg:max-h-none">
           {/* Chat Header */}
           <div className="p-3 sm:p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
@@ -234,7 +261,36 @@ export default function TimelessMinds() {
       </div>
 
       {/* Bottom Toolbar (Zoom/Teams style) */}
-      <div className="bg-gray-900 border-t border-gray-800 p-2 sm:p-4 flex items-center justify-center gap-2 sm:gap-4">
+      <div className="bg-gray-900 border-t border-gray-800 p-2 sm:p-4 flex items-center justify-between">
+        {/* Left Side: Phone Book & Request */}
+        <div className="flex items-center gap-2">
+          {hasPhoneBookAccess && (
+            <button
+              onClick={() => setShowPhoneBook(true)}
+              className="flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
+              aria-label="Open phone book"
+            >
+              <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-success/20 group-hover:bg-success/30">
+                <Book size={16} className="text-success sm:w-5 sm:h-5" />
+              </div>
+              <span className="text-white text-[10px] sm:text-xs">Directory</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowRequestModal(true)}
+            className="flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
+            aria-label="Request thinker"
+          >
+            <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-accent/20 group-hover:bg-accent/30">
+              <Plus size={16} className="text-accent sm:w-5 sm:h-5" />
+            </div>
+            <span className="text-white text-[10px] sm:text-xs">Request</span>
+          </button>
+        </div>
+
+        {/* Center: Main Controls */}
+        <div className="flex items-center justify-center gap-2 sm:gap-4">
         {/* Mute Button */}
         <button
           className="flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
@@ -268,6 +324,10 @@ export default function TimelessMinds() {
           </div>
           <span className="text-white text-[10px] sm:text-xs">End</span>
         </button>
+        </div>
+
+        {/* Right Side: Placeholder for balance */}
+        <div className="w-20"></div>
       </div>
 
       {/* End Call Dialog */}
@@ -277,12 +337,16 @@ export default function TimelessMinds() {
             <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3 text-foreground">
               End this conversation?
             </h3>
-            <p className="text-sm sm:text-base text-foreground/70 mb-4 sm:mb-6 leading-relaxed">
+            <p className="text-sm sm:text-base text-foreground/70 mb-3 sm:mb-4 leading-relaxed">
               This moment with {thinker.name} is unique. Once you end this call, you&apos;ll connect with a different mind from history.
             </p>
-            <p className="text-xs sm:text-sm text-foreground/60 mb-4 sm:mb-6 italic">
+            <p className="text-xs sm:text-sm text-foreground/60 mb-3 sm:mb-4 italic">
               &quot;Every conversation is a chance to grow. Make it meaningful.&quot;
             </p>
+            <div className="bg-foreground/5 border border-foreground/10 rounded-lg p-3 mb-4 text-xs text-foreground/60">
+              <p className="mb-1"><strong>Remember:</strong> This is an AI simulation for personal growth, not a real conversation with {thinker.name}.</p>
+              <p>Responses are interpretations based on historical records. Always verify important information independently.</p>
+            </div>
             <div className="flex gap-2 sm:gap-3">
               <button
                 onClick={cancelEndCall}
@@ -300,6 +364,35 @@ export default function TimelessMinds() {
           </div>
         </div>
       )}
+
+      {/* Phone Book Modal */}
+      <ThinkerPhoneBook
+        isOpen={showPhoneBook}
+        onClose={() => setShowPhoneBook(false)}
+        thinkers={allThinkers}
+        onSelectThinker={handleSelectThinker}
+      />
+
+      {/* Request Thinker Modal */}
+      <RequestThinkerModal
+        isOpen={showRequestModal}
+        onClose={() => setShowRequestModal(false)}
+      />
+
+      {/* Disclaimer Footer */}
+      <div className="absolute bottom-0 left-0 right-0 bg-black/80 px-4 py-2 text-center text-[10px] text-white/60 backdrop-blur-sm">
+        <p>
+          ⚠️ <strong>Disclaimer:</strong> AI simulation for entertainment only. Not real conversations.
+          AI-generated interpretations based on historical records.{' '}
+          <a
+            href="/games/timeless-minds/disclaimer"
+            target="_blank"
+            className="text-white/80 hover:text-white underline"
+          >
+            Full Legal Disclaimer
+          </a>
+        </p>
+      </div>
     </div>
   )
 }
