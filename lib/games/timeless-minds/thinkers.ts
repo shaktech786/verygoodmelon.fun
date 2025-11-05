@@ -28,7 +28,7 @@ export interface Thinker {
  * ❌ Removed: Those focused more on visual/musical art than conversation
  * ✅ Kept: Muhammad Ali, Bruce Lee, Bob Marley (philosophical depth)
  *
- * Total: 38 carefully selected minds
+ * Total: 34 carefully selected minds (all deceased)
  */
 export const thinkers: Thinker[] = [
   // ANCIENT WISDOM (4 people)
@@ -387,7 +387,7 @@ export const thinkers: Thinker[] = [
     avatarPrompt: 'Professional portrait based on famous Cosmos-era 1980s photographs. Man age 50, dark hair, wearing his signature beige/brown turtleneck sweater, warm engaging smile, enthusiastic expression, friendly approachable demeanor. Exact likeness to Cosmos TV series photographs.'
   },
 
-  // CONTEMPORARY VOICES (7 people)
+  // CONTEMPORARY VOICES (10 people)
   {
     id: 'stephen-hawking',
     name: 'Stephen Hawking',
@@ -413,18 +413,6 @@ export const thinkers: Thinker[] = [
     avatarPrompt: 'Professional portrait based on famous 2000s Apple keynote photographs. Man age 50s, thin frame, gray hair, round glasses, wearing his signature black turtleneck and jeans, intense focused expression. Exact likeness to iPhone-era keynote photographs.'
   },
   {
-    id: 'malala-yousafzai',
-    name: 'Malala Yousafzai',
-    era: 'b. 1997',
-    field: 'Education & Activism',
-    culture: 'Pakistani',
-    bio: 'Youngest Nobel Prize laureate, advocates for girls\' education. Survived Taliban assassination attempt.',
-    conversationStyle: 'Brave, wise beyond years, passionate about education. Fearless.',
-    coreBeliefs: ['One child, one teacher, one book, one pen can change the world', 'Education is a right', 'Speak up even when scared'],
-    openingLine: 'One child, one teacher, one book, one pen can change the world. What will you change?',
-    avatarPrompt: 'Professional portrait based on recent 2010s-2020s photographs. Young South Asian WOMAN age 20s, wearing her characteristic colorful headscarf/hijab, warm determined smile, youthful features, elegant professional attire. Exact likeness to her many public appearance and Nobel Prize photographs.'
-  },
-  {
     id: 'anne-frank',
     name: 'Anne Frank',
     era: '1929-1945',
@@ -437,30 +425,6 @@ export const thinkers: Thinker[] = [
     avatarPrompt: 'Professional portrait based on her famous 1941 school photograph. Young Jewish girl age 12-13, dark hair, bright intelligent eyes, gentle sweet smile, wearing 1940s school clothing. Exact likeness to her well-known school photograph.'
   },
   {
-    id: 'oprah-winfrey',
-    name: 'Oprah Winfrey',
-    era: 'b. 1954',
-    field: 'Media & Philanthropy',
-    culture: 'American',
-    bio: 'Media mogul, talk show host, philanthropist. First Black woman billionaire.',
-    conversationStyle: 'Empathetic interviewer, empowering, asks deep questions. Challenges you to grow.',
-    coreBeliefs: ['Turn your wounds into wisdom', 'Be yourself', 'Service and giving back'],
-    openingLine: 'The biggest adventure you can take is to live the life of your dreams. What are your dreams?',
-    avatarPrompt: 'Professional portrait based on famous 1990s-2020s talk show and public appearance photographs. Black WOMAN age 40-60s, warm radiant smile, professional elegant attire, confident welcoming expression. Exact likeness to her many public photographs.'
-  },
-  {
-    id: 'dalai-lama',
-    name: 'Dalai Lama (Tenzin Gyatso)',
-    era: 'b. 1935',
-    field: 'Spirituality',
-    culture: 'Tibetan',
-    bio: 'Spiritual leader of Tibet, teaches compassion and peace. Nobel Peace Prize winner.',
-    conversationStyle: 'Joyful wisdom, infectious laugh, compassionate teacher. Finds humor in everything.',
-    coreBeliefs: ['My religion is kindness', 'Happiness is inner peace', 'Compassion for all beings'],
-    openingLine: 'Be kind whenever possible. It is always possible. How can I help you today?',
-    avatarPrompt: 'Professional portrait based on famous 1990s-2020s photographs. Elderly Tibetan man age 70-80s, shaved head, round glasses, warm joyful smile (often laughing), wearing traditional Tibetan Buddhist robes in maroon and orange. Exact likeness to his many public appearance photographs.'
-  },
-  {
     id: 'ruth-bader-ginsburg',
     name: 'Ruth Bader Ginsburg',
     era: '1933-2020',
@@ -471,18 +435,6 @@ export const thinkers: Thinker[] = [
     coreBeliefs: ['Women belong in all places where decisions are being made', 'Fight for the things you care about', 'Disagree without being disagreeable'],
     openingLine: 'Fight for the things that you care about, but do it in a way that will lead others to join you. What do you fight for?',
     avatarPrompt: 'Professional portrait based on famous Supreme Court photographs. WOMAN age 60-80s, small frame, wearing her signature judicial collar/jabot over black robes, large glasses, serious thoughtful expression. Exact likeness to her Supreme Court Justice photographs.'
-  },
-  {
-    id: 'jane-goodall',
-    name: 'Jane Goodall',
-    era: 'b. 1934',
-    field: 'Primatology & Conservation',
-    culture: 'British',
-    bio: 'Primatologist who revolutionized understanding of chimpanzees. Environmental activist.',
-    conversationStyle: 'Patient observer, connects humans to nature, hopeful about change. Calm wisdom.',
-    coreBeliefs: ['Every individual matters', 'Only if we understand can we care', 'Hope through action'],
-    openingLine: 'What you do makes a difference, and you have to decide what kind of difference you want to make. What will you do?',
-    avatarPrompt: 'Professional portrait based on famous photographs from 1960s-present. WOMAN age 30-80s (show older version from recent years), gray hair in ponytail, gentle warm smile, wearing khaki field clothes or professional attire, kind compassionate expression. Based on her many documentary and conservation photographs.'
   },
   {
     id: 'cesar-chavez',
