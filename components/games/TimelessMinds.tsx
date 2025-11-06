@@ -152,9 +152,9 @@ export default function TimelessMinds() {
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-12rem)] sm:h-[calc(100vh-10rem)] flex flex-col bg-black rounded-xl overflow-hidden shadow-2xl sticky top-24 sm:top-20">
       {/* Main Video Area */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3">
+      <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3 overflow-hidden">
         {/* Video Window */}
-        <div className="flex-1 relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden min-h-[250px] sm:min-h-[300px]">
+        <div className="flex-1 relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden min-h-[250px] sm:min-h-[300px] lg:min-h-0">
           {/* Avatar - responsive sizing */}
           <div className="absolute inset-0 flex items-center justify-center">
             {!imageError && thinker ? (
@@ -193,7 +193,7 @@ export default function TimelessMinds() {
         </div>
 
         {/* Chat Sidebar (Zoom/Teams style) - stacks on mobile */}
-        <div className="w-full lg:w-96 bg-white rounded-lg flex flex-col shadow-xl min-h-[300px] max-h-[400px] lg:max-h-none">
+        <div className="w-full lg:w-96 bg-white rounded-lg flex flex-col shadow-xl h-[400px] lg:h-auto lg:flex-1">
           {/* Chat Header */}
           <div className="p-3 sm:p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
