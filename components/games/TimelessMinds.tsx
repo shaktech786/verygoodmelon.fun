@@ -74,6 +74,11 @@ export default function TimelessMinds() {
     setInputMessage('')
     setIsLoading(true)
 
+    // Keep focus on input immediately after clearing
+    setTimeout(() => {
+      inputRef.current?.focus()
+    }, 0)
+
     try {
       const response = await fetch('/api/timeless-minds/chat', {
         method: 'POST',
@@ -110,6 +115,8 @@ export default function TimelessMinds() {
       ])
     } finally {
       setIsLoading(false)
+      // Ensure focus after response completes
+      inputRef.current?.focus()
     }
   }
 
