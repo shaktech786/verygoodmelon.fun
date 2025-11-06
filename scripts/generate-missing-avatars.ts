@@ -31,63 +31,63 @@ const replicate = new Replicate({
 
 const AVATARS_DIR = path.join(__dirname, '../public/games/timeless-minds/avatars')
 
-// Missing thinkers with their avatar prompts
+// Missing thinkers with their avatar prompts - UPDATED with full head framing
 const MISSING_THINKERS = [
   {
     id: 'buddha',
-    prompt: 'Professional portrait based on classical Buddhist statuary and Gandhara art. South Asian man age 30-40, serene peaceful expression, traditional Buddhist robes, topknot hairstyle, gentle compassionate features. Based on historical Buddhist artistic tradition.'
+    prompt: 'Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on classical Buddhist statuary and Gandhara art. South Asian man age 30-40, serene peaceful expression, traditional Buddhist robes, topknot hairstyle fully visible, gentle compassionate features. Portrait photography style, complete head in frame, not cropped at top.'
   },
   {
     id: 'leonardo-da-vinci',
-    prompt: "Professional portrait based on Leonardo da Vinci's famous red chalk self-portrait (1512). Elderly man age 60, long flowing white/gray beard, long hair, intense intelligent gaze, wearing Renaissance-era clothing. Exact likeness to his self-portrait drawing."
+    prompt: "Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on Leonardo da Vinci's famous red chalk self-portrait (1512). Elderly man age 60, long flowing white/gray beard, long hair fully visible, intense intelligent gaze, wearing Renaissance-era clothing. Portrait photography style, complete head in frame, not cropped at top."
   },
   {
     id: 'harriet-tubman',
-    prompt: 'Professional portrait based on famous 1868-1869 photograph. Black WOMAN age 40s-50s, serious determined expression, wearing Victorian-era dress with white collar, hair pulled back, strong dignified bearing. Exact likeness to historical photograph.'
+    prompt: 'Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on famous 1868-1869 photograph. Black WOMAN age 40s-50s, serious determined expression, wearing Victorian-era dress with white collar, hair pulled back and fully visible, strong dignified bearing. Portrait photography style, complete head in frame, not cropped at top.'
   },
   {
     id: 'frederick-douglass',
-    prompt: 'Professional portrait based on famous 1840s-1870s photographs. Black man age 30-50, distinctive well-groomed afro hairstyle (his signature look), strong commanding presence, wearing formal Victorian attire with bow tie or cravat. Exact likeness to his many famous photographs.'
+    prompt: 'Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on famous 1840s-1870s photographs. Black man age 30-50, distinctive well-groomed afro hairstyle fully visible (his signature look), strong commanding presence, wearing formal Victorian attire with bow tie or cravat. Portrait photography style, complete head in frame, not cropped at top.'
   },
   {
     id: 'virginia-woolf',
-    prompt: 'Professional portrait based on George Charles Beresford 1902 photograph. WOMAN age 40s, distinctive angular features, dark hair styled in 1920s-30s wave, thoughtful melancholic expression, wearing elegant but simple dress with brooch. Exact likeness to historical photographs.'
+    prompt: 'Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on George Charles Beresford 1902 photograph. WOMAN age 40s, distinctive angular features, dark hair styled in 1920s-30s wave and fully visible, thoughtful melancholic expression, wearing elegant but simple dress with brooch. Portrait photography style, complete head in frame, not cropped at top.'
   },
   {
     id: 'eleanor-roosevelt',
-    prompt: 'Professional portrait based on famous 1940s-50s photographs. WOMAN age 60s, gentle warm smile, styled hair in 1940s fashion, wearing tailored suit or dress, pearls (her signature), dignified kind expression. Exact likeness to historical photographs.'
+    prompt: 'Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on famous 1940s-50s photographs. WOMAN age 60s, gentle warm smile, styled hair in 1940s fashion fully visible, wearing tailored suit or dress, pearls (her signature), dignified kind expression. Portrait photography style, complete head in frame, not cropped at top.'
   },
   {
     id: 'malcolm-x',
-    prompt: 'Professional portrait based on famous 1960s photographs. Black man age 38-39, short hair, distinctive thick horn-rimmed glasses, powerful intense expression, pointed finger (his signature gesture), wearing dark suit and tie. Exact likeness to iconic 1960s photographs.'
+    prompt: 'Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on famous 1960s photographs. Black man age 38-39, short hair fully visible, distinctive thick horn-rimmed glasses, powerful intense expression, wearing dark suit and tie. Portrait photography style, complete head in frame, not cropped at top.'
   },
   {
     id: 'rosa-parks',
-    prompt: 'Professional portrait based on 1955 Montgomery arrest photograph and later photos. Black WOMAN age 40-50s, calm dignified expression, wearing 1950s-style dress and glasses, serious but peaceful demeanor. Exact likeness to famous arrest photograph and civil rights era photos.'
+    prompt: 'Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on 1955 Montgomery arrest photograph and later photos. Black WOMAN age 40-50s, calm dignified expression, wearing 1950s-style dress and glasses, hair fully visible, serious but peaceful demeanor. Portrait photography style, complete head in frame, not cropped at top.'
   },
   {
     id: 'mother-teresa',
-    prompt: 'Professional portrait based on famous 1980s photographs. Elderly WOMAN age 70+, distinctive white and blue-striped Missionaries of Charity habit (her signature), deeply lined weathered face, gentle compassionate smile, small frame. Exact likeness to iconic photographs.'
+    prompt: 'Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on famous 1980s photographs. Elderly WOMAN age 70+, distinctive white and blue-striped Missionaries of Charity habit fully visible including head covering, deeply lined weathered face, gentle compassionate smile, small frame. Portrait photography style, complete head in frame, not cropped at top.'
   },
   {
     id: 'maya-angelou',
-    prompt: 'Professional portrait based on famous 1970s-2000s photographs. Black WOMAN age 50-70, warm radiant smile, elegant colorful clothing and head wraps (her signature style), dignified regal bearing, expressive face. Exact likeness to her many public appearance photographs.'
+    prompt: 'Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on famous 1970s-2000s photographs. Black WOMAN age 50-70, warm radiant smile, elegant colorful clothing and head wraps fully visible (her signature style), dignified regal bearing, expressive face. Portrait photography style, complete head in frame, not cropped at top.'
   },
   {
     id: 'anne-frank',
-    prompt: 'Professional portrait based on her famous 1941 school photograph. Young Jewish girl age 12-13, dark hair, bright intelligent eyes, gentle sweet smile, wearing 1940s school clothing. Exact likeness to her well-known school photograph.'
+    prompt: 'Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on her famous 1941 school photograph. Young Jewish girl age 12-13, dark hair fully visible, bright intelligent eyes, gentle sweet smile, wearing 1940s school clothing. Portrait photography style, complete head in frame, not cropped at top.'
   },
   {
     id: 'ruth-bader-ginsburg',
-    prompt: 'Professional portrait based on famous Supreme Court photographs. WOMAN age 60-80s, small frame, wearing her signature judicial collar/jabot over black robes, large glasses, serious thoughtful expression. Exact likeness to her Supreme Court Justice photographs.'
+    prompt: 'Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on famous Supreme Court photographs. WOMAN age 60-80s, small frame, wearing her signature judicial collar/jabot over black robes, large glasses, hair fully visible, serious thoughtful expression. Portrait photography style, complete head in frame, not cropped at top.'
   },
   {
     id: 'cesar-chavez',
-    prompt: 'Professional portrait based on 1960s-70s photographs during United Farm Workers movement. Latino man age 40-50s, dark hair, serious determined expression, wearing casual work shirt, often shown with UFW flag or in the fields. Exact likeness to civil rights era photographs.'
+    prompt: 'Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on 1960s-70s photographs during United Farm Workers movement. Latino man age 40-50s, dark hair fully visible, serious determined expression, wearing casual work shirt. Portrait photography style, complete head in frame, not cropped at top.'
   },
   {
     id: 'bob-marley',
-    prompt: 'Professional portrait based on famous 1970s photographs by Adrian Boot and others. Black man age 30s, signature long dreadlocks, warm peaceful smile, often holding guitar, wearing casual clothing, Rastafarian colors. Exact likeness to his iconic 1970s concert and portrait photographs.'
+    prompt: 'Professional head and shoulders portrait, full head visible including top of head, proper framing. Based on famous 1970s photographs by Adrian Boot and others. Black man age 30s, signature long dreadlocks fully visible, warm peaceful smile, wearing casual clothing, Rastafarian colors. Portrait photography style, complete head in frame, not cropped at top.'
   },
 ]
 

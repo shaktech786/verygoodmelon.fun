@@ -163,7 +163,7 @@ export default function TimelessMinds() {
                 <img
                   src={`/games/timeless-minds/avatars/${thinker.id}.png`}
                   alt={thinker.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   onError={() => setImageError(true)}
                 />
               </div>
