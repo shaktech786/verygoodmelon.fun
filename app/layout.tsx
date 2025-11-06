@@ -40,11 +40,12 @@ export const metadata: Metadata = {
     title: "VeryGoodMelon.Fun - Thoughtful Games to Reduce Anxiety",
     description: "Creative, accessible games designed to help you relax.",
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
   themeColor: "#e63946",
 };
 

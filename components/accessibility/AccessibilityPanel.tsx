@@ -69,7 +69,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/20 z-40"
+        className="fixed inset-0 bg-black/30 z-[60]"
         aria-hidden="true"
       />
 
@@ -85,7 +85,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
           w-full sm:w-96
           bg-white
           shadow-2xl
-          z-50
+          z-[70]
           overflow-y-auto
           animate-slide-in
         "

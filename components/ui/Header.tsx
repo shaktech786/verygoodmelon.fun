@@ -21,7 +21,7 @@ export function Header() {
             <Image
               src="/logo.png"
               alt=""
-              width={32}
+              width={51}
               height={32}
               className="pixelated transition-transform duration-200 group-hover:scale-110"
               priority
