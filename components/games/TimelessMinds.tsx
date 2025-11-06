@@ -24,6 +24,7 @@ export default function TimelessMinds() {
   const [hasPhoneBookAccess] = useState(false) // TODO: Check from API based on user email
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // Initialize with random thinker
   useEffect(() => {
@@ -40,12 +41,26 @@ export default function TimelessMinds() {
     ])
   }, [])
 
-  // Auto-scroll to bottom of messages (within container only)
+  // Auto-scroll to bottom of messages (within container only) with smooth behavior
   useEffect(() => {
     if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+      const container = messagesContainerRef.current
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        })
+      })
     }
   }, [messages])
+
+  // Refocus input after sending message
+  useEffect(() => {
+    if (!isLoading && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [isLoading])
 
   const sendMessage = async () => {
     if (!inputMessage.trim() || !thinker || isLoading) return
@@ -152,9 +167,9 @@ export default function TimelessMinds() {
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-12rem)] sm:h-[calc(100vh-10rem)] flex flex-col bg-black rounded-xl overflow-hidden shadow-2xl sticky top-24 sm:top-20">
       {/* Main Video Area */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3 overflow-hidden">
-        {/* Video Window */}
-        <div className="flex-1 relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden min-h-[250px] sm:min-h-[300px] lg:min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3 min-h-0">
+        {/* Video Window - fixed proportion */}
+        <div className="flex-[2] relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden min-h-[200px] lg:min-h-0">
           {/* Avatar - responsive sizing */}
           <div className="absolute inset-0 flex items-center justify-center">
             {!imageError && thinker ? (
@@ -193,7 +208,7 @@ export default function TimelessMinds() {
         </div>
 
         {/* Chat Sidebar (Zoom/Teams style) - stacks on mobile */}
-        <div className="w-full lg:w-96 bg-white rounded-lg flex flex-col shadow-xl h-[400px] lg:h-auto lg:flex-1">
+        <div className="w-full lg:flex-1 lg:max-w-md bg-white rounded-lg flex flex-col shadow-xl min-h-[300px] lg:min-h-0">
           {/* Chat Header */}
           <div className="p-3 sm:p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
@@ -203,15 +218,22 @@ export default function TimelessMinds() {
           </div>
 
           {/* Messages Area */}
-          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3 bg-gray-50">
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3 bg-gray-50 scroll-smooth"
+            style={{ scrollbarGutter: 'stable' }}
+          >
             {messages.map((message, index) => (
-              <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div
+                key={index}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
+              >
                 <div className={`max-w-[85%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
                   <div className="text-xs text-foreground/60 mb-1 px-1">
                     {message.role === 'user' ? 'You' : thinker.name}
                   </div>
                   <div
-                    className={`px-3 py-2 rounded-lg ${
+                    className={`px-3 py-2 rounded-lg shadow-sm ${
                       message.role === 'user'
                         ? 'bg-accent text-white rounded-br-none'
                         : 'bg-white border border-gray-200 text-foreground rounded-bl-none'
@@ -224,9 +246,13 @@ export default function TimelessMinds() {
             ))}
 
             {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-gray-200 px-3 py-2 rounded-lg">
-                  <Loader2 size={16} className="animate-spin text-foreground/50" />
+              <div className="flex justify-start animate-in fade-in duration-200">
+                <div className="bg-white border border-gray-200 px-3 py-2 rounded-lg shadow-sm">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
                 </div>
               </div>
             )}
@@ -238,14 +264,16 @@ export default function TimelessMinds() {
           <div className="p-2 sm:p-3 border-t border-gray-200 bg-white">
             <div className="flex gap-1.5 sm:gap-2">
               <input
+                ref={inputRef}
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type a message..."
-                className="flex-1 px-2 py-1.5 sm:px-3 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 text-xs sm:text-sm"
+                className="flex-1 px-2 py-1.5 sm:px-3 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 text-xs sm:text-sm transition-all"
                 disabled={isLoading}
                 aria-label="Message input"
+                autoFocus
               />
               <button
                 onClick={sendMessage}
