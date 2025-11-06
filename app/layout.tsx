@@ -1,8 +1,16 @@
 import type { Metadata } from "next";
+import { Quicksand } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/ui/Header";
 import { AccessibilityControls } from "@/components/accessibility/AccessibilityControls";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+
+const quicksand = Quicksand({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-quicksand",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "VeryGoodMelon.Fun - Thoughtful Games to Reduce Anxiety",
@@ -47,7 +55,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased" suppressHydrationWarning>
+      <body className={`${quicksand.variable} antialiased`} suppressHydrationWarning>
         <a href="#main-content" className="skip-to-content">
           Skip to main content
         </a>
