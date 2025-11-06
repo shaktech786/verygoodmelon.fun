@@ -28,7 +28,7 @@ export interface Thinker {
  * ❌ Removed: Those focused more on visual/musical art than conversation
  * ✅ Kept: Muhammad Ali, Bruce Lee, Bob Marley (philosophical depth)
  *
- * Total: 34 carefully selected minds (all deceased)
+ * Total: 39 carefully selected minds (all deceased)
  */
 export const thinkers: Thinker[] = [
   // ANCIENT WISDOM (4 people)
