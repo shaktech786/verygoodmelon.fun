@@ -260,6 +260,21 @@ export default function TimelessMinds() {
         </div>
       </div>
 
+      {/* Disclaimer */}
+      <div className="bg-black/80 px-2 sm:px-4 py-1.5 sm:py-2 text-center text-[9px] sm:text-[10px] text-white/60 border-t border-gray-800/50">
+        <p>
+          ⚠️ <strong>Disclaimer:</strong> AI simulation for entertainment only. Not real conversations.
+          AI-generated interpretations based on historical records.{' '}
+          <a
+            href="/games/timeless-minds/disclaimer"
+            target="_blank"
+            className="text-white/80 hover:text-white underline"
+          >
+            Full Legal Disclaimer
+          </a>
+        </p>
+      </div>
+
       {/* Bottom Toolbar (Zoom/Teams style) */}
       <div className="bg-gray-900 border-t border-gray-800 p-2 sm:p-4 flex items-center justify-between">
         {/* Left Side: Phone Book & Request */}
@@ -378,21 +393,6 @@ export default function TimelessMinds() {
         isOpen={showRequestModal}
         onClose={() => setShowRequestModal(false)}
       />
-
-      {/* Disclaimer Footer */}
-      <div className="absolute bottom-0 left-0 right-0 bg-black/80 px-4 py-2 text-center text-[10px] text-white/60 backdrop-blur-sm">
-        <p>
-          ⚠️ <strong>Disclaimer:</strong> AI simulation for entertainment only. Not real conversations.
-          AI-generated interpretations based on historical records.{' '}
-          <a
-            href="/games/timeless-minds/disclaimer"
-            target="_blank"
-            className="text-white/80 hover:text-white underline"
-          >
-            Full Legal Disclaimer
-          </a>
-        </p>
-      </div>
     </div>
   )
 }
