@@ -111,6 +111,9 @@ function applySettings(settings: AccessibilitySettings): void {
   root.setAttribute('data-reduce-motion', String(settings.reduceMotion))
   root.setAttribute('data-contrast', settings.contrast)
   root.setAttribute('data-colorblind-mode', settings.colorblindMode)
+  root.setAttribute('data-pause-animations', String(settings.pauseAnimations))
+  root.setAttribute('data-muted', String(settings.muted))
+  root.setAttribute('data-volume', String(settings.volume))
 }
 
 /**
