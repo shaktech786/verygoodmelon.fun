@@ -351,6 +351,37 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
             </div>
           </section>
 
+          {/* Reset Settings */}
+          <section className="pt-6 border-t border-card-border">
+            <button
+              onClick={() => {
+                if (confirm('Reset all accessibility settings to defaults? This will clear your saved preferences.')) {
+                  // Clear localStorage
+                  try {
+                    localStorage.removeItem('verygoodmelon:accessibility:settings')
+                  } catch (e) {
+                    console.error('Failed to clear settings:', e)
+                  }
+                  // Apply defaults
+                  window.location.reload()
+                }
+              }}
+              className="
+                w-full px-4 py-3
+                border-2 border-danger rounded
+                bg-white hover:bg-red-50
+                text-danger font-medium text-sm
+                transition-colors
+                focus:outline-none focus:ring-2 focus:ring-danger
+              "
+            >
+              Reset All Settings
+            </button>
+            <p className="text-xs text-primary-light mt-2 text-center">
+              Use this if settings stop working or to start fresh
+            </p>
+          </section>
+
           {/* Keyboard Shortcuts Info */}
           <section className="pt-6 border-t border-card-border">
             <h3 className="text-sm font-semibold text-foreground mb-3">

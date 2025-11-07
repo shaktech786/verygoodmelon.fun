@@ -29,11 +29,20 @@ function loadSettings(): AccessibilitySettings {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
-      // Merge with defaults to handle new settings
-      return { ...DEFAULT_ACCESSIBILITY_SETTINGS, ...parsed }
+      // Validate parsed data has expected structure
+      if (parsed && typeof parsed === 'object') {
+        // Merge with defaults to handle new settings
+        return { ...DEFAULT_ACCESSIBILITY_SETTINGS, ...parsed }
+      }
     }
   } catch (error) {
-    console.error('Failed to load accessibility settings:', error)
+    console.error('Failed to load accessibility settings, resetting to defaults:', error)
+    // Clear corrupted data
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch (e) {
+      console.error('Failed to clear corrupted settings:', e)
+    }
   }
 
   return detectSystemPreferences()
