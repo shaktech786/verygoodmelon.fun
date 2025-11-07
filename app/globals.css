@@ -166,3 +166,71 @@ body {
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
 }
+
+/* ============================================
+   ACCESSIBILITY SETTINGS - CSS IMPLEMENTATION
+   ============================================ */
+
+/* Reduce Motion - Disable all animations and transitions */
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* High Contrast Mode */
+html[data-contrast="high"] {
+  --foreground: #000000;
+  --background: #ffffff;
+  --card-border: #333333;
+}
+
+html[data-contrast="high"] body {
+  font-weight: 500;
+}
+
+/* Extra High Contrast Mode */
+html[data-contrast="extra-high"] {
+  --foreground: #000000;
+  --background: #ffffff;
+  --card-border: #000000;
+  --accent: #cc0000;
+  --success: #006600;
+}
+
+html[data-contrast="extra-high"] body {
+  font-weight: 600;
+}
+
+html[data-contrast="extra-high"] a,
+html[data-contrast="extra-high"] button {
+  text-decoration: underline;
+}
+
+/* Pause Animations - Stop all CSS animations */
+html[data-pause-animations="true"] * {
+  animation-play-state: paused !important;
+}
+
+/* Colorblind Mode - Deuteranopia (Red-Green) */
+html[data-colorblind-mode="deuteranopia"] {
+  filter: url(#deuteranopia-filter);
+}
+
+/* Colorblind Mode - Protanopia (Red-Green) */
+html[data-colorblind-mode="protanopia"] {
+  filter: url(#protanopia-filter);
+}
+
+/* Colorblind Mode - Tritanopia (Blue-Yellow) */
+html[data-colorblind-mode="tritanopia"] {
+  filter: url(#tritanopia-filter);
+}
+
+/* Colorblind Mode - Monochrome */
+html[data-colorblind-mode="monochrome"] {
+  filter: grayscale(100%);
+}
