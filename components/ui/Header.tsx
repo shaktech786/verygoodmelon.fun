@@ -54,7 +54,7 @@ export function Header() {
           </div>
 
           <a
-            href="https://github.com/shakeelbhamani/verygoodmelon.fun"
+            href="https://github.com/shaktech786/verygoodmelon.fun"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary-light hover:text-foreground transition-colors"

@@ -57,7 +57,7 @@ export default function AboutPage() {
                 <ExternalLink size={16} />
               </a>
               <a
-                href="https://github.com/shakeelbhamani"
+                href="https://github.com/shaktech786"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-accent hover:underline transition-colors"
