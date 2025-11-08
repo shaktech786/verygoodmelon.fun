@@ -80,7 +80,6 @@ export async function POST(request: NextRequest) {
 
     // If Supabase is not configured, just return success
     if (!supabase) {
-      console.log('Request logged:', { requesterEmail, requestedName })
       return NextResponse.json({
         success: true,
         requestId: 'mock_' + Date.now(),

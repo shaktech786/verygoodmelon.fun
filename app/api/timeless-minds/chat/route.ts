@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 
+// Validate API key on initialization
+const apiKey = process.env.GOOGLE_GEMINI_API_KEY
+if (!apiKey) {
+  throw new Error('GOOGLE_GEMINI_API_KEY environment variable is not configured')
+}
+
 // Initialize Google Gemini (primary - best for deep, empathetic conversations)
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '')
+const genAI = new GoogleGenerativeAI(apiKey)
 
 // Gemini 2.0 Flash Thinking - optimized for reasoning and empathy
 const GEMINI_MODEL = 'gemini-2.0-flash-thinking-exp-1219'

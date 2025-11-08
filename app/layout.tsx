@@ -4,6 +4,7 @@ import "./globals.css";
 import { Header } from "@/components/ui/Header";
 import { AccessibilityControls } from "@/components/accessibility/AccessibilityControls";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
@@ -61,9 +62,11 @@ export default function RootLayout({
           Skip to main content
         </a>
         <Header />
-        <main id="main-content" className="min-h-screen" role="main">
-          {children}
-        </main>
+        <ErrorBoundary>
+          <main id="main-content" className="min-h-screen" role="main">
+            {children}
+          </main>
+        </ErrorBoundary>
         <footer className="border-t border-card-border mt-20" role="contentinfo">
           <div className="container mx-auto px-6 py-12 max-w-6xl">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-primary-light">
