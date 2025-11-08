@@ -38,6 +38,37 @@ html[data-theme="dark"] {
   --hover-bg: #333333;
 }
 
+/* Dark mode overrides for hardcoded Tailwind classes */
+html[data-theme="dark"] .bg-white {
+  background-color: var(--card-bg) !important;
+}
+
+html[data-theme="dark"] .text-black {
+  color: var(--foreground) !important;
+}
+
+html[data-theme="dark"] .border-gray-200,
+html[data-theme="dark"] .border-gray-300 {
+  border-color: var(--card-border) !important;
+}
+
+html[data-theme="dark"] .bg-gray-50,
+html[data-theme="dark"] .bg-gray-100 {
+  background-color: var(--hover-bg) !important;
+}
+
+html[data-theme="dark"] .text-gray-400,
+html[data-theme="dark"] .text-gray-500,
+html[data-theme="dark"] .text-gray-600 {
+  color: var(--primary-light) !important;
+}
+
+html[data-theme="dark"] .text-gray-700,
+html[data-theme="dark"] .text-gray-800,
+html[data-theme="dark"] .text-gray-900 {
+  color: var(--foreground) !important;
+}
+
 /* Auto theme: respect system preference */
 @media (prefers-color-scheme: dark) {
   html[data-theme="auto"] {
@@ -56,6 +87,37 @@ html[data-theme="dark"] {
     --card-bg: #2a2a2a;
     --card-border: #404040;
     --hover-bg: #333333;
+  }
+
+  /* Dark mode overrides for auto mode */
+  html[data-theme="auto"] .bg-white {
+    background-color: var(--card-bg) !important;
+  }
+
+  html[data-theme="auto"] .text-black {
+    color: var(--foreground) !important;
+  }
+
+  html[data-theme="auto"] .border-gray-200,
+  html[data-theme="auto"] .border-gray-300 {
+    border-color: var(--card-border) !important;
+  }
+
+  html[data-theme="auto"] .bg-gray-50,
+  html[data-theme="auto"] .bg-gray-100 {
+    background-color: var(--hover-bg) !important;
+  }
+
+  html[data-theme="auto"] .text-gray-400,
+  html[data-theme="auto"] .text-gray-500,
+  html[data-theme="auto"] .text-gray-600 {
+    color: var(--primary-light) !important;
+  }
+
+  html[data-theme="auto"] .text-gray-700,
+  html[data-theme="auto"] .text-gray-800,
+  html[data-theme="auto"] .text-gray-900 {
+    color: var(--foreground) !important;
   }
 }
 

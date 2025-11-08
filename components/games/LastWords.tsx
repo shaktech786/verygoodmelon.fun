@@ -2,6 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import dynamic from 'next/dynamic'
+
+// Dynamically import WordCloud to avoid SSR issues
+const WordCloud = dynamic(
+  () => import('@isoterik/react-word-cloud').then((mod) => mod.WordCloud),
+  {
+    ssr: false,
+    loading: () => <div className="text-center text-primary-light py-12">Loading word cloud...</div>
+  }
+)
 
 interface WordFrequency {
   word: string
@@ -92,25 +102,7 @@ export default function LastWords() {
     }
   }
 
-  const getWordSize = (count: number, maxCount: number): number => {
-    const minSize = 14
-    const maxSize = 48
-    const ratio = count / maxCount
-    return Math.floor(minSize + (maxSize - minSize) * ratio)
-  }
-
-  const getWordColor = (count: number, maxCount: number): string => {
-    const ratio = count / maxCount
-
-    if (ratio > 0.7) return 'text-accent' // Most common
-    if (ratio > 0.4) return 'text-melon-green' // Common
-    if (ratio > 0.2) return 'text-primary' // Moderate
-    return 'text-primary-light' // Less common
-  }
-
   if (submitted) {
-    const maxCount = wordCloud[0]?.count || 1
-
     return (
       <div className="space-y-6">
         {/* Thank you message */}
@@ -130,22 +122,15 @@ export default function LastWords() {
           </h3>
 
           {wordCloud.length > 0 ? (
-            <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 min-h-[300px]">
-              {wordCloud.map(({ word, count }) => (
-                <span
-                  key={word}
-                  className={`
-                    inline-block font-medium transition-all hover:scale-110
-                    ${getWordColor(count, maxCount)}
-                  `}
-                  style={{
-                    fontSize: `${getWordSize(count, maxCount)}px`,
-                  }}
-                  title={`${count} ${count === 1 ? 'person' : 'people'} mentioned this`}
-                >
-                  {word}
-                </span>
-              ))}
+            <div className="min-h-[400px] w-full flex items-center justify-center">
+              <WordCloud
+                words={wordCloud.map(({ word, count }) => ({
+                  text: word,
+                  value: count
+                }))}
+                width={800}
+                height={400}
+              />
             </div>
           ) : (
             <div className="text-center text-primary-light py-12">
