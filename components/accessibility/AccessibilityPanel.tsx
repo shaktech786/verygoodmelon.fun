@@ -87,7 +87,6 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
           shadow-2xl
           z-[70]
           overflow-y-auto
-          animate-slide-in
         "
       >
         {/* Header */}
