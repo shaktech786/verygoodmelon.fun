@@ -169,6 +169,24 @@ export type Database = {
         }
         Relationships: []
       }
+      last_words: {
+        Row: {
+          created_at: string | null
+          id: string
+          words: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          words: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          words?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -262,6 +280,191 @@ export type Database = {
         Update: {
           id?: string
           visited_at?: string | null
+        }
+        Relationships: []
+      }
+      thinker_phone_book_access: {
+        Row: {
+          access_expires_at: string | null
+          access_granted_at: string
+          access_type: string
+          created_at: string
+          id: string
+          is_active: boolean
+          payment_amount: number | null
+          payment_intent_id: string | null
+          request_id: string | null
+          user_email: string
+          user_name: string | null
+        }
+        Insert: {
+          access_expires_at?: string | null
+          access_granted_at?: string
+          access_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          payment_amount?: number | null
+          payment_intent_id?: string | null
+          request_id?: string | null
+          user_email: string
+          user_name?: string | null
+        }
+        Update: {
+          access_expires_at?: string | null
+          access_granted_at?: string
+          access_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          payment_amount?: number | null
+          payment_intent_id?: string | null
+          request_id?: string | null
+          user_email?: string
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thinker_phone_book_access_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "thinker_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thinker_requests: {
+        Row: {
+          admin_notes: string | null
+          approved_at: string | null
+          approved_by: string | null
+          avatar_generated: boolean
+          avatar_url: string | null
+          charity_name: string | null
+          created_at: string
+          donation_receipt_url: string | null
+          id: string
+          payment_amount: number
+          payment_intent_id: string | null
+          payment_receipt_url: string | null
+          payment_status: string
+          personal_connection: string | null
+          phone_book_access_expires_at: string | null
+          phone_book_access_granted: boolean
+          reason_for_request: string
+          rejection_reason: string | null
+          requested_era: string | null
+          requested_field: string | null
+          requested_name: string
+          requester_email: string
+          requester_name: string | null
+          research_completed: boolean
+          research_notes: Json | null
+          status: string
+          thinker_data: Json | null
+          thinker_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          avatar_generated?: boolean
+          avatar_url?: string | null
+          charity_name?: string | null
+          created_at?: string
+          donation_receipt_url?: string | null
+          id?: string
+          payment_amount?: number
+          payment_intent_id?: string | null
+          payment_receipt_url?: string | null
+          payment_status?: string
+          personal_connection?: string | null
+          phone_book_access_expires_at?: string | null
+          phone_book_access_granted?: boolean
+          reason_for_request: string
+          rejection_reason?: string | null
+          requested_era?: string | null
+          requested_field?: string | null
+          requested_name: string
+          requester_email: string
+          requester_name?: string | null
+          research_completed?: boolean
+          research_notes?: Json | null
+          status?: string
+          thinker_data?: Json | null
+          thinker_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          avatar_generated?: boolean
+          avatar_url?: string | null
+          charity_name?: string | null
+          created_at?: string
+          donation_receipt_url?: string | null
+          id?: string
+          payment_amount?: number
+          payment_intent_id?: string | null
+          payment_receipt_url?: string | null
+          payment_status?: string
+          personal_connection?: string | null
+          phone_book_access_expires_at?: string | null
+          phone_book_access_granted?: boolean
+          reason_for_request?: string
+          rejection_reason?: string | null
+          requested_era?: string | null
+          requested_field?: string | null
+          requested_name?: string
+          requester_email?: string
+          requester_name?: string | null
+          research_completed?: boolean
+          research_notes?: Json | null
+          status?: string
+          thinker_data?: Json | null
+          thinker_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      thinker_selections: {
+        Row: {
+          conversation_ended_at: string | null
+          conversation_started_at: string
+          created_at: string
+          id: string
+          message_count: number
+          thinker_id: string
+          thinker_name: string
+          user_email: string
+          user_feedback: string | null
+          user_rating: number | null
+        }
+        Insert: {
+          conversation_ended_at?: string | null
+          conversation_started_at?: string
+          created_at?: string
+          id?: string
+          message_count?: number
+          thinker_id: string
+          thinker_name: string
+          user_email: string
+          user_feedback?: string | null
+          user_rating?: number | null
+        }
+        Update: {
+          conversation_ended_at?: string | null
+          conversation_started_at?: string
+          created_at?: string
+          id?: string
+          message_count?: number
+          thinker_id?: string
+          thinker_name?: string
+          user_email?: string
+          user_feedback?: string | null
+          user_rating?: number | null
         }
         Relationships: []
       }
@@ -554,12 +757,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
-// Helper type exports for common tables
-export type Game = Tables<'games'>
-export type Profile = Tables<'profiles'>
-export type Thinker = Tables<'thinkers'>
-export type HopeDailyWord = Tables<'hope_daily_words'>
-export type HardChoicesVote = Tables<'hard_choices_votes'>
-export type TimelessMindsConversation = Tables<'timeless_minds_conversations'>
-export type TimelessMindsMessage = Tables<'timeless_minds_messages'>

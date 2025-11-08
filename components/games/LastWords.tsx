@@ -1,0 +1,243 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+
+interface LastWord {
+  id: string
+  words: string
+  created_at: string
+}
+
+interface WordFrequency {
+  word: string
+  count: number
+}
+
+export default function LastWords() {
+  const [input, setInput] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [wordCloud, setWordCloud] = useState<WordFrequency[]>([])
+  const [totalSubmissions, setTotalSubmissions] = useState(0)
+  const supabase = createClient()
+
+  // Load word cloud data
+  useEffect(() => {
+    if (submitted) {
+      loadWordCloud()
+    }
+  }, [submitted])
+
+  const loadWordCloud = async () => {
+    try {
+      // Fetch all last words
+      const { data, error } = await supabase
+        .from('last_words')
+        .select('words')
+        .order('created_at', { ascending: false })
+        .limit(1000) // Get recent 1000 submissions
+
+      if (error) throw error
+
+      if (data) {
+        setTotalSubmissions(data.length)
+
+        // Process words to create frequency map
+        const wordFreq = new Map<string, number>()
+
+        data.forEach((submission: { words: string }) => {
+          // Split into words, normalize, and count
+          const words = submission.words
+            .toLowerCase()
+            .replace(/[^\w\s']/g, '') // Keep apostrophes for contractions
+            .split(/\s+/)
+            .filter(word => word.length > 2) // Filter out very short words
+
+          words.forEach(word => {
+            wordFreq.set(word, (wordFreq.get(word) || 0) + 1)
+          })
+        })
+
+        // Convert to array and sort by frequency
+        const sortedWords = Array.from(wordFreq.entries())
+          .map(([word, count]) => ({ word, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 50) // Top 50 words
+
+        setWordCloud(sortedWords)
+      }
+    } catch (error) {
+      console.error('Error loading word cloud:', error)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!input.trim() || input.length > 500) {
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const { error } = await supabase
+        .from('last_words')
+        .insert([{ words: input.trim() }])
+
+      if (error) throw error
+
+      setSubmitted(true)
+    } catch (error) {
+      console.error('Error submitting last words:', error)
+      alert('Failed to submit. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getWordSize = (count: number, maxCount: number): number => {
+    const minSize = 14
+    const maxSize = 48
+    const ratio = count / maxCount
+    return Math.floor(minSize + (maxSize - minSize) * ratio)
+  }
+
+  const getWordColor = (count: number, maxCount: number): string => {
+    const ratio = count / maxCount
+
+    if (ratio > 0.7) return 'text-accent' // Most common
+    if (ratio > 0.4) return 'text-melon-green' // Common
+    if (ratio > 0.2) return 'text-primary' // Moderate
+    return 'text-primary-light' // Less common
+  }
+
+  if (submitted) {
+    const maxCount = wordCloud[0]?.count || 1
+
+    return (
+      <div className="space-y-6">
+        {/* Thank you message */}
+        <div className="bg-card-bg border border-card-border rounded-lg p-6 text-center">
+          <h2 className="text-2xl font-semibold mb-2 text-foreground">
+            Thank you for sharing
+          </h2>
+          <p className="text-primary-light">
+            Your words have been added to {totalSubmissions.toLocaleString()} other voices
+          </p>
+        </div>
+
+        {/* Word Cloud */}
+        <div className="bg-card-bg border border-card-border rounded-lg p-8">
+          <h3 className="text-xl font-semibold mb-6 text-center text-foreground">
+            What Matters Most to Humanity
+          </h3>
+
+          {wordCloud.length > 0 ? (
+            <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 min-h-[300px]">
+              {wordCloud.map(({ word, count }) => (
+                <span
+                  key={word}
+                  className={`
+                    inline-block font-medium transition-all hover:scale-110
+                    ${getWordColor(count, maxCount)}
+                  `}
+                  style={{
+                    fontSize: `${getWordSize(count, maxCount)}px`,
+                  }}
+                  title={`${count} ${count === 1 ? 'person' : 'people'} mentioned this`}
+                >
+                  {word}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-primary-light py-12">
+              Loading word cloud...
+            </div>
+          )}
+
+          <div className="mt-6 text-center text-sm text-primary-light">
+            <p>Larger words appear more frequently</p>
+            <p className="mt-1">
+              From {totalSubmissions.toLocaleString()} {totalSubmissions === 1 ? 'submission' : 'submissions'}
+            </p>
+          </div>
+        </div>
+
+        {/* Share another */}
+        <div className="text-center">
+          <button
+            onClick={() => {
+              setSubmitted(false)
+              setInput('')
+            }}
+            className="px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
+          >
+            Reflect Again
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="bg-card-bg border border-card-border rounded-lg p-6 sm:p-8">
+        <div className="mb-6 text-center">
+          <h2 className="text-xl sm:text-2xl font-semibold mb-3 text-foreground">
+            If you could leave one final message...
+          </h2>
+          <p className="text-primary-light text-sm sm:text-base">
+            What would you want the world to know?
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Your last words..."
+              className="
+                w-full min-h-[150px] px-4 py-3
+                border border-card-border rounded-lg
+                bg-white text-foreground
+                focus:outline-none focus:ring-2 focus:ring-accent
+                resize-vertical
+                text-base sm:text-lg
+              "
+              maxLength={500}
+              disabled={loading}
+              aria-label="Enter your last words"
+            />
+            <div className="mt-2 text-right text-sm text-primary-light">
+              {input.length}/500 characters
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading || !input.trim() || input.length > 500}
+            className="
+              w-full px-6 py-3
+              bg-accent text-white rounded-lg
+              font-medium text-lg
+              hover:bg-accent/90
+              disabled:opacity-50 disabled:cursor-not-allowed
+              transition-colors
+              focus:outline-none focus:ring-2 focus:ring-accent
+            "
+          >
+            {loading ? 'Submitting...' : 'Share Your Words'}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center text-sm text-primary-light">
+          <p>Your message will be anonymous and contribute to a collective word cloud</p>
+        </div>
+      </div>
+    </div>
+  )
+}

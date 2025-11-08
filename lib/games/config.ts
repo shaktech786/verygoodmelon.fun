@@ -78,6 +78,20 @@ export const ALL_GAMES: readonly GameConfig[] = [
     tags: ['voting', 'ethics', 'community'],
     order: 4,
   },
+  {
+    id: 'last-words',
+    slug: 'last-words',
+    title: 'The Final Word',
+    description: 'Share your last words, see humanity\'s',
+    cardImage: '/games/last-words/card.svg',
+    cardAlt: 'The Final Word - Last Words Joker Card',
+    difficulty: 'easy',
+    category: 'Thought',
+    accentColor: 'accent',
+    isShowcase: true,
+    tags: ['reflection', 'community', 'philosophical'],
+    order: 5,
+  },
 ] as const
 
 /**
