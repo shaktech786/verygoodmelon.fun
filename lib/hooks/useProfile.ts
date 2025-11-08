@@ -51,7 +51,7 @@ export function useProfile(userId: string | undefined) {
 
       if (error) throw error
 
-      setProfile(prev => prev ? { ...prev, ...updates as Partial<Profile> } : null)
+      setProfile((prev: Profile | null) => prev ? { ...prev, ...updates as Partial<Profile> } : null)
     } catch (err) {
       setError(err as Error)
     }

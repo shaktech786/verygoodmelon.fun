@@ -757,3 +757,7 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
+// Type helpers for convenient access to table types
+export type Game = Database["public"]["Tables"]["games"]["Row"]
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"]

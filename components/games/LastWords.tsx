@@ -3,12 +3,6 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-interface LastWord {
-  id: string
-  words: string
-  created_at: string
-}
-
 interface WordFrequency {
   word: string
   count: number
@@ -27,6 +21,7 @@ export default function LastWords() {
     if (submitted) {
       loadWordCloud()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submitted])
 
   const loadWordCloud = async () => {
