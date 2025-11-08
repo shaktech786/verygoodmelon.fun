@@ -39,12 +39,20 @@ html[data-theme="dark"] {
 }
 
 /* Dark mode overrides for hardcoded Tailwind classes */
-html[data-theme="dark"] .bg-white {
+html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] [class*="bg-white/"] {
   background-color: var(--card-bg) !important;
 }
 
 html[data-theme="dark"] .text-black {
   color: var(--foreground) !important;
+}
+
+/* Keep text-white on buttons/accent backgrounds (intentional) */
+html[data-theme="dark"] .bg-accent .text-white,
+html[data-theme="dark"] .bg-primary .text-white,
+html[data-theme="dark"] .bg-danger .text-white {
+  color: white !important;
 }
 
 html[data-theme="dark"] .border-gray-200,
@@ -90,12 +98,20 @@ html[data-theme="dark"] .text-gray-900 {
   }
 
   /* Dark mode overrides for auto mode */
-  html[data-theme="auto"] .bg-white {
+  html[data-theme="auto"] .bg-white,
+  html[data-theme="auto"] [class*="bg-white/"] {
     background-color: var(--card-bg) !important;
   }
 
   html[data-theme="auto"] .text-black {
     color: var(--foreground) !important;
+  }
+
+  /* Keep text-white on buttons/accent backgrounds (intentional) */
+  html[data-theme="auto"] .bg-accent .text-white,
+  html[data-theme="auto"] .bg-primary .text-white,
+  html[data-theme="auto"] .bg-danger .text-white {
+    color: white !important;
   }
 
   html[data-theme="auto"] .border-gray-200,
