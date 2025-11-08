@@ -157,7 +157,8 @@ export default function TimelessMinds() {
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // Cmd/Ctrl+Enter or just Enter (without Shift) to send
+    if (e.key === 'Enter' && (!e.shiftKey || e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       sendMessage()
     }
@@ -290,6 +291,9 @@ export default function TimelessMinds() {
               >
                 <Send size={14} className="sm:w-4 sm:h-4" />
               </button>
+            </div>
+            <div className="mt-1 text-[9px] sm:text-[10px] text-gray-400 text-center">
+              Press Enter or Cmd/Ctrl+Enter to send
             </div>
           </div>
         </div>

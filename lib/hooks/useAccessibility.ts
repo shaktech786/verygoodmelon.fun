@@ -123,6 +123,7 @@ function applySettings(settings: AccessibilitySettings): void {
   root.setAttribute('data-pause-animations', String(settings.pauseAnimations))
   root.setAttribute('data-muted', String(settings.muted))
   root.setAttribute('data-volume', String(settings.volume))
+  root.setAttribute('data-theme', settings.theme)
 }
 
 /**

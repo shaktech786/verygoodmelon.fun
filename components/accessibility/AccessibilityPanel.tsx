@@ -6,7 +6,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { X, Volume2, VolumeX, Pause, Play, Eye, Palette } from 'lucide-react'
+import { X, Volume2, VolumeX, Pause, Play, Eye, Palette, Moon, Sun } from 'lucide-react'
 import { useAccessibility } from '@/lib/hooks/useAccessibility'
 import { AccessibilityPreset, ACCESSIBILITY_PRESETS } from '@/types/accessibility'
 
@@ -211,6 +211,34 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
                 <option value="protanopia">Protanopia (Red-Green)</option>
                 <option value="tritanopia">Tritanopia (Blue-Yellow)</option>
                 <option value="monochrome">Monochrome</option>
+              </select>
+            </div>
+
+            {/* Theme Mode */}
+            <div className="mb-4">
+              <label className="block text-sm text-primary mb-2 flex items-center gap-2">
+                {settings.theme === 'dark' ? (
+                  <Moon size={14} aria-hidden="true" />
+                ) : (
+                  <Sun size={14} aria-hidden="true" />
+                )}
+                Theme
+              </label>
+              <select
+                value={settings.theme}
+                onChange={(e) =>
+                  updateSetting('theme', e.target.value as 'light' | 'dark' | 'auto')
+                }
+                className="
+                  w-full px-3 py-2
+                  border border-card-border rounded
+                  bg-white text-foreground
+                  focus:outline-none focus:ring-2 focus:ring-accent
+                "
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="auto">Auto (System)</option>
               </select>
             </div>
           </section>

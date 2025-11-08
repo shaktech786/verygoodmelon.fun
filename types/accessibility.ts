@@ -13,6 +13,8 @@ export type ColorblindMode =
 
 export type AnimationSpeed = 0.5 | 1 | 1.5 | 2
 
+export type ThemeMode = 'light' | 'dark' | 'auto'
+
 export interface AccessibilitySettings {
   // Visual Controls
   reduceMotion: boolean
@@ -20,6 +22,7 @@ export interface AccessibilitySettings {
   animationSpeed: AnimationSpeed
   colorblindMode: ColorblindMode
   pauseAnimations: boolean
+  theme: ThemeMode
 
   // Audio Controls
   volume: number // 0-100
@@ -42,6 +45,7 @@ export const DEFAULT_ACCESSIBILITY_SETTINGS: AccessibilitySettings = {
   animationSpeed: 1,
   colorblindMode: 'none',
   pauseAnimations: false,
+  theme: 'auto',
 
   // Audio
   volume: 70,

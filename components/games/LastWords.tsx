@@ -194,6 +194,12 @@ export default function LastWords() {
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault()
+                  handleSubmit(e as unknown as React.FormEvent)
+                }
+              }}
               placeholder="Your last words..."
               className="
                 w-full min-h-[150px] px-4 py-3
@@ -207,8 +213,9 @@ export default function LastWords() {
               disabled={loading}
               aria-label="Enter your last words"
             />
-            <div className="mt-2 text-right text-sm text-primary-light">
-              {input.length}/500 characters
+            <div className="mt-2 flex justify-between items-center text-sm text-primary-light">
+              <span className="text-xs">Cmd/Ctrl + Enter to submit</span>
+              <span>{input.length}/500 characters</span>
             </div>
           </div>
 

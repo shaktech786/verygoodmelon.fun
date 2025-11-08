@@ -215,6 +215,12 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
               id="reasonForRequest"
               value={formData.reasonForRequest}
               onChange={(e) => handleChange('reasonForRequest', e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault()
+                  handleSubmit(e as unknown as React.FormEvent)
+                }
+              }}
               placeholder="What wisdom or perspective would they bring? How would they help people grow?"
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
@@ -230,6 +236,12 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
               id="personalConnection"
               value={formData.personalConnection}
               onChange={(e) => handleChange('personalConnection', e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault()
+                  handleSubmit(e as unknown as React.FormEvent)
+                }
+              }}
               placeholder="Any personal reason why this person matters to you?"
               rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"

@@ -19,6 +19,46 @@
   --hover-bg: #f7f7f7;
 }
 
+/* Dark mode color palette */
+html[data-theme="dark"] {
+  --background: #1a1a1a;
+  --foreground: #f0f0f0;
+  --primary: #e8e8e8;
+  --primary-light: #a0a0a0;
+  --accent: #ff6b7a;
+  --accent-soft: #3a1f21;
+  --success: #68b892;
+  --danger: #ff6b7a;
+  --warm: #ffb366;
+  --melon-green: #74c69d;
+  --melon-green-light: #a8dcc0;
+  --melon-red: #ff6b7a;
+  --card-bg: #2a2a2a;
+  --card-border: #404040;
+  --hover-bg: #333333;
+}
+
+/* Auto theme: respect system preference */
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] {
+    --background: #1a1a1a;
+    --foreground: #f0f0f0;
+    --primary: #e8e8e8;
+    --primary-light: #a0a0a0;
+    --accent: #ff6b7a;
+    --accent-soft: #3a1f21;
+    --success: #68b892;
+    --danger: #ff6b7a;
+    --warm: #ffb366;
+    --melon-green: #74c69d;
+    --melon-green-light: #a8dcc0;
+    --melon-red: #ff6b7a;
+    --card-bg: #2a2a2a;
+    --card-border: #404040;
+    --hover-bg: #333333;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
