@@ -181,6 +181,15 @@ html[data-reduce-motion="true"] *::after {
   scroll-behavior: auto !important;
 }
 
+/* Exception: Accessibility panel must always work, even with reduced motion */
+html[data-reduce-motion="true"] [role="dialog"][aria-labelledby*="accessibility"],
+html[data-reduce-motion="true"] [role="dialog"][aria-labelledby*="accessibility"] * {
+  animation-duration: 0ms !important;
+  transition-duration: 0ms !important;
+  animation: none !important;
+  transition: none !important;
+}
+
 /* High Contrast Mode */
 html[data-contrast="high"] {
   --foreground: #000000;
