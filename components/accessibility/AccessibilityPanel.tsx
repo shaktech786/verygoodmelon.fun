@@ -83,14 +83,14 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
         className="
           fixed top-0 right-0 bottom-0
           w-full sm:w-96
-          bg-white
+          bg-card-bg
           shadow-2xl
           z-[70]
           overflow-y-auto
         "
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-card-border px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-card-bg border-b border-card-border px-6 py-4 flex items-center justify-between">
           <h2
             id="accessibility-panel-title"
             className="text-xl font-semibold text-foreground"
