@@ -286,7 +286,7 @@ export default function HardChoices() {
           </div>
 
           {/* Dilemma card */}
-          <div className="bg-white border border-foreground/10 rounded-lg p-8 mb-6">
+          <div className="bg-card-bg border border-card-border rounded-lg p-8 mb-6">
             {currentDilemma.context && (
               <p className="text-foreground/60 mb-4 text-sm uppercase tracking-wide">
                 {currentDilemma.context}

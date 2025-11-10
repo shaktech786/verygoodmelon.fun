@@ -102,7 +102,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
             onClick={onClose}
             className="
               p-2 rounded
-              hover:bg-gray-100
+              hover:bg-hover-bg
               transition-colors
               focus:outline-none focus:ring-2 focus:ring-accent
             "
@@ -138,7 +138,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
                   <span
                     className={`
                       absolute top-0.5 left-0.5
-                      w-5 h-5 bg-white rounded-full
+                      w-5 h-5 bg-card-bg rounded-full
                       transition-transform
                       ${settings.reduceMotion ? 'translate-x-5' : 'translate-x-0'}
                     `}
@@ -158,7 +158,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
                 className="
                   w-full px-3 py-2
                   border border-card-border rounded
-                  bg-white text-foreground
+                  bg-card-bg text-foreground
                   focus:outline-none focus:ring-2 focus:ring-accent
                 "
               >
@@ -202,7 +202,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
                 className="
                   w-full px-3 py-2
                   border border-card-border rounded
-                  bg-white text-foreground
+                  bg-card-bg text-foreground
                   focus:outline-none focus:ring-2 focus:ring-accent
                 "
               >
@@ -232,7 +232,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
                 className="
                   w-full px-3 py-2
                   border border-card-border rounded
-                  bg-white text-foreground
+                  bg-card-bg text-foreground
                   focus:outline-none focus:ring-2 focus:ring-accent
                 "
               >
@@ -261,7 +261,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
                 className="
                   w-full px-4 py-2
                   border border-card-border rounded
-                  bg-white hover:bg-gray-50
+                  bg-card-bg hover:bg-hover-bg
                   text-foreground text-sm
                   transition-colors
                   focus:outline-none focus:ring-2 focus:ring-accent
@@ -333,7 +333,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
                   <span
                     className={`
                       absolute top-0.5 left-0.5
-                      w-5 h-5 bg-white rounded-full
+                      w-5 h-5 bg-card-bg rounded-full
                       transition-transform
                       ${settings.pauseAnimations ? 'translate-x-5' : 'translate-x-0'}
                     `}
@@ -359,7 +359,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
                       className="
                         w-full px-4 py-3
                         border border-card-border rounded
-                        bg-white hover:bg-gray-50
+                        bg-card-bg hover:bg-hover-bg
                         text-left
                         transition-colors
                         focus:outline-none focus:ring-2 focus:ring-accent
@@ -396,7 +396,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
               className="
                 w-full px-4 py-3
                 border-2 border-danger rounded
-                bg-white hover:bg-red-50
+                bg-card-bg hover:bg-red-50
                 text-danger font-medium text-sm
                 transition-colors
                 focus:outline-none focus:ring-2 focus:ring-danger
@@ -416,14 +416,14 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
             </h3>
             <div className="text-xs text-primary-light space-y-1">
               <div>
-                <kbd className="px-2 py-1 bg-gray-100 rounded text-foreground">ESC</kbd> - Close
+                <kbd className="px-2 py-1 bg-hover-bg rounded text-foreground">ESC</kbd> - Close
                 this panel
               </div>
               <div>
-                <kbd className="px-2 py-1 bg-gray-100 rounded text-foreground">M</kbd> - Mute/Unmute
+                <kbd className="px-2 py-1 bg-hover-bg rounded text-foreground">M</kbd> - Mute/Unmute
               </div>
               <div>
-                <kbd className="px-2 py-1 bg-gray-100 rounded text-foreground">SPACE</kbd> - Pause
+                <kbd className="px-2 py-1 bg-hover-bg rounded text-foreground">SPACE</kbd> - Pause
                 (in games)
               </div>
             </div>

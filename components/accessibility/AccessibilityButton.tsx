@@ -23,7 +23,7 @@ export function AccessibilityButton({
         fixed top-4 right-4 z-50
         w-12 h-12
         flex items-center justify-center
-        bg-white
+        bg-card-bg
         border-2 border-card-border
         rounded-full
         shadow-lg hover:shadow-xl

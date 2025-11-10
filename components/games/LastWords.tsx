@@ -189,7 +189,7 @@ export default function LastWords() {
               className="
                 w-full min-h-[150px] px-4 py-3
                 border border-card-border rounded-lg
-                bg-white text-foreground
+                bg-card-bg text-foreground
                 focus:outline-none focus:ring-2 focus:ring-accent
                 resize-vertical
                 text-base sm:text-lg

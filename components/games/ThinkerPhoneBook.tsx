@@ -78,7 +78,7 @@ export default function ThinkerPhoneBook({
         </div>
 
         {/* Category Filter */}
-        <div className="bg-white border-b border-gray-200 px-6 py-3 overflow-x-auto">
+        <div className="bg-card-bg border-b border-card-border px-6 py-3 overflow-x-auto">
           <div className="flex gap-2 min-w-max">
             {categories.map(category => (
               <button
@@ -87,7 +87,7 @@ export default function ThinkerPhoneBook({
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   selectedCategory === category
                     ? 'bg-accent text-white'
-                    : 'bg-gray-100 text-foreground/70 hover:bg-gray-200'
+                    : 'bg-hover-bg text-foreground/70 hover:bg-card-border'
                 }`}
               >
                 {category === 'all' ? 'All' : category}
@@ -108,7 +108,7 @@ export default function ThinkerPhoneBook({
               {filteredThinkers.map(thinker => (
                 <div
                   key={thinker.id}
-                  className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg hover:border-accent/30 transition-all group cursor-pointer"
+                  className="bg-card-bg border border-card-border rounded-lg p-4 hover:shadow-lg hover:border-accent/30 transition-all group cursor-pointer"
                   onClick={() => handleCall(thinker.id)}
                 >
                   {/* Avatar Placeholder */}
@@ -157,7 +157,7 @@ export default function ThinkerPhoneBook({
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 border-t border-gray-200 px-6 py-4 text-center text-xs text-foreground/60">
+        <div className="bg-hover-bg border-t border-card-border px-6 py-4 text-center text-xs text-foreground/60">
           <p>
             {filteredThinkers.length} {filteredThinkers.length === 1 ? 'thinker' : 'thinkers'} available
             {searchQuery && ` matching "${searchQuery}"`}

@@ -216,7 +216,7 @@ export default function TimelessMinds() {
         </div>
 
         {/* Chat Sidebar (Zoom/Teams style) - stacks on mobile */}
-        <div className="w-full lg:flex-1 lg:max-w-md bg-white rounded-lg flex flex-col shadow-xl min-h-[300px] lg:min-h-0">
+        <div className="w-full lg:flex-1 lg:max-w-md bg-card-bg rounded-lg flex flex-col shadow-xl min-h-[300px] lg:min-h-0">
           {/* Chat Header */}
           <div className="p-3 sm:p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
@@ -228,7 +228,7 @@ export default function TimelessMinds() {
           {/* Messages Area */}
           <div
             ref={messagesContainerRef}
-            className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3 bg-gray-50 scroll-smooth"
+            className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3 bg-hover-bg scroll-smooth"
             style={{ scrollbarGutter: 'stable' }}
           >
             {messages.map((message, index) => (
@@ -244,7 +244,7 @@ export default function TimelessMinds() {
                     className={`px-3 py-2 rounded-lg shadow-sm ${
                       message.role === 'user'
                         ? 'bg-accent text-white rounded-br-none'
-                        : 'bg-white border border-gray-200 text-foreground rounded-bl-none'
+                        : 'bg-card-bg border border-card-border text-foreground rounded-bl-none'
                     }`}
                   >
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
@@ -255,7 +255,7 @@ export default function TimelessMinds() {
 
             {isLoading && (
               <div className="flex justify-start animate-in fade-in duration-200">
-                <div className="bg-white border border-gray-200 px-3 py-2 rounded-lg shadow-sm">
+                <div className="bg-card-bg border border-card-border px-3 py-2 rounded-lg shadow-sm">
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                     <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -269,7 +269,7 @@ export default function TimelessMinds() {
           </div>
 
           {/* Chat Input */}
-          <div className="p-2 sm:p-3 border-t border-gray-200 bg-white">
+          <div className="p-2 sm:p-3 border-t border-card-border bg-card-bg">
             <div className="flex gap-1.5 sm:gap-2">
               <input
                 ref={inputRef}
@@ -387,7 +387,7 @@ export default function TimelessMinds() {
       {/* End Call Dialog */}
       {showEndCallDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl p-4 sm:p-6 max-w-md w-full shadow-2xl animate-fade">
+          <div className="bg-card-bg rounded-xl p-4 sm:p-6 max-w-md w-full shadow-2xl animate-fade">
             <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3 text-foreground">
               End this conversation?
             </h3>
