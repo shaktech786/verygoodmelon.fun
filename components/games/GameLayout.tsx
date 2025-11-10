@@ -104,10 +104,10 @@ export function GameLayout({
               href={backLinkHref}
               className="
                 inline-block px-4 py-2 sm:px-6 sm:py-3
-                bg-primary text-white rounded-lg font-medium
-                hover:bg-primary/90 transition-colors
+                bg-card-bg text-foreground border border-card-border rounded-lg font-medium
+                hover:bg-hover-bg transition-colors
                 text-sm sm:text-base
-                focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
+                focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2
               "
             >
               {backLinkText}

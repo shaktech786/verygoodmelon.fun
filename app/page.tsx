@@ -1,5 +1,4 @@
 import { Gamepad2 } from 'lucide-react'
-import SiteVisitCounter from '@/components/SiteVisitCounter'
 import { GameCardShowcase } from '@/components/games/GameCardShowcase'
 import { SHOWCASE_GAMES } from '@/lib/games/config'
 
@@ -12,8 +11,6 @@ import { SHOWCASE_GAMES } from '@/lib/games/config'
 export default function Home() {
   return (
     <div className="container mx-auto px-6 py-8 max-w-6xl">
-      <SiteVisitCounter />
-
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
         {/* Render all showcase games from config */}
         {SHOWCASE_GAMES.map((game, index) => (

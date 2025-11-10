@@ -5,6 +5,7 @@ import { Header } from "@/components/ui/Header";
 import { AccessibilityControls } from "@/components/accessibility/AccessibilityControls";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import SiteVisitCounter from "@/components/SiteVisitCounter";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
@@ -69,9 +70,10 @@ export default function RootLayout({
         </ErrorBoundary>
         <footer className="border-t border-card-border mt-20" role="contentinfo">
           <div className="container mx-auto px-6 py-12 max-w-6xl">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-primary-light">
-              <p>Made with purpose. Every pixel has meaning.</p>
-              <p>© 2025 VeryGoodMelon.Fun</p>
+            <div className="flex flex-col items-center gap-2 text-sm text-center">
+              <SiteVisitCounter />
+              <p className="text-primary-light">Made with purpose. Every pixel has meaning.</p>
+              <p className="text-primary-light">© 2025 VeryGoodMelon.Fun</p>
             </div>
           </div>
         </footer>

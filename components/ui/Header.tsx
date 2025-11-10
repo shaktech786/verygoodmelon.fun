@@ -17,6 +17,10 @@ export function Header() {
     <header className="border-b border-card-border bg-background/80 backdrop-blur-sm sticky top-0 z-50" role="banner">
       <nav className="container mx-auto px-6 py-4" role="navigation" aria-label="Main navigation">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
+          {/* Left spacer for balance */}
+          <div className="w-[200px]" />
+
+          {/* Centered logo and title */}
           <Link href="/" className="flex items-center gap-3 group" aria-label="VeryGoodMelon.Fun home">
             <Image
               src="/logo.png"
@@ -31,7 +35,8 @@ export function Header() {
             </span>
           </Link>
 
-          <div className="flex items-center gap-8">
+          {/* Right-aligned nav links */}
+          <div className="flex items-center gap-6">
             {navLinks.map((link) => {
               const isActive = pathname === link.href
 
@@ -51,17 +56,16 @@ export function Header() {
                 </Link>
               )
             })}
+            <a
+              href="https://github.com/shaktech786/verygoodmelon.fun"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-primary-light hover:text-foreground transition-colors"
+              aria-label="View source code on GitHub"
+            >
+              GitHub
+            </a>
           </div>
-
-          <a
-            href="https://github.com/shaktech786/verygoodmelon.fun"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-primary-light hover:text-foreground transition-colors"
-            aria-label="View source code on GitHub"
-          >
-            GitHub
-          </a>
         </div>
       </nav>
     </header>
