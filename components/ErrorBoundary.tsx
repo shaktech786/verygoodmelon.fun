@@ -2,6 +2,7 @@
 
 import { Component, ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 
 interface Props {
   children: ReactNode
@@ -53,12 +54,13 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-primary-light mb-6">
               We encountered an unexpected error. Please try refreshing the page.
             </p>
-            <button
+            <Button
               onClick={() => window.location.reload()}
-              className="px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors focus:outline-none focus:ring-2 focus:ring-accent"
+              variant="primary"
+              className="px-6 py-3"
             >
               Refresh Page
-            </button>
+            </Button>
           </div>
         </div>
       )

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { Ball, Pin } from '@/lib/games/bowling/physics'
+import { Button } from '@/components/ui/Button'
 import {
   updateBall,
   updatePin,
@@ -385,21 +386,23 @@ export default function WatermelonBowling() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-center w-full max-w-md px-4">
-        <button
+        <Button
           onClick={handleReset}
-          className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-3 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors text-sm sm:text-base"
+          variant="primary"
+          className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-3 font-medium text-sm sm:text-base"
           aria-label="Reset game"
         >
           New Game
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={toggleSound}
-          className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm sm:text-base"
+          variant="primary"
+          className="w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-3 font-medium text-sm sm:text-base"
           aria-label={soundEnabled ? 'Disable sound' : 'Enable sound'}
         >
           Sound: {soundEnabled ? 'ON' : 'OFF'}
-        </button>
+        </Button>
       </div>
 
       <div className="text-xs sm:text-sm text-foreground/60 text-center max-w-md px-4">

@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from 'react'
 import { generateCached, generateDaily, buildPrompt } from '@/lib/ai/token-manager'
+import { Button } from '@/components/ui/Button'
 
 interface DailyWisdom {
   text: string
@@ -198,13 +199,14 @@ export function PersonalizedHintExample({
 
   return (
     <div className="mt-6">
-      <button
+      <Button
         onClick={loadHint}
-        className="px-4 py-2 bg-accent text-white rounded transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-accent"
+        variant="primary"
+        className="px-4 py-2"
         aria-label="Get a hint"
       >
         Need a hint?
-      </button>
+      </Button>
 
       {showHint && hint && (
         <div className="mt-3 p-4 bg-success/10 rounded border border-success/20">

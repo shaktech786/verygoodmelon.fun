@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Book, Search, X, Phone, Calendar, Globe2 } from 'lucide-react'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
+import { Button } from '@/components/ui/Button'
 
 interface ThinkerPhoneBookProps {
   isOpen: boolean
@@ -140,16 +141,17 @@ export default function ThinkerPhoneBook({
                   </p>
 
                   {/* Call Button */}
-                  <button
+                  <Button
                     onClick={(e) => {
                       e.stopPropagation()
                       handleCall(thinker.id)
                     }}
-                    className="w-full px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors flex items-center justify-center gap-2 text-sm font-medium group-hover:shadow-md"
+                    variant="primary"
+                    className="w-full px-4 py-2 flex items-center justify-center gap-2 text-sm group-hover:shadow-md"
                   >
                     <Phone size={14} />
                     Start Call
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>

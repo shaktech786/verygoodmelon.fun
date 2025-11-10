@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import dynamic from 'next/dynamic'
+import { Button } from '@/components/ui/Button'
 
 // Dynamically import WordCloud to avoid SSR issues
 const WordCloud = dynamic(
@@ -204,21 +205,14 @@ export default function LastWords() {
             </div>
           </div>
 
-          <button
+          <Button
             type="submit"
             disabled={loading || !input.trim() || input.length > 500}
-            className="
-              w-full px-6 py-3
-              bg-accent text-white rounded-lg
-              font-medium text-lg
-              hover:bg-accent/90
-              disabled:opacity-50 disabled:cursor-not-allowed
-              transition-colors
-              focus:outline-none focus:ring-2 focus:ring-accent
-            "
+            variant="primary"
+            className="w-full px-6 py-3 font-medium text-lg"
           >
             {loading ? 'Submitting...' : 'Share Your Words'}
-          </button>
+          </Button>
         </form>
 
         <div className="mt-6 text-center text-sm text-primary-light">

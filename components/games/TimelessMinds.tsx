@@ -6,6 +6,7 @@ import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
 import { PhoneOff, Send, Loader2, Mic, VideoIcon, MoreVertical, Book, Plus } from 'lucide-react'
 import ThinkerPhoneBook from './ThinkerPhoneBook'
 import RequestThinkerModal from './RequestThinkerModal'
+import { Button } from '@/components/ui/Button'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -283,14 +284,15 @@ export default function TimelessMinds() {
                 aria-label="Message input"
                 autoFocus
               />
-              <button
+              <Button
                 onClick={sendMessage}
                 disabled={!inputMessage.trim() || isLoading}
-                className="px-3 py-1.5 sm:px-4 sm:py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="primary"
+                className="px-3 py-1.5 sm:px-4 sm:py-2"
                 aria-label="Send message"
               >
                 <Send size={14} className="sm:w-4 sm:h-4" />
-              </button>
+              </Button>
             </div>
             <div className="mt-1 text-[9px] sm:text-[10px] text-gray-400 text-center">
               Press Enter or Cmd/Ctrl+Enter to send

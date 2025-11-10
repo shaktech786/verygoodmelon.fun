@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { Button } from '@/components/ui/Button'
 
 interface Choice {
   id: string
@@ -427,12 +428,13 @@ export default function HardChoices() {
 
           {/* Next button */}
           {showResults && (
-            <button
+            <Button
               onClick={handleNext}
-              className="w-full py-4 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+              variant="primary"
+              className="w-full py-4"
             >
               Next Dilemma
-            </button>
+            </Button>
           )}
 
           {/* Instructions */}

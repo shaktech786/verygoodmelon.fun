@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { X, Heart, Loader2, CheckCircle2 } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 
 interface RequestThinkerModalProps {
   isOpen: boolean
@@ -264,9 +265,10 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
             >
               Cancel
             </button>
-            <button
+            <Button
               type="submit"
-              className="flex-1 px-4 py-3 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              variant="primary"
+              className="flex-1 px-4 py-3 flex items-center justify-center gap-2"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
@@ -280,7 +282,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
                   Donate $5 & Request
                 </>
               )}
-            </button>
+            </Button>
           </div>
 
           <div className="bg-foreground/5 border border-foreground/10 rounded-lg p-3 mb-3">
