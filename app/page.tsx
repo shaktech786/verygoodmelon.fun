@@ -10,8 +10,8 @@ import { SHOWCASE_GAMES } from '@/lib/games/config'
  */
 export default function Home() {
   return (
-    <div className="container mx-auto px-6 py-8 max-w-6xl">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-6xl">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
         {/* Render all showcase games from config */}
         {SHOWCASE_GAMES.map((game, index) => (
           <GameCardShowcase

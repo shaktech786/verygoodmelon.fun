@@ -20,8 +20,8 @@ export function AccessibilityButton({
     <button
       onClick={onClick}
       className="
-        fixed top-4 right-4 z-50
-        w-12 h-12
+        fixed bottom-6 right-6 z-50
+        w-12 h-12 sm:w-14 sm:h-14
         flex items-center justify-center
         bg-card-bg
         border-2 border-card-border
@@ -30,6 +30,7 @@ export function AccessibilityButton({
         transition-all duration-75
         hover:scale-110
         focus:outline-none focus:ring-2 focus:ring-accent
+        mb-safe-bottom mr-safe-right
       "
       aria-label="Open accessibility settings"
       aria-expanded={ariaExpanded}
