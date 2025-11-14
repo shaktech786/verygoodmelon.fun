@@ -59,9 +59,21 @@ export default function GamesPage() {
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {games.map((game) => (
-            <GameCard key={game.id} game={game} />
-          ))}
+          {games.map((game, index) => {
+            // Stagger middle column for asymmetric layout (every 3rd card starting from index 1)
+            const isMiddleColumn = (index % 3 === 1)
+            return (
+              <div
+                key={game.id}
+                className={`
+                  transform transition-all duration-300
+                  ${isMiddleColumn ? 'lg:translate-y-8' : ''}
+                `}
+              >
+                <GameCard game={game} />
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

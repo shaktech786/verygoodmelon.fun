@@ -15,7 +15,7 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const baseStyles = 'font-medium rounded-lg transition-all duration-75 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2'
+  const baseStyles = 'font-medium rounded-lg button-squeeze transition-all duration-75 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 select-none'
 
   const variants = {
     primary: 'bg-accent text-white hover:bg-accent/90 soft-shadow hover:soft-shadow-md focus:ring-accent',

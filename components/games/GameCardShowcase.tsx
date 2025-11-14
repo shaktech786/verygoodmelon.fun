@@ -48,9 +48,8 @@ export function GameCardShowcase({ game, priority = false }: GameCardShowcasePro
       {/* Card container with hover effects */}
       <div
         className={`
-          relative overflow-hidden rounded-2xl
+          relative overflow-hidden card-organic card-hover-organic
           transition-all duration-300 ease-out
-          hover:scale-105 hover:-translate-y-2 hover:rotate-1
           hover:shadow-2xl ${shadowColorClass}
           transform-gpu will-change-transform
         `}
@@ -150,9 +149,8 @@ export function GameCardPlaceholder({ game }: GameCardPlaceholderProps) {
     >
       <div
         className={`
-          relative overflow-hidden rounded-2xl
+          relative overflow-hidden card-organic card-hover-organic
           transition-all duration-300 ease-out
-          hover:scale-105 hover:-translate-y-2 hover:rotate-1
           hover:shadow-2xl ${shadowColorClass}
           transform-gpu will-change-transform
           bg-gradient-to-br ${gradientClass}
