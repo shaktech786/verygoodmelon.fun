@@ -361,3 +361,75 @@ html[data-colorblind-mode="tritanopia"] {
 html[data-colorblind-mode="monochrome"] {
   filter: grayscale(100%);
 }
+
+/* ============================================
+   THE UNRUSHER ANIMATIONS
+   ============================================ */
+
+/* Slow pulse for calm tasks */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+/* Floating seeds animation */
+@keyframes float-seed {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(400px) translateX(20px) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+.animate-float-seed {
+  animation: float-seed 8s ease-in-out infinite;
+}
+
+/* ============================================
+   WHAT REALLY MATTERS ANIMATIONS
+   ============================================ */
+
+/* Watermelon slice scale animation */
+@keyframes slice-shrink {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(0.85);
+  }
+}
+
+.animate-slice-shrink {
+  animation: slice-shrink 0.3s ease-out forwards;
+}
+
+/* Drag indicator */
+@keyframes drag-hint {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-drag-hint {
+  animation: drag-hint 2s ease-in-out infinite;
+}

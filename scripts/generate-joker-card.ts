@@ -3,7 +3,7 @@
  * Balatro-inspired card template for game thumbnails
  *
  * Usage:
- * npx tsx scripts/generate-joker-card.ts "The Striker" "bowling" "watermelon bowling pins strike"
+ * npx tsx scripts/generate-joker-card.ts "The Optimist" "hope-daily" "sunrise behind watermelon radiating hope"
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
@@ -11,9 +11,9 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 interface JokerCardConfig {
-  title: string           // e.g., "The Striker"
-  gameSlug: string        // e.g., "bowling"
-  symbolDescription: string // e.g., "watermelon bowling pins"
+  title: string           // e.g., "The Optimist"
+  gameSlug: string        // e.g., "hope-daily"
+  symbolDescription: string // e.g., "sunrise behind watermelon"
   primaryColor?: string   // Optional primary color (default: watermelon red)
   accentColor?: string    // Optional accent color (default: watermelon green)
 }
@@ -77,13 +77,6 @@ async function generateJokerCard(config: JokerCardConfig): Promise<string> {
 
 // Card configurations for existing games
 const GAME_CARDS: JokerCardConfig[] = [
-  {
-    title: 'THE STRIKER',
-    gameSlug: 'bowling',
-    symbolDescription: 'watermelon rolling towards bowling pins, motion lines suggesting a perfect strike',
-    primaryColor: '#e63946',
-    accentColor: '#1a4d2e'
-  },
   {
     title: 'THE OPTIMIST',
     gameSlug: 'hope-daily',

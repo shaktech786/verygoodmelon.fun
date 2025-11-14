@@ -68,21 +68,6 @@ function createCard(config) {
 }
 
 /**
- * Pixelated bowling pin icon
- */
-const bowlingIcon = `
-  <!-- Watermelon bowling ball -->
-  <circle cx="0" cy="0" r="120" fill="${COLORS.lightGreen}"/>
-  <circle cx="0" cy="0" r="100" fill="${COLORS.coral}"/>
-  <rect x="-8" y="-40" width="16" height="16" fill="${COLORS.black}"/>
-  <rect x="-24" y="-16" width="16" height="16" fill="${COLORS.black}"/>
-  <rect x="8" y="-16" width="16" height="16" fill="${COLORS.black}"/>
-  <rect x="-32" y="16" width="16" height="16" fill="${COLORS.black}"/>
-  <rect x="0" y="24" width="16" height="16" fill="${COLORS.black}"/>
-  <rect x="24" y="8" width="16" height="16" fill="${COLORS.black}"/>
-`;
-
-/**
  * Pixelated sun/optimism icon
  */
 const optimismIcon = `
@@ -140,13 +125,6 @@ const dilemmaIcon = `
  */
 function generateAllCards() {
   const cards = [
-    {
-      title: 'THE STRIKER',
-      icon: bowlingIcon,
-      bgColor: COLORS.coral,
-      accentColor: COLORS.darkGreen,
-      outputPath: 'public/games/bowling/card.png',
-    },
     {
       title: 'THE OPTIMIST',
       icon: optimismIcon,

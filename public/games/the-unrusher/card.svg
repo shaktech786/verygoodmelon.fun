@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1792" viewBox="0 0 1024 1792" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="1792" fill="#f5e6d3" rx="64"/>
+
+  <!-- Inner card area -->
+  <rect x="64" y="64" width="896" height="1664" fill="#74c69d" rx="48"/>
+
+  <!-- Decorative border (pixelated) -->
+  <rect x="96" y="96" width="32" height="32" fill="#1a4d2e"/>
+  <rect x="96" y="1664" width="32" height="32" fill="#1a4d2e"/>
+  <rect x="896" y="96" width="32" height="32" fill="#1a4d2e"/>
+  <rect x="896" y="1664" width="32" height="32" fill="#1a4d2e"/>
+
+  <!-- Title banner -->
+  <rect x="128" y="160" width="768" height="160" fill="#ffffff" rx="16"/>
+  <text x="512" y="260"
+    font-family="system-ui, -apple-system, sans-serif"
+    font-size="60"
+    font-weight="800"
+    fill="#1a1a1a"
+    text-anchor="middle"
+    letter-spacing="-2">THE PATIENT ONE</text>
+
+  <!-- Icon area - Slow snail with watermelon shell -->
+  <g transform="translate(512, 996)">
+    <!-- Watermelon shell (spiral) -->
+    <circle cx="0" cy="-40" r="120" fill="#e63946"/>
+    <circle cx="0" cy="-40" r="90" fill="#74c69d"/>
+    <circle cx="0" cy="-40" r="60" fill="#e63946"/>
+
+    <!-- Seeds on shell -->
+    <ellipse cx="-30" cy="-60" rx="8" ry="12" fill="#1a1a1a"/>
+    <ellipse cx="30" cy="-50" rx="8" ry="12" fill="#1a1a1a"/>
+    <ellipse cx="0" cy="-20" rx="8" ry="12" fill="#1a1a1a"/>
+
+    <!-- Snail body -->
+    <ellipse cx="0" cy="40" rx="80" ry="40" fill="#ffd700"/>
+
+    <!-- Eyes -->
+    <circle cx="-30" cy="20" r="8" fill="#1a1a1a"/>
+    <circle cx="30" cy="20" r="8" fill="#1a1a1a"/>
+
+    <!-- Antennae -->
+    <rect x="-35" y="-10" width="6" height="30" fill="#1a4d2e" rx="3"/>
+    <rect x="29" y="-10" width="6" height="30" fill="#1a4d2e" rx="3"/>
+    <circle cx="-32" cy="-10" r="8" fill="#e63946"/>
+    <circle cx="32" cy="-10" r="8" fill="#e63946"/>
+  </g>
+
+  <!-- Bottom accent -->
+  <rect x="196" y="1536" width="632" height="96" fill="#1a4d2e" rx="48"/>
+</svg>

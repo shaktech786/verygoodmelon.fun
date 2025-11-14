@@ -17,7 +17,7 @@ const quicksand = Quicksand({
 export const metadata: Metadata = {
   title: "VeryGoodMelon.Fun - Thoughtful Games to Reduce Anxiety",
   description: "Creative, accessible, AI-powered games designed to help you relax. No ads, no accounts, no stress - just thoughtful experiences.",
-  keywords: ["games", "relaxation", "anxiety relief", "accessible games", "creative games", "watermelon", "bowling"],
+  keywords: ["games", "relaxation", "anxiety relief", "accessible games", "creative games", "watermelon"],
   authors: [{ name: "VeryGoodMelon.Fun" }],
   creator: "VeryGoodMelon.Fun",
   publisher: "VeryGoodMelon.Fun",

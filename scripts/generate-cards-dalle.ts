@@ -21,13 +21,6 @@ interface CardConfig {
 
 const CARDS: CardConfig[] = [
   {
-    title: 'THE STRIKER',
-    filename: 'bowling-card.png',
-    symbol: 'watermelon rolling towards bowling pins with motion lines',
-    primaryColor: '#e63946',
-    accentColor: '#1a4d2e'
-  },
-  {
     title: 'THE OPTIMIST',
     filename: 'hope-daily-card.png',
     symbol: 'sunrise behind a watermelon with radiating light rays',
