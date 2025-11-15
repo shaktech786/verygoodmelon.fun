@@ -140,7 +140,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
                 type="text"
                 value={formData.requesterName}
                 onChange={(e) => handleChange('requesterName', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50"
+                className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                 required
               />
             </div>
@@ -154,7 +154,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
                 type="email"
                 value={formData.requesterEmail}
                 onChange={(e) => handleChange('requesterEmail', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50"
+                className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                 required
               />
             </div>
@@ -170,7 +170,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
               value={formData.requestedName}
               onChange={(e) => handleChange('requestedName', e.target.value)}
               placeholder="e.g., Carl Jung, Jane Austen, Richard Feynman"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50"
+              className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
               required
             />
             <p className="text-xs text-foreground/50 mt-1">
@@ -189,7 +189,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
                 value={formData.requestedEra}
                 onChange={(e) => handleChange('requestedEra', e.target.value)}
                 placeholder="e.g., 1875-1961"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50"
+                className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
 
@@ -203,7 +203,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
                 value={formData.requestedField}
                 onChange={(e) => handleChange('requestedField', e.target.value)}
                 placeholder="e.g., Psychology, Literature"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50"
+                className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
           </div>
@@ -224,7 +224,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
               }}
               placeholder="What wisdom or perspective would they bring? How would they help people grow?"
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
+              className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent resize-none"
               required
             />
           </div>
@@ -245,30 +245,31 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
               }}
               placeholder="Any personal reason why this person matters to you?"
               rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
+              className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent resize-none"
             />
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">
+            <div className="bg-danger/10 border border-danger/20 rounded-lg p-3 text-sm text-danger">
               {error}
             </div>
           )}
 
           {/* Submit */}
           <div className="flex gap-3 pt-4">
-            <button
+            <Button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-3 border border-foreground/20 rounded-lg hover:bg-foreground/5 transition-colors"
+              variant="secondary"
+              className="flex-1"
               disabled={isSubmitting}
             >
               Cancel
-            </button>
+            </Button>
             <Button
               type="submit"
               variant="primary"
-              className="flex-1 px-4 py-3 flex items-center justify-center gap-2"
+              className="flex-1 flex items-center justify-center gap-2"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
