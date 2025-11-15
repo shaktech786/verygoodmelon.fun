@@ -4,6 +4,7 @@ import "./globals.css";
 import { Header } from "@/components/ui/Header";
 import { Footer } from "@/components/ui/Footer";
 import { AccessibilityControls } from "@/components/accessibility/AccessibilityControls";
+import { ToastContainer } from "@/components/ui/Toast";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -70,6 +71,7 @@ export default function RootLayout({
         </ErrorBoundary>
         <Footer />
         <AccessibilityControls />
+        <ToastContainer />
         <SpeedInsights />
       </body>
     </html>

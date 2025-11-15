@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
+import { ErrorState } from '@/components/ui/ErrorState'
 
 interface Choice {
   id: string
@@ -162,6 +163,7 @@ export default function HardChoices() {
   const [voteResults, setVoteResults] = useState<VoteResults | null>(null)
   const [hasVoted, setHasVoted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
 
   const currentDilemma = DILEMMAS[currentDilemmaIndex]
 
@@ -186,15 +188,19 @@ export default function HardChoices() {
 
   const loadResults = async () => {
     setLoading(true)
+    setError(null)
     try {
       const response = await fetch(`/api/hard-choices/votes?dilemmaId=${currentDilemma.id}`)
       if (response.ok) {
         const data = await response.json()
         setVoteResults(data)
         setShowResults(true)
+      } else {
+        throw new Error(`Failed to load results: ${response.statusText}`)
       }
-    } catch (error) {
-      console.error('Error loading results:', error)
+    } catch (err) {
+      console.error('Error loading results:', err)
+      setError(err instanceof Error ? err : new Error('Failed to load results'))
     } finally {
       setLoading(false)
     }
@@ -205,6 +211,7 @@ export default function HardChoices() {
 
     setSelectedChoice(choiceId)
     setLoading(true)
+    setError(null)
 
     try {
       const response = await fetch('/api/hard-choices/vote', {
@@ -226,9 +233,13 @@ export default function HardChoices() {
         const votedDilemmas = JSON.parse(localStorage.getItem('hardChoicesVotes') || '{}')
         votedDilemmas[currentDilemma.id] = choiceId
         localStorage.setItem('hardChoicesVotes', JSON.stringify(votedDilemmas))
+      } else {
+        throw new Error(`Failed to submit vote: ${response.statusText}`)
       }
-    } catch (error) {
-      console.error('Error submitting vote:', error)
+    } catch (err) {
+      console.error('Error submitting vote:', err)
+      setError(err instanceof Error ? err : new Error('Failed to submit vote'))
+      setSelectedChoice(null) // Reset selection on error
     } finally {
       setLoading(false)
     }
@@ -237,6 +248,14 @@ export default function HardChoices() {
   const handleNext = () => {
     const nextIndex = (currentDilemmaIndex + 1) % DILEMMAS.length
     setCurrentDilemmaIndex(nextIndex)
+    setError(null) // Clear error when moving to next dilemma
+  }
+
+  const handleRetry = async () => {
+    setError(null)
+    if (hasVoted) {
+      await loadResults()
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent, choiceId: string) => {
@@ -279,6 +298,19 @@ export default function HardChoices() {
               />
             </div>
           </div>
+
+          {/* Error state */}
+          {error && (
+            <div className="mb-6">
+              <ErrorState
+                title="Couldn't Load This Dilemma"
+                description="We had trouble connecting to the server. Your choice wasn't submitted."
+                error={error}
+                onRetry={handleRetry}
+                showDetails={true}
+              />
+            </div>
+          )}
 
           {/* Dilemma card */}
           <div className="bg-card-bg border border-card-border rounded-lg p-8 mb-6">

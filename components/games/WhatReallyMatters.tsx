@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
+import { GripVertical } from 'lucide-react'
 
 interface Priority {
   id: string
@@ -25,6 +26,7 @@ export default function WhatReallyMatters() {
   const [priorities, setPriorities] = useState<Priority[]>([])
   const [newPriority, setNewPriority] = useState('')
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
+  const [dragOverItem, setDragOverItem] = useState<string | null>(null)
   const [totalSlices] = useState(8)
   const [showInsight, setShowInsight] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -72,6 +74,8 @@ export default function WhatReallyMatters() {
     e.preventDefault()
     if (!draggedItem || draggedItem === targetId) return
 
+    setDragOverItem(targetId)
+
     const draggedIndex = priorities.findIndex(p => p.id === draggedItem)
     const targetIndex = priorities.findIndex(p => p.id === targetId)
 
@@ -84,8 +88,13 @@ export default function WhatReallyMatters() {
     setPriorities(newPriorities.map((p, index) => ({ ...p, order: index })))
   }
 
+  const handleDragLeave = () => {
+    setDragOverItem(null)
+  }
+
   const handleDrop = () => {
     setDraggedItem(null)
+    setDragOverItem(null)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent, id: string, index: number) => {
@@ -301,36 +310,49 @@ export default function WhatReallyMatters() {
 
           {/* Draggable list */}
           <div className="space-y-2 mb-6" role="list" aria-label="Priority list">
-            {priorities.map((priority, index) => (
-              <div
-                key={priority.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, priority.id)}
-                onDragOver={(e) => handleDragOver(e, priority.id)}
-                onDrop={handleDrop}
-                onDragEnd={handleDrop}
-                onKeyDown={(e) => handleKeyDown(e, priority.id, index)}
-                tabIndex={0}
-                role="listitem"
-                aria-label={`Priority ${index + 1}: ${priority.text}. Press arrow keys to reorder, delete to remove.`}
-                className={`
-                  flex items-center gap-3 p-4 rounded-lg
-                  cursor-move bg-hover-bg border border-card-border
-                  transition-all duration-75
-                  hover:border-accent hover:shadow-md
-                  focus:outline-none focus:ring-2 focus:ring-accent
-                  ${draggedItem === priority.id ? 'opacity-50' : ''}
-                `}
-              >
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-semibold text-sm">
-                  {index + 1}
+            {priorities.map((priority, index) => {
+              const isDragging = draggedItem === priority.id
+              const isDraggedOver = dragOverItem === priority.id
+
+              return (
+                <div
+                  key={priority.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, priority.id)}
+                  onDragOver={(e) => handleDragOver(e, priority.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onDragEnd={handleDrop}
+                  onKeyDown={(e) => handleKeyDown(e, priority.id, index)}
+                  tabIndex={0}
+                  role="listitem"
+                  aria-label={`Priority ${index + 1}: ${priority.text}. Press arrow keys to reorder, delete to remove.`}
+                  className={`
+                    flex items-center gap-3 p-4 rounded-lg
+                    cursor-move bg-hover-bg border-2 border-card-border
+                    transition-all duration-150
+                    hover:border-accent/50 hover:shadow-md hover:scale-[1.01]
+                    focus:outline-none focus:ring-2 focus:ring-accent
+                    ${isDragging ? 'opacity-40 scale-95 rotate-2 shadow-lg' : ''}
+                    ${isDraggedOver && !isDragging ? 'border-accent border-dashed bg-accent/10 scale-[1.02]' : ''}
+                  `}
+                >
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-semibold text-sm">
+                    {index + 1}
+                  </div>
+                  <span className="flex-1 text-foreground font-medium">{priority.text}</span>
+                  <div
+                    className={`
+                      flex-shrink-0 text-foreground/40 transition-colors
+                      ${isDragging ? 'text-accent' : 'hover:text-accent'}
+                    `}
+                    aria-hidden="true"
+                  >
+                    <GripVertical className="w-5 h-5" />
+                  </div>
                 </div>
-                <span className="flex-1 text-foreground font-medium">{priority.text}</span>
-                <div className="flex-shrink-0 text-primary-light text-sm" aria-hidden="true">
-                  ⋮⋮
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           <div className="flex gap-3">
