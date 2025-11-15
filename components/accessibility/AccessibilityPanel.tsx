@@ -214,32 +214,79 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
               </select>
             </div>
 
-            {/* Theme Mode */}
+            {/* Theme Mode - Modern Toggle */}
             <div className="mb-4">
-              <label className="block text-sm text-primary mb-2 flex items-center gap-2">
-                {settings.theme === 'dark' ? (
-                  <Moon size={14} aria-hidden="true" />
-                ) : (
-                  <Sun size={14} aria-hidden="true" />
-                )}
+              <label className="block text-sm text-primary mb-3">
                 Theme
               </label>
-              <select
-                value={settings.theme}
-                onChange={(e) =>
-                  updateSetting('theme', e.target.value as 'light' | 'dark' | 'auto')
-                }
-                className="
-                  w-full px-3 py-2
-                  border border-card-border rounded
-                  bg-card-bg text-foreground
-                  focus:outline-none focus:ring-2 focus:ring-accent
-                "
+              <div
+                role="radiogroup"
+                aria-label="Theme selection"
+                className="grid grid-cols-3 gap-2 p-1 bg-foreground/5 rounded-lg"
               >
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-                <option value="auto">Auto (System)</option>
-              </select>
+                {/* Light Mode */}
+                <button
+                  role="radio"
+                  aria-checked={settings.theme === 'light'}
+                  onClick={() => updateSetting('theme', 'light')}
+                  className={`
+                    px-3 py-2.5 rounded-md
+                    flex flex-col items-center justify-center gap-1
+                    transition-all duration-200
+                    focus:outline-none focus:ring-2 focus:ring-accent
+                    ${settings.theme === 'light'
+                      ? 'bg-card-bg text-foreground shadow-sm border border-card-border'
+                      : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'
+                    }
+                  `}
+                >
+                  <Sun size={18} aria-hidden="true" />
+                  <span className="text-xs font-medium">Light</span>
+                </button>
+
+                {/* Auto Mode */}
+                <button
+                  role="radio"
+                  aria-checked={settings.theme === 'auto'}
+                  onClick={() => updateSetting('theme', 'auto')}
+                  className={`
+                    px-3 py-2.5 rounded-md
+                    flex flex-col items-center justify-center gap-1
+                    transition-all duration-200
+                    focus:outline-none focus:ring-2 focus:ring-accent
+                    ${settings.theme === 'auto'
+                      ? 'bg-card-bg text-foreground shadow-sm border border-card-border'
+                      : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'
+                    }
+                  `}
+                >
+                  <div className="relative" aria-hidden="true">
+                    <Sun size={18} className="absolute -left-1" />
+                    <Moon size={18} className="absolute left-1" />
+                  </div>
+                  <span className="text-xs font-medium mt-3">Auto</span>
+                </button>
+
+                {/* Dark Mode */}
+                <button
+                  role="radio"
+                  aria-checked={settings.theme === 'dark'}
+                  onClick={() => updateSetting('theme', 'dark')}
+                  className={`
+                    px-3 py-2.5 rounded-md
+                    flex flex-col items-center justify-center gap-1
+                    transition-all duration-200
+                    focus:outline-none focus:ring-2 focus:ring-accent
+                    ${settings.theme === 'dark'
+                      ? 'bg-card-bg text-foreground shadow-sm border border-card-border'
+                      : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'
+                    }
+                  `}
+                >
+                  <Moon size={18} aria-hidden="true" />
+                  <span className="text-xs font-medium">Dark</span>
+                </button>
+              </div>
             </div>
           </section>
 

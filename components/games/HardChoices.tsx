@@ -260,12 +260,6 @@ export default function HardChoices() {
         <div className="animate-fade">
           {/* Header */}
           <div className="mb-8">
-            <Link
-              href="/"
-              className="text-foreground/60 hover:text-foreground transition-colors text-sm mb-4 inline-block"
-            >
-              ← Back to games
-            </Link>
             <h1 className="text-4xl font-semibold mb-3">Hard Choices</h1>
             <p className="text-foreground/60 text-lg">
               Practice critical thinking through thoughtful life dilemmas. There&apos;s no right answer—just different perspectives.
@@ -443,6 +437,16 @@ export default function HardChoices() {
               <p>Choose the option that resonates with you. There&apos;s no judgment—just reflection.</p>
             </div>
           )}
+
+          {/* Back Home Button */}
+          <div className="mt-6 text-center">
+            <a
+              href="/"
+              className="inline-block px-4 py-2 sm:px-6 sm:py-3 bg-card-bg text-foreground border border-card-border rounded-lg font-medium hover:bg-hover-bg transition-colors text-sm sm:text-base"
+            >
+              ← Back Home
+            </a>
+          </div>
         </div>
       </div>
     </div>

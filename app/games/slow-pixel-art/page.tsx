@@ -23,10 +23,10 @@ export default function SlowPixelArtPage() {
 
         <div className="mt-6 text-center">
           <a
-            href="/games"
-            className="inline-block px-4 py-2 sm:px-6 sm:py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm sm:text-base"
+            href="/"
+            className="inline-block px-4 py-2 sm:px-6 sm:py-3 bg-card-bg text-foreground border border-card-border rounded-lg font-medium hover:bg-hover-bg transition-colors text-sm sm:text-base"
           >
-            ← Back to Games
+            ← Back Home
           </a>
         </div>
       </div>
