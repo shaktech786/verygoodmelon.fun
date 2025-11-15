@@ -44,8 +44,9 @@ export default function ThinkerPhoneBook({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-      <div className="bg-background rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col animate-fade overflow-hidden">
+    <div className="fixed inset-0 bg-black/50 z-[100] overflow-y-auto">
+      <div className="min-h-screen px-4 py-8 flex items-center justify-center">
+        <div className="bg-background rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col animate-fade overflow-hidden my-8">
         {/* Header */}
         <div className="bg-gradient-to-r from-accent to-accent/80 text-white p-6">
           <div className="flex items-start justify-between mb-4">
@@ -164,6 +165,7 @@ export default function ThinkerPhoneBook({
             {filteredThinkers.length} {filteredThinkers.length === 1 ? 'thinker' : 'thinkers'} available
             {searchQuery && ` matching "${searchQuery}"`}
           </p>
+        </div>
         </div>
       </div>
     </div>

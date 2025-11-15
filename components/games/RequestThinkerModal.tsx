@@ -71,8 +71,9 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
 
   if (isSuccess) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-        <div className="bg-card-bg rounded-xl p-8 max-w-md w-full shadow-2xl animate-fade">
+      <div className="fixed inset-0 bg-black/50 z-[100] overflow-y-auto">
+        <div className="min-h-screen px-4 py-8 flex items-center justify-center">
+          <div className="bg-card-bg rounded-xl p-8 max-w-md w-full shadow-2xl animate-fade">
           <div className="text-center">
             <CheckCircle2 className="w-16 h-16 text-success mx-auto mb-4" />
             <h3 className="text-2xl font-semibold mb-3 text-foreground">Request Submitted!</h3>
@@ -85,14 +86,16 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
               have access to the Phone Book to select specific thinkers!
             </p>
           </div>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
-      <div className="bg-card-bg rounded-xl p-6 max-w-2xl w-full shadow-2xl animate-fade my-8">
+    <div className="fixed inset-0 bg-black/50 z-[100] overflow-y-auto">
+      <div className="min-h-screen px-4 py-8 flex items-center justify-center">
+        <div className="bg-card-bg rounded-xl p-6 max-w-2xl w-full shadow-2xl animate-fade my-8">
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
@@ -304,6 +307,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
             Requirements: Must be deceased, positive influence, not billionaires/politicians/criminals.
           </p>
         </form>
+        </div>
       </div>
     </div>
   )
