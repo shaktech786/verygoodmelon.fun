@@ -14,6 +14,17 @@
   --melon-green: #1a4d2e;
   --melon-green-light: #74c69d;
   --melon-red: #e63946;
+
+  /* Extended game palette (Phase 2) */
+  --melon-purple: #8b5cf6;
+  --melon-blue: #3b82f6;
+  --melon-orange: #f97316;
+  --melon-pink: #ec4899;
+  --melon-teal: #14b8a6;
+  --melon-yellow: #f6ad55;
+  --melon-indigo: #6366f1;
+  --melon-emerald: #10b981;
+
   --card-bg: #ffffff;
   --card-border: #e8e8e8;
   --hover-bg: #f7f7f7;
@@ -33,6 +44,17 @@ html[data-theme="dark"] {
   --melon-green: #74c69d;
   --melon-green-light: #a8dcc0;
   --melon-red: #ff6b7a;
+
+  /* Extended game palette - dark variants (Phase 2) */
+  --melon-purple: #a78bfa;
+  --melon-blue: #60a5fa;
+  --melon-orange: #fb923c;
+  --melon-pink: #f472b6;
+  --melon-teal: #2dd4bf;
+  --melon-yellow: #fbbf24;
+  --melon-indigo: #818cf8;
+  --melon-emerald: #34d399;
+
   --card-bg: #2a2a2a;
   --card-border: #404040;
   --hover-bg: #333333;
@@ -92,6 +114,17 @@ html[data-theme="dark"] .text-gray-900 {
     --melon-green: #74c69d;
     --melon-green-light: #a8dcc0;
     --melon-red: #ff6b7a;
+
+    /* Extended game palette - dark variants (Phase 2) */
+    --melon-purple: #a78bfa;
+    --melon-blue: #60a5fa;
+    --melon-orange: #fb923c;
+    --melon-pink: #f472b6;
+    --melon-teal: #2dd4bf;
+    --melon-yellow: #fbbf24;
+    --melon-indigo: #818cf8;
+    --melon-emerald: #34d399;
+
     --card-bg: #2a2a2a;
     --card-border: #404040;
     --hover-bg: #333333;
@@ -743,5 +776,22 @@ html[data-contrast="extra-high"] *:focus-visible {
 
 .animate-slide-in-right {
   animation: slide-in-right 0.3s ease-out;
+}
+
+/* ============================================
+   PHASE 2: WATERMELON LOADER ANIMATIONS
+   ============================================ */
+
+@keyframes melon-spin {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.1);
+  }
+}
+
+.animate-melon-spin {
+  animation: melon-spin 2s ease-in-out infinite;
 }
 
