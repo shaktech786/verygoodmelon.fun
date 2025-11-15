@@ -440,12 +440,12 @@ export default function HardChoices() {
 
           {/* Back Home Button */}
           <div className="mt-6 text-center">
-            <a
+            <Link
               href="/"
               className="inline-block px-4 py-2 sm:px-6 sm:py-3 bg-card-bg text-foreground border border-card-border rounded-lg font-medium hover:bg-hover-bg transition-colors text-sm sm:text-base"
             >
               ← Back Home
-            </a>
+            </Link>
           </div>
         </div>
       </div>
