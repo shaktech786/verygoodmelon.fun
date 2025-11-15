@@ -301,11 +301,19 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
             </p>
           </div>
 
-          <p className="text-xs text-foreground/50 text-center">
+          <p className="text-xs text-foreground/50 text-center mb-3">
             By submitting, you agree that: (1) Your $5 donation is non-refundable and goes directly to Direct Relief,
             (2) You understand this is AI entertainment/education only, (3) You will not misrepresent AI responses as real communications.
             Requirements: Must be deceased, positive influence, not billionaires/politicians/criminals.
           </p>
+
+          <div className="bg-accent/10 border border-accent/20 rounded-lg p-3">
+            <p className="text-xs text-foreground/70 leading-relaxed text-center">
+              <strong>Creator&apos;s Discretion:</strong> All requests are subject to approval/denial at the sole discretion of the creator.
+              The creator reserves the right to modify, change, or remove any thinker at any time for any reason without notice.
+              Request approval is not guaranteed, even with payment.
+            </p>
+          </div>
         </form>
         </div>
       </div>
