@@ -56,10 +56,10 @@ export function Header() {
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    'font-medium transition-colors text-sm',
+                    'font-medium transition-all text-sm pb-1 border-b-2',
                     isActive
-                      ? 'text-foreground'
-                      : 'text-primary-light hover:text-foreground'
+                      ? 'text-foreground border-accent'
+                      : 'text-primary-light hover:text-foreground border-transparent hover:border-accent/30'
                   )}
                   aria-current={isActive ? 'page' : undefined}
                 >
@@ -102,10 +102,10 @@ export function Header() {
                     href={link.href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
-                      'font-medium transition-colors text-base py-2 px-3 rounded-lg',
+                      'font-medium transition-all text-base py-2 px-3 rounded-lg border-l-4',
                       isActive
-                        ? 'text-foreground bg-card-bg'
-                        : 'text-primary-light hover:text-foreground hover:bg-hover-bg'
+                        ? 'text-foreground bg-card-bg border-accent'
+                        : 'text-primary-light hover:text-foreground hover:bg-hover-bg border-transparent hover:border-accent/30'
                     )}
                     aria-current={isActive ? 'page' : undefined}
                   >

@@ -27,6 +27,7 @@ export default function WhatReallyMatters() {
   const [newPriority, setNewPriority] = useState('')
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [dragOverItem, setDragOverItem] = useState<string | null>(null)
+  const [touchStartY, setTouchStartY] = useState<number | null>(null)
   const [totalSlices] = useState(8)
   const [showInsight, setShowInsight] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -95,6 +96,52 @@ export default function WhatReallyMatters() {
   const handleDrop = () => {
     setDraggedItem(null)
     setDragOverItem(null)
+  }
+
+  // Touch handlers for mobile drag-and-drop
+  const handleTouchStart = (e: React.TouchEvent, id: string) => {
+    setDraggedItem(id)
+    setTouchStartY(e.touches[0].clientY)
+    // Prevent default to allow custom touch handling
+    e.preventDefault()
+  }
+
+  const handleTouchMove = (e: React.TouchEvent, currentIndex: number) => {
+    if (!draggedItem || touchStartY === null) return
+
+    const touch = e.touches[0]
+    const deltaY = touch.clientY - touchStartY
+
+    // Determine if we should swap with item above or below
+    const itemHeight = 60 // Approximate height of priority item
+    const swapThreshold = itemHeight / 2
+
+    if (Math.abs(deltaY) > swapThreshold) {
+      const direction = deltaY > 0 ? 1 : -1 // 1 = down, -1 = up
+      const targetIndex = currentIndex + direction
+
+      if (targetIndex >= 0 && targetIndex < priorities.length) {
+        const targetId = priorities[targetIndex].id
+        setDragOverItem(targetId)
+
+        // Reorder priorities
+        const newPriorities = [...priorities]
+        const [removed] = newPriorities.splice(currentIndex, 1)
+        newPriorities.splice(targetIndex, 0, removed)
+        setPriorities(newPriorities.map((p, i) => ({ ...p, order: i })))
+
+        // Update touch start position for next calculation
+        setTouchStartY(touch.clientY)
+      }
+    }
+
+    e.preventDefault()
+  }
+
+  const handleTouchEnd = () => {
+    setDraggedItem(null)
+    setDragOverItem(null)
+    setTouchStartY(null)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent, id: string, index: number) => {
@@ -323,6 +370,9 @@ export default function WhatReallyMatters() {
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   onDragEnd={handleDrop}
+                  onTouchStart={(e) => handleTouchStart(e, priority.id)}
+                  onTouchMove={(e) => handleTouchMove(e, index)}
+                  onTouchEnd={handleTouchEnd}
                   onKeyDown={(e) => handleKeyDown(e, priority.id, index)}
                   tabIndex={0}
                   role="listitem"
