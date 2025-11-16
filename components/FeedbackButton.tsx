@@ -56,12 +56,12 @@ export function FeedbackButton() {
       {/* Side Button - Hidden on small mobile, visible on tablets+ */}
       <button
         onClick={() => setIsOpen(true)}
-        className="hidden sm:flex fixed right-0 top-1/2 -translate-y-1/2 z-[45] bg-accent text-white px-3 py-4 rounded-l-lg shadow-lg hover:bg-accent/90 transition-all hover:px-4 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 items-center justify-center"
+        className="hidden sm:block fixed right-0 top-1/2 -translate-y-1/2 z-[45] bg-accent text-white px-3 py-4 rounded-l-lg shadow-lg hover:bg-accent/90 transition-all hover:px-4 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
         aria-label="Send feedback"
       >
-        <div className="flex items-center gap-2 -rotate-90 origin-center whitespace-nowrap">
-          <MessageSquare size={18} className="rotate-90" />
-          <span className="text-sm font-medium">Feedback</span>
+        <div className="flex flex-col items-center gap-1 text-sm font-medium">
+          <MessageSquare size={20} />
+          <span className="[writing-mode:vertical-lr] rotate-180">Feedback</span>
         </div>
       </button>
 
