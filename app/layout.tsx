@@ -7,6 +7,7 @@ import { AccessibilityControls } from "@/components/accessibility/AccessibilityC
 import { ToastContainer } from "@/components/ui/Toast";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { FeedbackButton } from "@/components/FeedbackButton";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
@@ -71,6 +72,7 @@ export default function RootLayout({
         </ErrorBoundary>
         <Footer />
         <AccessibilityControls />
+        <FeedbackButton />
         <ToastContainer />
         <SpeedInsights />
       </body>
