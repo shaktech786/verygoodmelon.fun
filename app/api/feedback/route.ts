@@ -13,60 +13,59 @@ async function analyzeFeedbackWithAI(feedback: string): Promise<GitHubIssue> {
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash-exp',
     generationConfig: {
-      temperature: 0.3,
-      responseMimeType: 'application/json'
+      temperature: 0.2
     }
   })
 
-  const prompt = `You are a GitHub issue creator. Analyze the user feedback and create a well-structured GitHub issue.
+  const prompt = `Analyze this user feedback and create a structured GitHub issue.
 
-USER FEEDBACK:
-${feedback}
+USER FEEDBACK: "${feedback}"
 
-Create a GitHub issue with:
+Create a GitHub issue following this template exactly:
 
-1. TITLE: Clear, descriptive title (max 80 chars). Make it specific and actionable.
+TITLE (max 60 chars, be specific):
+[Write a clear title]
 
-2. BODY: Well-formatted markdown with these sections:
-   ## Summary
-   Brief overview of the issue
+BODY (use markdown):
+## Summary
+[One sentence overview]
 
-   ## Description
-   Detailed explanation of what the user reported
+## Description
+[Detailed explanation of what the user reported]
 
-   ## Steps to Reproduce (if it's a bug)
-   1. Step 1
-   2. Step 2
-   3. Step 3
+## Steps to Reproduce
+${feedback.toLowerCase().includes("doesn't work") || feedback.toLowerCase().includes("not working") || feedback.toLowerCase().includes("broken") ? `
+1. [Infer step 1]
+2. [Infer step 2]
+3. [Observe the issue]
+` : `
+[Not applicable - this is not a bug report]
+`}
 
-   ## Expected Behavior
-   What should happen
+## Expected Behavior
+[What should happen]
 
-   ## Actual Behavior (if it's a bug)
-   What currently happens
+## Actual Behavior
+${feedback.toLowerCase().includes("doesn't work") || feedback.toLowerCase().includes("not working") || feedback.toLowerCase().includes("broken") ? `
+[What currently happens based on feedback]
+` : `
+[Not applicable - this is not a bug report]
+`}
 
-   ## Additional Context
-   Any other relevant information, assumptions, or notes
+## Additional Context
+[Any assumptions, notes, or relevant info]
 
-   ## Original Feedback
-   > ${feedback}
+## Original User Feedback
+> ${feedback}
 
-3. LABELS: Choose 2-4 appropriate labels from:
-   - bug: Something isn't working
-   - enhancement: New feature or improvement
-   - question: User has a question
-   - ui/ux: UI or UX related
-   - accessibility: Accessibility issue
-   - performance: Performance problem
-   - documentation: Documentation needed
-   - good first issue: Easy for newcomers
+LABELS (choose 2-3):
+Options: bug, enhancement, question, ui/ux, accessibility, performance, documentation
+[List your chosen labels]
 
-IMPORTANT: Return ONLY valid JSON in this exact format:
-{
-  "title": "Issue title here",
-  "body": "Full markdown body here with all sections",
-  "labels": ["label1", "label2"]
-}`
+---
+
+NOW: Return your response as valid JSON with this EXACT structure (no markdown, just raw JSON):
+{"title": "your title", "body": "your full markdown body", "labels": ["label1", "label2"]}`
 
   try {
     const result = await model.generateContent(prompt)
