@@ -46,8 +46,7 @@ export default function AboutPage() {
                 neal.fun
               </a>
               . His creative, purposeful web experiments inspired me to build this site and stick to
-              creating things that matter—in my case, for a good cause. If you haven&apos;t explored
-              neal.fun yet, you&apos;re in for a treat.
+              creating things that matter. If you haven&apos;t explored neal.fun yet, you&apos;re in for a treat.
             </p>
           </div>
 
