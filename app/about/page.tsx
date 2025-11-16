@@ -25,6 +25,33 @@ export default function AboutPage() {
           </p>
 
           <div className="pt-6 border-t border-card-border">
+            <h2 className="text-xl font-semibold text-foreground mb-4">Inspiration</h2>
+            <p>
+              A huge shoutout to{' '}
+              <a
+                href="https://neal.fun"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline transition-colors font-medium"
+              >
+                Neal Agarwal
+              </a>
+              {' '}from{' '}
+              <a
+                href="https://neal.fun"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline transition-colors"
+              >
+                neal.fun
+              </a>
+              . His creative, purposeful web experiments inspired me to build this site and stick to
+              creating things that matter—in my case, for a good cause. If you haven&apos;t explored
+              neal.fun yet, you&apos;re in for a treat.
+            </p>
+          </div>
+
+          <div className="pt-6 border-t border-card-border">
             <h2 className="text-xl font-semibold text-foreground mb-4">Background</h2>
             <ul className="space-y-2 list-disc list-inside">
               <li>Lead Consultant at ThoughtWorks</li>
