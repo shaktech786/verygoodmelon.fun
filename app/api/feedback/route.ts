@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '')
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '')
 
 interface GitHubIssue {
   title: string
@@ -11,7 +11,7 @@ interface GitHubIssue {
 
 async function analyzeFeedbackWithAI(feedback: string): Promise<GitHubIssue> {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash-exp',
+    model: process.env.GOOGLE_GEMINI_MODEL || 'gemini-1.5-flash',
     generationConfig: {
       temperature: 0.2
     }
