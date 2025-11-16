@@ -53,10 +53,10 @@ export function FeedbackButton() {
 
   return (
     <>
-      {/* Side Button */}
+      {/* Side Button - Hidden on small mobile, visible on tablets+ */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed right-0 top-1/2 -translate-y-1/2 z-40 bg-accent text-white px-3 py-4 rounded-l-lg shadow-lg hover:bg-accent/90 transition-all hover:px-4 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+        className="hidden sm:flex fixed right-0 top-1/2 -translate-y-1/2 z-[45] bg-accent text-white px-3 py-4 rounded-l-lg shadow-lg hover:bg-accent/90 transition-all hover:px-4 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 items-center justify-center"
         aria-label="Send feedback"
       >
         <div className="flex items-center gap-2 -rotate-90 origin-center whitespace-nowrap">
@@ -65,22 +65,31 @@ export function FeedbackButton() {
         </div>
       </button>
 
+      {/* Mobile Feedback Button - Bottom right corner on mobile only */}
+      <button
+        onClick={() => setIsOpen(true)}
+        className="sm:hidden fixed bottom-6 right-6 z-[45] bg-accent text-white p-4 rounded-full shadow-lg hover:bg-accent/90 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+        aria-label="Send feedback"
+      >
+        <MessageSquare size={24} />
+      </button>
+
       {/* Feedback Modal */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-[100] overflow-y-auto">
           <div className="min-h-screen px-4 py-8 flex items-center justify-center">
-            <div className="bg-card-bg rounded-xl p-6 max-w-md w-full shadow-2xl animate-fade">
+            <div className="bg-card-bg rounded-xl p-4 sm:p-6 max-w-md w-full shadow-2xl animate-fade">
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground mb-1">Send Feedback</h2>
-                  <p className="text-sm text-foreground/70">
+                <div className="flex-1">
+                  <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-1">Send Feedback</h2>
+                  <p className="text-xs sm:text-sm text-foreground/70">
                     Report bugs, suggest features, or share your thoughts
                   </p>
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="text-foreground/50 hover:text-foreground transition-colors"
+                  className="text-foreground/50 hover:text-foreground transition-colors ml-2 flex-shrink-0"
                   aria-label="Close"
                 >
                   <X size={20} />
@@ -111,12 +120,12 @@ export function FeedbackButton() {
                         }
                       }}
                       placeholder="Describe the bug, feature request, or feedback..."
-                      className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent resize-none min-h-[120px]"
+                      className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent resize-none min-h-[120px] text-sm sm:text-base"
                       required
                       disabled={isSubmitting}
                       autoFocus
                     />
-                    <p className="text-xs text-foreground/50 mt-2">
+                    <p className="text-xs text-foreground/50 mt-2 hidden sm:block">
                       Tip: Press Cmd+Enter (Mac) or Ctrl+Enter (Windows) to submit
                     </p>
                   </div>
@@ -128,8 +137,8 @@ export function FeedbackButton() {
                     </div>
                   )}
 
-                  {/* Info */}
-                  <div className="bg-foreground/5 border border-foreground/10 rounded-lg p-3 mb-4">
+                  {/* Info - Hidden on mobile to save space */}
+                  <div className="hidden sm:block bg-foreground/5 border border-foreground/10 rounded-lg p-3 mb-4">
                     <p className="text-xs text-foreground/70 leading-relaxed">
                       💡 <strong>What happens next:</strong> Your feedback will be analyzed by AI and converted
                       into a GitHub issue. You can track progress at{' '}
@@ -139,18 +148,18 @@ export function FeedbackButton() {
                         rel="noopener noreferrer"
                         className="text-accent hover:underline"
                       >
-                        github.com/shaktech786/verygoodmelon.fun/issues
+                        GitHub
                       </a>
                     </p>
                   </div>
 
                   {/* Submit */}
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <Button
                       type="button"
                       onClick={() => setIsOpen(false)}
                       variant="secondary"
-                      className="flex-1"
+                      className="w-full sm:flex-1 order-2 sm:order-1"
                       disabled={isSubmitting}
                     >
                       Cancel
@@ -158,7 +167,7 @@ export function FeedbackButton() {
                     <Button
                       type="submit"
                       variant="primary"
-                      className="flex-1 flex items-center justify-center gap-2"
+                      className="w-full sm:flex-1 flex items-center justify-center gap-2 order-1 sm:order-2"
                       disabled={isSubmitting || !feedback.trim()}
                     >
                       {isSubmitting ? (
