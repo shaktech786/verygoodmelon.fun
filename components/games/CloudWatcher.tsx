@@ -84,11 +84,19 @@ export default function CloudWatcher() {
   const [submitted, setSubmitted] = useState(false)
   const [showOtherNames, setShowOtherNames] = useState(false)
   const [cloudsNamed, setCloudsNamed] = useState(0)
+  const [mounted, setMounted] = useState(false)
   const animationRef = useRef<number | undefined>(undefined)
   const lastSpawnRef = useRef<number>(Date.now())
 
+  // Handle mounting for SSR safety
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Animation loop
   useEffect(() => {
+    if (!mounted) return
+
     const animate = () => {
       const now = Date.now()
 
@@ -98,11 +106,12 @@ export default function CloudWatcher() {
         lastSpawnRef.current = now
       }
 
-      // Move clouds
+      // Move clouds (use window safely after mount)
+      const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1920
       setClouds(prev => prev.map(cloud => ({
         ...cloud,
         x: cloud.x + cloud.speed
-      })).filter(cloud => cloud.x < window.innerWidth + 200))
+      })).filter(cloud => cloud.x < screenWidth + 200))
 
       animationRef.current = requestAnimationFrame(animate)
     }
@@ -116,7 +125,7 @@ export default function CloudWatcher() {
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [])
+  }, [mounted])
 
   const handleCloudClick = (cloud: Cloud) => {
     if (selectedCloud?.id === cloud.id) {
@@ -174,6 +183,17 @@ export default function CloudWatcher() {
       setShowOtherNames(false)
       setUserInput('')
     }
+  }
+
+  // Show loading during SSR
+  if (!mounted) {
+    return (
+      <div className="max-w-5xl mx-auto">
+        <div className="relative bg-gradient-to-b from-sky-200 to-sky-50 rounded-lg overflow-hidden mb-6 flex items-center justify-center" style={{ height: '400px' }}>
+          <div className="text-sky-400 text-lg">Loading sky...</div>
+        </div>
+      </div>
+    )
   }
 
   return (

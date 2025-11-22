@@ -276,82 +276,24 @@ body::before {
 .card-organic {
   border-radius: 18px 16px 20px 15px;
   position: relative;
-  /* Multi-layered shadow for paper depth + burnt edges */
+  /* Worn paper border with burnt tone */
+  border: 2px solid;
+  border-color: rgba(101, 67, 33, 0.25) rgba(101, 67, 33, 0.15) rgba(101, 67, 33, 0.3) rgba(101, 67, 33, 0.2);
+  /* Multi-layered shadow for paper depth + burnt glow */
   box-shadow:
+    /* Inner burnt edge */
+    inset 0 0 8px rgba(101, 67, 33, 0.15),
+    inset 0 2px 4px rgba(101, 67, 33, 0.1),
+    /* Outer depth shadows */
     0 1px 2px rgba(0, 0, 0, 0.05),
     0 2px 4px rgba(0, 0, 0, 0.04),
     0 4px 8px rgba(0, 0, 0, 0.03),
-    0 8px 16px rgba(0, 0, 0, 0.02),
-    /* Burnt edge shadow (warm dark tone) */
-    inset 0 0 0 1px rgba(101, 67, 33, 0.08),
-    /* Paper edge highlight */
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  /* Burnt edges effect using drop-shadow */
+    0 8px 16px rgba(0, 0, 0, 0.02);
+  /* Subtle sepia tone for aged paper */
   filter:
-    contrast(1.02) brightness(1.01)
-    drop-shadow(0 0 1px rgba(101, 67, 33, 0.15))
-    drop-shadow(0 0 2px rgba(101, 67, 33, 0.08));
-}
-
-/* Worn edge darkening overlay */
-.card-organic::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 1px;
-  /* Irregular darkened edges (like burnt/worn paper) */
-  background:
-    /* Top edge wear */
-    linear-gradient(to bottom,
-      rgba(101, 67, 33, 0.12) 0%,
-      rgba(101, 67, 33, 0.06) 2%,
-      transparent 8%
-    ),
-    /* Bottom edge wear */
-    linear-gradient(to top,
-      rgba(101, 67, 33, 0.15) 0%,
-      rgba(101, 67, 33, 0.08) 2%,
-      transparent 8%
-    ),
-    /* Left edge wear */
-    linear-gradient(to right,
-      rgba(101, 67, 33, 0.1) 0%,
-      rgba(101, 67, 33, 0.05) 2%,
-      transparent 8%
-    ),
-    /* Right edge wear */
-    linear-gradient(to left,
-      rgba(101, 67, 33, 0.1) 0%,
-      rgba(101, 67, 33, 0.05) 2%,
-      transparent 8%
-    ),
-    /* Corner darkening (most worn areas) */
-    radial-gradient(circle at top left,
-      rgba(101, 67, 33, 0.18) 0%,
-      transparent 15%
-    ),
-    radial-gradient(circle at top right,
-      rgba(101, 67, 33, 0.16) 0%,
-      transparent 15%
-    ),
-    radial-gradient(circle at bottom left,
-      rgba(101, 67, 33, 0.2) 0%,
-      transparent 15%
-    ),
-    radial-gradient(circle at bottom right,
-      rgba(101, 67, 33, 0.18) 0%,
-      transparent 15%
-    );
-  pointer-events: none;
-  z-index: 1;
-  mix-blend-mode: multiply;
-}
-
-/* Ensure card content stays above overlay */
-.card-organic > * {
-  position: relative;
-  z-index: 2;
+    sepia(0.08)
+    contrast(1.02)
+    brightness(0.98);
 }
 
 /* ============================================
@@ -719,30 +661,29 @@ html[data-colorblind-mode="monochrome"] {
   transition:
     transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
     box-shadow 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    filter 300ms ease-out;
+    filter 300ms ease-out,
+    border-color 300ms ease-out;
 }
 
 .card-hover-organic:hover {
   transform: translateY(-8px) rotate(1deg) scale(1.02);
+  /* More visible burnt edges when lifted */
+  border-color: rgba(101, 67, 33, 0.35) rgba(101, 67, 33, 0.25) rgba(101, 67, 33, 0.4) rgba(101, 67, 33, 0.3);
   /* Enhanced shadow when lifted */
   box-shadow:
+    /* Stronger inner burnt edge glow */
+    inset 0 0 12px rgba(101, 67, 33, 0.2),
+    inset 0 2px 6px rgba(101, 67, 33, 0.15),
+    /* Deeper outer shadows */
     0 2px 4px rgba(0, 0, 0, 0.06),
     0 4px 8px rgba(0, 0, 0, 0.05),
     0 8px 16px rgba(0, 0, 0, 0.04),
-    0 16px 32px rgba(0, 0, 0, 0.03),
-    /* Burnt edge shadow (preserved on hover) */
-    inset 0 0 0 1px rgba(101, 67, 33, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  /* Brighter when lifted (catching more light) - keep burnt edge glow */
+    0 16px 32px rgba(0, 0, 0, 0.03);
+  /* Brighter sepia when lifted (catching more light) */
   filter:
-    contrast(1.03) brightness(1.04)
-    drop-shadow(0 0 2px rgba(101, 67, 33, 0.18))
-    drop-shadow(0 0 3px rgba(101, 67, 33, 0.1));
-}
-
-/* Worn edges intensify slightly on hover (more visible in light) */
-.card-hover-organic:hover::before {
-  opacity: 1.1;
+    sepia(0.12)
+    contrast(1.03)
+    brightness(1.01);
 }
 
 /* Loading dots with watermelon colors */
