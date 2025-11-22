@@ -276,24 +276,29 @@ body::before {
 .card-organic {
   border-radius: 18px 16px 20px 15px;
   position: relative;
-  /* Worn paper border with burnt tone */
-  border: 2px solid;
-  border-color: rgba(101, 67, 33, 0.25) rgba(101, 67, 33, 0.15) rgba(101, 67, 33, 0.3) rgba(101, 67, 33, 0.2);
-  /* Multi-layered shadow for paper depth + burnt glow */
+  /* Very visible worn paper border with burnt tone */
+  border: 3px solid;
+  border-color:
+    rgba(101, 67, 33, 0.6) /* top - darkest */
+    rgba(101, 67, 33, 0.4) /* right */
+    rgba(101, 67, 33, 0.7) /* bottom - darkest */
+    rgba(101, 67, 33, 0.5); /* left */
+  /* Multi-layered shadow for paper depth + strong burnt glow */
   box-shadow:
-    /* Inner burnt edge */
-    inset 0 0 8px rgba(101, 67, 33, 0.15),
-    inset 0 2px 4px rgba(101, 67, 33, 0.1),
+    /* Strong inner burnt edge glow */
+    inset 0 0 20px rgba(101, 67, 33, 0.4),
+    inset 0 4px 12px rgba(101, 67, 33, 0.3),
+    inset 0 -4px 12px rgba(101, 67, 33, 0.35),
     /* Outer depth shadows */
     0 1px 2px rgba(0, 0, 0, 0.05),
     0 2px 4px rgba(0, 0, 0, 0.04),
     0 4px 8px rgba(0, 0, 0, 0.03),
     0 8px 16px rgba(0, 0, 0, 0.02);
-  /* Subtle sepia tone for aged paper */
+  /* Noticeable sepia tone for aged paper */
   filter:
-    sepia(0.08)
-    contrast(1.02)
-    brightness(0.98);
+    sepia(0.15)
+    contrast(1.05)
+    brightness(0.96);
 }
 
 /* ============================================
@@ -667,23 +672,28 @@ html[data-colorblind-mode="monochrome"] {
 
 .card-hover-organic:hover {
   transform: translateY(-8px) rotate(1deg) scale(1.02);
-  /* More visible burnt edges when lifted */
-  border-color: rgba(101, 67, 33, 0.35) rgba(101, 67, 33, 0.25) rgba(101, 67, 33, 0.4) rgba(101, 67, 33, 0.3);
+  /* Even more visible burnt edges when lifted */
+  border-color:
+    rgba(101, 67, 33, 0.75) /* top */
+    rgba(101, 67, 33, 0.55) /* right */
+    rgba(101, 67, 33, 0.85) /* bottom - most worn */
+    rgba(101, 67, 33, 0.65); /* left */
   /* Enhanced shadow when lifted */
   box-shadow:
-    /* Stronger inner burnt edge glow */
-    inset 0 0 12px rgba(101, 67, 33, 0.2),
-    inset 0 2px 6px rgba(101, 67, 33, 0.15),
+    /* Very strong inner burnt edge glow */
+    inset 0 0 25px rgba(101, 67, 33, 0.5),
+    inset 0 4px 15px rgba(101, 67, 33, 0.4),
+    inset 0 -4px 15px rgba(101, 67, 33, 0.45),
     /* Deeper outer shadows */
     0 2px 4px rgba(0, 0, 0, 0.06),
     0 4px 8px rgba(0, 0, 0, 0.05),
     0 8px 16px rgba(0, 0, 0, 0.04),
     0 16px 32px rgba(0, 0, 0, 0.03);
-  /* Brighter sepia when lifted (catching more light) */
+  /* Stronger sepia when lifted (catching more light) */
   filter:
-    sepia(0.12)
-    contrast(1.03)
-    brightness(1.01);
+    sepia(0.2)
+    contrast(1.05)
+    brightness(1.02);
 }
 
 /* Loading dots with watermelon colors */
