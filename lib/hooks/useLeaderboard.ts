@@ -15,11 +15,11 @@ export function useLeaderboard(limit = 10) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const supabase = createClient()
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
+        const supabase = createClient()
         const { data, error } = await supabase
           .from('profiles')
           .select('id, username, avatar_url, points, total_games_played')
@@ -36,8 +36,7 @@ export function useLeaderboard(limit = 10) {
     }
 
     fetchLeaderboard()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [limit]) // supabase client is stable, doesn't need to be in deps
+  }, [limit])
 
   return { leaderboard, loading, error }
 }

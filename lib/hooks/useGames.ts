@@ -8,11 +8,11 @@ export function useGames() {
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const supabase = createClient()
 
   useEffect(() => {
     const fetchGames = async () => {
       try {
+        const supabase = createClient()
         const { data, error } = await supabase
           .from('games')
           .select('*')
@@ -29,8 +29,7 @@ export function useGames() {
     }
 
     fetchGames()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // supabase client is stable, doesn't need to be in deps
+  }, [])
 
   return { games, loading, error }
 }
@@ -39,11 +38,11 @@ export function useGame(slug: string) {
   const [game, setGame] = useState<Game | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const supabase = createClient()
 
   useEffect(() => {
     const fetchGame = async () => {
       try {
+        const supabase = createClient()
         const { data, error } = await supabase
           .from('games')
           .select('*')
@@ -60,8 +59,7 @@ export function useGame(slug: string) {
     }
 
     fetchGame()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]) // supabase client is stable, doesn't need to be in deps
+  }, [slug])
 
   return { game, loading, error }
 }

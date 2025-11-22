@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getThinkerById } from '@/lib/games/timeless-minds/thinkers'
+import { detectEmotion } from '@/lib/games/timeless-minds/emotion-detector'
 
 // Validate API key on initialization
 const apiKey = process.env.GOOGLE_GEMINI_API_KEY
@@ -132,7 +133,14 @@ REMEMBER: This is a live video call. Be present, warm, engaged, and genuinely in
     const result = await chat.sendMessage(message)
     const response = result.response.text()
 
-    return NextResponse.json({ response })
+    // Detect emotion from the response for avatar expression
+    const emotionResult = await detectEmotion(response)
+
+    return NextResponse.json({
+      response,
+      emotion: emotionResult.emotion,
+      emotionConfidence: emotionResult.confidence
+    })
 
   } catch (error) {
     console.error('Timeless Minds chat error:', error)

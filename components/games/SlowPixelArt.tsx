@@ -72,8 +72,8 @@ export default function SlowPixelArt() {
           schema: 'public',
           table: 'slow_pixel_art'
         },
-        (payload) => {
-          const newPixel = payload.new as Pixel
+        (payload: { new: Pixel }) => {
+          const newPixel = payload.new
           setPixels((prev) => {
             // Replace pixel at same position or add new
             const filtered = prev.filter(p => !(p.x === newPixel.x && p.y === newPixel.y))
@@ -102,7 +102,7 @@ export default function SlowPixelArt() {
       if (data) {
         setPixels(data)
         // Count unique contributors (rough estimate based on time clustering)
-        const uniqueTimes = new Set(data.map(p => p.created_at?.split('T')[0] || '').filter(Boolean))
+        const uniqueTimes = new Set(data.map((p: Pixel) => p.created_at?.split('T')[0] || '').filter(Boolean))
         setTotalContributors(Math.max(1, Math.floor(uniqueTimes.size * 1.5)))
       }
     } catch (error) {

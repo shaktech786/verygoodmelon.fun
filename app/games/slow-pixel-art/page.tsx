@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import SlowPixelArt from '@/components/games/SlowPixelArt'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Slow Pixel Art | VeryGoodMelon.Fun',
   description: 'A collaborative pixel art canvas. Place one pixel every minute. Watch art emerge slowly, together.'

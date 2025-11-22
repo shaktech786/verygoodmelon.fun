@@ -10,7 +10,6 @@ export function useProfile(userId: string | undefined) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const supabase = createClient()
 
   useEffect(() => {
     if (!userId) {
@@ -20,6 +19,7 @@ export function useProfile(userId: string | undefined) {
 
     const fetchProfile = async () => {
       try {
+        const supabase = createClient()
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -36,13 +36,13 @@ export function useProfile(userId: string | undefined) {
     }
 
     fetchProfile()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]) // supabase client is stable, doesn't need to be in deps
+  }, [userId])
 
   const updateProfile = async (updates: ProfileUpdate) => {
     if (!userId) return
 
     try {
+      const supabase = createClient()
       const { error } = await supabase
         .from('profiles')
         // @ts-ignore - Type issue with Supabase update method

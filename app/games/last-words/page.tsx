@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import LastWords from '@/components/games/LastWords'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Last Words | VeryGoodMelon.Fun',
   description: 'What would your last words be? Share your final message and see what others have said in a beautiful word cloud.'

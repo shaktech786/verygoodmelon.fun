@@ -3,14 +3,18 @@
 import { useState, useEffect, useRef } from 'react'
 import { getRandomThinker, thinkers as allThinkers, getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
-import { PhoneOff, Send, Loader2, Mic, VideoIcon, MoreVertical, Book, Plus } from 'lucide-react'
+import { PhoneOff, Send, Loader2, Mic, MicOff, VideoIcon, VideoOff, MoreVertical, Book, Plus } from 'lucide-react'
 import ThinkerPhoneBook from './ThinkerPhoneBook'
 import RequestThinkerModal from './RequestThinkerModal'
 import { Button } from '@/components/ui/Button'
+import { synthesizeSpeech, stopSpeech, isSpeechSynthesisSupported } from '@/lib/games/timeless-minds/speech-synthesis'
+import { SpeechRecognitionManager } from '@/lib/games/timeless-minds/speech-recognition'
+import type { AvatarEmotion } from '@/lib/games/timeless-minds/avatar-provider'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
+  emotion?: AvatarEmotion
 }
 
 export default function TimelessMinds() {
@@ -27,6 +31,15 @@ export default function TimelessMinds() {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // New avatar features
+  const [videoEnabled, setVideoEnabled] = useState(true)
+  const [audioEnabled, setAudioEnabled] = useState(true)
+  const [isListening, setIsListening] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [currentEmotion, setCurrentEmotion] = useState<AvatarEmotion>('neutral')
+  const [interimTranscript, setInterimTranscript] = useState('')
+  const speechRecognitionRef = useRef<SpeechRecognitionManager | null>(null)
+
   // Initialize with random thinker
   useEffect(() => {
     const selectedThinker = getRandomThinker()
@@ -34,12 +47,30 @@ export default function TimelessMinds() {
     setImageError(false) // Reset image error for new thinker
 
     // Add opening message
-    setMessages([
-      {
-        role: 'assistant',
-        content: selectedThinker.openingLine
-      }
-    ])
+    const openingMessage = {
+      role: 'assistant' as const,
+      content: selectedThinker.openingLine,
+      emotion: 'happy' as AvatarEmotion
+    }
+    setMessages([openingMessage])
+
+    // Speak opening message if audio enabled
+    if (isSpeechSynthesisSupported()) {
+      synthesizeSpeech(
+        selectedThinker.openingLine,
+        selectedThinker.id,
+        'happy'
+      ).catch(console.error)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Cleanup speech on unmount
+  useEffect(() => {
+    return () => {
+      stopSpeech()
+      speechRecognitionRef.current?.abort()
+    }
   }, [])
 
   // Auto-scroll to bottom of messages (within container only) with smooth behavior
@@ -63,16 +94,18 @@ export default function TimelessMinds() {
     }
   }, [isLoading])
 
-  const sendMessage = async () => {
-    if (!inputMessage.trim() || !thinker || isLoading) return
+  const sendMessage = async (messageText?: string) => {
+    const textToSend = messageText || inputMessage
+    if (!textToSend.trim() || !thinker || isLoading) return
 
     const userMessage: Message = {
       role: 'user',
-      content: inputMessage
+      content: textToSend
     }
 
     setMessages(prev => [...prev, userMessage])
     setInputMessage('')
+    setInterimTranscript('')
     setIsLoading(true)
 
     // Keep focus on input immediately after clearing
@@ -86,7 +119,7 @@ export default function TimelessMinds() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           thinkerId: thinker.id,
-          message: inputMessage,
+          message: textToSend,
           conversationHistory: messages.map(m => ({
             role: m.role,
             content: m.content
@@ -97,13 +130,24 @@ export default function TimelessMinds() {
       const data = await response.json()
 
       if (data.response) {
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: data.response
-          }
-        ])
+        const emotion = (data.emotion as AvatarEmotion) || 'neutral'
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: data.response,
+          emotion
+        }
+
+        setMessages(prev => [...prev, assistantMessage])
+        setCurrentEmotion(emotion)
+
+        // Speak response if audio enabled
+        if (audioEnabled && isSpeechSynthesisSupported()) {
+          setIsSpeaking(true)
+          await synthesizeSpeech(data.response, thinker.id, emotion, () => {
+            setIsSpeaking(false)
+            setCurrentEmotion('neutral')
+          })
+        }
       }
     } catch (error) {
       console.error('Failed to send message:', error)
@@ -111,7 +155,8 @@ export default function TimelessMinds() {
         ...prev,
         {
           role: 'assistant',
-          content: 'I apologize, but I seem to be having trouble hearing you clearly. Could you try again?'
+          content: 'I apologize, but I seem to be having trouble hearing you clearly. Could you try again?',
+          emotion: 'concerned'
         }
       ])
     } finally {
@@ -126,30 +171,64 @@ export default function TimelessMinds() {
   }
 
   const confirmEndCall = () => {
+    // Stop any ongoing speech/listening
+    stopSpeech()
+    speechRecognitionRef.current?.abort()
+
     // Reset to random thinker
     const newThinker = getRandomThinker()
     setThinker(newThinker)
     setImageError(false)
-    setMessages([
-      {
-        role: 'assistant',
-        content: newThinker.openingLine
-      }
-    ])
+    setCurrentEmotion('neutral')
+    setIsSpeaking(false)
+    setIsListening(false)
+
+    const openingMessage: Message = {
+      role: 'assistant',
+      content: newThinker.openingLine,
+      emotion: 'happy'
+    }
+    setMessages([openingMessage])
     setShowEndCallDialog(false)
+
+    // Speak opening message if audio enabled
+    if (audioEnabled && isSpeechSynthesisSupported()) {
+      synthesizeSpeech(
+        newThinker.openingLine,
+        newThinker.id,
+        'happy'
+      ).catch(console.error)
+    }
   }
 
   const handleSelectThinker = (thinkerId: string) => {
     const selectedThinker = getThinkerById(thinkerId)
     if (selectedThinker) {
+      // Stop any ongoing speech/listening
+      stopSpeech()
+      speechRecognitionRef.current?.abort()
+
       setThinker(selectedThinker)
       setImageError(false)
-      setMessages([
-        {
-          role: 'assistant',
-          content: selectedThinker.openingLine
-        }
-      ])
+      setCurrentEmotion('neutral')
+      setIsSpeaking(false)
+      setIsListening(false)
+
+      const openingMessage: Message = {
+        role: 'assistant',
+        content: selectedThinker.openingLine,
+        emotion: 'happy'
+      }
+      setMessages([openingMessage])
+
+      // Speak opening message if audio enabled
+      if (audioEnabled && isSpeechSynthesisSupported()) {
+        synthesizeSpeech(
+          selectedThinker.openingLine,
+          selectedThinker.id,
+          'happy'
+        ).catch(console.error)
+      }
     }
   }
 
@@ -161,7 +240,61 @@ export default function TimelessMinds() {
     // Cmd/Ctrl+Enter or just Enter (without Shift) to send
     if (e.key === 'Enter' && (!e.shiftKey || e.metaKey || e.ctrlKey)) {
       e.preventDefault()
-      sendMessage()
+      sendMessage().catch(console.error)
+    }
+  }
+
+  const toggleAudio = () => {
+    const newAudioState = !audioEnabled
+    setAudioEnabled(newAudioState)
+
+    if (!newAudioState) {
+      // Stop any ongoing speech
+      stopSpeech()
+      setIsSpeaking(false)
+    }
+  }
+
+  const toggleVideo = () => {
+    setVideoEnabled(!videoEnabled)
+  }
+
+  const toggleVoiceInput = () => {
+    if (isListening) {
+      // Stop listening
+      speechRecognitionRef.current?.stop()
+      setIsListening(false)
+      setInterimTranscript('')
+    } else {
+      // Start listening
+      if (!speechRecognitionRef.current) {
+        speechRecognitionRef.current = new SpeechRecognitionManager({
+          continuous: false,
+          interimResults: true,
+          onResult: (result) => {
+            if (result.isFinal) {
+              // Send the final transcript
+              sendMessage(result.transcript)
+              setInterimTranscript('')
+            } else {
+              // Show interim transcript
+              setInterimTranscript(result.transcript)
+            }
+          },
+          onError: (error) => {
+            console.error('Speech recognition error:', error)
+            setIsListening(false)
+            setInterimTranscript('')
+          },
+          onEnd: () => {
+            setIsListening(false)
+            setInterimTranscript('')
+          }
+        })
+      }
+
+      speechRecognitionRef.current.start()
+      setIsListening(true)
     }
   }
 
@@ -179,21 +312,45 @@ export default function TimelessMinds() {
       <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3 min-h-0">
         {/* Video Window - fixed proportion */}
         <div className="flex-[2] relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden min-h-[200px] lg:min-h-0">
-          {/* Avatar - responsive sizing */}
+          {/* Avatar - responsive sizing with emotion states */}
           <div className="absolute inset-0 flex items-center justify-center">
-            {!imageError && thinker ? (
-              <div className="relative w-full h-full">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`/games/timeless-minds/avatars/${thinker.id}.png`}
-                  alt={thinker.name}
-                  className="w-full h-full object-contain"
-                  onError={() => setImageError(true)}
-                />
-              </div>
+            {videoEnabled ? (
+              !imageError && thinker ? (
+                <div className="relative w-full h-full">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/games/timeless-minds/avatars/${thinker.id}.png`}
+                    alt={thinker.name}
+                    className={`w-full h-full object-contain transition-all duration-300 ${
+                      isSpeaking ? 'scale-105' : 'scale-100'
+                    }`}
+                    onError={() => setImageError(true)}
+                  />
+                  {/* Emotion glow effect */}
+                  {isSpeaking && (
+                    <div
+                      className={`absolute inset-0 blur-3xl opacity-30 ${
+                        currentEmotion === 'happy' || currentEmotion === 'excited'
+                          ? 'bg-yellow-400'
+                          : currentEmotion === 'concerned' || currentEmotion === 'sad'
+                          ? 'bg-blue-400'
+                          : currentEmotion === 'thoughtful'
+                          ? 'bg-purple-400'
+                          : 'bg-green-400'
+                      }`}
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 rounded-full bg-gradient-to-br from-accent/30 to-success/30 border-4 border-white/20 flex items-center justify-center text-6xl sm:text-8xl md:text-9xl backdrop-blur-sm">
+                  👤
+                </div>
+              )
             ) : (
-              <div className="w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 rounded-full bg-gradient-to-br from-accent/30 to-success/30 border-4 border-white/20 flex items-center justify-center text-6xl sm:text-8xl md:text-9xl backdrop-blur-sm">
-                👤
+              <div className="text-center p-8">
+                <div className="text-6xl mb-4">🎙️</div>
+                <p className="text-white/70">Audio Only Mode</p>
+                <p className="text-white/50 text-sm mt-2">Turn on video to see {thinker?.name}</p>
               </div>
             )}
           </div>
@@ -211,8 +368,12 @@ export default function TimelessMinds() {
 
           {/* Status Indicator (top left) */}
           <div className="absolute top-2 left-2 sm:top-4 sm:left-4 flex items-center gap-1.5 sm:gap-2 bg-black/60 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg backdrop-blur-sm">
-            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full"></div>
-            <span className="text-white text-[10px] sm:text-xs font-medium">Connected</span>
+            <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
+              isSpeaking ? 'bg-yellow-400 animate-pulse' : 'bg-green-500'
+            }`}></div>
+            <span className="text-white text-[10px] sm:text-xs font-medium">
+              {isSpeaking ? 'Speaking...' : 'Connected'}
+            </span>
           </div>
         </div>
 
@@ -271,6 +432,19 @@ export default function TimelessMinds() {
 
           {/* Chat Input */}
           <div className="p-2 sm:p-3 border-t border-card-border bg-card-bg">
+            {/* Voice input indicator */}
+            {isListening && (
+              <div className="mb-2 p-2 bg-accent/10 border border-accent/30 rounded-lg animate-pulse">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                  <span className="text-xs text-accent font-medium">Listening...</span>
+                </div>
+                {interimTranscript && (
+                  <p className="text-xs text-foreground/70 mt-1 italic">&quot;{interimTranscript}&quot;</p>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-1.5 sm:gap-2">
               <input
                 ref={inputRef}
@@ -278,15 +452,15 @@ export default function TimelessMinds() {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Type a message..."
+                placeholder={isListening ? 'Listening...' : 'Type a message...'}
                 className="flex-1 px-2 py-1.5 sm:px-3 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 text-xs sm:text-sm transition-all"
-                disabled={isLoading}
+                disabled={isLoading || isListening}
                 aria-label="Message input"
                 autoFocus
               />
               <Button
-                onClick={sendMessage}
-                disabled={!inputMessage.trim() || isLoading}
+                onClick={() => sendMessage()}
+                disabled={!inputMessage.trim() || isLoading || isListening}
                 variant="primary"
                 className="px-3 py-1.5 sm:px-4 sm:py-2"
                 aria-label="Send message"
@@ -295,7 +469,7 @@ export default function TimelessMinds() {
               </Button>
             </div>
             <div className="mt-1 text-[9px] sm:text-[10px] text-gray-400 text-center">
-              Press Enter or Cmd/Ctrl+Enter to send
+              Press Enter to send or click mic to speak
             </div>
           </div>
         </div>
@@ -347,26 +521,67 @@ export default function TimelessMinds() {
 
         {/* Center: Main Controls */}
         <div className="flex items-center justify-center gap-2 sm:gap-4">
-        {/* Mute Button */}
+        {/* Voice Input Button */}
         <button
-          className="flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
-          aria-label="Mute microphone"
+          onClick={toggleVoiceInput}
+          className={`flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group ${
+            isListening ? 'bg-red-500/20' : ''
+          }`}
+          aria-label={isListening ? 'Stop listening' : 'Start voice input'}
+          disabled={isLoading || isSpeaking}
         >
-          <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-gray-700 group-hover:bg-gray-600">
-            <Mic size={16} className="text-white sm:w-5 sm:h-5" />
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
+            isListening ? 'bg-red-500 animate-pulse' : 'bg-gray-700 group-hover:bg-gray-600'
+          }`}>
+            {isListening ? (
+              <MicOff size={16} className="text-white sm:w-5 sm:h-5" />
+            ) : (
+              <Mic size={16} className="text-white sm:w-5 sm:h-5" />
+            )}
           </div>
-          <span className="text-white text-[10px] sm:text-xs">Mute</span>
+          <span className="text-white text-[10px] sm:text-xs">
+            {isListening ? 'Stop' : 'Speak'}
+          </span>
         </button>
 
-        {/* Video Button */}
+        {/* Audio Toggle Button */}
         <button
+          onClick={toggleAudio}
           className="flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
-          aria-label="Stop video"
+          aria-label={audioEnabled ? 'Mute audio' : 'Unmute audio'}
         >
-          <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-gray-700 group-hover:bg-gray-600">
-            <VideoIcon size={16} className="text-white sm:w-5 sm:h-5" />
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
+            audioEnabled ? 'bg-gray-700 group-hover:bg-gray-600' : 'bg-red-500'
+          }`}>
+            {audioEnabled ? (
+              <Mic size={16} className="text-white sm:w-5 sm:h-5" />
+            ) : (
+              <MicOff size={16} className="text-white sm:w-5 sm:h-5" />
+            )}
           </div>
-          <span className="text-white text-[10px] sm:text-xs">Video</span>
+          <span className="text-white text-[10px] sm:text-xs">
+            {audioEnabled ? 'Mute' : 'Unmuted'}
+          </span>
+        </button>
+
+        {/* Video Toggle Button */}
+        <button
+          onClick={toggleVideo}
+          className="flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
+          aria-label={videoEnabled ? 'Turn off video' : 'Turn on video'}
+        >
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
+            videoEnabled ? 'bg-gray-700 group-hover:bg-gray-600' : 'bg-red-500'
+          }`}>
+            {videoEnabled ? (
+              <VideoIcon size={16} className="text-white sm:w-5 sm:h-5" />
+            ) : (
+              <VideoOff size={16} className="text-white sm:w-5 sm:h-5" />
+            )}
+          </div>
+          <span className="text-white text-[10px] sm:text-xs">
+            {videoEnabled ? 'Video' : 'Off'}
+          </span>
         </button>
 
         {/* End Call Button (Red) */}
