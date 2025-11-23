@@ -272,33 +272,92 @@ body::before {
   z-index: 1;
 }
 
-/* Organic border radius (not uniform) with worn, burnt-edge paper texture */
+/* Organic border radius (not uniform) with realistic burnt/wrinkled edges */
 .card-organic {
+  /* Slightly irregular border radius for worn paper */
   border-radius: 18px 16px 20px 15px;
   position: relative;
-  /* Very visible worn paper border with burnt tone */
-  border: 3px solid;
-  border-color:
-    rgba(101, 67, 33, 0.6) /* top - darkest */
-    rgba(101, 67, 33, 0.4) /* right */
-    rgba(101, 67, 33, 0.7) /* bottom - darkest */
-    rgba(101, 67, 33, 0.5); /* left */
-  /* Multi-layered shadow for paper depth + strong burnt glow */
+  /* Thick irregular burnt edge border */
+  border: 4px solid rgba(101, 67, 33, 0.7);
+  /* Multiple layered shadows for burnt paper depth and wrinkles */
   box-shadow:
-    /* Strong inner burnt edge glow */
-    inset 0 0 20px rgba(101, 67, 33, 0.4),
-    inset 0 4px 12px rgba(101, 67, 33, 0.3),
-    inset 0 -4px 12px rgba(101, 67, 33, 0.35),
-    /* Outer depth shadows */
-    0 1px 2px rgba(0, 0, 0, 0.05),
-    0 2px 4px rgba(0, 0, 0, 0.04),
-    0 4px 8px rgba(0, 0, 0, 0.03),
-    0 8px 16px rgba(0, 0, 0, 0.02);
-  /* Noticeable sepia tone for aged paper */
+    /* Inner burnt edge darkening */
+    inset 0 0 25px rgba(101, 67, 33, 0.5),
+    inset 0 0 15px rgba(70, 40, 20, 0.4),
+    inset 3px 3px 8px rgba(101, 67, 33, 0.35),
+    inset -3px -3px 8px rgba(101, 67, 33, 0.35),
+    /* Wrinkle texture shadows at different angles */
+    inset 2px 0 4px rgba(0, 0, 0, 0.15),
+    inset -2px 0 4px rgba(0, 0, 0, 0.15),
+    inset 0 2px 4px rgba(0, 0, 0, 0.15),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.15),
+    /* Outer paper depth */
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    0 4px 8px rgba(0, 0, 0, 0.04),
+    0 8px 16px rgba(0, 0, 0, 0.03);
+  /* Advanced filters for burnt paper texture */
   filter:
-    sepia(0.15)
-    contrast(1.05)
-    brightness(0.96);
+    /* Aged paper tone */
+    sepia(0.18)
+    /* Add subtle noise/grain for paper texture */
+    contrast(1.08)
+    brightness(0.94)
+    /* Burnt edge roughness using multiple drop-shadows */
+    drop-shadow(0 0 1px rgba(101, 67, 33, 0.4))
+    drop-shadow(1px 1px 2px rgba(70, 40, 20, 0.3))
+    drop-shadow(-1px -1px 2px rgba(70, 40, 20, 0.3));
+}
+
+/* Subtle per-card variations using nth-child for organic diversity */
+.card-organic:nth-child(2n) {
+  border-width: 4px 3px 5px 3px; /* Slightly more worn on bottom */
+  border-radius: 17px 18px 19px 16px;
+  filter:
+    sepia(0.2)
+    contrast(1.07)
+    brightness(0.93)
+    drop-shadow(0 0 1px rgba(101, 67, 33, 0.45))
+    drop-shadow(1px 0 2px rgba(70, 40, 20, 0.35))
+    drop-shadow(-1px 1px 2px rgba(70, 40, 20, 0.3));
+}
+
+.card-organic:nth-child(3n) {
+  border-width: 3px 4px 4px 5px; /* More worn on left */
+  border-radius: 19px 15px 21px 14px;
+  filter:
+    sepia(0.16)
+    contrast(1.09)
+    brightness(0.95)
+    drop-shadow(0 1px 1px rgba(101, 67, 33, 0.35))
+    drop-shadow(0 -1px 2px rgba(70, 40, 20, 0.3))
+    drop-shadow(2px 0 2px rgba(70, 40, 20, 0.35));
+}
+
+.card-organic:nth-child(4n) {
+  border-width: 5px 4px 3px 4px; /* More worn on top */
+  border-radius: 16px 19px 18px 17px;
+  box-shadow:
+    inset 0 0 30px rgba(101, 67, 33, 0.55),
+    inset 0 0 18px rgba(70, 40, 20, 0.45),
+    inset 4px 2px 8px rgba(101, 67, 33, 0.4),
+    inset -2px -4px 8px rgba(101, 67, 33, 0.4),
+    inset 2px 1px 4px rgba(0, 0, 0, 0.18),
+    inset -1px -2px 4px rgba(0, 0, 0, 0.18),
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    0 4px 8px rgba(0, 0, 0, 0.04),
+    0 8px 16px rgba(0, 0, 0, 0.03);
+}
+
+.card-organic:nth-child(5n) {
+  border-width: 4px 5px 4px 3px; /* More worn on right */
+  border-radius: 20px 14px 19px 18px;
+  filter:
+    sepia(0.17)
+    contrast(1.06)
+    brightness(0.945)
+    drop-shadow(1px 1px 1px rgba(101, 67, 33, 0.38))
+    drop-shadow(-1px 0 2px rgba(70, 40, 20, 0.32))
+    drop-shadow(0 1px 2px rgba(70, 40, 20, 0.28));
 }
 
 /* ============================================
@@ -661,7 +720,7 @@ html[data-colorblind-mode="monochrome"] {
   transform: scale(0.92) rotate(-1deg);
 }
 
-/* Card hover with organic movement and paper lift */
+/* Card hover with organic movement and burnt paper lift */
 .card-hover-organic {
   transition:
     transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -672,28 +731,32 @@ html[data-colorblind-mode="monochrome"] {
 
 .card-hover-organic:hover {
   transform: translateY(-8px) rotate(1deg) scale(1.02);
-  /* Even more visible burnt edges when lifted */
-  border-color:
-    rgba(101, 67, 33, 0.75) /* top */
-    rgba(101, 67, 33, 0.55) /* right */
-    rgba(101, 67, 33, 0.85) /* bottom - most worn */
-    rgba(101, 67, 33, 0.65); /* left */
-  /* Enhanced shadow when lifted */
+  /* More visible burnt edge when lifted */
+  border-color: rgba(101, 67, 33, 0.85);
+  /* Enhanced wrinkled paper shadows when lifted */
   box-shadow:
-    /* Very strong inner burnt edge glow */
-    inset 0 0 25px rgba(101, 67, 33, 0.5),
-    inset 0 4px 15px rgba(101, 67, 33, 0.4),
-    inset 0 -4px 15px rgba(101, 67, 33, 0.45),
+    /* Stronger inner burnt edge */
+    inset 0 0 35px rgba(101, 67, 33, 0.6),
+    inset 0 0 20px rgba(70, 40, 20, 0.5),
+    inset 4px 4px 10px rgba(101, 67, 33, 0.45),
+    inset -4px -4px 10px rgba(101, 67, 33, 0.45),
+    /* Enhanced wrinkle shadows */
+    inset 3px 0 5px rgba(0, 0, 0, 0.2),
+    inset -3px 0 5px rgba(0, 0, 0, 0.2),
+    inset 0 3px 5px rgba(0, 0, 0, 0.2),
+    inset 0 -3px 5px rgba(0, 0, 0, 0.2),
     /* Deeper outer shadows */
-    0 2px 4px rgba(0, 0, 0, 0.06),
-    0 4px 8px rgba(0, 0, 0, 0.05),
-    0 8px 16px rgba(0, 0, 0, 0.04),
-    0 16px 32px rgba(0, 0, 0, 0.03);
-  /* Stronger sepia when lifted (catching more light) */
+    0 4px 8px rgba(0, 0, 0, 0.08),
+    0 8px 16px rgba(0, 0, 0, 0.06),
+    0 16px 32px rgba(0, 0, 0, 0.04);
+  /* More pronounced aged paper when lifted (catching light) */
   filter:
-    sepia(0.2)
-    contrast(1.05)
-    brightness(1.02);
+    sepia(0.22)
+    contrast(1.1)
+    brightness(0.96)
+    drop-shadow(0 0 2px rgba(101, 67, 33, 0.5))
+    drop-shadow(2px 2px 3px rgba(70, 40, 20, 0.4))
+    drop-shadow(-2px -2px 3px rgba(70, 40, 20, 0.4));
 }
 
 /* Loading dots with watermelon colors */
