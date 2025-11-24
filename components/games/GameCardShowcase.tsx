@@ -49,7 +49,6 @@ export function GameCardShowcase({ game, priority = false }: GameCardShowcasePro
       <div
         className={`
           relative card-organic card-hover-organic
-          transition-all duration-300 ease-out
           hover:shadow-2xl ${shadowColorClass}
           transform-gpu will-change-transform
         `}
@@ -152,7 +151,6 @@ export function GameCardPlaceholder({ game }: GameCardPlaceholderProps) {
       <div
         className={`
           relative card-organic card-hover-organic
-          transition-all duration-300 ease-out
           hover:shadow-2xl ${shadowColorClass}
           transform-gpu will-change-transform
           bg-gradient-to-br ${gradientClass}
