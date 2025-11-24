@@ -299,8 +299,10 @@ body::before {
     0.4% 45%, 0.9% 40%, 0.6% 35%, 1.1% 30%, 0.4% 25%, 0.8% 20%,
     0.6% 15%, 1% 12%, 0.4% 8%, 0.9% 5%, 0.7% 2%
   );
-  /* THICKER, DARKER burnt border */
-  outline: 5px solid rgba(60, 35, 18, 0.95);
+  /* THICKER, DARKER burnt border - individual properties for smooth transitions */
+  outline-width: 5px;
+  outline-style: solid;
+  outline-color: rgba(60, 35, 18, 0.95);
   outline-offset: -4px;
   /* STRONGER layered shadows for depth and texture */
   box-shadow:
