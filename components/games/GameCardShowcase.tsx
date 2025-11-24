@@ -48,7 +48,7 @@ export function GameCardShowcase({ game, priority = false }: GameCardShowcasePro
       {/* Card container with hover effects */}
       <div
         className={`
-          relative overflow-hidden card-organic card-hover-organic
+          relative card-organic card-hover-organic
           transition-all duration-300 ease-out
           hover:shadow-2xl ${shadowColorClass}
           transform-gpu will-change-transform
@@ -62,9 +62,11 @@ export function GameCardShowcase({ game, priority = false }: GameCardShowcasePro
           height={1792}
           className="
             w-full h-auto object-contain
+            rounded-[18px]
             transition-all duration-300 ease-out
             group-hover:brightness-110
           "
+          style={{ borderRadius: 'inherit' }}
           priority={priority}
         />
 
@@ -149,7 +151,7 @@ export function GameCardPlaceholder({ game }: GameCardPlaceholderProps) {
     >
       <div
         className={`
-          relative overflow-hidden card-organic card-hover-organic
+          relative card-organic card-hover-organic
           transition-all duration-300 ease-out
           hover:shadow-2xl ${shadowColorClass}
           transform-gpu will-change-transform
