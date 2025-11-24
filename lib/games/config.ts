@@ -24,7 +24,7 @@ export interface GameConfig {
 export const ALL_GAMES: readonly GameConfig[] = [
   {
     id: 'hope-daily',
-    slug: 'hope-daily',
+    slug: 'the-silver-lining', // Enigmatic: hints at finding the positive
     title: 'The Optimist',
     description: 'Daily word game with hopeful facts',
     cardImage: '/games/hope-daily/card.svg',
@@ -38,7 +38,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
   },
   {
     id: 'timeless-minds',
-    slug: 'timeless-minds',
+    slug: 'ancient-voices', // Enigmatic: wisdom from the past
     title: 'The Sage',
     description: 'Chat with 61 wisdom figures',
     cardImage: '/games/timeless-minds/card.svg',
@@ -52,7 +52,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
   },
   {
     id: 'hard-choices',
-    slug: 'hard-choices',
+    slug: 'the-crossroads', // Enigmatic: pivotal decisions
     title: 'The Dilemma',
     description: 'Critical thinking through tough choices',
     cardImage: '/games/hard-choices/card.svg',
@@ -66,7 +66,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
   },
   {
     id: 'last-words',
-    slug: 'last-words',
+    slug: 'final-breath', // Enigmatic: end of life reflection
     title: 'The Final Word',
     description: 'Share your last words, see humanity\'s',
     cardImage: '/games/last-words/card.svg',
@@ -80,7 +80,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
   },
   {
     id: 'the-unrusher',
-    slug: 'the-unrusher',
+    slug: 'the-long-breath', // Enigmatic: patience and slowness
     title: 'The Patient One',
     description: 'Slow down and savor the moment',
     cardImage: '/games/the-unrusher/card.svg',
@@ -94,7 +94,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
   },
   {
     id: 'what-really-matters',
-    slug: 'what-really-matters',
+    slug: 'eight-slices', // Enigmatic: the 8 slices of life
     title: 'The Prioritizer',
     description: 'You only have 8 slices - choose wisely',
     cardImage: '/games/what-really-matters/card.svg',
@@ -108,7 +108,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
   },
   {
     id: 'slow-pixel-art',
-    slug: 'slow-pixel-art',
+    slug: 'shared-canvas', // Enigmatic: collaborative creation
     title: 'The Collaborator',
     description: 'Create art together, one pixel at a time',
     cardImage: '/games/slow-pixel-art/card.svg',
@@ -122,7 +122,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
   },
   {
     id: 'cloud-watcher',
-    slug: 'cloud-watcher',
+    slug: 'drifting-dreams', // Enigmatic: clouds drifting, imagination
     title: 'The Cloud Watcher',
     description: 'Name the clouds as they drift by',
     cardImage: '/games/cloud-watcher/card.svg',
@@ -136,7 +136,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
   },
   {
     id: 'the-untangler',
-    slug: 'the-untangler',
+    slug: 'tangled-wisdom', // Enigmatic: untangling to reveal quotes
     title: 'The Untangler',
     description: 'Untangle the lines to reveal wisdom',
     cardImage: '/games/the-untangler/card.svg',
