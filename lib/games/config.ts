@@ -148,6 +148,20 @@ export const ALL_GAMES: readonly GameConfig[] = [
     tags: ['puzzle', 'quotes', 'logic'],
     order: 9,
   },
+  {
+    id: 'first-words',
+    slug: 'first-breath', // Enigmatic: beginning after the end
+    title: 'The Awakening',
+    description: 'Your first words after crossing over',
+    cardImage: '/games/first-words/card.svg',
+    cardAlt: 'The Awakening - First Words Joker Card',
+    difficulty: 'easy',
+    category: 'Thought',
+    accentColor: 'purple',
+    isShowcase: true,
+    tags: ['reflection', 'community', 'philosophical', 'afterlife'],
+    order: 10,
+  },
 ] as const
 
 /**

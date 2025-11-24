@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1792" viewBox="0 0 1024 1792" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background (ethereal light tone) -->
+  <rect width="1024" height="1792" fill="#f0e6ff" rx="64"/>
+
+  <!-- Inner card area (deep purple) -->
+  <rect x="64" y="64" width="896" height="1664" fill="#4c1d95" rx="48"/>
+
+  <!-- Decorative border corners (light purple) -->
+  <rect x="96" y="96" width="32" height="32" fill="#a78bfa"/>
+  <rect x="96" y="1664" width="32" height="32" fill="#a78bfa"/>
+  <rect x="896" y="96" width="32" height="32" fill="#a78bfa"/>
+  <rect x="896" y="1664" width="32" height="32" fill="#a78bfa"/>
+
+  <!-- Title banner -->
+  <rect x="128" y="160" width="768" height="160" fill="#ffffff" rx="16"/>
+  <text x="512" y="260"
+    font-family="system-ui, -apple-system, sans-serif"
+    font-size="64"
+    font-weight="800"
+    fill="#1a1a1a"
+    text-anchor="middle"
+    letter-spacing="-2">THE AWAKENING</text>
+
+  <!-- Icon area (light rays suggesting awakening) -->
+  <g transform="translate(512, 996)">
+    <!-- Central circle (the awakened soul) -->
+    <circle cx="0" cy="0" r="80" fill="#f0e6ff" opacity="0.9"/>
+    <circle cx="0" cy="0" r="48" fill="#ffffff"/>
+
+    <!-- Light rays emanating outward (8 rays) -->
+    <!-- Ray 1 (top) -->
+    <polygon points="0,-48 -20,-180 20,-180" fill="#a78bfa" opacity="0.8"/>
+    <!-- Ray 2 (top-right) -->
+    <polygon points="34,-34 130,-130 150,-110" fill="#a78bfa" opacity="0.7"/>
+    <!-- Ray 3 (right) -->
+    <polygon points="48,0 180,-20 180,20" fill="#a78bfa" opacity="0.8"/>
+    <!-- Ray 4 (bottom-right) -->
+    <polygon points="34,34 130,130 110,150" fill="#a78bfa" opacity="0.7"/>
+    <!-- Ray 5 (bottom) -->
+    <polygon points="0,48 -20,180 20,180" fill="#a78bfa" opacity="0.8"/>
+    <!-- Ray 6 (bottom-left) -->
+    <polygon points="-34,34 -130,130 -150,110" fill="#a78bfa" opacity="0.7"/>
+    <!-- Ray 7 (left) -->
+    <polygon points="-48,0 -180,-20 -180,20" fill="#a78bfa" opacity="0.8"/>
+    <!-- Ray 8 (top-left) -->
+    <polygon points="-34,-34 -130,-130 -110,-150" fill="#a78bfa" opacity="0.7"/>
+
+    <!-- Inner glow effect -->
+    <circle cx="0" cy="0" r="60" fill="#c4b5fd" opacity="0.4"/>
+  </g>
+
+  <!-- Bottom accent (lighter purple) -->
+  <rect x="196" y="1536" width="632" height="96" fill="#a78bfa" rx="48"/>
+</svg>
