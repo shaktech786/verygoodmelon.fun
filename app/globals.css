@@ -276,46 +276,47 @@ body::before {
 .card-organic {
   border-radius: 18px 16px 20px 15px;
   position: relative;
-  /* Rough burnt edge effect using CSS clip-path with many points */
+  /* Rough burnt edge effect using CSS clip-path with many points - MORE PROMINENT */
   clip-path: polygon(
-    /* Top edge - irregular burnt pattern */
-    2% 0%, 5% 0.3%, 8% 0.1%, 12% 0.4%, 15% 0.2%, 20% 0.5%, 25% 0.1%,
-    30% 0.4%, 35% 0.2%, 40% 0.3%, 45% 0.1%, 50% 0.5%, 55% 0.2%,
-    60% 0.4%, 65% 0.1%, 70% 0.3%, 75% 0.5%, 80% 0.2%, 85% 0.4%,
-    88% 0.1%, 92% 0.3%, 95% 0.2%, 98% 0.4%,
-    /* Right edge - irregular burnt pattern */
-    99.8% 2%, 99.5% 5%, 99.7% 8%, 99.4% 12%, 99.6% 15%, 99.3% 20%,
-    99.7% 25%, 99.5% 30%, 99.8% 35%, 99.4% 40%, 99.6% 45%, 99.5% 50%,
-    99.7% 55%, 99.4% 60%, 99.6% 65%, 99.5% 70%, 99.7% 75%, 99.4% 80%,
-    99.6% 85%, 99.5% 88%, 99.7% 92%, 99.4% 95%, 99.6% 98%,
-    /* Bottom edge - irregular burnt pattern */
-    98% 99.6%, 95% 99.8%, 92% 99.7%, 88% 99.5%, 85% 99.6%, 80% 99.8%,
-    75% 99.5%, 70% 99.7%, 65% 99.6%, 60% 99.8%, 55% 99.5%, 50% 99.7%,
-    45% 99.6%, 40% 99.8%, 35% 99.5%, 30% 99.7%, 25% 99.6%, 20% 99.8%,
-    15% 99.5%, 12% 99.7%, 8% 99.6%, 5% 99.8%, 2% 99.5%,
-    /* Left edge - irregular burnt pattern */
-    0.4% 98%, 0.2% 95%, 0.3% 92%, 0.5% 88%, 0.2% 85%, 0.4% 80%,
-    0.3% 75%, 0.5% 70%, 0.2% 65%, 0.4% 60%, 0.3% 55%, 0.5% 50%,
-    0.2% 45%, 0.4% 40%, 0.3% 35%, 0.5% 30%, 0.2% 25%, 0.4% 20%,
-    0.3% 15%, 0.5% 12%, 0.2% 8%, 0.4% 5%, 0.3% 2%
+    /* Top edge - MORE JAGGED irregular burnt pattern */
+    2% 0%, 5% 0.8%, 8% 0.2%, 12% 1%, 15% 0.3%, 20% 1.2%, 25% 0.2%,
+    30% 0.9%, 35% 0.4%, 40% 0.7%, 45% 0.3%, 50% 1.1%, 55% 0.4%,
+    60% 0.8%, 65% 0.2%, 70% 0.6%, 75% 1%, 80% 0.4%, 85% 0.9%,
+    88% 0.2%, 92% 0.7%, 95% 0.5%, 98% 0.9%,
+    /* Right edge - MORE JAGGED */
+    99.6% 2%, 99.1% 5%, 99.5% 8%, 98.8% 12%, 99.3% 15%, 98.7% 20%,
+    99.4% 25%, 99% 30%, 99.6% 35%, 98.9% 40%, 99.2% 45%, 99.1% 50%,
+    99.5% 55%, 98.8% 60%, 99.3% 65%, 99% 70%, 99.5% 75%, 98.9% 80%,
+    99.2% 85%, 99.1% 88%, 99.4% 92%, 98.9% 95%, 99.3% 98%,
+    /* Bottom edge - MORE JAGGED */
+    98% 99.2%, 95% 99.6%, 92% 99.4%, 88% 98.9%, 85% 99.3%, 80% 99.7%,
+    75% 99.1%, 70% 99.5%, 65% 99.3%, 60% 99.7%, 55% 99.2%, 50% 99.6%,
+    45% 99.3%, 40% 99.8%, 35% 99.1%, 30% 99.5%, 25% 99.4%, 20% 99.8%,
+    15% 99.2%, 12% 99.6%, 8% 99.4%, 5% 99.8%, 2% 99.1%,
+    /* Left edge - MORE JAGGED */
+    0.9% 98%, 0.4% 95%, 0.7% 92%, 1.1% 88%, 0.4% 85%, 0.9% 80%,
+    0.6% 75%, 1% 70%, 0.4% 65%, 0.8% 60%, 0.6% 55%, 1% 50%,
+    0.4% 45%, 0.9% 40%, 0.6% 35%, 1.1% 30%, 0.4% 25%, 0.8% 20%,
+    0.6% 15%, 1% 12%, 0.4% 8%, 0.9% 5%, 0.7% 2%
   );
-  /* Thick dark burnt border */
-  outline: 3px solid rgba(70, 40, 20, 0.8);
-  outline-offset: -3px;
-  /* Multiple layered shadows for depth and texture */
+  /* THICKER, DARKER burnt border */
+  outline: 5px solid rgba(60, 35, 18, 0.95);
+  outline-offset: -4px;
+  /* STRONGER layered shadows for depth and texture */
   box-shadow:
-    /* Inner burnt darkening */
-    inset 0 0 20px rgba(70, 40, 20, 0.6),
-    inset 0 0 10px rgba(50, 30, 15, 0.5),
+    /* Inner burnt darkening - MUCH STRONGER */
+    inset 0 0 30px rgba(60, 35, 18, 0.8),
+    inset 0 0 18px rgba(40, 25, 12, 0.7),
+    inset 0 0 10px rgba(30, 18, 8, 0.6),
     /* Outer shadow for depth */
     0 2px 4px rgba(0, 0, 0, 0.1),
     0 4px 8px rgba(0, 0, 0, 0.08),
     0 8px 16px rgba(0, 0, 0, 0.06);
-  /* Aged burnt paper tone */
+  /* STRONGER aged burnt paper tone */
   filter:
-    sepia(0.25)
-    contrast(1.1)
-    brightness(0.92);
+    sepia(0.32)
+    contrast(1.15)
+    brightness(0.88);
 }
 
 /* Per-card clip-path variations for unique burnt edges */
@@ -710,43 +711,36 @@ html[data-colorblind-mode="monochrome"] {
   transform: scale(0.92) rotate(-1deg);
 }
 
-/* Card hover with organic movement and burnt paper lift */
+/* Card hover with organic movement and burnt paper lift - SMOOTH ANIMATIONS */
 .card-hover-organic {
   transition:
-    transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    filter 300ms ease-out,
-    border-color 300ms ease-out;
+    transform 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    filter 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    outline 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    outline-offset 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .card-hover-organic:hover {
   transform: translateY(-8px) rotate(1deg) scale(1.02);
-  /* More visible burnt edge when lifted */
-  border-color: rgba(101, 67, 33, 0.85);
-  /* Enhanced wrinkled paper shadows when lifted */
+  /* MUCH MORE VISIBLE burnt edge when lifted */
+  outline: 6px solid rgba(50, 30, 15, 1);
+  outline-offset: -5px;
+  /* STRONGER wrinkled paper shadows when lifted */
   box-shadow:
-    /* Stronger inner burnt edge */
-    inset 0 0 35px rgba(101, 67, 33, 0.6),
-    inset 0 0 20px rgba(70, 40, 20, 0.5),
-    inset 4px 4px 10px rgba(101, 67, 33, 0.45),
-    inset -4px -4px 10px rgba(101, 67, 33, 0.45),
-    /* Enhanced wrinkle shadows */
-    inset 3px 0 5px rgba(0, 0, 0, 0.2),
-    inset -3px 0 5px rgba(0, 0, 0, 0.2),
-    inset 0 3px 5px rgba(0, 0, 0, 0.2),
-    inset 0 -3px 5px rgba(0, 0, 0, 0.2),
+    /* Very strong inner burnt edge */
+    inset 0 0 40px rgba(50, 30, 15, 0.9),
+    inset 0 0 25px rgba(35, 20, 10, 0.8),
+    inset 0 0 15px rgba(25, 15, 7, 0.7),
     /* Deeper outer shadows */
-    0 4px 8px rgba(0, 0, 0, 0.08),
-    0 8px 16px rgba(0, 0, 0, 0.06),
-    0 16px 32px rgba(0, 0, 0, 0.04);
+    0 6px 12px rgba(0, 0, 0, 0.12),
+    0 12px 24px rgba(0, 0, 0, 0.1),
+    0 24px 48px rgba(0, 0, 0, 0.08);
   /* More pronounced aged paper when lifted (catching light) */
   filter:
-    sepia(0.22)
-    contrast(1.1)
-    brightness(0.96)
-    drop-shadow(0 0 2px rgba(101, 67, 33, 0.5))
-    drop-shadow(2px 2px 3px rgba(70, 40, 20, 0.4))
-    drop-shadow(-2px -2px 3px rgba(70, 40, 20, 0.4));
+    sepia(0.38)
+    contrast(1.18)
+    brightness(0.9);
 }
 
 /* Loading dots with watermelon colors */
