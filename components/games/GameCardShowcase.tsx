@@ -62,7 +62,6 @@ export function GameCardShowcase({ game, priority = false }: GameCardShowcasePro
           className="
             w-full h-auto object-contain
             rounded-[18px]
-            transition-all duration-300 ease-out
             group-hover:brightness-110
           "
           style={{ borderRadius: 'inherit' }}
