@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1792" viewBox="0 0 1024 1792">
+  <defs>
+    <!-- Turbulence filter for rough, burnt texture -->
+    <filter id="burnt-texture">
+      <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" seed="1" />
+      <feDisplacementMap in="SourceGraphic" scale="8" />
+    </filter>
+
+    <!-- Multiple masks with variations -->
+    <mask id="burnt-mask-1">
+      <rect width="1024" height="1792" fill="white" filter="url(#burnt-texture)" />
+      <rect x="3" y="3" width="1018" height="1786" rx="18" fill="white" />
+    </mask>
+
+    <mask id="burnt-mask-2">
+      <rect width="1024" height="1792" fill="white" filter="url(#burnt-texture)" />
+      <rect x="4" y="3" width="1016" height="1786" rx="17" fill="white" />
+    </mask>
+
+    <mask id="burnt-mask-3">
+      <rect width="1024" height="1792" fill="white" filter="url(#burnt-texture)" />
+      <rect x="3" y="4" width="1018" height="1784" rx="19" fill="white" />
+    </mask>
+  </defs>
+
+  <!-- Base shape with rough edges -->
+  <rect width="1024" height="1792" fill="rgba(101, 67, 33, 0.3)" mask="url(#burnt-mask-1)" />
+</svg>

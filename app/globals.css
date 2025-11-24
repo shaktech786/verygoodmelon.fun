@@ -272,92 +272,82 @@ body::before {
   z-index: 1;
 }
 
-/* Organic border radius (not uniform) with realistic burnt/wrinkled edges */
+/* Organic border radius (not uniform) with realistic burnt/wrinkled edges using SVG mask */
 .card-organic {
-  /* Slightly irregular border radius for worn paper */
   border-radius: 18px 16px 20px 15px;
   position: relative;
-  /* Thick irregular burnt edge border */
-  border: 4px solid rgba(101, 67, 33, 0.7);
-  /* Multiple layered shadows for burnt paper depth and wrinkles */
+  /* Rough burnt edge effect using CSS clip-path with many points */
+  clip-path: polygon(
+    /* Top edge - irregular burnt pattern */
+    2% 0%, 5% 0.3%, 8% 0.1%, 12% 0.4%, 15% 0.2%, 20% 0.5%, 25% 0.1%,
+    30% 0.4%, 35% 0.2%, 40% 0.3%, 45% 0.1%, 50% 0.5%, 55% 0.2%,
+    60% 0.4%, 65% 0.1%, 70% 0.3%, 75% 0.5%, 80% 0.2%, 85% 0.4%,
+    88% 0.1%, 92% 0.3%, 95% 0.2%, 98% 0.4%,
+    /* Right edge - irregular burnt pattern */
+    99.8% 2%, 99.5% 5%, 99.7% 8%, 99.4% 12%, 99.6% 15%, 99.3% 20%,
+    99.7% 25%, 99.5% 30%, 99.8% 35%, 99.4% 40%, 99.6% 45%, 99.5% 50%,
+    99.7% 55%, 99.4% 60%, 99.6% 65%, 99.5% 70%, 99.7% 75%, 99.4% 80%,
+    99.6% 85%, 99.5% 88%, 99.7% 92%, 99.4% 95%, 99.6% 98%,
+    /* Bottom edge - irregular burnt pattern */
+    98% 99.6%, 95% 99.8%, 92% 99.7%, 88% 99.5%, 85% 99.6%, 80% 99.8%,
+    75% 99.5%, 70% 99.7%, 65% 99.6%, 60% 99.8%, 55% 99.5%, 50% 99.7%,
+    45% 99.6%, 40% 99.8%, 35% 99.5%, 30% 99.7%, 25% 99.6%, 20% 99.8%,
+    15% 99.5%, 12% 99.7%, 8% 99.6%, 5% 99.8%, 2% 99.5%,
+    /* Left edge - irregular burnt pattern */
+    0.4% 98%, 0.2% 95%, 0.3% 92%, 0.5% 88%, 0.2% 85%, 0.4% 80%,
+    0.3% 75%, 0.5% 70%, 0.2% 65%, 0.4% 60%, 0.3% 55%, 0.5% 50%,
+    0.2% 45%, 0.4% 40%, 0.3% 35%, 0.5% 30%, 0.2% 25%, 0.4% 20%,
+    0.3% 15%, 0.5% 12%, 0.2% 8%, 0.4% 5%, 0.3% 2%
+  );
+  /* Thick dark burnt border */
+  outline: 3px solid rgba(70, 40, 20, 0.8);
+  outline-offset: -3px;
+  /* Multiple layered shadows for depth and texture */
   box-shadow:
-    /* Inner burnt edge darkening */
-    inset 0 0 25px rgba(101, 67, 33, 0.5),
-    inset 0 0 15px rgba(70, 40, 20, 0.4),
-    inset 3px 3px 8px rgba(101, 67, 33, 0.35),
-    inset -3px -3px 8px rgba(101, 67, 33, 0.35),
-    /* Wrinkle texture shadows at different angles */
-    inset 2px 0 4px rgba(0, 0, 0, 0.15),
-    inset -2px 0 4px rgba(0, 0, 0, 0.15),
-    inset 0 2px 4px rgba(0, 0, 0, 0.15),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.15),
-    /* Outer paper depth */
-    0 2px 4px rgba(0, 0, 0, 0.06),
-    0 4px 8px rgba(0, 0, 0, 0.04),
-    0 8px 16px rgba(0, 0, 0, 0.03);
-  /* Advanced filters for burnt paper texture */
+    /* Inner burnt darkening */
+    inset 0 0 20px rgba(70, 40, 20, 0.6),
+    inset 0 0 10px rgba(50, 30, 15, 0.5),
+    /* Outer shadow for depth */
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.08),
+    0 8px 16px rgba(0, 0, 0, 0.06);
+  /* Aged burnt paper tone */
   filter:
-    /* Aged paper tone */
-    sepia(0.18)
-    /* Add subtle noise/grain for paper texture */
-    contrast(1.08)
-    brightness(0.94)
-    /* Burnt edge roughness using multiple drop-shadows */
-    drop-shadow(0 0 1px rgba(101, 67, 33, 0.4))
-    drop-shadow(1px 1px 2px rgba(70, 40, 20, 0.3))
-    drop-shadow(-1px -1px 2px rgba(70, 40, 20, 0.3));
+    sepia(0.25)
+    contrast(1.1)
+    brightness(0.92);
 }
 
-/* Subtle per-card variations using nth-child for organic diversity */
+/* Per-card clip-path variations for unique burnt edges */
 .card-organic:nth-child(2n) {
-  border-width: 4px 3px 5px 3px; /* Slightly more worn on bottom */
-  border-radius: 17px 18px 19px 16px;
-  filter:
-    sepia(0.2)
-    contrast(1.07)
-    brightness(0.93)
-    drop-shadow(0 0 1px rgba(101, 67, 33, 0.45))
-    drop-shadow(1px 0 2px rgba(70, 40, 20, 0.35))
-    drop-shadow(-1px 1px 2px rgba(70, 40, 20, 0.3));
+  /* Slightly different jagged pattern */
+  clip-path: polygon(
+    1.5% 0%, 4% 0.4%, 7% 0.2%, 11% 0.5%, 14% 0.3%, 19% 0.6%, 24% 0.2%,
+    29% 0.5%, 34% 0.3%, 39% 0.4%, 44% 0.2%, 49% 0.6%, 54% 0.3%,
+    59% 0.5%, 64% 0.2%, 69% 0.4%, 74% 0.6%, 79% 0.3%, 84% 0.5%,
+    87% 0.2%, 91% 0.4%, 94% 0.3%, 97.5% 0.5%,
+    99.7% 1.5%, 99.4% 4%, 99.6% 7%, 99.3% 11%, 99.5% 14%, 99.2% 19%,
+    99.6% 24%, 99.4% 29%, 99.7% 34%, 99.3% 39%, 99.5% 44%, 99.4% 49%,
+    99.6% 54%, 99.3% 59%, 99.5% 64%, 99.4% 69%, 99.6% 74%, 99.3% 79%,
+    99.5% 84%, 99.4% 87%, 99.6% 91%, 99.3% 94%, 99.5% 97.5%,
+    97.5% 99.7%, 94% 99.5%, 91% 99.6%, 87% 99.4%, 84% 99.5%, 79% 99.7%,
+    74% 99.4%, 69% 99.6%, 64% 99.5%, 59% 99.7%, 54% 99.4%, 49% 99.6%,
+    44% 99.5%, 39% 99.7%, 34% 99.4%, 29% 99.6%, 24% 99.5%, 19% 99.7%,
+    14% 99.4%, 11% 99.6%, 7% 99.5%, 4% 99.7%, 1.5% 99.4%,
+    0.3% 97.5%, 0.5% 94%, 0.2% 91%, 0.4% 87%, 0.3% 84%, 0.5% 79%,
+    0.2% 74%, 0.4% 69%, 0.3% 64%, 0.5% 59%, 0.2% 54%, 0.4% 49%,
+    0.3% 44%, 0.5% 39%, 0.2% 34%, 0.4% 29%, 0.3% 24%, 0.5% 19%,
+    0.2% 14%, 0.4% 11%, 0.3% 7%, 0.5% 4%, 0.3% 1.5%
+  );
 }
 
 .card-organic:nth-child(3n) {
-  border-width: 3px 4px 4px 5px; /* More worn on left */
-  border-radius: 19px 15px 21px 14px;
+  /* Different roughness */
+  outline-offset: -4px;
   filter:
-    sepia(0.16)
-    contrast(1.09)
-    brightness(0.95)
-    drop-shadow(0 1px 1px rgba(101, 67, 33, 0.35))
-    drop-shadow(0 -1px 2px rgba(70, 40, 20, 0.3))
-    drop-shadow(2px 0 2px rgba(70, 40, 20, 0.35));
-}
-
-.card-organic:nth-child(4n) {
-  border-width: 5px 4px 3px 4px; /* More worn on top */
-  border-radius: 16px 19px 18px 17px;
-  box-shadow:
-    inset 0 0 30px rgba(101, 67, 33, 0.55),
-    inset 0 0 18px rgba(70, 40, 20, 0.45),
-    inset 4px 2px 8px rgba(101, 67, 33, 0.4),
-    inset -2px -4px 8px rgba(101, 67, 33, 0.4),
-    inset 2px 1px 4px rgba(0, 0, 0, 0.18),
-    inset -1px -2px 4px rgba(0, 0, 0, 0.18),
-    0 2px 4px rgba(0, 0, 0, 0.06),
-    0 4px 8px rgba(0, 0, 0, 0.04),
-    0 8px 16px rgba(0, 0, 0, 0.03);
-}
-
-.card-organic:nth-child(5n) {
-  border-width: 4px 5px 4px 3px; /* More worn on right */
-  border-radius: 20px 14px 19px 18px;
-  filter:
-    sepia(0.17)
-    contrast(1.06)
-    brightness(0.945)
-    drop-shadow(1px 1px 1px rgba(101, 67, 33, 0.38))
-    drop-shadow(-1px 0 2px rgba(70, 40, 20, 0.32))
-    drop-shadow(0 1px 2px rgba(70, 40, 20, 0.28));
+    sepia(0.22)
+    contrast(1.12)
+    brightness(0.93);
 }
 
 /* ============================================
