@@ -8,6 +8,7 @@ import { ToastContainer } from "@/components/ui/Toast";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FeedbackButton } from "@/components/FeedbackButton";
+import { AmbientParticles } from "@/components/ui/AmbientParticles";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
@@ -61,6 +62,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${quicksand.variable} antialiased`} suppressHydrationWarning>
+        <AmbientParticles />
         <a href="#main-content" className="skip-to-content">
           Skip to main content
         </a>

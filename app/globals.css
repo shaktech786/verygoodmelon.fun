@@ -1155,3 +1155,61 @@ html[data-contrast="extra-high"] *:focus-visible {
   opacity: 1;
 }
 
+/* ============================================
+   HOMEPAGE: BREATHING CARDS ANIMATION
+   ============================================ */
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Subtle variation for different cards */
+.animate-float:nth-child(2n) {
+  animation-duration: 4.5s;
+}
+
+.animate-float:nth-child(3n) {
+  animation-duration: 5s;
+}
+
+/* Pause on hover - let user focus */
+.animate-float:hover {
+  animation-play-state: paused;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float {
+    animation: none;
+  }
+}
+
+/* ============================================
+   AMBIENT PARTICLES - GENTLE PULSING DOTS
+   ============================================ */
+
+@keyframes pulse-soft {
+  0%, 100% {
+    transform: scale(1);
+    opacity: var(--particle-opacity, 0.1);
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: calc(var(--particle-opacity, 0.1) * 1.5);
+  }
+}
+
+.animate-pulse-soft {
+  --particle-opacity: inherit;
+  animation: pulse-soft ease-in-out infinite;
+}
+
