@@ -22,12 +22,18 @@ This project demands **exceptionally high standards** in:
 - 🎯 **Purpose**: Every element has meaning
 
 ### Key Philosophy
-> "Inspired by neal.fun, but not copying it."
+> "Think deeply, feel lighter."
 
-- **Neal.fun** = educational data visualizations
-- **VeryGoodMelon.Fun** = creative, artistic, interactive experiences
-- Focus on **feeling and exploration** over facts and learning
+- **Philosophical depth, not escapism** - help users get comfortable with tough topics (mortality, ethics, meaning)
+- **Calm container** - present deep thinking in a relaxing, low-stress way
+- **Subtle yet interesting** - the whole site should be fun to play with, not just the games
+- **Interactive delight** - constellation backgrounds, floating cards, cursor interactions
 - More personal, more experimental, more unique
+
+### What We're NOT
+- Not shallow puzzles or time-fillers (removed: Tangled Wisdom, Drifting Dreams, etc.)
+- Not clones of existing games
+- Not purely addictive with no value
 
 ### Core Success Metric
 **Users should feel LESS ANXIOUS when leaving than when they arrived.**
