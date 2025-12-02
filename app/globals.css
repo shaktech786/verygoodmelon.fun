@@ -353,6 +353,80 @@ body::before {
     brightness(0.93);
 }
 
+/* Light theme: softer, cleaner card edges */
+html[data-theme="light"] .card-organic,
+html:not([data-theme="dark"]):not([data-theme="auto"]) .card-organic {
+  outline-color: rgba(180, 160, 140, 0.4);
+  outline-width: 2px;
+  box-shadow:
+    inset 0 0 15px rgba(180, 160, 140, 0.2),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.05);
+  filter:
+    sepia(0.08)
+    contrast(1.02)
+    brightness(1.02);
+}
+
+html[data-theme="light"] .card-organic:nth-child(3n),
+html:not([data-theme="dark"]):not([data-theme="auto"]) .card-organic:nth-child(3n) {
+  filter:
+    sepia(0.05)
+    contrast(1.01)
+    brightness(1.01);
+}
+
+/* Light theme hover - subtle lift */
+html[data-theme="light"] .card-hover-organic:hover,
+html:not([data-theme="dark"]):not([data-theme="auto"]) .card-hover-organic:hover {
+  outline-color: rgba(160, 140, 120, 0.5);
+  outline-width: 3px;
+  box-shadow:
+    inset 0 0 20px rgba(160, 140, 120, 0.25),
+    0 8px 24px rgba(0, 0, 0, 0.1),
+    0 16px 48px rgba(0, 0, 0, 0.08);
+  filter:
+    sepia(0.1)
+    contrast(1.03)
+    brightness(1.03);
+}
+
+/* Auto theme respects system preference */
+@media (prefers-color-scheme: light) {
+  html[data-theme="auto"] .card-organic {
+    outline-color: rgba(180, 160, 140, 0.4);
+    outline-width: 2px;
+    box-shadow:
+      inset 0 0 15px rgba(180, 160, 140, 0.2),
+      0 2px 8px rgba(0, 0, 0, 0.08),
+      0 4px 16px rgba(0, 0, 0, 0.05);
+    filter:
+      sepia(0.08)
+      contrast(1.02)
+      brightness(1.02);
+  }
+
+  html[data-theme="auto"] .card-organic:nth-child(3n) {
+    filter:
+      sepia(0.05)
+      contrast(1.01)
+      brightness(1.01);
+  }
+
+  html[data-theme="auto"] .card-hover-organic:hover {
+    outline-color: rgba(160, 140, 120, 0.5);
+    outline-width: 3px;
+    box-shadow:
+      inset 0 0 20px rgba(160, 140, 120, 0.25),
+      0 8px 24px rgba(0, 0, 0, 0.1),
+      0 16px 48px rgba(0, 0, 0, 0.08);
+    filter:
+      sepia(0.1)
+      contrast(1.03)
+      brightness(1.03);
+  }
+}
+
 /* ============================================
    PHASE 0: CUSTOM CURSOR STATES
    ============================================ */
