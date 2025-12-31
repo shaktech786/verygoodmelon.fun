@@ -1,11 +1,15 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * Visual regression testing configuration with Playwright
- * Run with: npx playwright test
+ * E2E and Visual testing configuration with Playwright
+ *
+ * Run all tests: npx playwright test
+ * Run E2E only: npx playwright test __tests__/e2e
+ * Run visual only: npx playwright test __tests__/visual
  */
 export default defineConfig({
-  testDir: './__tests__/visual',
+  testDir: './__tests__',
+  testMatch: ['**/*.e2e.test.ts', '**/*.visual.test.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

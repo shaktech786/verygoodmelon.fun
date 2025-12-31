@@ -440,31 +440,52 @@ export default function HopeDaily() {
       {/* Educational Fact - Revealed after winning */}
       {revealed && revealedData && gameState === 'won' && (
         <div
-          className="mt-4 p-4 bg-[#74c69d]/10 border-2 border-[#74c69d] rounded-xl animate-fade"
+          className="mt-4 p-5 bg-gradient-to-br from-[#74c69d]/15 to-[#74c69d]/5 border-2 border-[#74c69d] rounded-xl animate-fade relative overflow-hidden"
           role="region"
           aria-label="Educational fact"
         >
-          <div className="text-xs font-semibold text-[#74c69d] mb-1 uppercase tracking-wide">
-            {revealedData.category}
+          {/* Subtle celebration sparkles */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-2 right-4 w-2 h-2 bg-[#74c69d]/60 rounded-full animate-ping" style={{ animationDelay: '0ms' }} />
+            <div className="absolute top-6 right-12 w-1.5 h-1.5 bg-[#74c69d]/40 rounded-full animate-ping" style={{ animationDelay: '200ms' }} />
+            <div className="absolute bottom-4 left-8 w-1 h-1 bg-[#74c69d]/50 rounded-full animate-ping" style={{ animationDelay: '400ms' }} />
           </div>
-          <p className="text-sm leading-relaxed text-foreground">
-            {revealedData.fact}
-          </p>
+
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg" aria-hidden="true">🌱</span>
+              <div className="text-xs font-semibold text-[#74c69d] uppercase tracking-wide">
+                {revealedData.category}
+              </div>
+            </div>
+            <p className="text-sm sm:text-base leading-relaxed text-foreground">
+              {revealedData.fact}
+            </p>
+            <p className="mt-3 text-xs text-[#74c69d]/80 italic">
+              The world is getting better, one fact at a time.
+            </p>
+          </div>
         </div>
       )}
 
-      {/* Loss state - show fact too */}
+      {/* Loss state - show fact too (but still encouraging) */}
       {revealed && revealedData && gameState === 'lost' && (
         <div
-          className="mt-4 p-4 bg-foreground/5 border-2 border-foreground/20 rounded-xl animate-fade"
+          className="mt-4 p-5 bg-gradient-to-br from-foreground/5 to-foreground/3 border-2 border-foreground/20 rounded-xl animate-fade"
           role="region"
           aria-label="Educational fact"
         >
-          <div className="text-xs font-semibold text-foreground/70 mb-1 uppercase tracking-wide">
-            {revealedData.category}
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-lg" aria-hidden="true">💭</span>
+            <div className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">
+              {revealedData.category}
+            </div>
           </div>
-          <p className="text-sm leading-relaxed text-foreground">
+          <p className="text-sm sm:text-base leading-relaxed text-foreground">
             {revealedData.fact}
+          </p>
+          <p className="mt-3 text-xs text-foreground/50 italic">
+            Not all puzzles need to be solved. Learning is the real win.
           </p>
         </div>
       )}

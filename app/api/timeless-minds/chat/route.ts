@@ -12,8 +12,8 @@ if (!apiKey) {
 // Initialize Google Gemini (primary - best for deep, empathetic conversations)
 const genAI = new GoogleGenerativeAI(apiKey)
 
-// Gemini 2.0 Flash Thinking - optimized for reasoning and empathy
-const GEMINI_MODEL = 'gemini-2.0-flash-thinking-exp-1219'
+// Gemini 2.0 Flash - fast and capable for conversations
+const GEMINI_MODEL = 'gemini-2.0-flash'
 
 export async function POST(request: NextRequest) {
   try {

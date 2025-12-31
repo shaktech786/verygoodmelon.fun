@@ -26,133 +26,202 @@ interface VoteResults {
 }
 
 const DILEMMAS: Dilemma[] = [
+  // EXISTENTIAL & MORTALITY
   {
-    id: 'career-passion',
-    scenario: 'Which path would you choose?',
-    context: 'You have two job offers',
+    id: 'mortality-awareness',
+    scenario: 'If you knew the exact date of your death...',
+    context: 'A reliable oracle offers to tell you when you will die',
     choiceA: {
       id: 'A',
-      text: 'High-paying job you find boring',
-      perspective: 'Financial security can reduce stress and create opportunities for passion projects outside work.'
+      text: 'Learn the date and live intentionally',
+      perspective: 'Knowledge is power. Knowing your timeline could help you prioritize what truly matters and avoid wasting time on the trivial.'
     },
     choiceB: {
       id: 'B',
-      text: 'Lower-paying job you&apos;re passionate about',
-      perspective: 'Spending 40+ hours a week doing meaningful work can lead to greater life satisfaction.'
+      text: 'Remain uncertain and live freely',
+      perspective: 'The beauty of life is in its unpredictability. Knowing might paralyze you with countdown anxiety rather than liberating you.'
+    },
+    category: 'existential'
+  },
+  {
+    id: 'legacy-vs-experience',
+    scenario: 'How would you spend your final year?',
+    context: 'You have one year left to live, fully healthy',
+    choiceA: {
+      id: 'A',
+      text: 'Create something that outlives you',
+      perspective: 'Leaving a lasting impact—art, writing, a foundation—extends your influence beyond your physical existence.'
+    },
+    choiceB: {
+      id: 'B',
+      text: 'Experience everything you\'ve postponed',
+      perspective: 'Life is for living, not performing. The experiences you have are yours alone, and that\'s enough.'
+    },
+    category: 'existential'
+  },
+  // ETHICS & MORALITY
+  {
+    id: 'trolley-personal',
+    scenario: 'Would you sacrifice one to save many?',
+    context: 'You can save five strangers by pushing one person in front of a train',
+    choiceA: {
+      id: 'A',
+      text: 'Push the one person to save five',
+      perspective: 'Utilitarian math: five lives saved outweighs one lost. Sometimes the hardest choices are numerically simple.'
+    },
+    choiceB: {
+      id: 'B',
+      text: 'Refuse to directly cause a death',
+      perspective: 'There\'s a moral difference between letting something happen and making it happen. You didn\'t create this situation.'
+    },
+    category: 'ethics'
+  },
+  {
+    id: 'lying-for-good',
+    scenario: 'Is a lie ever truly kind?',
+    context: 'A dying friend asks if they lived a meaningful life—but you think they wasted their potential',
+    choiceA: {
+      id: 'A',
+      text: 'Tell them what they need to hear',
+      perspective: 'Truth is contextual. Bringing peace to someone\'s final moments is a gift, not a deception.'
+    },
+    choiceB: {
+      id: 'B',
+      text: 'Be honest, gently',
+      perspective: 'Even at the end, people deserve to be treated as capable of handling reality. Patronizing kindness isn\'t kindness.'
+    },
+    category: 'ethics'
+  },
+  // MEANING & PURPOSE
+  {
+    id: 'happiness-vs-meaning',
+    scenario: 'Which would you choose for your life?',
+    context: 'You can only optimize for one',
+    choiceA: {
+      id: 'A',
+      text: 'Constant happiness, less meaning',
+      perspective: 'What good is purpose if you\'re miserable? Happiness is the actual feeling of life being good.'
+    },
+    choiceB: {
+      id: 'B',
+      text: 'Deep meaning, less happiness',
+      perspective: 'Meaning sustains us through suffering. A deeply meaningful life can include hardship and still be worth living.'
+    },
+    category: 'meaning'
+  },
+  {
+    id: 'simulation-knowledge',
+    scenario: 'If reality isn\'t what you think...',
+    context: 'You discover evidence that we\'re living in a simulation',
+    choiceA: {
+      id: 'A',
+      text: 'Accept it and keep living normally',
+      perspective: 'Simulated or not, your experiences feel real. Love is still love, pain still hurts. The substrate doesn\'t matter.'
+    },
+    choiceB: {
+      id: 'B',
+      text: 'Try to find ways to "break out" or transcend',
+      perspective: 'If there\'s a higher reality, shouldn\'t we strive to reach it? Comfort shouldn\'t stop us from seeking truth.'
+    },
+    category: 'metaphysics'
+  },
+  // RELATIONSHIPS & LOVE
+  {
+    id: 'love-or-freedom',
+    scenario: 'What matters more to you?',
+    context: 'Your soulmate wants to move abroad; you want to stay',
+    choiceA: {
+      id: 'A',
+      text: 'Follow love, sacrifice your roots',
+      perspective: 'People are irreplaceable; places aren\'t. Love that deep is rare and worth restructuring your life around.'
+    },
+    choiceB: {
+      id: 'B',
+      text: 'Stay true to yourself, even if alone',
+      perspective: 'Losing yourself for someone else breeds resentment. The right person would find a way to make it work.'
+    },
+    category: 'love'
+  },
+  {
+    id: 'forgiveness-limits',
+    scenario: 'Can you forgive the unforgivable?',
+    context: 'Someone who deeply betrayed you genuinely seeks your forgiveness',
+    choiceA: {
+      id: 'A',
+      text: 'Forgive to free yourself from the weight',
+      perspective: 'Holding onto anger is like drinking poison. Forgiveness is a gift to yourself, not just them.'
+    },
+    choiceB: {
+      id: 'B',
+      text: 'Some actions forfeit the right to forgiveness',
+      perspective: 'Not all wounds heal. Pretending otherwise diminishes the gravity of what happened to you.'
+    },
+    category: 'relationships'
+  },
+  // ORIGINAL PRACTICAL DILEMMAS (refined)
+  {
+    id: 'career-passion',
+    scenario: 'How do you want to spend your working life?',
+    context: 'You have two paths ahead',
+    choiceA: {
+      id: 'A',
+      text: 'Financial security doing unfulfilling work',
+      perspective: 'Money buys freedom, safety, and options. You can find meaning outside the 9-5.'
+    },
+    choiceB: {
+      id: 'B',
+      text: 'Meaningful work with financial uncertainty',
+      perspective: 'You spend a third of your life working. That time should feel like more than just trading hours for money.'
     },
     category: 'career'
   },
   {
-    id: 'relationship-honesty',
-    scenario: 'What would you do?',
-    context: 'Your best friend asks if they look good in an outfit you think is unflattering',
+    id: 'children-climate',
+    scenario: 'Would you bring new life into this world?',
+    context: 'Climate change and global uncertainty weigh on you',
     choiceA: {
       id: 'A',
-      text: 'Tell a white lie to protect their feelings',
-      perspective: 'Small kindnesses can strengthen relationships and boost someone\'s confidence when it matters.'
+      text: 'Yes—hope is an act of defiance',
+      perspective: 'Every generation has faced existential threats. Children bring joy and might be the ones who solve our problems.'
     },
     choiceB: {
       id: 'B',
-      text: 'Be honest, even if it might hurt',
-      perspective: 'True friends value honesty, and your feedback could save them from embarrassment later.'
+      text: 'No—it wouldn\'t be fair to them',
+      perspective: 'Choosing not to create suffering is an ethical choice. There are other ways to nurture and contribute.'
     },
-    category: 'relationships'
+    category: 'ethics'
   },
   {
-    id: 'time-investment',
-    scenario: 'How would you spend your limited free time?',
-    context: 'You have 2 hours of unexpected free time',
+    id: 'memory-erasure',
+    scenario: 'Would you erase your most painful memory?',
+    context: 'Perfect technology exists to remove one traumatic memory forever',
     choiceA: {
       id: 'A',
-      text: 'Work on a personal project or skill',
-      perspective: 'Investing in yourself compounds over time and can lead to future opportunities.'
+      text: 'Yes—remove the source of suffering',
+      perspective: 'Why carry unnecessary pain? The memory serves no purpose but to hurt you.'
     },
     choiceB: {
       id: 'B',
-      text: 'Rest and do absolutely nothing',
-      perspective: 'Rest is productive. Your mind and body need recovery to perform well long-term.'
+      text: 'No—pain is part of who I am',
+      perspective: 'Our struggles shape us. Erasing the memory might erase the lessons and growth that came with it.'
     },
-    category: 'personal'
+    category: 'identity'
   },
   {
-    id: 'health-convenience',
-    scenario: 'Which approach would you take?',
-    context: 'You\'re exhausted after a long day',
+    id: 'radical-honesty',
+    scenario: 'Could you live with complete transparency?',
+    context: 'Everyone can see your every thought for one week',
     choiceA: {
       id: 'A',
-      text: 'Order takeout (easy but less healthy)',
-      perspective: 'Sometimes convenience is self-care. Energy management matters more than perfection.'
+      text: 'Accept it—nothing to hide',
+      perspective: 'Living authentically means not needing privacy for shame. This could liberate you from performing.'
     },
     choiceB: {
       id: 'B',
-      text: 'Cook a healthy meal (more effort)',
-      perspective: 'Nourishing your body well, even when tired, can improve energy and mood tomorrow.'
+      text: 'Refuse—some thoughts are just noise',
+      perspective: 'Not every passing thought reflects who we are. Privacy protects us from being judged by our worst impulses.'
     },
-    category: 'health'
-  },
-  {
-    id: 'social-boundaries',
-    scenario: 'What would you choose?',
-    context: 'A friend invites you out but you&apos;re feeling drained',
-    choiceA: {
-      id: 'A',
-      text: 'Go anyway to maintain the friendship',
-      perspective: 'Showing up for friends builds trust and creates memories, even when you&apos;re not 100%.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Decline and prioritize your mental health',
-      perspective: 'Setting boundaries protects your energy and models healthy behavior for others.'
-    },
-    category: 'social'
-  },
-  {
-    id: 'financial-security',
-    scenario: 'How would you use unexpected money?',
-    context: 'You receive a $1,000 bonus',
-    choiceA: {
-      id: 'A',
-      text: 'Save it for emergencies or future goals',
-      perspective: 'Financial cushions reduce anxiety and give you freedom to take risks later.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Spend it on something you\'ve been wanting',
-      perspective: 'Life is short. Enjoying the fruits of your labor can boost motivation and happiness.'
-    },
-    category: 'finance'
-  },
-  {
-    id: 'learning-depth',
-    scenario: 'How would you approach learning?',
-    context: 'You want to learn something new',
-    choiceA: {
-      id: 'A',
-      text: 'Master one skill deeply',
-      perspective: 'Deep expertise is valuable and can make you irreplaceable in your niche.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Learn multiple skills at a surface level',
-      perspective: 'Broad knowledge helps you connect ideas and adapt to changing opportunities.'
-    },
-    category: 'learning'
-  },
-  {
-    id: 'confrontation',
-    scenario: 'How would you handle this?',
-    context: 'A coworker takes credit for your idea in a meeting',
-    choiceA: {
-      id: 'A',
-      text: 'Address it directly and publicly',
-      perspective: 'Standing up for yourself sets boundaries and earns respect from others.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Let it go to avoid workplace conflict',
-      perspective: 'Choosing your battles wisely can preserve working relationships and reduce stress.'
-    },
-    category: 'workplace'
+    category: 'identity'
   }
 ]
 
@@ -279,9 +348,9 @@ export default function HardChoices() {
         <div className="animate-fade">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-4xl font-semibold mb-3">Hard Choices</h1>
+            <h1 className="text-4xl font-semibold mb-3">The Dilemma</h1>
             <p className="text-foreground/60 text-lg">
-              Practice critical thinking through thoughtful life dilemmas. There&apos;s no right answer—just different perspectives.
+              Life&apos;s deepest questions have no easy answers. But thinking through them makes us wiser.
             </p>
           </div>
 
@@ -442,11 +511,22 @@ export default function HardChoices() {
               </button>
             </div>
 
-            {/* Results message */}
+            {/* Results message - deeper reflection */}
             {showResults && (
-              <div className="mt-6 p-4 bg-foreground/5 rounded-lg">
-                <p className="text-sm text-foreground/70 text-center">
-                  There&apos;s no right answer. Both choices have merit—it depends on your values, circumstances, and what matters most to you.
+              <div className="mt-6 p-5 bg-gradient-to-br from-accent/5 to-transparent border border-accent/10 rounded-lg">
+                <p className="text-sm text-foreground/80 text-center leading-relaxed">
+                  {getPercentage('A') > 60 || getPercentage('B') > 60 ? (
+                    <>
+                      <span className="font-medium">Interesting.</span> Most people lean one way here—but the minority perspective often holds wisdom worth considering.
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium">A true dilemma.</span> Humanity is genuinely split on this one. That&apos;s what makes it worth thinking about.
+                    </>
+                  )}
+                </p>
+                <p className="text-xs text-foreground/50 text-center mt-2 italic">
+                  Your answer reveals something about your values. Neither choice is wrong.
                 </p>
               </div>
             )}

@@ -14,6 +14,18 @@ const WordCloud = dynamic(
   }
 )
 
+// Rotating prompts to inspire deeper reflection
+const REFLECTION_PROMPTS = [
+  "What would you want your children to remember?",
+  "What truth took you too long to learn?",
+  "What would you tell your younger self?",
+  "What do you hope people say about you?",
+  "What was your greatest act of courage?",
+  "What love do you want to be remembered?",
+  "What would you do differently?",
+  "What made your life worth living?",
+]
+
 interface WordFrequency {
   word: string
   count: number
@@ -25,7 +37,16 @@ export default function LastWords() {
   const [loading, setLoading] = useState(false)
   const [wordCloud, setWordCloud] = useState<WordFrequency[]>([])
   const [totalSubmissions, setTotalSubmissions] = useState(0)
+  const [currentPromptIndex, setCurrentPromptIndex] = useState(0)
   const supabase = createClient()
+
+  // Rotate prompts every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentPromptIndex(prev => (prev + 1) % REFLECTION_PROMPTS.length)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Load word cloud data
   useEffect(() => {
@@ -165,13 +186,24 @@ export default function LastWords() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-card-bg border border-card-border rounded-lg p-6 sm:p-8">
+      <div className="bg-gradient-to-b from-card-bg to-card-bg/80 border border-card-border rounded-lg p-6 sm:p-8 relative overflow-hidden">
+        {/* Subtle decorative element */}
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-foreground/10 to-transparent" />
+
         <div className="mb-6 text-center">
+          <div className="text-4xl mb-4" aria-hidden="true">🕯️</div>
           <h2 className="text-xl sm:text-2xl font-semibold mb-3 text-foreground">
             If you could leave one final message...
           </h2>
           <p className="text-primary-light text-sm sm:text-base">
             What would you want the world to know?
+          </p>
+        </div>
+
+        {/* Rotating reflection prompt */}
+        <div className="mb-4 p-3 bg-accent/5 border border-accent/10 rounded-lg text-center">
+          <p className="text-sm text-accent/80 italic transition-opacity duration-500" key={currentPromptIndex}>
+            💭 {REFLECTION_PROMPTS[currentPromptIndex]}
           </p>
         </div>
 
@@ -186,14 +218,15 @@ export default function LastWords() {
                   handleSubmit(e as unknown as React.FormEvent)
                 }
               }}
-              placeholder="Your last words..."
+              placeholder="Your final words to the world..."
               className="
                 w-full min-h-[150px] px-4 py-3
                 border border-card-border rounded-lg
-                bg-card-bg text-foreground
-                focus:outline-none focus:ring-2 focus:ring-accent
+                bg-card-bg/50 text-foreground
+                focus:outline-none focus:ring-2 focus:ring-accent/50
                 resize-vertical
                 text-base sm:text-lg
+                placeholder:text-foreground/30
               "
               maxLength={500}
               disabled={loading}
@@ -211,12 +244,12 @@ export default function LastWords() {
             variant="primary"
             className="w-full px-6 py-3 font-medium text-lg"
           >
-            {loading ? 'Submitting...' : 'Share Your Words'}
+            {loading ? 'Submitting...' : 'Leave Your Mark'}
           </Button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-primary-light">
-          <p>Your message will be anonymous and contribute to a collective word cloud</p>
+        <div className="mt-6 text-center text-sm text-primary-light/60">
+          <p>Anonymous. Eternal. Part of something bigger.</p>
         </div>
       </div>
     </div>

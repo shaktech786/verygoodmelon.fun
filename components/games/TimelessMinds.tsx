@@ -17,6 +17,39 @@ interface Message {
   emotion?: AvatarEmotion
 }
 
+// Topic suggestions based on thinker's domain
+function getTopicSuggestions(thinker: Thinker): string[] {
+  const universal = [
+    "What gives life meaning?",
+    "How do you find peace?",
+    "What matters most in the end?"
+  ]
+
+  // Add domain-specific suggestions based on thinker's expertise
+  const domain = thinker.name.toLowerCase()
+
+  if (domain.includes('socrates') || domain.includes('plato') || domain.includes('aristotle')) {
+    return ["What is virtue?", "How should we live?", "What is wisdom?"]
+  }
+  if (domain.includes('buddha') || domain.includes('confucius') || domain.includes('lao')) {
+    return ["How do I let go?", "What is enlightenment?", "How do I find inner peace?"]
+  }
+  if (domain.includes('einstein') || domain.includes('curie') || domain.includes('darwin')) {
+    return ["What drives discovery?", "What surprised you most?", "What should we explore next?"]
+  }
+  if (domain.includes('aurelius') || domain.includes('seneca') || domain.includes('epictetus')) {
+    return ["How do I control my emotions?", "What can I actually control?", "How do I face hardship?"]
+  }
+  if (domain.includes('gandhi') || domain.includes('king') || domain.includes('mandela')) {
+    return ["How do you stay hopeful?", "What makes change possible?", "How do you forgive?"]
+  }
+  if (domain.includes('rumi') || domain.includes('hafiz')) {
+    return ["What is love?", "How do I open my heart?", "Tell me about the soul."]
+  }
+
+  return universal
+}
+
 export default function TimelessMinds() {
   const [thinker, setThinker] = useState<Thinker | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -26,7 +59,8 @@ export default function TimelessMinds() {
   const [imageError, setImageError] = useState(false)
   const [showPhoneBook, setShowPhoneBook] = useState(false)
   const [showRequestModal, setShowRequestModal] = useState(false)
-  const [hasPhoneBookAccess] = useState(false) // TODO: Check from API based on user email
+  const [hasPhoneBookAccess] = useState(true) // Everyone can browse thinkers
+  const [showTopicSuggestions, setShowTopicSuggestions] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -393,6 +427,28 @@ export default function TimelessMinds() {
             className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3 bg-hover-bg scroll-smooth"
             style={{ scrollbarGutter: 'stable' }}
           >
+            {/* Topic suggestions - show after first message */}
+            {messages.length === 1 && showTopicSuggestions && (
+              <div className="mb-3 p-3 bg-accent/5 border border-accent/20 rounded-lg animate-in fade-in duration-500">
+                <p className="text-xs text-foreground/60 mb-2">Try asking about:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {getTopicSuggestions(thinker).map((topic, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setInputMessage(topic)
+                        setShowTopicSuggestions(false)
+                        inputRef.current?.focus()
+                      }}
+                      className="text-xs px-2 py-1 bg-accent/10 hover:bg-accent/20 text-accent rounded-full transition-colors"
+                    >
+                      {topic}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {messages.map((message, index) => (
               <div
                 key={index}

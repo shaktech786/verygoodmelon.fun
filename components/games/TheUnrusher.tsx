@@ -10,16 +10,23 @@ interface Task {
   duration: number // seconds
   reward: string
   icon: string
+  guidance?: string[] // Rotating guidance text during task
 }
 
 const TASKS: Task[] = [
   {
     id: 'breathe',
     title: 'Just Breathe',
-    description: 'Take 5 deep breaths. No rush.',
-    duration: 30,
+    description: 'Follow the circle. Breathe with it.',
+    duration: 60,
     reward: 'Inhale peace. Exhale worry.',
-    icon: '🌊'
+    icon: '🌊',
+    guidance: [
+      'Breathe in slowly...',
+      'Hold gently...',
+      'Release everything...',
+      'Feel the stillness...'
+    ]
   },
   {
     id: 'watch',
@@ -27,23 +34,41 @@ const TASKS: Task[] = [
     description: 'Watch watermelon seeds drift slowly.',
     duration: 45,
     reward: 'Some things cannot be hurried.',
-    icon: '🍉'
+    icon: '🍉',
+    guidance: [
+      'Let your eyes soften...',
+      'Follow without forcing...',
+      'Time moves differently here...',
+      'No destination needed...'
+    ]
   },
   {
     id: 'listen',
     title: 'Listen to Silence',
-    description: 'Close your eyes. Just listen.',
+    description: 'Close your eyes. What do you hear?',
     duration: 60,
     reward: 'In stillness, we find clarity.',
-    icon: '🎵'
+    icon: '🎵',
+    guidance: [
+      'Close your eyes gently...',
+      'What sounds surround you?',
+      'The silence has layers...',
+      'Be here, nowhere else...'
+    ]
   },
   {
     id: 'reflect',
     title: 'Notice This Moment',
     description: 'What do you feel right now?',
-    duration: 40,
+    duration: 45,
     reward: 'This moment is all we truly have.',
-    icon: '✨'
+    icon: '✨',
+    guidance: [
+      'How does your body feel?',
+      'What emotions are present?',
+      'This is enough...',
+      'You are here, now...'
+    ]
   },
   {
     id: 'appreciate',
@@ -51,7 +76,13 @@ const TASKS: Task[] = [
     description: 'Three things you appreciate today.',
     duration: 50,
     reward: 'Gratitude slows time beautifully.',
-    icon: '💚'
+    icon: '💚',
+    guidance: [
+      'Think of something small...',
+      'Something you overlooked...',
+      'Someone who matters...',
+      'A moment of grace...'
+    ]
   }
 ]
 
@@ -62,7 +93,11 @@ export default function TheUnrusher() {
   const [completed, setCompleted] = useState<string[]>([])
   const [showReward, setShowReward] = useState(false)
   const [floatingSeeds, setFloatingSeeds] = useState<Array<{ id: number; x: number; delay: number }>>([])
+  const [breathPhase, setBreathPhase] = useState<'inhale' | 'hold' | 'exhale' | 'pause'>('inhale')
+  const [guidanceIndex, setGuidanceIndex] = useState(0)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const breathTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const guidanceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Generate floating seeds for "Watch the Seeds" task
   useEffect(() => {
@@ -77,6 +112,45 @@ export default function TheUnrusher() {
       setFloatingSeeds([])
     }
   }, [currentTask?.id])
+
+  // Breathing cycle (4-7-8 pattern: 4s inhale, 7s hold, 8s exhale)
+  useEffect(() => {
+    if (currentTask?.id === 'breathe' && isActive) {
+      const breathCycle = () => {
+        setBreathPhase('inhale')
+        breathTimerRef.current = setTimeout(() => {
+          setBreathPhase('hold')
+          breathTimerRef.current = setTimeout(() => {
+            setBreathPhase('exhale')
+            breathTimerRef.current = setTimeout(() => {
+              setBreathPhase('pause')
+              breathTimerRef.current = setTimeout(breathCycle, 1000) // Brief pause before next cycle
+            }, 8000)
+          }, 7000)
+        }, 4000)
+      }
+      breathCycle()
+    }
+
+    return () => {
+      if (breathTimerRef.current) clearTimeout(breathTimerRef.current)
+    }
+  }, [currentTask?.id, isActive])
+
+  // Rotate guidance text
+  useEffect(() => {
+    if (currentTask?.guidance && isActive) {
+      setGuidanceIndex(0)
+      const interval = Math.floor((currentTask.duration * 1000) / currentTask.guidance.length)
+      guidanceTimerRef.current = setInterval(() => {
+        setGuidanceIndex(prev => (prev + 1) % (currentTask.guidance?.length || 1))
+      }, interval)
+    }
+
+    return () => {
+      if (guidanceTimerRef.current) clearInterval(guidanceTimerRef.current)
+    }
+  }, [currentTask, isActive])
 
   // Timer logic
   useEffect(() => {
@@ -124,28 +198,61 @@ export default function TheUnrusher() {
         <div className="bg-card-bg border border-card-border rounded-lg p-8 sm:p-12 text-center min-h-[500px] flex flex-col justify-center">
           {!showReward ? (
             <>
-              {/* Task icon */}
-              <div className="text-7xl mb-6 animate-pulse-slow" aria-hidden="true">
-                {currentTask.icon}
-              </div>
+              {/* Breathing Circle Visualization */}
+              {currentTask.id === 'breathe' && (
+                <div className="mb-8 flex flex-col items-center">
+                  <div
+                    className={`
+                      relative rounded-full transition-all
+                      ${breathPhase === 'inhale' ? 'w-48 h-48 sm:w-64 sm:h-64 duration-[4000ms]' : ''}
+                      ${breathPhase === 'hold' ? 'w-48 h-48 sm:w-64 sm:h-64 duration-100' : ''}
+                      ${breathPhase === 'exhale' ? 'w-24 h-24 sm:w-32 sm:h-32 duration-[8000ms]' : ''}
+                      ${breathPhase === 'pause' ? 'w-24 h-24 sm:w-32 sm:h-32 duration-100' : ''}
+                    `}
+                    role="img"
+                    aria-label={`Breathing circle - ${breathPhase}`}
+                  >
+                    {/* Outer glow ring */}
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-accent/20 to-success/20 blur-xl" />
+                    {/* Main circle */}
+                    <div className="absolute inset-2 rounded-full bg-gradient-to-br from-accent/40 to-success/40 flex items-center justify-center">
+                      <span className="text-white/90 text-sm sm:text-base font-medium">
+                        {breathPhase === 'inhale' && 'Inhale...'}
+                        {breathPhase === 'hold' && 'Hold...'}
+                        {breathPhase === 'exhale' && 'Exhale...'}
+                        {breathPhase === 'pause' && '...'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Task icon (for non-breathing tasks) */}
+              {currentTask.id !== 'breathe' && (
+                <div className="text-7xl mb-6 animate-pulse-slow" aria-hidden="true">
+                  {currentTask.icon}
+                </div>
+              )}
 
               {/* Task title */}
               <h2 className="text-2xl sm:text-3xl font-semibold mb-4 text-foreground">
                 {currentTask.title}
               </h2>
 
-              {/* Task description */}
-              <p className="text-lg text-primary-light mb-8">
-                {currentTask.description}
-              </p>
+              {/* Guidance text - rotates during task */}
+              {currentTask.guidance && (
+                <p className="text-lg text-accent/80 mb-4 h-8 transition-opacity duration-500" key={guidanceIndex}>
+                  {currentTask.guidance[guidanceIndex]}
+                </p>
+              )}
 
               {/* Floating seeds animation for "Watch the Seeds" */}
               {currentTask.id === 'watch' && floatingSeeds.length > 0 && (
-                <div className="relative h-64 mb-8 overflow-hidden" role="img" aria-label="Watermelon seeds floating gently">
+                <div className="relative h-64 mb-8 overflow-hidden rounded-xl bg-gradient-to-b from-transparent to-accent/5" role="img" aria-label="Watermelon seeds floating gently">
                   {floatingSeeds.map((seed) => (
                     <div
                       key={seed.id}
-                      className="absolute w-3 h-5 bg-foreground/80 rounded-full animate-float-seed"
+                      className="absolute w-3 h-5 bg-foreground/70 rounded-full animate-float-seed shadow-lg"
                       style={{
                         left: `${seed.x}%`,
                         animationDelay: `${seed.delay}s`,
@@ -156,19 +263,24 @@ export default function TheUnrusher() {
                 </div>
               )}
 
-              {/* Timer */}
-              <div className="text-6xl font-light mb-8 text-accent tabular-nums" aria-live="polite" aria-atomic="true">
+              {/* Listen visualization - subtle pulsing circles */}
+              {currentTask.id === 'listen' && (
+                <div className="relative h-40 mb-8 flex items-center justify-center" role="img" aria-label="Sound waves visualization">
+                  <div className="absolute w-16 h-16 rounded-full bg-accent/10 animate-ping" style={{ animationDuration: '3s' }} />
+                  <div className="absolute w-24 h-24 rounded-full bg-accent/5 animate-ping" style={{ animationDuration: '4s', animationDelay: '0.5s' }} />
+                  <div className="absolute w-32 h-32 rounded-full bg-accent/3 animate-ping" style={{ animationDuration: '5s', animationDelay: '1s' }} />
+                  <div className="text-3xl">👂</div>
+                </div>
+              )}
+
+              {/* Timer - smaller, less prominent */}
+              <div className="text-4xl sm:text-5xl font-light mb-6 text-foreground/40 tabular-nums" aria-live="polite" aria-atomic="true">
                 {Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, '0')}
               </div>
 
-              {/* Progress indicator */}
-              <div className="text-sm text-primary-light">
-                <p>Take your time. There&rsquo;s no rush.</p>
-                {currentTask.id === 'breathe' && (
-                  <p className="mt-2 text-foreground/60">
-                    In... and out... in... and out...
-                  </p>
-                )}
+              {/* Subtle encouragement */}
+              <div className="text-sm text-primary-light/60">
+                <p>No rush. Just be here.</p>
               </div>
 
               {/* Cancel button */}

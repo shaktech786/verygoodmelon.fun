@@ -22,7 +22,7 @@ export function AmbientParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const starsRef = useRef<Star[]>([])
   const mouseRef = useRef({ x: -1000, y: -1000 })
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number | null>(null)
   const [reducedMotion, setReducedMotion] = useState(false)
   const [isDark, setIsDark] = useState(true)
 
