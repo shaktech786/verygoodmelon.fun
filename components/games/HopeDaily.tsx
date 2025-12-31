@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { Lightbulb } from 'lucide-react'
 
 type LetterState = 'correct' | 'present' | 'absent' | 'empty'
 
@@ -35,6 +36,10 @@ export default function HopeDaily() {
   const [showCommentary, setShowCommentary] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isFetchingCommentary, setIsFetchingCommentary] = useState(false)
+  const [hintsUsed, setHintsUsed] = useState(0)
+  const [currentHint, setCurrentHint] = useState<string>('')
+  const [revealedLetters, setRevealedLetters] = useState<Map<number, string>>(new Map())
+  const [isFetchingHint, setIsFetchingHint] = useState(false)
 
   // Initialize game
   useEffect(() => {
@@ -125,6 +130,43 @@ export default function HopeDaily() {
       return newStates
     })
   }, [])
+
+  // Fetch hint from API
+  const fetchHint = useCallback(async () => {
+    if (isFetchingHint || hintsUsed >= 3 || gameState !== 'playing') return
+
+    setIsFetchingHint(true)
+    try {
+      const response = await fetch('/api/hope-daily/hint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hintNumber: hintsUsed + 1,
+          revealedPositions: Array.from(revealedLetters.keys())
+        })
+      })
+
+      const data = await response.json()
+      if (data.hint) {
+        setCurrentHint(data.hint)
+        setHintsUsed(prev => prev + 1)
+
+        // If a letter was revealed, add it to the map
+        if (data.revealedLetter) {
+          setRevealedLetters(prev => {
+            const newMap = new Map(prev)
+            newMap.set(data.revealedLetter.position, data.revealedLetter.letter)
+            return newMap
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch hint:', error)
+      setMessage('Failed to get hint. Try again.')
+    } finally {
+      setIsFetchingHint(false)
+    }
+  }, [isFetchingHint, hintsUsed, gameState, revealedLetters])
 
   // Fetch and display AI commentary
   const showCommentaryBubble = useCallback(async (
@@ -272,6 +314,9 @@ export default function HopeDaily() {
     setRevealedData(null)
     setCommentary('')
     setShowCommentary(false)
+    setHintsUsed(0)
+    setCurrentHint('')
+    setRevealedLetters(new Map())
   }
 
   // Keyboard event listener
@@ -380,6 +425,52 @@ export default function HopeDaily() {
             {/* Speech bubble tail */}
             <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-accent/30"></div>
           </div>
+        </div>
+      )}
+
+      {/* Hint Section */}
+      {gameState === 'playing' && (
+        <div className="mb-3 flex flex-col items-center gap-2">
+          {/* Hint Button */}
+          <button
+            onClick={fetchHint}
+            disabled={hintsUsed >= 3 || isFetchingHint}
+            className={`
+              flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+              transition-all duration-200
+              ${hintsUsed >= 3
+                ? 'bg-foreground/5 text-foreground/30 cursor-not-allowed'
+                : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 border border-amber-500/30'
+              }
+            `}
+            aria-label={`Get hint (${3 - hintsUsed} remaining)`}
+          >
+            <Lightbulb size={16} className={isFetchingHint ? 'animate-pulse' : ''} />
+            {isFetchingHint ? 'Thinking...' : `Hint (${3 - hintsUsed} left)`}
+          </button>
+
+          {/* Current Hint Display */}
+          {currentHint && (
+            <div className="max-w-sm text-center animate-fade">
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-2">
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  💡 {currentHint}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Revealed Letters Display */}
+          {revealedLetters.size > 0 && (
+            <div className="flex gap-1 text-xs text-foreground/60">
+              <span>Revealed:</span>
+              {Array.from(revealedLetters.entries()).map(([pos, letter]) => (
+                <span key={pos} className="font-mono bg-amber-500/20 px-1.5 py-0.5 rounded">
+                  {pos + 1}→{letter}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
