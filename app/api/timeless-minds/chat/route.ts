@@ -144,8 +144,21 @@ REMEMBER: This is a live video call. Be present, warm, engaged, and genuinely in
 
   } catch (error) {
     console.error('Timeless Minds chat error:', error)
+
+    // Provide more specific error messages
+    let errorMessage = 'Failed to generate response'
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        errorMessage = 'API configuration error'
+      } else if (error.message.includes('quota') || error.message.includes('limit')) {
+        errorMessage = 'Service temporarily unavailable'
+      } else if (error.message.includes('404') || error.message.includes('not found')) {
+        errorMessage = 'AI model unavailable'
+      }
+    }
+
     return NextResponse.json(
-      { error: 'Failed to generate response' },
+      { error: errorMessage },
       { status: 500 }
     )
   }

@@ -67,7 +67,7 @@ export default function TimelessMinds() {
 
   // New avatar features
   const [videoEnabled, setVideoEnabled] = useState(true)
-  const [audioEnabled, setAudioEnabled] = useState(true)
+  const [audioEnabled, setAudioEnabled] = useState(false) // Muted by default
   const [isListening, setIsListening] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [currentEmotion, setCurrentEmotion] = useState<AvatarEmotion>('neutral')
@@ -88,14 +88,7 @@ export default function TimelessMinds() {
     }
     setMessages([openingMessage])
 
-    // Speak opening message if audio enabled
-    if (isSpeechSynthesisSupported()) {
-      synthesizeSpeech(
-        selectedThinker.openingLine,
-        selectedThinker.id,
-        'happy'
-      ).catch(console.error)
-    }
+    // Audio is muted by default, so don't speak opening message
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -162,6 +155,19 @@ export default function TimelessMinds() {
       })
 
       const data = await response.json()
+
+      if (data.error) {
+        console.error('API error:', data.error)
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: `I'm having trouble connecting right now. ${data.error === 'Failed to generate response' ? 'The wisdom servers may be resting. Please try again in a moment.' : data.error}`,
+            emotion: 'concerned'
+          }
+        ])
+        return
+      }
 
       if (data.response) {
         const emotion = (data.emotion as AvatarEmotion) || 'neutral'
@@ -600,11 +606,11 @@ export default function TimelessMinds() {
           </span>
         </button>
 
-        {/* Audio Toggle Button */}
+        {/* Audio Toggle Button - Controls thinker's voice */}
         <button
           onClick={toggleAudio}
           className="flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
-          aria-label={audioEnabled ? 'Mute audio' : 'Unmute audio'}
+          aria-label={audioEnabled ? 'Mute thinker voice' : 'Unmute thinker voice'}
         >
           <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
             audioEnabled ? 'bg-gray-700 group-hover:bg-gray-600' : 'bg-red-500'
@@ -616,7 +622,7 @@ export default function TimelessMinds() {
             )}
           </div>
           <span className="text-white text-[10px] sm:text-xs">
-            {audioEnabled ? 'Mute' : 'Unmuted'}
+            {audioEnabled ? 'Voice On' : 'Voice Off'}
           </span>
         </button>
 
