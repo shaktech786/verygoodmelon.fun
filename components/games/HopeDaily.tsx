@@ -33,6 +33,8 @@ export default function HopeDaily() {
   const [revealedData, setRevealedData] = useState<{ word: string; fact: string; category: string } | null>(null)
   const [commentary, setCommentary] = useState<string>('')
   const [showCommentary, setShowCommentary] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isFetchingCommentary, setIsFetchingCommentary] = useState(false)
 
   // Initialize game
   useEffect(() => {
@@ -131,6 +133,10 @@ export default function HopeDaily() {
     isCorrect = false,
     isInvalid = false
   ) => {
+    // Prevent double-fetching
+    if (isFetchingCommentary) return
+
+    setIsFetchingCommentary(true)
     try {
       const response = await fetch('/api/hope-daily/commentary', {
         method: 'POST',
@@ -151,12 +157,16 @@ export default function HopeDaily() {
       }
     } catch (error) {
       console.error('Failed to fetch commentary:', error)
+    } finally {
+      setIsFetchingCommentary(false)
     }
-  }, [])
+  }, [isFetchingCommentary])
 
   // Submit guess to server
   const submitGuess = useCallback(async () => {
-    if (!currentGuess.trim() || !metadata) return
+    if (!currentGuess.trim() || !metadata || isSubmitting) return
+
+    setIsSubmitting(true)
 
     try {
       const response = await fetch('/api/hope-daily', {
@@ -224,8 +234,10 @@ export default function HopeDaily() {
       setMessage('Failed to submit guess. Please try again.')
       setShake(true)
       setTimeout(() => setShake(false), 500)
+    } finally {
+      setIsSubmitting(false)
     }
-  }, [currentGuess, metadata, guesses, showCommentaryBubble, updateKeyboardStates])
+  }, [currentGuess, metadata, guesses, showCommentaryBubble, updateKeyboardStates, isSubmitting])
 
   // Handle key press
   const handleKeyPress = useCallback((key: string, hasModifier = false) => {
