@@ -36,9 +36,9 @@ const TYPE_BORDER_COLORS: Record<CardType['type'], string> = {
 }
 
 const SIZE_CLASSES = {
-  sm: 'w-20 h-28 text-[9px]',
-  md: 'w-32 h-44 text-xs',
-  lg: 'w-48 h-64 text-sm',
+  sm: 'w-28 h-40 text-xs',
+  md: 'w-40 h-56 text-sm',
+  lg: 'w-56 h-80 text-base',
 }
 
 export function Card({
@@ -100,20 +100,20 @@ export function Card({
       {/* Header bar (card type color) */}
       <div
         className={cn(
-          'h-1.5 w-full',
+          'h-2 w-full',
           TYPE_COLORS[card.type],
           'shadow-inner'
         )}
       />
 
       {/* Card content */}
-      <div className="flex-1 flex flex-col p-2">
+      <div className="flex-1 flex flex-col p-3">
         {/* Cost indicator */}
-        <div className="absolute top-2 right-2 flex gap-0.5">
+        <div className="absolute top-3 right-3 flex gap-1">
           {Array.from({ length: card.cost }).map((_, i) => (
             <div
               key={i}
-              className="w-2 h-2 rounded-full bg-[#2D2A26]"
+              className="w-3 h-3 rounded-full bg-[#2D2A26] border border-[#1a1917]"
               aria-hidden="true"
             />
           ))}
@@ -123,9 +123,9 @@ export function Card({
         <h3
           className={cn(
             'font-serif font-bold text-[#2D2A26] text-center leading-tight',
-            size === 'sm' && 'text-[10px]',
-            size === 'md' && 'text-sm',
-            size === 'lg' && 'text-base'
+            size === 'sm' && 'text-sm',
+            size === 'md' && 'text-base',
+            size === 'lg' && 'text-lg'
           )}
         >
           {card.name}
@@ -133,47 +133,47 @@ export function Card({
         </h3>
 
         {/* Card type */}
-        <p className="text-[#8A847A] text-center capitalize italic text-[80%]">
+        <p className="text-[#8A847A] text-center capitalize italic text-sm">
           {card.type}
         </p>
 
         {/* Illustration area */}
-        <div className="flex-1 my-1 rounded border border-[#D4C9B5] bg-[#EDE6D6] flex items-center justify-center min-h-[40px]">
-          <span className="text-2xl opacity-50" aria-hidden="true">
+        <div className="flex-1 my-2 rounded border border-[#D4C9B5] bg-[#EDE6D6] flex items-center justify-center min-h-[50px]">
+          <span className="text-4xl opacity-50" aria-hidden="true">
             {getCardIcon(card)}
           </span>
         </div>
 
         {/* Stats */}
         {(card.weight || card.multiplier) && (
-          <div className="flex justify-around py-1 px-1 bg-[#D4C9B5] rounded text-[#2D2A26]">
+          <div className="flex justify-around py-2 px-2 bg-[#D4C9B5] rounded text-[#2D2A26]">
             {card.weight && (
               <div className="text-center">
-                <div className="text-[8px] uppercase tracking-wide text-[#5A5550]">
+                <div className="text-xs uppercase tracking-wide text-[#5A5550]">
                   Weight
                 </div>
-                <div className="font-mono font-bold">{card.weight}</div>
+                <div className="font-mono font-bold text-lg">{card.weight}</div>
               </div>
             )}
             {card.multiplier && (
               <div className="text-center">
-                <div className="text-[8px] uppercase tracking-wide text-[#5A5550]">
+                <div className="text-xs uppercase tracking-wide text-[#5A5550]">
                   Multi
                 </div>
-                <div className="font-mono font-bold">×{card.multiplier}</div>
+                <div className="font-mono font-bold text-lg">×{card.multiplier}</div>
               </div>
             )}
           </div>
         )}
 
         {/* Effect text */}
-        <p className="text-[#2D2A26] leading-tight mt-1 text-[90%]">
+        <p className="text-[#2D2A26] leading-snug mt-2 text-sm">
           {card.description}
         </p>
 
         {/* Flavor text */}
         {card.flavorText && size !== 'sm' && (
-          <p className="text-[#8A847A] italic text-[80%] border-t border-dashed border-[#D4C9B5] pt-1 mt-auto">
+          <p className="text-[#8A847A] italic text-xs border-t border-dashed border-[#D4C9B5] pt-2 mt-auto">
             {card.flavorText}
           </p>
         )}
@@ -235,7 +235,7 @@ export function CardHand({
   return (
     <div
       className={cn(
-        'flex justify-center items-end gap-0 py-4',
+        'flex justify-center items-end gap-0 py-6',
         className
       )}
       role="group"
@@ -245,17 +245,17 @@ export function CardHand({
         // Calculate fan angle and offset
         const middleIndex = (cards.length - 1) / 2
         const offset = index - middleIndex
-        const angle = offset * 3 // 3 degrees per card
-        const yOffset = Math.abs(offset) * 4 // Vertical offset for arc
+        const angle = offset * 4 // 4 degrees per card
+        const yOffset = Math.abs(offset) * 6 // Vertical offset for arc
 
         return (
           <div
             key={`${card.id}-${index}`}
-            className="relative transition-all duration-150"
+            className="relative transition-all duration-200 hover:z-50"
             style={{
               transform: `rotate(${angle}deg) translateY(${yOffset}px)`,
               transformOrigin: 'bottom center',
-              marginLeft: index === 0 ? 0 : '-24px', // Overlap cards
+              marginLeft: index === 0 ? 0 : '-20px', // Less overlap for bigger cards
               zIndex: selectedIndex === index ? 100 : index,
             }}
           >

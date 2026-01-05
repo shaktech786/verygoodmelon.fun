@@ -29,6 +29,7 @@ export function BattleScreen() {
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null)
   const [showDamageNumber, setShowDamageNumber] = useState(false)
   const [lastDamage, setLastDamage] = useState(0)
+  const [actionMessage, setActionMessage] = useState<string | null>(null)
 
   // Initialize battle when screen loads
   useEffect(() => {
@@ -43,6 +44,12 @@ export function BattleScreen() {
     }
   }, [battleState.enemy, getCurrentNode, startBattle, gameState.currentFloor])
 
+  // Show action message briefly
+  const showAction = (message: string) => {
+    setActionMessage(message)
+    setTimeout(() => setActionMessage(null), 1500)
+  }
+
   // Handle card selection
   const handleCardClick = (index: number) => {
     const card = battleState.hand[index]
@@ -52,6 +59,7 @@ export function BattleScreen() {
       // Double click to play
       playCard(index)
       setSelectedCardIndex(null)
+      showAction(`Played: ${card.name}`)
     } else {
       setSelectedCardIndex(index)
     }
@@ -62,7 +70,8 @@ export function BattleScreen() {
     if (battleState.currentDamage) {
       setLastDamage(battleState.currentDamage.finalDamage)
       setShowDamageNumber(true)
-      setTimeout(() => setShowDamageNumber(false), 1000)
+      setTimeout(() => setShowDamageNumber(false), 1500)
+      showAction(`Dealt ${battleState.currentDamage.finalDamage} damage!`)
     }
     setSelectedCardIndex(null)
     endTurn()
@@ -89,13 +98,34 @@ export function BattleScreen() {
   }, [battleState.phase, battleState.hand.length, battleState.canUndo])
 
   if (!battleState.enemy) {
-    return <div className="text-center p-8">Loading battle...</div>
+    return <div className="text-center p-8 text-xl">Loading battle...</div>
   }
 
   const isBoss = 'phases' in battleState.enemy
 
   return (
     <div className="relative flex flex-col h-full min-h-screen bg-[#2D2A26] text-[#F7F3EB]">
+      {/* Action Message Toast */}
+      {actionMessage && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+          <div className="bg-amber-500 text-[#2D2A26] px-6 py-3 rounded-lg shadow-xl font-serif font-bold text-xl">
+            {actionMessage}
+          </div>
+        </div>
+      )}
+
+      {/* Turn Indicator */}
+      <div className="absolute top-20 right-4 z-40">
+        <div className={cn(
+          'px-4 py-2 rounded-lg font-serif font-bold text-lg',
+          battleState.phase === 'player'
+            ? 'bg-emerald-600 text-white'
+            : 'bg-red-600 text-white animate-pulse'
+        )}>
+          {battleState.phase === 'player' ? '🎯 Your Turn' : '⚔️ Enemy Turn'}
+        </div>
+      </div>
+
       {/* Top Bar - Coherence and Stats */}
       <TopBar
         coherence={gameState.coherence}
@@ -105,7 +135,7 @@ export function BattleScreen() {
       />
 
       {/* Enemy Zone */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4">
+      <div className="flex-1 flex flex-col items-center justify-center p-6">
         <EnemyDisplay
           enemy={battleState.enemy}
           intent={useBattleStore.getState().getEnemyIntent()}
@@ -115,7 +145,7 @@ export function BattleScreen() {
       </div>
 
       {/* Play Area */}
-      <div className="px-4">
+      <div className="px-6">
         <PlayArea
           cards={battleState.playArea}
           damagePreview={battleState.currentDamage}
@@ -123,8 +153,8 @@ export function BattleScreen() {
       </div>
 
       {/* Hand Zone */}
-      <div className="border-t border-[#D4C9B5]/20 bg-[#1a1917] p-4">
-        <div className="flex items-center justify-between mb-2">
+      <div className="border-t-2 border-[#D4C9B5]/30 bg-[#1a1917] p-6">
+        <div className="flex items-center justify-between mb-4">
           {/* Thought Points */}
           <TPIndicator
             current={battleState.thoughtPoints}
@@ -132,30 +162,30 @@ export function BattleScreen() {
           />
 
           {/* Action Buttons */}
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <button
               onClick={undoLastAction}
               disabled={!battleState.canUndo}
               className={cn(
-                'px-4 py-2 rounded-lg border-2 font-serif transition-all',
+                'px-6 py-3 rounded-lg border-2 font-serif text-lg transition-all',
                 battleState.canUndo
-                  ? 'border-[#D4C9B5] text-[#F7F3EB] hover:bg-[#D4C9B5]/20'
+                  ? 'border-[#D4C9B5] text-[#F7F3EB] hover:bg-[#D4C9B5]/20 hover:scale-105'
                   : 'border-[#5A5550] text-[#5A5550] cursor-not-allowed'
               )}
             >
-              Undo
+              ↩ Undo
             </button>
             <button
               onClick={handleEndTurn}
               disabled={battleState.phase !== 'player'}
               className={cn(
-                'px-6 py-2 rounded-lg border-2 font-serif font-bold transition-all',
+                'px-8 py-3 rounded-lg border-2 font-serif font-bold text-lg transition-all',
                 battleState.phase === 'player'
-                  ? 'bg-amber-600 border-amber-700 text-[#2D2A26] hover:bg-amber-500'
+                  ? 'bg-amber-600 border-amber-700 text-[#2D2A26] hover:bg-amber-500 hover:scale-105 shadow-lg'
                   : 'bg-[#5A5550] border-[#5A5550] text-[#8A847A] cursor-not-allowed'
               )}
             >
-              End Turn
+              End Turn →
             </button>
           </div>
         </div>
@@ -169,7 +199,7 @@ export function BattleScreen() {
         />
 
         {/* Instructions */}
-        <p className="text-center text-[#8A847A] text-sm mt-2">
+        <p className="text-center text-[#8A847A] text-base mt-4">
           Click a card to select, click again to play. Press 1-{battleState.hand.length} for quick select.
         </p>
       </div>
@@ -194,16 +224,16 @@ function TopBar({ coherence, maxCoherence, deckSize, discardSize }: TopBarProps)
   const isWarning = coherencePercent < 50
 
   return (
-    <div className="flex items-center justify-between p-4 bg-[#1a1917] border-b border-[#D4C9B5]/20">
+    <div className="flex items-center justify-between p-5 bg-[#1a1917] border-b-2 border-[#D4C9B5]/30">
       {/* Coherence Bar */}
-      <div className="flex-1 max-w-sm">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-serif">Coherence</span>
-          <span className="font-mono text-sm">
+      <div className="flex-1 max-w-md">
+        <div className="flex items-center gap-3 mb-2">
+          <span className="text-lg font-serif font-bold">❤️ Coherence</span>
+          <span className="font-mono text-xl font-bold">
             {coherence}/{maxCoherence}
           </span>
         </div>
-        <div className="h-4 bg-[#D4C9B5]/30 rounded-full overflow-hidden border border-[#D4C9B5]/50">
+        <div className="h-6 bg-[#D4C9B5]/30 rounded-full overflow-hidden border-2 border-[#D4C9B5]/50">
           <div
             className={cn(
               'h-full transition-all duration-300 rounded-full',
@@ -217,14 +247,14 @@ function TopBar({ coherence, maxCoherence, deckSize, discardSize }: TopBarProps)
       </div>
 
       {/* Deck Info */}
-      <div className="flex gap-4 text-sm">
-        <div className="flex items-center gap-1">
-          <span className="text-[#8A847A]">Draw:</span>
-          <span className="font-mono">{deckSize}</span>
+      <div className="flex gap-6 text-base">
+        <div className="flex items-center gap-2 bg-[#2D2A26] px-4 py-2 rounded-lg">
+          <span className="text-[#8A847A]">📚 Draw:</span>
+          <span className="font-mono font-bold text-lg">{deckSize}</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="text-[#8A847A]">Discard:</span>
-          <span className="font-mono">{discardSize}</span>
+        <div className="flex items-center gap-2 bg-[#2D2A26] px-4 py-2 rounded-lg">
+          <span className="text-[#8A847A]">🗑️ Discard:</span>
+          <span className="font-mono font-bold text-lg">{discardSize}</span>
         </div>
       </div>
     </div>
@@ -248,17 +278,17 @@ function EnemyDisplay({ enemy, intent, showDamageNumber, damageAmount }: EnemyDi
 
   return (
     <div className={cn(
-      'relative flex flex-col items-center gap-4 p-6 rounded-xl border-2',
-      'bg-[#EDE6D6] text-[#2D2A26]',
-      isBoss ? 'border-[#2D2A26] min-w-[320px]' : 'border-[#9A8D7F] min-w-[280px]'
+      'relative flex flex-col items-center gap-5 p-8 rounded-2xl border-3',
+      'bg-[#EDE6D6] text-[#2D2A26] shadow-2xl',
+      isBoss ? 'border-[#2D2A26] min-w-[400px] border-4' : 'border-[#9A8D7F] min-w-[350px] border-2'
     )}>
       {/* Damage number animation */}
       {showDamageNumber && damageAmount > 0 && (
         <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 font-mono font-bold text-5xl text-amber-500 animate-bounce"
+          className="absolute -top-8 left-1/2 -translate-x-1/2 font-mono font-bold text-7xl text-amber-500"
           style={{
-            textShadow: '2px 2px 0 #2D2A26, 4px 4px 0 rgba(45, 42, 38, 0.3)',
-            animation: 'damage-pop 0.6s ease-out forwards',
+            textShadow: '3px 3px 0 #2D2A26, 6px 6px 0 rgba(45, 42, 38, 0.3)',
+            animation: 'damage-pop 1s ease-out forwards',
           }}
         >
           -{damageAmount}
@@ -267,30 +297,30 @@ function EnemyDisplay({ enemy, intent, showDamageNumber, damageAmount }: EnemyDi
 
       {/* Portrait */}
       <div className={cn(
-        'rounded-lg border-2 border-[#9A8D7F] bg-[#F7F3EB] flex items-center justify-center',
-        isBoss ? 'w-40 h-40' : 'w-32 h-32'
+        'rounded-xl border-3 border-[#9A8D7F] bg-[#F7F3EB] flex items-center justify-center shadow-lg',
+        isBoss ? 'w-48 h-48' : 'w-40 h-40'
       )}>
-        <span className="text-6xl opacity-60">{getEnemyIcon(enemy.id)}</span>
+        <span className={cn('opacity-70', isBoss ? 'text-8xl' : 'text-7xl')}>{getEnemyIcon(enemy.id)}</span>
       </div>
 
       {/* Name */}
       <h2 className={cn(
         'font-serif font-bold text-center',
-        isBoss ? 'text-2xl' : 'text-xl'
+        isBoss ? 'text-3xl' : 'text-2xl'
       )}>
         {enemy.name}
       </h2>
 
       {/* HP Bar */}
       <div className="w-full">
-        <div className="flex justify-between text-sm mb-1">
-          <span>HP</span>
-          <span className="font-mono">{enemy.currentHP}/{enemy.maxHP}</span>
+        <div className="flex justify-between text-base mb-2">
+          <span className="font-serif font-bold">HP</span>
+          <span className="font-mono font-bold text-xl">{enemy.currentHP}/{enemy.maxHP}</span>
         </div>
-        <div className="h-4 bg-[#D4C9B5] rounded-full overflow-hidden border border-[#9A8D7F]">
+        <div className="h-6 bg-[#D4C9B5] rounded-full overflow-hidden border-2 border-[#9A8D7F]">
           <div
             className={cn(
-              'h-full transition-all duration-300 rounded-full',
+              'h-full transition-all duration-500 rounded-full',
               hpPercent < 25 ? 'bg-red-600' : hpPercent < 50 ? 'bg-amber-500' : 'bg-emerald-600'
             )}
             style={{ width: `${hpPercent}%` }}
@@ -300,21 +330,21 @@ function EnemyDisplay({ enemy, intent, showDamageNumber, damageAmount }: EnemyDi
 
       {/* Shield */}
       {enemy.shield > 0 && (
-        <div className="flex items-center gap-1 text-blue-600">
-          <span>🛡️</span>
-          <span className="font-mono font-bold">{enemy.shield}</span>
+        <div className="flex items-center gap-2 text-blue-600 bg-blue-100 px-4 py-2 rounded-lg">
+          <span className="text-2xl">🛡️</span>
+          <span className="font-mono font-bold text-xl">{enemy.shield}</span>
         </div>
       )}
 
       {/* Intent */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-[#D4C9B5] rounded-lg">
-        <span className="text-lg">{getIntentIcon(intent)}</span>
-        <span className="text-sm">{intent}</span>
+      <div className="flex items-center gap-3 px-6 py-3 bg-[#D4C9B5] rounded-xl border border-[#9A8D7F]">
+        <span className="text-2xl">{getIntentIcon(intent)}</span>
+        <span className="text-lg font-serif font-medium">{intent}</span>
       </div>
 
       {/* Boss Phase */}
       {isBoss && (
-        <div className="text-xs text-[#5A5550] italic">
+        <div className="text-sm text-[#5A5550] italic font-serif">
           Phase {(enemy as Boss).currentPhase + 1}: {(enemy as Boss).phases[(enemy as Boss).currentPhase]?.name}
         </div>
       )}
@@ -334,16 +364,16 @@ interface PlayAreaProps {
 function PlayArea({ cards, damagePreview }: PlayAreaProps) {
   return (
     <div className={cn(
-      'min-h-[200px] p-4 rounded-xl border-2 border-dashed',
-      'bg-[#1a1917]/50 border-[#D4C9B5]/30',
-      'flex flex-col items-center justify-center gap-4'
+      'min-h-[180px] p-6 rounded-2xl border-3 border-dashed',
+      'bg-[#1a1917]/60 border-[#D4C9B5]/40',
+      'flex flex-col items-center justify-center gap-5'
     )}>
       {cards.length === 0 ? (
-        <p className="text-[#5A5550] italic">Play cards here to build your argument</p>
+        <p className="text-[#8A847A] italic text-lg">🎯 Play cards here to build your argument</p>
       ) : (
         <>
           {/* Played cards */}
-          <div className="flex flex-wrap justify-center gap-2">
+          <div className="flex flex-wrap justify-center gap-3">
             {cards.map((card, i) => (
               <Card key={`${card.id}-${i}`} card={card} size="sm" />
             ))}
@@ -351,16 +381,17 @@ function PlayArea({ cards, damagePreview }: PlayAreaProps) {
 
           {/* Damage preview */}
           {damagePreview && (
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-1">
-                <span className="text-[#8A847A]">Chain:</span>
-                <span className="font-mono text-amber-400">
+            <div className="flex items-center gap-6 text-base bg-[#2D2A26] px-6 py-3 rounded-xl">
+              <div className="flex items-center gap-2">
+                <span className="text-[#8A847A]">🔗 Chain:</span>
+                <span className="font-mono text-amber-400 font-bold text-lg">
                   {cards.length} cards ({Math.round((damagePreview.chainBonus - 1) * 100)}% bonus)
                 </span>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[#8A847A]">Damage:</span>
-                <span className="font-mono text-2xl text-amber-400 font-bold">
+              <div className="w-px h-8 bg-[#5A5550]" />
+              <div className="flex items-center gap-2">
+                <span className="text-[#8A847A]">⚔️ Total Damage:</span>
+                <span className="font-mono text-4xl text-amber-400 font-bold">
                   {damagePreview.finalDamage}
                 </span>
               </div>
@@ -383,22 +414,22 @@ interface TPIndicatorProps {
 
 function TPIndicator({ current, max }: TPIndicatorProps) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-[#8A847A]">Thought Points:</span>
-      <div className="flex gap-1">
+    <div className="flex items-center gap-4 bg-[#2D2A26] px-5 py-3 rounded-xl">
+      <span className="text-base text-[#8A847A] font-serif">💭 Thought Points:</span>
+      <div className="flex gap-2">
         {Array.from({ length: max }).map((_, i) => (
           <div
             key={i}
             className={cn(
-              'w-4 h-4 rounded-full border-2 transition-all',
+              'w-7 h-7 rounded-full border-3 transition-all shadow-md',
               i < current
-                ? 'bg-amber-500 border-amber-600'
+                ? 'bg-amber-500 border-amber-600 shadow-amber-500/30'
                 : 'bg-transparent border-[#5A5550]'
             )}
           />
         ))}
       </div>
-      <span className="font-mono text-sm">{current}/{max}</span>
+      <span className="font-mono text-xl font-bold">{current}/{max}</span>
     </div>
   )
 }
