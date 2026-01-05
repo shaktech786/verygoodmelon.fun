@@ -106,6 +106,20 @@ export const ALL_GAMES: readonly GameConfig[] = [
     tags: ['reflection', 'community', 'philosophical', 'afterlife'],
     order: 10,
   },
+  {
+    id: 'idea-lab',
+    slug: 'idea-lab', // Direct: the name evokes the experience
+    title: 'The Alchemist',
+    description: 'Combine concepts to discover new ideas',
+    cardImage: '/games/idea-lab/card.svg',
+    cardAlt: 'The Alchemist - Idea Lab Joker Card',
+    difficulty: 'easy',
+    category: 'Creative',
+    accentColor: 'warning',
+    isShowcase: true,
+    tags: ['ai', 'creative', 'philosophical', 'exploration'],
+    order: 6,
+  },
 ] as const
 
 /**
