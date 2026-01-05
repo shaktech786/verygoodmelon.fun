@@ -1,13 +1,13 @@
 'use client'
 
 /**
- * Mind Architect - Map Screen
+ * Thought Pockets - Map Screen
  * Roguelike map navigation with node selection
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useGameStore } from '@/lib/games/mind-architect/store/gameStore'
-import { MapNode, NodeType } from '@/types/mind-architect'
+import { useGameStore } from '@/lib/games/thought-pockets/store/gameStore'
+import { MapNode, NodeType } from '@/types/thought-pockets'
 import { cn } from '@/lib/utils'
 
 // =============================================================================

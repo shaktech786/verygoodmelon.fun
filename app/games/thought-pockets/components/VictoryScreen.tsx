@@ -1,12 +1,12 @@
 'use client'
 
 /**
- * Mind Architect - Victory Screen
+ * Thought Pockets - Victory Screen
  * Displayed after defeating all 3 bosses
  */
 
 import { useRouter } from 'next/navigation'
-import { useGameStore } from '@/lib/games/mind-architect/store/gameStore'
+import { useGameStore } from '@/lib/games/thought-pockets/store/gameStore'
 import { cn } from '@/lib/utils'
 
 // =============================================================================

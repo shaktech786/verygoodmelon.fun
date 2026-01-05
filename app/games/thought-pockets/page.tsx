@@ -1,13 +1,13 @@
 'use client'
 
 /**
- * Mind Architect - Main Game Page
+ * Thought Pockets - Main Game Page
  * Orchestrates all game screens based on current state
  */
 
 import { useEffect } from 'react'
-import { useGameStore } from '@/lib/games/mind-architect/store/gameStore'
-import { useBattleStore } from '@/lib/games/mind-architect/store/battleStore'
+import { useGameStore } from '@/lib/games/thought-pockets/store/gameStore'
+import { useBattleStore } from '@/lib/games/thought-pockets/store/battleStore'
 import { MenuScreen } from './components/MenuScreen'
 import { MapScreen } from './components/MapScreen'
 import { BattleScreen } from './components/BattleScreen'

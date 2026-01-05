@@ -1,5 +1,5 @@
 /**
- * Mind Architect - Enemy Database
+ * Thought Pockets - Enemy Database
  * Cognitive biases as enemies with unique attack patterns
  *
  * DESIGN PHILOSOPHY:
@@ -8,7 +8,7 @@
  * - Dialogue adds educational value and personality
  */
 
-import { Enemy, AttackPattern, EnemyDialogue } from '@/types/mind-architect'
+import { Enemy, AttackPattern, EnemyDialogue } from '@/types/thought-pockets'
 
 // =============================================================================
 // FLOOR 1 ENEMIES - Basic Biases (40-60 HP)

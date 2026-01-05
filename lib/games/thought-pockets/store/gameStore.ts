@@ -1,5 +1,5 @@
 /**
- * Mind Architect - Main Game Store
+ * Thought Pockets - Main Game Store
  * Manages run state, progression, and meta-game
  */
 
@@ -14,7 +14,7 @@ import {
   Relic,
   GameMap,
   MapNode,
-} from '@/types/mind-architect'
+} from '@/types/thought-pockets'
 import { getStarterDeck } from '../data/cards'
 import { getStarterRelic } from '../data/relics'
 import { generateFloorMap } from '../engine/mapgen'
@@ -457,7 +457,7 @@ export const useGameStore = create<GameStore>()(
       },
     }),
     {
-      name: 'mind-architect-game',
+      name: 'thought-pockets-game',
       partialize: (state) => ({
         gameState: {
           ...state.gameState,

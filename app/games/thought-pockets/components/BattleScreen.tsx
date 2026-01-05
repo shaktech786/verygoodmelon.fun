@@ -1,16 +1,16 @@
 'use client'
 
 /**
- * Mind Architect - Battle Screen
+ * Thought Pockets - Battle Screen
  * Main combat interface
  */
 
 import { useState, useEffect } from 'react'
-import { useBattleStore } from '@/lib/games/mind-architect/store/battleStore'
-import { useGameStore } from '@/lib/games/mind-architect/store/gameStore'
+import { useBattleStore } from '@/lib/games/thought-pockets/store/battleStore'
+import { useGameStore } from '@/lib/games/thought-pockets/store/gameStore'
 import { Card, CardHand } from './Card'
 import { cn } from '@/lib/utils'
-import { Enemy, Boss, Card as CardType } from '@/types/mind-architect'
+import { Enemy, Boss, Card as CardType } from '@/types/thought-pockets'
 
 // =============================================================================
 // BATTLE SCREEN

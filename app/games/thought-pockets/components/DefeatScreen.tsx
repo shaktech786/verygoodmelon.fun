@@ -1,12 +1,12 @@
 'use client'
 
 /**
- * Mind Architect - Defeat Screen
+ * Thought Pockets - Defeat Screen
  * Displayed when coherence reaches 0
  */
 
 import { useRouter } from 'next/navigation'
-import { useGameStore } from '@/lib/games/mind-architect/store/gameStore'
+import { useGameStore } from '@/lib/games/thought-pockets/store/gameStore'
 
 // =============================================================================
 // DEFEAT SCREEN

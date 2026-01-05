@@ -1,16 +1,16 @@
 'use client'
 
 /**
- * Mind Architect - Shop Screen (Library)
+ * Thought Pockets - Shop Screen (Library)
  * Buy cards, relics, and services
  */
 
 import { useState, useMemo } from 'react'
-import { useGameStore } from '@/lib/games/mind-architect/store/gameStore'
-import { Card, Relic } from '@/types/mind-architect'
+import { useGameStore } from '@/lib/games/thought-pockets/store/gameStore'
+import { Card, Relic } from '@/types/thought-pockets'
 import { Card as CardComponent } from './Card'
 import { cn } from '@/lib/utils'
-import { getShopCards, getShopRelics } from '@/lib/games/mind-architect/data/shop'
+import { getShopCards, getShopRelics } from '@/lib/games/thought-pockets/data/shop'
 
 // =============================================================================
 // SHOP SCREEN

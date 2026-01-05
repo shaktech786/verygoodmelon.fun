@@ -1,9 +1,9 @@
 /**
- * Mind Architect - Shop Data
+ * Thought Pockets - Shop Data
  * Generates shop inventory based on floor and seed
  */
 
-import { Card, Relic } from '@/types/mind-architect'
+import { Card, Relic } from '@/types/thought-pockets'
 import { ALL_CARDS } from './cards'
 import { SHOP_RELICS, COMMON_RELICS, UNCOMMON_RELICS } from './relics'
 

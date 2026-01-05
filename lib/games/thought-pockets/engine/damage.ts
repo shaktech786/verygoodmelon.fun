@@ -1,5 +1,5 @@
 /**
- * Mind Architect - Damage Calculation Engine
+ * Thought Pockets - Damage Calculation Engine
  *
  * FORMULA:
  * Final Damage = (Total Weight) × (Combined Multiplier) × (Chain Bonus) + (Bonuses) - (Resistance)
@@ -19,7 +19,7 @@ import {
   DamageBreakdown,
   StatusEffect,
   CardType,
-} from '@/types/mind-architect'
+} from '@/types/thought-pockets'
 
 // =============================================================================
 // CONSTANTS

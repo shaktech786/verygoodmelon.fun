@@ -1,14 +1,14 @@
 'use client'
 
 /**
- * Mind Architect - Menu Screen
+ * Thought Pockets - Menu Screen
  * Game start and school selection
  */
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useGameStore } from '@/lib/games/mind-architect/store/gameStore'
-import { School } from '@/types/mind-architect'
+import { useGameStore } from '@/lib/games/thought-pockets/store/gameStore'
+import { School } from '@/types/thought-pockets'
 import { cn } from '@/lib/utils'
 
 // =============================================================================
@@ -119,7 +119,7 @@ export function MenuScreen() {
         {/* Title */}
         <div className="text-center mb-12">
           <h1 className="font-serif text-5xl md:text-6xl mb-4">
-            Mind Architect
+            Thought Pockets
           </h1>
           <p className="text-[#8A847A] text-lg max-w-md mx-auto">
             Construct arguments. Defeat cognitive biases.

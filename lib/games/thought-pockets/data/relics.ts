@@ -1,5 +1,5 @@
 /**
- * Mind Architect - Relic Database
+ * Thought Pockets - Relic Database
  * 30 relics that modify gameplay in interesting ways
  *
  * DESIGN PHILOSOPHY:
@@ -9,7 +9,7 @@
  * - Boss relics are powerful but have drawbacks
  */
 
-import { Relic, School } from '@/types/mind-architect'
+import { Relic, School } from '@/types/thought-pockets'
 
 // =============================================================================
 // STARTER RELICS (One per school)

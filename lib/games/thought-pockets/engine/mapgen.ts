@@ -1,9 +1,9 @@
 /**
- * Mind Architect - Map Generation Engine
+ * Thought Pockets - Map Generation Engine
  * Creates procedural maps for each floor
  */
 
-import { MapNode, NodeType } from '@/types/mind-architect'
+import { MapNode, NodeType } from '@/types/thought-pockets'
 
 // =============================================================================
 // CONSTANTS

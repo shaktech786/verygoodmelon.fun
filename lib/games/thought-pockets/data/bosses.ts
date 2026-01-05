@@ -1,5 +1,5 @@
 /**
- * Mind Architect - Boss Database
+ * Thought Pockets - Boss Database
  * Three philosophical bosses representing fundamental questions
  *
  * DESIGN PHILOSOPHY:
@@ -9,7 +9,7 @@
  * - Multiple victory conditions (damage, philosophy score, special)
  */
 
-import { Boss, BossPhase, BossReward, AttackPattern } from '@/types/mind-architect'
+import { Boss, BossPhase, BossReward, AttackPattern } from '@/types/thought-pockets'
 
 // =============================================================================
 // FLOOR 1 BOSS: THE PROBLEM OF INDUCTION

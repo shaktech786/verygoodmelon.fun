@@ -1,13 +1,13 @@
 'use client'
 
 /**
- * Mind Architect - Rest Screen (Meditation)
+ * Thought Pockets - Rest Screen (Meditation)
  * Heal or upgrade a card
  */
 
 import { useState } from 'react'
-import { useGameStore } from '@/lib/games/mind-architect/store/gameStore'
-import { Card as CardType } from '@/types/mind-architect'
+import { useGameStore } from '@/lib/games/thought-pockets/store/gameStore'
+import { Card as CardType } from '@/types/thought-pockets'
 import { Card as CardComponent } from './Card'
 import { cn } from '@/lib/utils'
 

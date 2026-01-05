@@ -1,5 +1,5 @@
 /**
- * Mind Architect - Card Database
+ * Thought Pockets - Card Database
  * ~80 unique cards across 5 types
  *
  * BALANCE NOTES:
@@ -9,7 +9,7 @@
  * - Anti-meta: No single card should dominate; synergies > individual power
  */
 
-import { Card, CardType } from '@/types/mind-architect'
+import { Card, CardType } from '@/types/thought-pockets'
 
 // =============================================================================
 // EVIDENCE CARDS - Base damage through weight

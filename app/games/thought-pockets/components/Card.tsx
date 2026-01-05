@@ -1,11 +1,11 @@
 'use client'
 
 /**
- * Mind Architect - Card Component
+ * Thought Pockets - Card Component
  * Following the visual design system with paper texture and ink aesthetics
  */
 
-import { Card as CardType } from '@/types/mind-architect'
+import { Card as CardType } from '@/types/thought-pockets'
 import { cn } from '@/lib/utils'
 
 interface CardProps {

@@ -1,12 +1,12 @@
 'use client'
 
 /**
- * Mind Architect - Event Screen
+ * Thought Pockets - Event Screen
  * Random mystery encounters with choices
  */
 
 import { useState, useMemo } from 'react'
-import { useGameStore } from '@/lib/games/mind-architect/store/gameStore'
+import { useGameStore } from '@/lib/games/thought-pockets/store/gameStore'
 import { cn } from '@/lib/utils'
 
 // =============================================================================

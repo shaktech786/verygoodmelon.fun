@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test'
 
 /**
- * Mind Architect - Comprehensive E2E Test Suite
+ * Thought Pockets - Comprehensive E2E Test Suite
  *
  * Tests cover all player actions and game permutations:
  * - Menu navigation
@@ -12,7 +12,7 @@ import { test, expect, Page } from '@playwright/test'
  * - Shop, rest, reward, and event screens
  * - Victory and defeat conditions
  *
- * Run with: npx playwright test __tests__/e2e/mind-architect.e2e.test.ts
+ * Run with: npx playwright test __tests__/e2e/thought-pockets.e2e.test.ts
  */
 
 // ============================================================================
@@ -32,7 +32,7 @@ async function waitForGameStable(page: Page) {
  * Start a new game with a specific school
  */
 async function startNewGame(page: Page, school: string = 'Pragmatist') {
-  await page.goto('/games/mind-architect')
+  await page.goto('/games/thought-pockets')
   await waitForGameStable(page)
 
   // Click "Start New Run"
@@ -108,8 +108,8 @@ async function playFirstPlayableCard(page: Page): Promise<boolean> {
  */
 async function resetGameState(page: Page) {
   await page.evaluate(() => {
-    localStorage.removeItem('mind-architect-game')
-    localStorage.removeItem('mind-architect-battle')
+    localStorage.removeItem('thought-pockets-game')
+    localStorage.removeItem('thought-pockets-battle')
   })
   await page.reload()
   await waitForGameStable(page)
@@ -119,15 +119,15 @@ async function resetGameState(page: Page) {
 // Menu Screen Tests
 // ============================================================================
 
-test.describe('Mind Architect - Menu Screen', () => {
+test.describe('Thought Pockets - Menu Screen', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
   })
 
   test('displays game title and main menu options', async ({ page }) => {
     // Check title is visible
-    await expect(page.getByRole('heading', { name: /Mind Architect/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Thought Pockets/i })).toBeVisible()
 
     // Check "Start New Run" button exists
     await expect(page.getByRole('button', { name: /Start New Run/i })).toBeVisible()
@@ -142,7 +142,7 @@ test.describe('Mind Architect - Menu Screen', () => {
     await startNewGame(page)
 
     // Go back to menu
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await waitForGameStable(page)
 
     // Now continue should be available (if run was saved)
@@ -162,7 +162,7 @@ test.describe('Mind Architect - Menu Screen', () => {
 // School Selection Tests
 // ============================================================================
 
-test.describe('Mind Architect - School Selection', () => {
+test.describe('Thought Pockets - School Selection', () => {
   const schools = [
     { name: 'Rationalist', passive: /logic|multiplier/i },
     { name: 'Empiricist', passive: /evidence|weight/i },
@@ -172,7 +172,7 @@ test.describe('Mind Architect - School Selection', () => {
   ]
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await page.getByRole('button', { name: /Start New Run/i }).click()
     await waitForGameStable(page)
@@ -213,9 +213,9 @@ test.describe('Mind Architect - School Selection', () => {
 // Map Navigation Tests
 // ============================================================================
 
-test.describe('Mind Architect - Map Navigation', () => {
+test.describe('Thought Pockets - Map Navigation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
   })
@@ -264,9 +264,9 @@ test.describe('Mind Architect - Map Navigation', () => {
 // Battle Screen Tests
 // ============================================================================
 
-test.describe('Mind Architect - Battle Mechanics', () => {
+test.describe('Thought Pockets - Battle Mechanics', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -392,9 +392,9 @@ test.describe('Mind Architect - Battle Mechanics', () => {
 // Card Chain Mechanics Tests
 // ============================================================================
 
-test.describe('Mind Architect - Card Chain Mechanics', () => {
+test.describe('Thought Pockets - Card Chain Mechanics', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -431,9 +431,9 @@ test.describe('Mind Architect - Card Chain Mechanics', () => {
 // Resource Management Tests
 // ============================================================================
 
-test.describe('Mind Architect - Resource Management', () => {
+test.describe('Thought Pockets - Resource Management', () => {
   test('TP refreshes each turn', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -459,7 +459,7 @@ test.describe('Mind Architect - Resource Management', () => {
   })
 
   test('coherence is displayed in battle', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -479,9 +479,9 @@ test.describe('Mind Architect - Resource Management', () => {
 // Shop Screen Tests
 // ============================================================================
 
-test.describe('Mind Architect - Shop Screen', () => {
+test.describe('Thought Pockets - Shop Screen', () => {
   test('shop displays purchasable items when reached', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -508,9 +508,9 @@ test.describe('Mind Architect - Shop Screen', () => {
 // Rest Screen Tests
 // ============================================================================
 
-test.describe('Mind Architect - Rest Screen', () => {
+test.describe('Thought Pockets - Rest Screen', () => {
   test('rest screen offers heal and upgrade options when reached', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -534,9 +534,9 @@ test.describe('Mind Architect - Rest Screen', () => {
 // Victory and Defeat Tests
 // ============================================================================
 
-test.describe('Mind Architect - Game End States', () => {
+test.describe('Thought Pockets - Game End States', () => {
   test('game can end in defeat when coherence reaches 0', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -580,11 +580,11 @@ test.describe('Mind Architect - Game End States', () => {
   })
 
   test('menu screen loads correctly', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
 
     // Menu should show title
-    await expect(page.getByRole('heading', { name: /Mind Architect/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Thought Pockets/i })).toBeVisible()
 
     // Should have start button
     await expect(page.getByRole('button', { name: /Start New Run/i })).toBeVisible()
@@ -595,9 +595,9 @@ test.describe('Mind Architect - Game End States', () => {
 // Reward Screen Tests
 // ============================================================================
 
-test.describe('Mind Architect - Reward Screen', () => {
+test.describe('Thought Pockets - Reward Screen', () => {
   test('reward screen shows after battle victory', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -646,13 +646,13 @@ test.describe('Mind Architect - Reward Screen', () => {
 // Accessibility Tests
 // ============================================================================
 
-test.describe('Mind Architect - Accessibility', () => {
+test.describe('Thought Pockets - Accessibility', () => {
   test('game has proper ARIA labels', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
 
     // Check for main heading
-    await expect(page.getByRole('heading', { name: /Mind Architect/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Thought Pockets/i })).toBeVisible()
 
     // Start game
     await startNewGame(page)
@@ -668,7 +668,7 @@ test.describe('Mind Architect - Accessibility', () => {
   })
 
   test('keyboard navigation works for map nodes', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -687,7 +687,7 @@ test.describe('Mind Architect - Accessibility', () => {
   })
 
   test('map shows keyboard navigation hint', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -696,7 +696,7 @@ test.describe('Mind Architect - Accessibility', () => {
   })
 
   test('buttons have focus indicators', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
 
     // Tab to Start New Run button
@@ -713,7 +713,7 @@ test.describe('Mind Architect - Accessibility', () => {
 // Console Error Tests
 // ============================================================================
 
-test.describe('Mind Architect - No Console Errors', () => {
+test.describe('Thought Pockets - No Console Errors', () => {
   // Helper to filter out expected/acceptable errors in test environment
   const filterNonCriticalErrors = (errors: string[]) => {
     return errors.filter(err =>
@@ -735,7 +735,7 @@ test.describe('Mind Architect - No Console Errors', () => {
       }
     })
 
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await page.waitForLoadState('networkidle')
 
     const criticalErrors = filterNonCriticalErrors(errors)
@@ -750,7 +750,7 @@ test.describe('Mind Architect - No Console Errors', () => {
       }
     })
 
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -767,9 +767,9 @@ test.describe('Mind Architect - No Console Errors', () => {
 // State Persistence Tests
 // ============================================================================
 
-test.describe('Mind Architect - State Persistence', () => {
+test.describe('Thought Pockets - State Persistence', () => {
   test('game state persists after page reload', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -783,18 +783,18 @@ test.describe('Mind Architect - State Persistence', () => {
     // Should still be on map (or menu with continue option)
     const mapVisible = await page.getByText(/Floor 1/i).isVisible().catch(() => false)
     const continueVisible = await page.getByRole('button', { name: /Continue/i }).isVisible().catch(() => false)
-    const menuVisible = await page.getByRole('heading', { name: /Mind Architect/i }).isVisible().catch(() => false)
+    const menuVisible = await page.getByRole('heading', { name: /Thought Pockets/i }).isVisible().catch(() => false)
 
     expect(mapVisible || continueVisible || menuVisible).toBe(true)
   })
 
   test('can abandon run and start fresh', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
     // Go back to menu by navigating
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await waitForGameStable(page)
 
     // Should see Continue Run option (if state persisted) or can start new
@@ -809,9 +809,9 @@ test.describe('Mind Architect - State Persistence', () => {
 // Edge Case Tests
 // ============================================================================
 
-test.describe('Mind Architect - Edge Cases', () => {
+test.describe('Thought Pockets - Edge Cases', () => {
   test('handles playing all cards gracefully', async ({ page }) => {
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -841,7 +841,7 @@ test.describe('Mind Architect - Edge Cases', () => {
       }
     })
 
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 
@@ -884,7 +884,7 @@ test.describe('Mind Architect - Edge Cases', () => {
       }
     })
 
-    await page.goto('/games/mind-architect')
+    await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)
 

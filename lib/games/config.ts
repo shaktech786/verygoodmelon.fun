@@ -120,6 +120,20 @@ export const ALL_GAMES: readonly GameConfig[] = [
     tags: ['ai', 'creative', 'philosophical', 'exploration'],
     order: 6,
   },
+  {
+    id: 'thought-pockets',
+    slug: 'thought-pockets', // Direct: evokes the deckbuilder mechanic
+    title: 'The Philosopher',
+    description: 'Build arguments, defeat cognitive biases',
+    cardImage: '/games/thought-pockets/card.svg',
+    cardAlt: 'The Philosopher - Thought Pockets Joker Card',
+    difficulty: 'medium',
+    category: 'Thought',
+    accentColor: 'purple',
+    isShowcase: true,
+    tags: ['deckbuilder', 'roguelike', 'philosophy', 'strategy'],
+    order: 7,
+  },
 ] as const
 
 /**

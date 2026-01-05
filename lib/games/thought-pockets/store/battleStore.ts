@@ -1,5 +1,5 @@
 /**
- * Mind Architect - Battle Store
+ * Thought Pockets - Battle Store
  * Manages all combat-specific state
  */
 
@@ -13,7 +13,7 @@ import {
   DamageBreakdown,
   BattleAction,
   Relic,
-} from '@/types/mind-architect'
+} from '@/types/thought-pockets'
 import { calculateDamage, calculateCoherenceDamage } from '../engine/damage'
 import { getRandomEnemy, getEnemyById, getNextPattern, advancePattern } from '../data/enemies'
 import { getBossByFloor, createBossInstance, checkPhaseTransition, transitionToNextPhase, getBossPattern, advanceBossPattern } from '../data/bosses'
