@@ -57,9 +57,9 @@ export default function Home() {
       <div className="w-full max-w-5xl">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 md:gap-10">
           {SHOWCASE_GAMES.map((game, index) => {
-            // Subtle parallax offset per card
-            const offsetX = (mousePosition.x - 0.5) * (index % 2 === 0 ? 8 : -8)
-            const offsetY = (mousePosition.y - 0.5) * (index % 3 === 0 ? 6 : -6)
+            // Very subtle parallax offset per card
+            const offsetX = (mousePosition.x - 0.5) * (index % 2 === 0 ? 2 : -2)
+            const offsetY = (mousePosition.y - 0.5) * (index % 3 === 0 ? 1.5 : -1.5)
 
             return (
               <div

@@ -1238,21 +1238,21 @@ html[data-contrast="extra-high"] *:focus-visible {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-6px);
+    transform: translateY(-2px);
   }
 }
 
 .animate-float {
-  animation: float 4s ease-in-out infinite;
+  animation: float 6s ease-in-out infinite;
 }
 
 /* Subtle variation for different cards */
 .animate-float:nth-child(2n) {
-  animation-duration: 4.5s;
+  animation-duration: 7s;
 }
 
 .animate-float:nth-child(3n) {
-  animation-duration: 5s;
+  animation-duration: 8s;
 }
 
 /* Pause on hover - let user focus */
