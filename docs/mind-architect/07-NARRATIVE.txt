@@ -1,0 +1,385 @@
+================================================================================
+                         MIND ARCHITECT
+                     NARRATIVE & STORY DESIGN
+================================================================================
+
+================================================================================
+                        STORY OVERVIEW
+================================================================================
+
+THE PREMISE:
+You are a consciousness awakening in the Abstract Realm—a space between
+thoughts where ideas take physical form. Here, cognitive biases manifest
+as creatures, and philosophical questions become literal obstacles.
+
+To escape and achieve enlightenment, you must construct a coherent
+worldview strong enough to answer life's deepest questions.
+
+THE JOURNEY:
+This is not a story about a hero defeating evil. It's a story about
+a mind learning to think clearly, facing its own limitations, and
+building something meaningful from the chaos of raw experience.
+
+
+================================================================================
+                       THE ABSTRACT REALM
+================================================================================
+
+WHAT IS IT:
+The Abstract Realm exists in the space between conscious thoughts.
+When you sleep, when you zone out, when you're lost in thought—
+you briefly touch this place.
+
+Most minds pass through without noticing. But you've become aware.
+Now you must find your way out... or become lost forever.
+
+VISUAL METAPHOR:
+- Floating paper and scrolls drift in the void
+- Ideas appear as geometric shapes
+- Biases are distorted, fractal creatures
+- The path is made of connected concepts
+- The sky is filled with question marks
+
+THE PHYSICS:
+- Ideas have weight (more convincing = heavier)
+- Logic creates pathways
+- Contradiction causes instability
+- Coherence holds everything together
+
+
+================================================================================
+                      THE PROTAGONIST
+================================================================================
+
+WHO ARE YOU:
+You are never named. You are simply "The Thinker."
+This is intentional—you are every person's inner philosopher.
+
+YOUR MOTIVATION:
+- Escape the Abstract Realm
+- But also: understand why you're here
+- And ultimately: become a better thinker
+
+YOUR LIMITATIONS:
+- You begin confused and scattered
+- Your thoughts are disorganized (weak deck)
+- Biases constantly distort your perception
+- But you can learn, grow, and strengthen
+
+CHARACTER DEVELOPMENT:
+Your growth is mechanical, not narrative:
+- Deck becomes more focused = clearer thinking
+- Defeating biases = overcoming limitations
+- Answering big questions = achieving wisdom
+
+
+================================================================================
+                     THE SCHOOLS OF THOUGHT
+================================================================================
+
+Each school represents a philosophical tradition and affects starting
+dialogue, available cards, and certain story beats.
+
+─────────────────────────────────────────────────────────────────────────────
+THE RATIONALIST
+─────────────────────────────────────────────────────────────────────────────
+"Reason is the highest authority. Through logic alone, truth is found."
+
+PHILOSOPHY: Descartes, Leibniz, Spinoza
+OPENING: "I think, therefore I am. But what am I thinking?"
+STRENGTH: Strong logical framework
+WEAKNESS: May dismiss valid intuition
+FINAL INSIGHT: "Reason illuminates, but it cannot feel the warmth."
+
+─────────────────────────────────────────────────────────────────────────────
+THE EMPIRICIST
+─────────────────────────────────────────────────────────────────────────────
+"All knowledge comes from experience. The senses are our window to truth."
+
+PHILOSOPHY: Locke, Hume, Berkeley
+OPENING: "What do I actually observe? What can I truly know?"
+STRENGTH: Grounded in evidence
+WEAKNESS: May struggle with abstract concepts
+FINAL INSIGHT: "Experience teaches, but patterns emerge only in the mind."
+
+─────────────────────────────────────────────────────────────────────────────
+THE PRAGMATIST
+─────────────────────────────────────────────────────────────────────────────
+"Truth is what works. Ideas are tools, not treasures."
+
+PHILOSOPHY: James, Dewey, Peirce
+OPENING: "Does it matter if it's 'true'? Does it help me live?"
+STRENGTH: Practical and adaptable
+WEAKNESS: May sacrifice depth for utility
+FINAL INSIGHT: "What works today may fail tomorrow. Utility is not enough."
+
+─────────────────────────────────────────────────────────────────────────────
+THE SKEPTIC
+─────────────────────────────────────────────────────────────────────────────
+"Doubt everything. Certainty is an illusion. Question all assumptions."
+
+PHILOSOPHY: Pyrrho, Sextus Empiricus, modern skeptics
+OPENING: "How do I know I'm not dreaming? How do I know anything?"
+STRENGTH: Resistant to deception
+WEAKNESS: May become paralyzed by doubt
+FINAL INSIGHT: "To doubt everything is impossible. Some ground must be trusted."
+
+─────────────────────────────────────────────────────────────────────────────
+THE ABSURDIST
+─────────────────────────────────────────────────────────────────────────────
+"Life is meaningless—and that's liberating. Embrace the chaos."
+
+PHILOSOPHY: Camus, Kierkegaard, Nietzsche
+OPENING: "There is no meaning. So what? Let's play anyway."
+STRENGTH: Immune to existential despair
+WEAKNESS: May not take things seriously enough
+FINAL INSIGHT: "The absurd is not an excuse. It's an invitation to create."
+
+
+================================================================================
+                       THE BIASES (LORE)
+================================================================================
+
+Biases are not evil—they're natural. They evolved to help us survive.
+But in the Abstract Realm, they've grown twisted and dominant.
+
+ORIGIN OF BIASES:
+Every time a human takes a mental shortcut, a small piece of that
+shortcut drifts into the Abstract Realm. Over millennia, these
+fragments have coalesced into the creatures you face.
+
+They don't want to hurt you. They want to SIMPLIFY you.
+To them, a mind free of complexity is a mind at peace.
+But their peace is the peace of stagnation.
+
+BIAS PERSONALITIES:
+
+CONFIRMATION BIAS:
+"I'm just helping you feel comfortable. Why seek pain?"
+Speaks in soothing tones. Genuinely believes it's helping.
+Defeat dialogue: "Perhaps... there was more to see. I'll look again."
+
+SUNK COST FALLACY:
+"You've come so far. Surely that means something?"
+Desperate, accumulating, never letting go.
+Defeat dialogue: "I can... let go? The weight is lifting..."
+
+DUNNING-KRUGER:
+"I've mastered this! Watch my brilliance!"
+Overconfident, fragile ego, easily triggered.
+Defeat dialogue: "I... I don't know as much as I thought. Teach me."
+
+SURVIVORSHIP BIAS:
+"Look at the winners! Success leaves clues!"
+Charismatic, only shows highlights.
+Defeat dialogue: "The graveyard of failures... I never looked there."
+
+
+================================================================================
+                      THE BOSSES (LORE)
+================================================================================
+
+Bosses are not biases—they're THE BIG QUESTIONS.
+They've existed since humanity first wondered "why?"
+
+─────────────────────────────────────────────────────────────────────────────
+THE PROBLEM OF INDUCTION (Floor 1 Boss)
+─────────────────────────────────────────────────────────────────────────────
+APPEARANCE: An infinite hourglass, sand flowing both ways.
+VOICE: David Hume's measured Scottish tones.
+
+LORE:
+"I have been here since the first creature noticed a pattern.
+'The sun rose yesterday, it will rise tomorrow.'
+But why? Why should the future resemble the past?
+I am not your enemy. I am the question you must face
+to trust anything at all."
+
+DIALOGUE SAMPLE:
+Phase 1: "You rely on patterns. Understandable."
+Phase 2: "Now watch as I break them."
+Phase 3: "And yet you continue. Why?"
+Victory: "You've understood. The pattern cannot prove itself.
+         But we act on it anyway. That is faith in experience."
+
+─────────────────────────────────────────────────────────────────────────────
+THE TROLLEY PROBLEM (Floor 2 Boss)
+─────────────────────────────────────────────────────────────────────────────
+APPEARANCE: A literal trolley on infinite branching tracks.
+VOICE: A chorus of philosophers arguing.
+
+LORE:
+"I am not a puzzle to be solved. I am a mirror.
+What you choose reveals who you are.
+There is no right answer—only your answer.
+And you must be able to defend it."
+
+DIALOGUE SAMPLE:
+Phase 1: "Numbers are easy. Five is more than one."
+Phase 2: "But is a life just a number?"
+Phase 3: "Who do you want to be? Answer with your actions."
+Victory: "You've chosen. Not solved—chosen. That's what ethics is.
+         The trolley problem has no answer. It has a thousand answers.
+         Yours is now part of the conversation."
+
+─────────────────────────────────────────────────────────────────────────────
+THE MEANING OF LIFE (Floor 3 Boss)
+─────────────────────────────────────────────────────────────────────────────
+APPEARANCE: Formless void with a single questioning star.
+VOICE: All voices and none. Your own thoughts reflected.
+
+LORE:
+"I am the question behind all questions.
+Why does anything matter?
+Some say I have no answer. They are wrong.
+The answer is not found. It is made.
+What will you make of me?"
+
+DIALOGUE SAMPLE:
+Phase 1: "Nothing matters. Can you prove otherwise?"
+Phase 2: "Pleasure is enough. Isn't it?"
+Phase 3: "Then create your meaning. Show me what you've built."
+Phase 4: "Your entire journey has been building toward this.
+         What do you believe? SHOW ME."
+
+VICTORY DIALOGUES:
+
+Philosophical Victory:
+"You've built something real. A coherent worldview.
+Not perfect—nothing is. But livable. Defensible. Yours.
+Go now. The Abstract Realm releases you.
+But you'll be back. They always come back."
+
+Combat Victory:
+"You've overpowered me through sheer will.
+Meaning isn't found or made—it's FOUGHT FOR.
+Perhaps that IS the meaning. The struggle itself.
+Very well. Go struggle in the world."
+
+Transcendent Victory:
+"Amor fati. Love of fate. You accept everything.
+Not despite the suffering, but including it.
+This is the deepest wisdom: to love the question
+as much as any answer.
+You are free. Truly free."
+
+
+================================================================================
+                     RECURRING CHARACTERS
+================================================================================
+
+THE LIBRARIAN
+─────────────
+A spectral figure who appears at certain events.
+Offers lore, hints, and philosophical quotes.
+Represents accumulated human wisdom.
+
+"Ah, another thinker lost in the stacks.
+Don't worry—the best thoughts are found by wandering."
+
+PAST THINKERS
+─────────────
+Throughout the realm, you encounter echoes of real philosophers:
+- Socrates (always asking questions)
+- Descartes (doubting everything)
+- Nietzsche (challenging you)
+- Buddha (offering calm)
+- Confucius (speaking of harmony)
+
+They offer cards, relics, and wisdom—never answers.
+
+YOUR SHADOW
+───────────
+Occasionally, you encounter a dark version of yourself.
+It represents your biases made manifest.
+You cannot defeat it—only understand it.
+
+"You think you're different from me?
+I AM you. The you that takes shortcuts.
+We'll meet again."
+
+
+================================================================================
+                    THEMATIC ELEMENTS
+================================================================================
+
+CORE THEMES:
+
+1. THINKING IS A SKILL
+   The game demonstrates that clear thinking requires practice,
+   tools, and awareness of our limitations.
+
+2. BIASES ARE NATURAL, NOT EVIL
+   Our shortcuts evolved for good reasons. The goal is awareness,
+   not elimination.
+
+3. THERE ARE NO FINAL ANSWERS
+   The big questions don't have solutions—only approaches.
+   The value is in the questioning.
+
+4. COHERENCE MATTERS
+   You can believe anything, but it must be consistent.
+   Contradictions collapse worldviews.
+
+5. WISDOM EMERGES FROM ENGAGEMENT
+   You don't find truth by avoiding problems.
+   You find it by wrestling with them.
+
+
+================================================================================
+                    ENDING VARIATIONS
+================================================================================
+
+ENDING: THE AWAKENED
+(Complete the game with high Philosophy Score)
+"You open your eyes. The world looks the same.
+But you see it differently now.
+The biases are still there. They always will be.
+But you notice them. You question them.
+You think."
+
+ENDING: THE WARRIOR
+(Complete the game through pure combat)
+"You open your eyes. You've fought through every obstacle.
+Meaning wasn't handed to you—you took it.
+Perhaps that's what life requires.
+Not finding. Fighting."
+
+ENDING: THE SAGE
+(Complete with Transcendent Victory)
+"You don't open your eyes. You realize they were never closed.
+The Abstract Realm and the real world are the same place.
+Ideas are as real as matter. Thoughts shape reality.
+You are now and forever: a Mind Architect."
+
+ENDING: THE LOST
+(Fail the final boss)
+"The question was too big. Too heavy. Too vast.
+You dissolve into the Abstract Realm.
+But don't worry—other minds are forming.
+Other thinkers will try.
+The question waits for them."
+
+
+================================================================================
+                    LORE COLLECTIBLES
+================================================================================
+
+Throughout the game, players find "Philosophical Fragments"—
+snippets of wisdom that unlock in the Lore Menu.
+
+CATEGORIES:
+- Epistemology (theory of knowledge)
+- Ethics (theory of right action)
+- Metaphysics (nature of reality)
+- Logic (structure of reasoning)
+- Philosophy of Mind (consciousness, self)
+
+Each fragment includes:
+- Quote from a real philosopher
+- Brief explanation
+- How it relates to gameplay
+- "Reflect on this..." prompt for real life
+
+
+================================================================================

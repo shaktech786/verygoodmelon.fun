@@ -1,0 +1,438 @@
+================================================================================
+                         MIND ARCHITECT
+                    BOSS ENCOUNTER DESIGN
+================================================================================
+
+================================================================================
+                       BOSS PHILOSOPHY
+================================================================================
+
+Bosses are not just bigger biases—they're THE BIG QUESTIONS.
+Each boss represents a fundamental philosophical problem that humanity
+has wrestled with for millennia.
+
+BOSS DESIGN PRINCIPLES:
+1. Test everything learned on that floor
+2. Multiple valid strategies (no "correct" answer)
+3. Victory feels like genuine philosophical insight
+4. Defeat feels like running into a hard truth, not unfairness
+5. Memorable encounter that teaches something lasting
+
+BOSS STRUCTURE:
+- Multi-phase fights
+- Philosophical dialogue between phases
+- Puzzle elements mixed with combat
+- Alternative victory conditions
+
+
+================================================================================
+                   FLOOR 1 BOSS: THE PROBLEM OF INDUCTION
+================================================================================
+
+"Just because the sun rose yesterday, why should it rise tomorrow?"
+
+VISUAL DESIGN:
+A massive hourglass with sand flowing upward and downward simultaneously.
+The figure inside is David Hume's silhouette, questioning everything.
+
+ENTRENCHMENT: 120 HP (3 phases of 40 HP each)
+
+THEMATIC CORE:
+Induction is the basis of all scientific reasoning—we assume the future
+will resemble the past. But there's no logical guarantee of this.
+This boss tests whether you can justify belief without certainty.
+
+─────────────────────────────────────────────────────────────────────────────
+PHASE 1: THE PATTERN (40 HP)
+─────────────────────────────────────────────────────────────────────────────
+"You've observed patterns. You expect them to continue. But why?"
+
+MECHANIC:
+Inductive cards (Pattern Matching, Generalization, Analogy) deal DOUBLE damage.
+Boss seems weak to your pattern-recognition.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Past Performance     │   5    │ Standard attack.                           │
+│ Regular Intervals    │   0    │ Telegraphs big attack in 3 turns.          │
+│ The Expected         │   6    │ Only hurts if you played same card twice.  │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+TRANSITION:
+When HP hits 0, the boss doesn't die. Instead:
+
+DIALOGUE:
+"You relied on patterns. You trusted repetition. But watch..."
+
+The hourglass REVERSES. All your Inductive cards are REMOVED from deck.
+
+─────────────────────────────────────────────────────────────────────────────
+PHASE 2: THE BREAK (40 HP)
+─────────────────────────────────────────────────────────────────────────────
+"The sun has risen every day for billions of years. And then, one day..."
+
+MECHANIC:
+Inductive cards now deal ZERO damage. The pattern broke.
+You must rely on deductive logic or first principles.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Black Swan           │  12    │ Surprise attack with no warning.           │
+│ Broken Regularity    │   7    │ +3 damage per Pattern card in your deck.   │
+│ The Unexpected       │   8    │ Occurs when you repeat an action.          │
+│ Hume's Fork          │   5    │ Evidence OR Logic, not both, work.         │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+TRANSITION:
+When HP hits 0:
+
+DIALOGUE:
+"So you abandoned patterns. But can you live without them entirely?"
+
+Your Inductive cards return, but you must choose which to keep.
+
+─────────────────────────────────────────────────────────────────────────────
+PHASE 3: THE SYNTHESIS (40 HP)
+─────────────────────────────────────────────────────────────────────────────
+"Perhaps the question isn't whether induction is certain,
+but whether it is useful enough to act upon."
+
+MECHANIC:
+Both Inductive AND Deductive cards deal normal damage.
+But you must play them TOGETHER for full effect.
+Single-type plays deal 50% damage.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Pragmatic Truth      │   6    │ Your unused card types deal -3 damage.     │
+│ Working Hypothesis   │   8    │ Requires balanced play to mitigate.        │
+│ Justified Belief     │   0    │ Heals 10 unless you prove understanding.   │
+│ The Useful Illusion  │  10    │ Final attack if fight goes too long.       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+VICTORY CONDITION:
+Defeat by damage OR achieve PRAGMATIC VICTORY:
+- Play Induction + Deduction + Evidence in one turn
+- Triggers special dialogue and bonus rewards
+
+DEFEAT DIALOGUE:
+"You tried to prove too much. Sometimes we must act on less than certainty.
+The sun will probably rise. That's enough to plant crops."
+
+VICTORY DIALOGUE:
+"You've understood. Induction cannot be proven—only justified by its fruits.
+We trust patterns not because we must, but because we cannot live without them.
+That trust is not logical certainty. It is something deeper: practical wisdom."
+
+REWARDS:
+- Rare card: "Pragmatic Justification" (Use uncertain cards with confidence)
+- Relic choice: "Hume's Empiricism" OR "Kant's Categories"
+- Insight: +5 max Coherence
+
+
+================================================================================
+                   FLOOR 2 BOSS: THE TROLLEY PROBLEM
+================================================================================
+
+"Five will die unless you act. One will die if you do. What is right?"
+
+VISUAL DESIGN:
+A literal trolley on tracks, splitting infinitely into variations.
+Each track shows different ethical frameworks arguing.
+
+ENTRENCHMENT: 180 HP (3 phases of 60 HP each)
+
+THEMATIC CORE:
+The trolley problem tests our moral intuitions about action vs. inaction,
+consequences vs. intentions, and the value of human lives.
+
+─────────────────────────────────────────────────────────────────────────────
+PHASE 1: THE UTILITARIAN (60 HP)
+─────────────────────────────────────────────────────────────────────────────
+"The math is simple. Five is greater than one. Pull the lever."
+
+MECHANIC:
+Boss uses pure numbers. Bigger arguments = more damage.
+Rewards quantity over quality.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Greatest Good        │   8    │ Damage = (5 - cards you played).           │
+│ Calculate Lives      │   0    │ Counts your "moral weight" in deck.        │
+│ Aggregate Welfare    │   6    │ +2 per card with weight > 3.               │
+│ The Numbers Game     │  10    │ Only triggered if you play < 3 cards.      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+STRATEGY: Play many cards. Quantity matters.
+
+TRANSITION:
+"But wait. What if the one person is your child?"
+
+─────────────────────────────────────────────────────────────────────────────
+PHASE 2: THE DEONTOLOGIST (60 HP)
+─────────────────────────────────────────────────────────────────────────────
+"You shall not use a person merely as a means. The one has rights too."
+
+MECHANIC:
+Boss punishes using others. Cards that "sacrifice" or "use" deal
+Coherence damage to you.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Categorical Imperative│  7    │ Punishes "using" cards.                    │
+│ Duty Calls           │   5    │ Requires you to play specific card type.   │
+│ Respect for Persons  │   6    │ Steelman heals enemy (no using others).    │
+│ Universal Law        │   9    │ Your selfish plays damage you instead.     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+STRATEGY: Use principled cards. Quality over quantity. No exploitation.
+
+TRANSITION:
+"But if everyone followed that rule, more would suffer..."
+
+─────────────────────────────────────────────────────────────────────────────
+PHASE 3: THE VIRTUE ETHICIST (60 HP)
+─────────────────────────────────────────────────────────────────────────────
+"What kind of person do you want to be? What would the virtuous person do?"
+
+MECHANIC:
+Boss judges your CHARACTER across the whole fight.
+Consistency matters. Changing strategies is punished.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Character Assessment │  dmg   │ Damage = inconsistencies in your play.     │
+│ Practical Wisdom     │   0    │ Rewards if you've been consistent.         │
+│ The Flourishing Life │   8    │ Punishes pure calculation.                 │
+│ Aristotle's Mean     │   6    │ Extremes (all Logic OR all Evidence) hurt. │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+ALTERNATIVE VICTORY:
+- Achieve "Moral Synthesis": Play cards from all 3 ethical traditions
+  in one turn (Utilitarian + Deontological + Virtue card)
+- This represents finding YOUR ethical framework
+
+VICTORY DIALOGUE:
+"There is no universally correct answer to the trolley problem.
+What matters is that you've thought deeply about why you choose.
+The examined life requires facing these questions—not solving them,
+but wrestling with them honestly."
+
+REWARDS:
+- Rare card: "Moral Compass" (Choose ethical framework for bonus)
+- Relic: "The Golden Mean" (Balance extremes for power)
+- School unlock: "Ethicist" path
+
+
+================================================================================
+                   FLOOR 3 BOSS: THE MEANING OF LIFE
+================================================================================
+
+"Why does anything matter? Why should you continue?"
+
+VISUAL DESIGN:
+A vast void with a single question mark made of stars.
+The boss is formless—representing the ultimate question.
+
+ENTRENCHMENT: 250 HP (4 phases)
+
+THEMATIC CORE:
+This is the final boss. It represents the deepest question.
+Your entire deck, all your choices, everything you've built—
+it all comes down to this.
+
+─────────────────────────────────────────────────────────────────────────────
+PHASE 1: THE NIHILIST (60 HP)
+─────────────────────────────────────────────────────────────────────────────
+"Nothing you do matters. The universe is indifferent. Why struggle?"
+
+MECHANIC:
+All damage is reduced by 50%. "What's the point?"
+Coherence drains 1 per turn passively.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Heat Death           │   5    │ Passive damage, unavoidable.               │
+│ Cosmic Indifference  │   8    │ Your biggest play is halved.               │
+│ Meaningless Striving │   6    │ Cards played last turn are shuffled back.  │
+│ The Absurd           │  10    │ Random effect (chaos).                     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+COUNTER: Keep playing despite futility. Persistence is the answer.
+
+TRANSITION:
+"You persist despite meaninglessness. Interesting. But..."
+
+─────────────────────────────────────────────────────────────────────────────
+PHASE 2: THE HEDONIST (60 HP)
+─────────────────────────────────────────────────────────────────────────────
+"Pleasure is the only good. Pain the only evil. Why complicate it?"
+
+MECHANIC:
+"Easy" plays deal more damage. Complex strategies are punished.
+Temptation: Simple plays work... but don't build toward victory.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Immediate Gratification│  5   │ Your delayed-effect cards fail.            │
+│ Pleasure Principle   │   0    │ Offers "free" damage if you simplify.      │
+│ Pain Avoidance       │   7    │ Complex chains cost Coherence.             │
+│ The Hedonic Treadmill│   8    │ Same plays deal less each time.            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+COUNTER: Long-term strategy. Delayed gratification cards.
+
+TRANSITION:
+"Pleasure fades. You seek something more. But what?"
+
+─────────────────────────────────────────────────────────────────────────────
+PHASE 3: THE EXISTENTIALIST (70 HP)
+─────────────────────────────────────────────────────────────────────────────
+"There is no inherent meaning. You must CREATE your own. But can you?"
+
+MECHANIC:
+You must BUILD meaning during the fight.
+Playing cards adds to a "Meaning Meter."
+But the boss attacks your constructions.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Bad Faith            │   8    │ Punishes inauthentic plays (copies, etc.). │
+│ Radical Freedom      │   0    │ You MUST choose—no passing turn.           │
+│ Anxiety of Choice    │   6    │ Having too many options costs Coherence.   │
+│ Condemned to Be Free │  12    │ If you do nothing, massive damage.         │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+COUNTER: Make authentic choices. Build YOUR meaning system.
+
+TRANSITION:
+"You've created meaning. But is it true? Or just comforting?"
+
+─────────────────────────────────────────────────────────────────────────────
+PHASE 4: THE SYNTHESIS (60 HP)
+─────────────────────────────────────────────────────────────────────────────
+"Perhaps meaning is neither found nor created. Perhaps it emerges."
+
+MECHANIC:
+Everything you've done in the run matters.
+Cards you've used most, strategies you've favored—
+all contribute to your "Philosophy Score."
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Ultimate Question    │  ???   │ Damage = (100 - your Philosophy Score).    │
+│ Life Review          │   0    │ Shows your journey, adjusts difficulty.    │
+│ The Answer           │  15    │ Only if your philosophy is inconsistent.   │
+│ Amor Fati            │   0    │ If you accept fate, gain immunity 1 turn.  │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+FINAL VICTORY CONDITIONS:
+
+OPTION A - PHILOSOPHICAL VICTORY:
+- Achieve Philosophy Score of 80+
+- This means consistent, thoughtful play throughout the run
+- Boss acknowledges your worldview and yields
+
+OPTION B - COMBAT VICTORY:
+- Reduce HP to 0 through damage
+- Standard but harder path
+
+OPTION C - TRANSCENDENT VICTORY:
+- Play "Amor Fati" (Love of Fate) card + Synthesis + First Principle
+- Accept everything that happened, synthesize it, ground it in truth
+- Instant victory, best rewards, secret ending
+
+FINAL DIALOGUE (varies by victory type):
+
+PHILOSOPHICAL VICTORY:
+"You've built something real. Not an answer—a way of living.
+The meaning of life is not a fact to discover but a garden to tend.
+You have tended yours well. Go now, and live it."
+
+COMBAT VICTORY:
+"You've overpowered the question through sheer will to meaning.
+Not every philosopher would approve. But you've earned your answer:
+To live is to struggle. And struggle itself is enough."
+
+TRANSCENDENT VICTORY:
+"Amor fati. You love your fate—all of it, the suffering too.
+This is the highest wisdom: not to escape life but to embrace it.
+You have become what you were always capable of being.
+The game was never about winning. It was about becoming."
+
+REWARDS:
+- "Enlightenment" achievement
+- Unlock all schools of thought
+- Secret card: "Weltanschauung" (Your personal philosophy - custom effect)
+- Meta-progression: New Game+ mode
+
+
+================================================================================
+                      BOSS DESIGN PRINCIPLES
+================================================================================
+
+1. FAIRNESS OVER DIFFICULTY
+   - Bosses should be hard but never cheap
+   - All attacks are telegraphed
+   - Multiple valid strategies exist
+   - Failure teaches something
+
+2. PHILOSOPHICAL ACCURACY
+   - Boss behaviors reflect real philosophy
+   - Counters match actual responses to the problem
+   - Dialogue is philosophically meaningful
+   - Players learn while fighting
+
+3. EMOTIONAL ARC
+   - Phase 1: Confidence (you know what you're doing)
+   - Phase 2: Crisis (everything changes)
+   - Phase 3: Doubt (is anything true?)
+   - Phase 4: Resolution (synthesis or acceptance)
+
+4. MEMORABLE MOMENTS
+   - Each boss has a "wow" moment
+   - Transitions are dramatic
+   - Victory feels earned
+   - Even defeat is instructive
+
+5. REPLAY VALUE
+   - Different strategies work on different runs
+   - Boss dialogue varies based on your deck
+   - Alternative victory conditions
+   - Secrets to discover
+
+
+================================================================================
+                       BOSS SUMMARY TABLE
+================================================================================
+
+┌─────────────────────┬─────────┬────────┬───────────────────────────────────┐
+│ BOSS                │ FLOOR   │ HP     │ CORE TEST                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Problem of Induction│ 1       │ 120    │ Certainty vs. Practical reasoning │
+│ The Trolley Problem │ 2       │ 180    │ Ethical frameworks and consistency│
+│ Meaning of Life     │ 3       │ 250    │ Complete philosophical worldview  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================

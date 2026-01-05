@@ -1,0 +1,843 @@
+================================================================================
+                         MIND ARCHITECT
+                   VISUAL DESIGN SYSTEM
+          "Handcrafted Philosophy, Not Digital Slop"
+================================================================================
+
+================================================================================
+                      DESIGN MANIFESTO
+================================================================================
+
+This game is about THINKING. The UI should feel like:
+- A well-worn philosophy professor's desk
+- Marginalia in an ancient book
+- Index cards spread across a cork board
+- Ink bleeding into quality paper
+- The warmth of a library at midnight
+
+NOT:
+- Glossy mobile game garbage
+- Neon-lit sci-fi interfaces
+- Generic fantasy card game
+- Anything that looks "AI-generated"
+- Sterile, corporate, lifeless
+
+GUIDING PRINCIPLE:
+Every element should look like it was made by someone who CARES.
+Imperfection is beautiful. Texture is trust. Warmth is wisdom.
+
+
+================================================================================
+                     VISUAL IDENTITY
+================================================================================
+
+THE METAPHOR: THE PHILOSOPHER'S STUDY
+
+Imagine a cluttered study in a centuries-old university:
+- Dark wood desk with coffee rings
+- Stacks of paper with handwritten notes
+- Cork boards with pinned index cards
+- Leather-bound books with gold lettering
+- A single warm lamp casting soft shadows
+- Ink wells, quills, and worn erasers
+
+This is our world. Translate it to pixels.
+
+TEXTURE PHILOSOPHY:
+
+Every surface has subtle texture:
+- Paper grain (not smooth white)
+- Ink that bleeds slightly at edges
+- Shadows that feel hand-painted
+- Borders that aren't perfectly straight
+- Colors that feel mixed by hand
+
+NOTHING IS PERFECTLY ALIGNED:
+- Cards sit at slight angles (±1-2°)
+- Text has micro-variations in weight
+- Lines have imperceptible wobble
+- Spacing breathes, not uniform
+
+
+================================================================================
+                     COLOR SYSTEM (Refined)
+================================================================================
+
+BASE PALETTE: "Aged Parchment"
+──────────────────────────────
+
+These are the core colors. NEVER use pure white or pure black.
+
+BACKGROUNDS:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   PARCHMENT       AGED PAPER      SHADOW          INK DARK                  │
+│   #F7F3EB         #EDE6D6         #D4C9B5         #2D2A26                   │
+│   ████████        ████████        ████████        ████████                  │
+│                                                                             │
+│   Primary bg      Secondary bg    Depth/cards     Text, borders             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+CARD TYPE COLORS: "Natural Inks"
+────────────────────────────────
+
+NOT bright, saturated colors. These are muted, like actual ink.
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   EVIDENCE        LOGIC           FRAMEWORK       META           FLAW       │
+│   "Verdigris"     "Ochre"         "Prussian"      "Tyrian"       "Rust"     │
+│   #4A6B5C         #B8923E         #3D5A6E         #6B4A6E        #8B4A42    │
+│   ████████        ████████        ████████        ████████       ████████   │
+│                                                                             │
+│   Forest ink      Warm gold ink   Steel blue ink  Purple ink     Dried blood│
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+ACCENT COLORS: "Functional"
+───────────────────────────
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   COHERENCE       DAMAGE          HIGHLIGHT       WARNING                   │
+│   "Sage"          "Carmine"       "Candlelight"   "Sepia"                   │
+│   #6B8E7A         #A64B42         #E8C56C         #C49A4B                   │
+│   ████████        ████████        ████████        ████████                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+COLOR RULES:
+1. Never use colors at full saturation
+2. All colors should feel like they belong on paper
+3. Shadows are warm brown, not gray or black
+4. Highlights are cream/gold, not white
+5. Text is always #2D2A26 (ink dark), never pure black
+
+
+================================================================================
+                    TYPOGRAPHY SYSTEM
+================================================================================
+
+FONT SELECTION:
+───────────────
+
+PRIMARY DISPLAY: "Playfair Display"
+- Used for: Titles, card names, boss names
+- Weight: 700 (bold) or 400 (regular italic)
+- Why: Elegant serifs, high contrast, timeless authority
+- Fallback: Georgia, Times New Roman
+
+BODY TEXT: "Source Serif 4"
+- Used for: Descriptions, dialogue, effects
+- Weight: 400 (regular), 600 (semibold for emphasis)
+- Why: Highly readable, warm character, scholarly feel
+- Fallback: Georgia, serif
+
+UI TEXT: "IBM Plex Sans"
+- Used for: Buttons, labels, numbers, stats
+- Weight: 400, 500, 600
+- Why: Clean but warm, good for data
+- Fallback: system-ui, sans-serif
+
+NUMBERS: "IBM Plex Mono"
+- Used for: Damage numbers, HP, stats, costs
+- Weight: 500, 700
+- Why: Tabular numerals align perfectly
+- Fallback: Menlo, monospace
+
+TYPE SCALE (Perfect Fourth - 1.333):
+────────────────────────────────────
+--text-xs:     0.75rem   (12px)  Labels, hints
+--text-sm:     0.875rem  (14px)  Secondary text
+--text-base:   1rem      (16px)  Body text
+--text-lg:     1.333rem  (21px)  Emphasis
+--text-xl:     1.777rem  (28px)  Subheadings
+--text-2xl:    2.369rem  (38px)  Headings
+--text-3xl:    3.157rem  (51px)  Display titles
+--text-4xl:    4.209rem  (67px)  Hero numbers
+
+TYPOGRAPHIC DETAILS:
+────────────────────
+- Letter-spacing on titles: -0.02em (tighter)
+- Letter-spacing on small caps: +0.05em (looser)
+- Line-height body: 1.6
+- Line-height headings: 1.2
+- Paragraph max-width: 65ch
+- Use REAL small caps, not fake
+- Use old-style figures in body text
+- Use tabular figures in stats
+
+
+================================================================================
+                    CARD DESIGN (Detailed)
+================================================================================
+
+CARD DIMENSIONS:
+────────────────
+Full size: 240px × 336px (5:7 ratio - golden-ish)
+Hand size: 160px × 224px
+Thumbnail: 80px × 112px
+
+CARD ANATOMY (Pixel-perfect):
+─────────────────────────────
+
+```
+┌────────────────────────────────────────────┐
+│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │ ← Colored header bar (card type)
+│ ┌──────────────────────────────────────┐   │
+│ │                                      │   │
+│ │  [ICON]              [COST: ●●○]     │   │ ← 12px padding
+│ │                                      │   │
+│ │        OBSERVATION                   │   │ ← Playfair Display 24px
+│ │        ───────────                   │   │ ← Ink line (hand-drawn feel)
+│ │          Evidence                    │   │ ← Source Serif italic 14px
+│ │                                      │   │
+│ │  ╔════════════════════════════════╗  │   │
+│ │  ║                                ║  │   │
+│ │  ║     ┌─────────────────────┐    ║  │   │
+│ │  ║     │                     │    ║  │   │ ← Illustration area
+│ │  ║     │    ILLUSTRATION     │    ║  │   │   (hand-drawn style)
+│ │  ║     │    of an open eye   │    ║  │   │
+│ │  ║     │    seeing clearly   │    ║  │   │
+│ │  ║     │                     │    ║  │   │
+│ │  ║     └─────────────────────┘    ║  │   │
+│ │  ║                                ║  │   │
+│ │  ╚════════════════════════════════╝  │   │ ← Double-line border
+│ │                                      │   │
+│ │  ┌──────────────────────────────┐    │   │
+│ │  │  WEIGHT         MULTIPLIER   │    │   │ ← Stats area
+│ │  │    3               --        │    │   │
+│ │  └──────────────────────────────┘    │   │
+│ │                                      │   │
+│ │  "You observe what is actually       │   │ ← Effect text
+│ │   present, without interpretation."  │   │   Source Serif 13px
+│ │                                      │   │
+│ │  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─    │   │ ← Dashed separator
+│ │                                      │   │
+│ │  The foundation of empiricism.       │   │ ← Flavor text (italic)
+│ │                                      │   │   Source Serif italic 11px
+│ │  ★☆☆                          ◆      │   │ ← Rarity & school
+│ └──────────────────────────────────────┘   │
+│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │ ← Footer bar
+└────────────────────────────────────────────┘
+```
+
+CARD VISUAL DETAILS:
+────────────────────
+
+BACKGROUND:
+- NOT flat color
+- Subtle paper texture (multiply blend, 5% opacity)
+- Slight vignette at edges (radial gradient)
+- Off-white, never pure white: #F7F3EB
+
+BORDER:
+- NOT a simple stroke
+- Double-line effect (outer: 2px dark, inner: 1px lighter)
+- Corners slightly rounded (4px) but NOT pill-shaped
+- Border color varies by card type (darker version of type color)
+- Subtle shadow: 0 4px 8px rgba(45, 42, 38, 0.15)
+
+HEADER BAR:
+- Solid color from card type palette
+- Slightly darker at edges (inner shadow)
+- Contains subtle noise texture
+- Height: 8px
+
+ILLUSTRATION FRAME:
+- Double-line border (like an etching)
+- Inner shadow creating depth
+- Illustrations are LINE ART style
+- Black ink on cream background
+- NOT full-color paintings
+- Think: woodcut, etching, pen-and-ink
+
+COST INDICATORS:
+- Filled circles (●) = cost
+- Empty circles (○) = remaining
+- NOT generic game gems
+- Simple, elegant, like typographer's marks
+
+TEXT TREATMENT:
+- Card name: Playfair Display, centered
+- Subtle text-shadow for depth: 0 1px 0 rgba(255,250,240,0.5)
+- Effect text: Left-aligned, Source Serif
+- Keywords in SMALL CAPS with subtle color
+- Flavor text: Italic, slightly smaller, muted color
+
+CARD STATES:
+────────────
+
+DEFAULT:
+- Sits at 0° rotation in hand
+- Slight shadow beneath
+
+HOVER:
+- Lifts 8px (transform: translateY(-8px))
+- Shadow deepens and spreads
+- Rotate ±1° randomly (micro-wobble)
+- Scale: 1.02
+- Border gets subtle glow (box-shadow with type color)
+- Transition: 150ms ease-out
+
+SELECTED:
+- Golden border glow (#E8C56C)
+- Lifts 12px
+- Scale: 1.05
+- Card "tilts" toward center of play area
+- Particles of light (subtle)
+
+UNPLAYABLE:
+- Desaturate 40%
+- Reduce opacity to 0.7
+- NO harsh "grayed out" look
+- Subtle red tint on border
+- Tooltip explains why
+
+PLAYING (Animation):
+- Card "flies" to play area
+- Rotation during flight (starts tilted, ends flat)
+- Trail of ink particles
+- Lands with subtle "thunk" (visual bounce)
+- Duration: 300ms
+
+UPGRADED:
+- Corner ribbon (gold ink color)
+- Subtle shimmer on border (animated gradient)
+- Stats show +1 in parentheses
+- Name has "Refined" prefix
+
+
+================================================================================
+                    BATTLE SCREEN (Detailed)
+================================================================================
+
+LAYOUT PHILOSOPHY:
+──────────────────
+- Clear hierarchy: Enemy → Play Area → Hand
+- Breathing room (never cramped)
+- Information density balanced with elegance
+- Eye should rest naturally on the play area
+
+SCREEN REGIONS:
+───────────────
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   ╔═══════════════════════════════════════════════════════════════════╗    │
+│   ║  COHERENCE                                        DECK  DISCARD   ║    │
+│   ║  ████████████░░░░░░  42/50                          23     7      ║    │
+│   ╚═══════════════════════════════════════════════════════════════════╝    │
+│                                                                             │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │                                                                         │ │
+│ │                         E N E M Y   Z O N E                             │ │
+│ │                                                                         │ │
+│ │                    ┌─────────────────────────┐                          │ │
+│ │                    │                         │                          │ │
+│ │                    │   ╭───────────────╮     │                          │ │
+│ │                    │   │               │     │                          │ │
+│ │                    │   │    [ENEMY     │     │                          │ │
+│ │                    │   │   PORTRAIT]   │     │                          │ │
+│ │                    │   │               │     │                          │ │
+│ │                    │   ╰───────────────╯     │                          │ │
+│ │                    │                         │                          │ │
+│ │                    │   CONFIRMATION BIAS     │                          │ │
+│ │                    │   ═══════════════════   │                          │ │
+│ │                    │   HP: ██████░░░  28/40  │                          │ │
+│ │                    │                         │                          │ │
+│ │                    │   INTENT: ⚔ 8 damage    │                          │ │
+│ │                    │                         │                          │ │
+│ │                    └─────────────────────────┘                          │ │
+│ │                                                                         │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │                         P L A Y   A R E A                               │ │
+│ │  ┌────────┐  ┌────────┐  ┌────────┐                                     │ │
+│ │  │ Card 1 │  │ Card 2 │  │ Card 3 │      CHAIN: 3 cards (+10%)          │ │
+│ │  └────────┘  └────────┘  └────────┘      DAMAGE PREVIEW: 15             │ │
+│ │                                                                         │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │                         H A N D   Z O N E                               │ │
+│ │                                                                         │ │
+│ │      ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐                             │ │
+│ │      │    │  │    │  │    │  │    │  │    │           TP: ● ● ●         │ │
+│ │      │ C1 │  │ C2 │  │ C3 │  │ C4 │  │ C5 │               3/3          │ │
+│ │      │    │  │    │  │    │  │    │  │    │                             │ │
+│ │      └────┘  └────┘  └────┘  └────┘  └────┘                             │ │
+│ │                                                                         │ │
+│ │                                      [ END TURN ]        [ UNDO ]       │ │
+│ │                                                                         │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+DETAILED COMPONENT DESIGNS:
+───────────────────────────
+
+COHERENCE BAR:
+- NOT a generic progress bar
+- Looks like an old measuring tape or ruler
+- Has tick marks at intervals (10, 20, 30...)
+- Fill is gradient: healthy green → warning amber → critical rust
+- At low health, subtle pulse animation
+- Number displayed in IBM Plex Mono
+- Background has paper texture
+
+ENEMY PORTRAIT AREA:
+- Floating on aged paper "card" (larger than player cards)
+- Portrait is stylized illustration, NOT photorealistic
+- Think: Victorian naturalist drawings
+- Animated idle state (subtle breathing, eye movement)
+- When attacking: telegraph animation 1 turn before
+- HP bar below portrait, same style as coherence
+- Intent icon is hand-drawn symbol (not emoji)
+
+INTENT ICONS (Hand-drawn style):
+- ⚔ Attack: Crossed swords sketch
+- 🛡 Defend: Shield outline
+- ↑ Buff: Rising arrow with flourish
+- ↓ Debuff: Descending spiral
+- ⚡ Special: Starburst
+
+PLAY AREA:
+- Slightly darker background (like a desk blotter)
+- Subtle grid pattern (very faint)
+- Cards land here with slight overlap
+- Shows LIVE damage calculation as you build
+- "CHAIN BONUS" text appears when 3+ cards
+- Ink splatter effects on big damage numbers
+
+HAND ZONE:
+- Cards fan out naturally (like holding cards)
+- Hover to "pull" card up
+- Drag to play area OR click to select
+- Cards at edges have parallax (tilt based on position)
+- Subtle shadow beneath entire hand
+
+BUTTONS:
+- NOT flat modern buttons
+- Raised, with border and inner shadow
+- Paper texture on face
+- Text in Playfair Display
+- Hover: slight lift, border glow
+- Active: pressed in, darker
+- Disabled: faded, no hover effect
+
+
+================================================================================
+                    DAMAGE NUMBERS & FEEDBACK
+================================================================================
+
+DAMAGE NUMBER ANIMATION:
+────────────────────────
+
+When damage is dealt:
+
+1. CALCULATION BUILD-UP (200ms)
+   - Numbers appear one by one
+   - Weight → Multiplier → Bonuses
+   - Each appears with small "pop"
+   - Math operators fade in: × + =
+
+   Example:
+   "8 × 1.5 × 1.1 = ..."
+
+2. FINAL REVEAL (300ms)
+   - Large number PUNCHES in
+   - Screen shake (subtle, 2px)
+   - Ink splatter radiates out
+   - Color: Gold for normal, Red for critical
+   - Font: IBM Plex Mono, 72px, bold
+   - Shadow: Long drop shadow (like stamped)
+
+3. FLOAT UP (500ms)
+   - Number rises and fades
+   - Leaves trail (like ink in water)
+   - Settles into history log
+
+COHERENCE LOSS ANIMATION:
+─────────────────────────
+- Screen edges pulse red briefly
+- Coherence bar "cracks" visually
+- Number shakes before settling
+- Sound: Glass cracking
+- If critical: Vignette darkens
+
+ENEMY DEFEAT:
+─────────────
+- Enemy "unravels" (line art dissolves)
+- Ink particles scatter
+- Paper beneath shows "freed" message
+- Satisfying but NOT violent
+- Duration: 800ms
+
+
+================================================================================
+                    MAP SCREEN DESIGN
+================================================================================
+
+MAP VISUAL STYLE:
+─────────────────
+- NOT generic node graph
+- Looks like a HAND-DRAWN exploration map
+- Think: Tolkien's maps, treasure maps
+- Paper background with coffee stains
+- Paths are ink lines with slight wobble
+- Nodes are illustrated landmarks
+
+NODE ILLUSTRATIONS:
+───────────────────
+
+BATTLE: Small crossed swords icon
+- Ink-drawn, slightly weathered
+- Hover shows enemy silhouette
+
+ELITE: Skull with laurel wreath
+- More detailed illustration
+- Ominous but elegant
+
+REST: Small cabin/tent sketch
+- Cozy, inviting
+- Smoke curling from chimney
+
+SHOP: Merchant's cart/stall
+- Awning, goods displayed
+- Warm and welcoming
+
+MYSTERY: Question mark in ornate frame
+- Decorative border
+- Slight shimmer
+
+TREASURE: Open chest illustration
+- Gold visible
+- Sparkle effects
+
+BOSS: Large illustrated gate/door
+- Imposing architecture
+- Symbols relating to the boss
+
+PATH CONNECTIONS:
+- Dotted lines when undiscovered
+- Solid lines when revealed
+- Player position marked with glowing pip
+- Traveled paths slightly faded
+
+MAP INTERACTION:
+- Smooth pan and zoom (touch-friendly)
+- Click node to see preview
+- Double-click to select path
+- Breadcrumb trail shows journey
+
+
+================================================================================
+                    SHOP SCREEN DESIGN
+================================================================================
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│                    THE AGORA OF IDEAS                                       │
+│                    ═══════════════════                                      │
+│                                                                             │
+│   "Where wisdom meets commerce. Trade carefully, thinker."                  │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                                                                     │   │
+│   │                         C A R D S                                   │   │
+│   │                                                                     │   │
+│   │   ┌─────────┐   ┌─────────┐   ┌─────────┐   ┌─────────┐            │   │
+│   │   │         │   │         │   │         │   │         │            │   │
+│   │   │  Card   │   │  Card   │   │  Card   │   │  Card   │            │   │
+│   │   │         │   │         │   │         │   │         │            │   │
+│   │   └─────────┘   └─────────┘   └─────────┘   └─────────┘            │   │
+│   │    50 gold       50 gold       80 gold      150 gold               │   │
+│   │                                                                     │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                                                                     │   │
+│   │                        R E L I C S                                  │   │
+│   │                                                                     │   │
+│   │   ┌──────────────────────┐   ┌──────────────────────┐               │   │
+│   │   │  🪨 Occam's Razor    │   │  📜 Hegel's Dialect  │               │   │
+│   │   │  +50% simple args    │   │  Auto-synthesis      │               │   │
+│   │   │        200g          │   │        200g          │               │   │
+│   │   └──────────────────────┘   └──────────────────────┘               │   │
+│   │                                                                     │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                                                                     │   │
+│   │                       S E R V I C E S                               │   │
+│   │                                                                     │   │
+│   │   [ Remove a Card - 75g ]  [ Remove Flaw - 50g ]  [ Upgrade - 100g ]│   │
+│   │                                                                     │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│                                           YOUR GOLD: ⬤ 245                 │
+│                                                                             │
+│                              [ LEAVE SHOP ]                                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+SHOP VISUAL DETAILS:
+- Feels like a market stall
+- Items displayed on worn wooden shelves
+- Price tags look like hand-written labels
+- Gold indicator is a coin stack illustration
+- "Sold" items get a SOLD stamp (red ink)
+- Merchant portrait in corner (friendly scholar type)
+
+
+================================================================================
+                    ANIMATION CHOREOGRAPHY
+================================================================================
+
+TIMING REFERENCE:
+─────────────────
+- Instant: 0-50ms (micro-feedback)
+- Quick: 100-200ms (UI responses)
+- Standard: 250-400ms (card movements)
+- Deliberate: 500-800ms (major transitions)
+- Cinematic: 1000ms+ (boss intros, endings)
+
+EASING FUNCTIONS:
+- UI elements: ease-out (quick start, soft land)
+- Cards moving: cubic-bezier(0.34, 1.56, 0.64, 1) (slight bounce)
+- Damage numbers: ease-in (builds momentum)
+- Fades: ease-in-out (gentle)
+
+BATTLE TURN FLOW:
+─────────────────
+
+YOUR TURN START:
+1. Draw pile rustles (100ms)
+2. Cards fly to hand one by one (150ms each, 50ms stagger)
+3. Hand settles with micro-bounce
+4. "Your Turn" text fades in/out (300ms)
+5. TP pips fill with golden glow
+
+PLAYING A CARD:
+1. Card lifts from hand (100ms)
+2. Card flies to play area (200ms, arc trajectory)
+3. Ink particle trail follows card
+4. Card lands with micro-bounce (100ms)
+5. TP pip dims
+6. Damage preview updates
+
+ENDING TURN:
+1. Button pulses briefly
+2. Cards in play "activate" (glow sequence)
+3. Damage calculation builds up
+4. Final damage flies to enemy
+5. Enemy reacts (hit animation)
+6. HP bar depletes (smooth, 300ms)
+7. Enemy turn begins
+
+ENEMY TURN:
+1. Enemy "charges" (telegraph animation, 500ms)
+2. Attack animation (unique per enemy)
+3. Impact on player (screen shake)
+4. Coherence bar updates
+5. Brief pause
+6. Your turn begins
+
+
+================================================================================
+                    MICRO-INTERACTIONS
+================================================================================
+
+These tiny details create the "premium" feel:
+
+HOVER STATES:
+- Cards: Subtle lift + border glow
+- Buttons: Lift + shadow deepen
+- Enemy: Eye tracking cursor
+- Relics: Tooltip with flourish animation
+
+CLICK FEEDBACK:
+- Ripple effect from click point
+- Button depresses visually
+- Subtle haptic (if supported)
+- Sound: Soft "click" or "thunk"
+
+LOADING:
+- NOT a spinner
+- Ink spreading on paper animation
+- Text: "Gathering thoughts..."
+- Feels thematic, not generic
+
+TRANSITIONS:
+- Page changes: Paper turning/sliding
+- Modal open: Unfolds like letter
+- Modal close: Folds and recedes
+- Victory: Triumphant unfurl
+
+IDLE ANIMATIONS:
+- Cards breathe slightly (very subtle scale)
+- Enemy has idle animation
+- Background particles drift (dust motes)
+- Candle/lamp flicker (light variation)
+
+
+================================================================================
+                    REDUCED MOTION VERSION
+================================================================================
+
+For users with vestibular disorders or motion sensitivity:
+
+DISABLED ANIMATIONS:
+- No parallax effects
+- No floating/breathing
+- No particle systems
+- No screen shake
+- No swooping transitions
+
+REPLACED WITH:
+- Instant position changes
+- Simple opacity fades (200ms max)
+- Static damage numbers
+- Subtle color changes instead of movement
+
+STILL PRESERVED:
+- Hover state feedback (non-animated)
+- Focus indicators
+- Selection states
+- Critical information
+
+
+================================================================================
+                    RESPONSIVE BREAKPOINTS
+================================================================================
+
+DESKTOP (1200px+):
+- Full layout as designed
+- 7 cards visible in hand
+- Large enemy portrait
+- All animations enabled
+
+TABLET (768px - 1199px):
+- Condensed spacing
+- 5 cards visible, horizontal scroll
+- Medium enemy portrait
+- Simplified particles
+
+MOBILE PORTRAIT (< 768px):
+- Stacked layout
+- 3 cards visible, swipe to see more
+- Small enemy portrait
+- Minimal animations
+- Bottom sheet for card details
+- Larger touch targets (48px minimum)
+
+MOBILE LANDSCAPE:
+- Similar to tablet
+- Card hand along bottom
+- Enemy and play area share space
+
+
+================================================================================
+                    ACCESSIBILITY REQUIREMENTS
+================================================================================
+
+VISUAL:
+- All text meets WCAG 2.1 AA contrast (4.5:1 minimum)
+- Focus indicators visible (3px solid, offset)
+- No color-only information (patterns, icons too)
+- Text resizable to 200% without loss
+- Reduced motion option
+
+MOTOR:
+- All interactions via keyboard
+- No drag required (click alternative)
+- Large click targets
+- No time pressure
+
+COGNITIVE:
+- Clear, consistent layouts
+- Tooltips for all elements
+- Undo available
+- No sudden changes
+- Tutorial replayable
+
+
+================================================================================
+                    ILLUSTRATION STYLE GUIDE
+================================================================================
+
+For artists creating game assets:
+
+STYLE: Victorian Scientific Illustration meets Philosophical Marginalia
+
+TECHNIQUE:
+- Line art primary (ink on paper)
+- Cross-hatching for shading
+- NO gradients (except subtle background)
+- Visible brush/pen strokes welcome
+- Imperfection is character
+
+ENEMIES:
+- Abstract representations of concepts
+- NOT literal monsters
+- Think: How would an 1800s naturalist draw "Confirmation Bias"?
+- Use symbolism (tunnels, mirrors, scales)
+- Faces can be distorted but not grotesque
+
+CARDS:
+- Central illustration relates to concept
+- Frame with decorative but not busy border
+- Icons are simple, recognizable
+- Can include small marginalia (notes, arrows)
+
+AVOID:
+- Photorealism
+- Generic fantasy art
+- Anime/manga style
+- Anything that looks "stock"
+- Bright, saturated colors
+- Busy, cluttered compositions
+
+
+================================================================================
+                    SOUND DESIGN NOTES
+================================================================================
+
+AUDIO PHILOSOPHY:
+Sound should feel like:
+- Library ambiance
+- Turning pages
+- Ink on paper
+- Wooden furniture
+- Distant thunderstorm
+
+UI SOUNDS:
+- Card draw: Paper sliding
+- Card play: Soft thunk on wood
+- Button click: Satisfying tactile click
+- Hover: Very subtle (almost subliminal)
+- Error: Gentle "nope" (not harsh)
+
+COMBAT:
+- Damage dealt: Impact + whoosh
+- Coherence loss: Glass crack/stress
+- Chain bonus: Building chime
+- Victory: Relief + triumph swell
+- Defeat: Somber fade
+
+MUSIC:
+- Ambient, not melodic
+- Solo piano or string quartet snippets
+- Adapts to battle intensity
+- Never overwhelming
+- Can be disabled without missing info
+
+
+================================================================================

@@ -1,0 +1,464 @@
+================================================================================
+                         MIND ARCHITECT
+                      UI/UX DESIGN DOCUMENT
+================================================================================
+
+================================================================================
+                       DESIGN PHILOSOPHY
+================================================================================
+
+CORE PRINCIPLES:
+
+1. CLARITY OVER CLEVERNESS
+   - Every piece of information is immediately readable
+   - No hidden mechanics or obscured data
+   - Tooltips available for everything
+
+2. CALM AESTHETICS
+   - Paper-craft, hand-drawn feeling
+   - Warm, muted colors
+   - Plenty of whitespace
+   - Reduce visual anxiety
+
+3. ACCESSIBLE BY DEFAULT
+   - Keyboard-only navigation
+   - Screen reader support
+   - Color-blind friendly
+   - Adjustable text size
+
+4. RESPONSIVE DESIGN
+   - Works on desktop (primary)
+   - Works on tablet
+   - Works on mobile (simplified)
+
+
+================================================================================
+                      COLOR PALETTE
+================================================================================
+
+BACKGROUND COLORS:
+```
+--bg-primary:     #f5f0e8     /* Warm paper */
+--bg-secondary:   #ebe5d9     /* Aged paper */
+--bg-card:        #fffdf7     /* Fresh paper */
+--bg-dark:        #2a2520     /* Ink dark */
+```
+
+TEXT COLORS:
+```
+--text-primary:   #2a2520     /* Main text */
+--text-secondary: #6b5e52     /* Secondary text */
+--text-muted:     #9a8d7f     /* Hints, labels */
+--text-inverse:   #f5f0e8     /* On dark backgrounds */
+```
+
+CARD TYPE COLORS:
+```
+--evidence:       #4a7c59     /* Forest green */
+--logic:          #c9a227     /* Warm gold */
+--framework:      #5a7f8c     /* Steel blue */
+--meta:           #7b5e8c     /* Dusty purple */
+--flaw:           #8c4a4a     /* Muted red */
+```
+
+STATUS COLORS:
+```
+--coherence:      #5a8c6e     /* Health green */
+--damage:         #c45c4a     /* Attack red */
+--buff:           #7fa8c9     /* Buff blue */
+--warning:        #d4a84b     /* Warning amber */
+```
+
+UI ACCENTS:
+```
+--accent:         #c9a227     /* Primary accent */
+--accent-hover:   #a88820     /* Hover state */
+--border:         #d4cfc2     /* Subtle borders */
+--border-strong:  #9a8d7f     /* Emphasized borders */
+```
+
+
+================================================================================
+                     TYPOGRAPHY
+================================================================================
+
+FONT STACK:
+```css
+--font-display: 'Crimson Pro', Georgia, serif;
+--font-body: 'Source Sans Pro', system-ui, sans-serif;
+--font-mono: 'IBM Plex Mono', monospace;
+```
+
+TYPE SCALE:
+```css
+--text-xs:    0.75rem    /* 12px - labels */
+--text-sm:    0.875rem   /* 14px - secondary */
+--text-base:  1rem       /* 16px - body */
+--text-lg:    1.125rem   /* 18px - emphasis */
+--text-xl:    1.25rem    /* 20px - subheadings */
+--text-2xl:   1.5rem     /* 24px - headings */
+--text-3xl:   2rem       /* 32px - titles */
+--text-4xl:   2.5rem     /* 40px - display */
+```
+
+USAGE:
+- Display font for titles and card names
+- Body font for descriptions and UI
+- Mono font for numbers and stats
+
+
+================================================================================
+                      MAIN GAME SCREEN
+================================================================================
+
+BATTLE LAYOUT:
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  COHERENCE: ████████░░ 42/50           DECK: 23  DISCARD: 7  DRAW: [icon]  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│                         ┌─────────────────────┐                             │
+│                         │                     │                             │
+│                         │    ENEMY AREA       │                             │
+│                         │                     │                             │
+│                         │  [Bias Visual]      │                             │
+│                         │  Confirmation Bias  │                             │
+│                         │  HP: ██████░░ 28/40 │                             │
+│                         │                     │                             │
+│                         │  INTENT: ⚔️ 8       │                             │
+│                         └─────────────────────┘                             │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                           PLAY AREA                                         │
+│  ┌────────┐ ┌────────┐ ┌────────┐                                          │
+│  │ Card 1 │ │ Card 2 │ │ Card 3 │     ARGUMENT CHAIN: 3 cards (+10%)       │
+│  └────────┘ └────────┘ └────────┘     TOTAL DAMAGE: 15                      │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  YOUR HAND:                                              TP: ●●● (3/3)      │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐                    │
+│  │Observ. │ │Pattern │ │Modus   │ │If-Then │ │Steelman│                    │
+│  │  W: 3  │ │  ×1.3  │ │  ×1.5  │ │  Link  │ │ Meta   │                    │
+│  │ Cost:1 │ │ Cost:1 │ │ Cost:1 │ │ Cost:1 │ │ Cost:2 │                    │
+│  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘                    │
+│                                                                             │
+│  [END TURN]                                              [MENU] [UNDO]     │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+ELEMENT DETAILS:
+
+HEADER BAR:
+- Coherence as progress bar with number
+- Deck count (cards remaining)
+- Discard pile count (clickable to view)
+- Settings/menu access
+
+ENEMY AREA:
+- Large, clear enemy visual
+- Name and HP prominently displayed
+- Intent icon with damage number
+- Status effects shown below
+
+PLAY AREA:
+- Cards played this turn
+- Running total of damage
+- Chain bonus indicator
+- Visual feedback on plays
+
+HAND AREA:
+- 5-7 card hand visible
+- Cards show: Name, key stat, cost
+- Hover for full details
+- Click/tap to play
+
+FOOTER:
+- End Turn button (primary action)
+- Thought Points display
+- Undo last action
+- Menu access
+
+
+================================================================================
+                       CARD DESIGN
+================================================================================
+
+CARD DIMENSIONS:
+- Full size: 200px × 280px
+- Hand size: 140px × 196px
+- Thumbnail: 80px × 112px
+
+CARD LAYOUT:
+```
+┌──────────────────────────┐
+│  💡           Cost: ●●   │
+│                          │
+│      OBSERVATION         │
+│      ─────────────       │
+│        Evidence          │
+│                          │
+│  ┌────────────────────┐  │
+│  │                    │  │
+│  │   [Illustration]   │  │
+│  │       of an        │  │
+│  │    open eye        │  │
+│  │                    │  │
+│  └────────────────────┘  │
+│                          │
+│  WEIGHT: 3               │
+│                          │
+│  "You see what is        │
+│   actually there."       │
+│                          │
+│  ────────────────────    │
+│  The basis of empiricism │
+│                          │
+│  ★☆☆              ◆      │
+└──────────────────────────┘
+```
+
+CARD STATES:
+- Default: Normal appearance
+- Hover: Slight glow, lift effect
+- Selected: Golden border, elevated
+- Playable: Normal brightness
+- Unplayable: Grayed out, "not enough TP"
+- Upgraded: Golden corner ribbon
+
+
+================================================================================
+                       MAP SCREEN
+================================================================================
+
+MAP LAYOUT:
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  FLOOR 1: FOUNDATION                                                        │
+│  ═══════════════════════════════════════════════════════════════════════   │
+│                                                                             │
+│                              [🎭 BOSS]                                      │
+│                              /      \                                       │
+│                           [?]        [💀E]                                  │
+│                          /   \      /    \                                  │
+│                       [⚔️]   [🛏️]  [⚔️]   [?]                               │
+│                         |     |     |      |                                │
+│                      [⚔️]───[🛒]───[⚔️]───[🛏️]───[⚔️]                       │
+│                         |     |     |      |                                │
+│                       [?]   [⚔️]   [🛒]   [⚔️]                               │
+│                          \   |     |    /                                   │
+│                           \  |     |   /                                    │
+│                            [📍 YOU ARE HERE]                                │
+│                                                                             │
+│  LEGEND:                                                                    │
+│  ⚔️ Battle  💀 Elite  🛏️ Rest  🛒 Shop  ? Mystery  🎭 Boss  🎁 Treasure     │
+│                                                                             │
+│  [VIEW DECK]  [VIEW RELICS]  [SETTINGS]                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+NODE INTERACTIONS:
+- Current position marked clearly
+- Available paths highlighted
+- Future nodes visible but muted
+- Past nodes grayed out
+- Hover shows node details
+
+
+================================================================================
+                    ACCESSIBILITY FEATURES
+================================================================================
+
+KEYBOARD NAVIGATION:
+```
+TAB / SHIFT+TAB    - Move between elements
+ENTER / SPACE      - Select/activate
+ARROW KEYS         - Navigate cards in hand
+1-9                - Quick-select card by position
+E                  - End turn
+U                  - Undo last action
+ESC                - Open menu / Cancel
+D                  - View deck
+R                  - View relics
+?                  - Help overlay
+```
+
+SCREEN READER:
+- All elements have aria-labels
+- Card effects read aloud
+- Battle state announced
+- Turn changes announced
+- Damage and effects vocalized
+
+VISUAL ACCESSIBILITY:
+- High contrast mode available
+- Color-blind patterns on card types
+- No color-only information
+- Text scales up to 200%
+- Reduced motion option
+
+COGNITIVE ACCESSIBILITY:
+- Pause anytime (turn-based)
+- Undo available
+- Tooltips explain everything
+- Tutorial replayable
+- "Explain this" button on complex effects
+
+
+================================================================================
+                      ANIMATION PRINCIPLES
+================================================================================
+
+TIMING:
+- Micro-interactions: 100-200ms
+- Card movements: 200-300ms
+- Damage numbers: 400ms
+- Major transitions: 500ms
+
+EASING:
+- Most transitions: ease-out
+- Bouncy elements: spring easing
+- Damage: sharp ease-in
+
+REDUCED MOTION:
+When prefers-reduced-motion is enabled:
+- No card flying animations
+- Instant transitions
+- Static damage numbers
+- No particle effects
+
+ANIMATION CATALOG:
+- Card draw: Slide up from deck
+- Card play: Fly to play area
+- Damage dealt: Number pops with shake
+- Coherence loss: Bar pulses red
+- Enemy defeat: Dissolve effect
+- Turn end: Subtle pulse
+
+
+================================================================================
+                    RESPONSIVE BREAKPOINTS
+================================================================================
+
+DESKTOP (1200px+):
+- Full layout as shown above
+- 7 cards visible in hand
+- Large enemy artwork
+- All details visible
+
+TABLET (768px - 1199px):
+- Condensed layout
+- 5 cards visible, scroll for more
+- Medium enemy artwork
+- Collapsible details
+
+MOBILE (< 768px):
+- Stacked layout
+- 3 cards visible, swipe for more
+- Small enemy artwork
+- Bottom sheet for details
+- Simplified map
+
+
+================================================================================
+                     SOUND DESIGN NOTES
+================================================================================
+
+AUDIO CATEGORIES:
+
+UI SOUNDS:
+- Card hover: Soft paper rustle
+- Card select: Click/tap
+- Card play: Satisfying thunk
+- Button click: Gentle pop
+- Error: Soft negative tone
+
+COMBAT SOUNDS:
+- Damage dealt: Weighted impact
+- Coherence loss: Glass crack
+- Buff applied: Shimmer
+- Debuff applied: Distortion
+- Chain bonus: Building chime
+
+AMBIENT:
+- Menu: Quiet study atmosphere
+- Battle: Subtle tension drone
+- Victory: Relief and triumph
+- Defeat: Somber but not punishing
+
+MUSIC:
+- Procedural/adaptive
+- Layers based on combat intensity
+- Philosophy-inspired melodies
+- Never overwhelming
+
+
+================================================================================
+                      LOADING & FEEDBACK
+================================================================================
+
+LOADING STATES:
+- Skeleton loaders for content
+- Progress bars for long operations
+- Spinner for quick loads
+- Never leave user waiting without feedback
+
+ERROR STATES:
+- Friendly, non-technical messages
+- Clear recovery actions
+- "Try again" always available
+- Contact support option
+
+SUCCESS STATES:
+- Satisfying feedback
+- Clear confirmation
+- Next action obvious
+
+
+================================================================================
+                    ONBOARDING FLOW
+================================================================================
+
+FIRST-TIME EXPERIENCE:
+
+1. WELCOME SCREEN
+   - "Welcome to the Abstract Realm"
+   - Brief introduction (skippable)
+   - Choose school of thought
+
+2. TUTORIAL BATTLE
+   - Guided first battle
+   - Explains cards, TP, coherence
+   - Cannot fail (enemy is weak)
+   - Hints appear contextually
+
+3. FIRST MAP
+   - Explains node types
+   - Suggests first path
+   - Introduces rest/shop
+
+4. PROGRESSIVE DISCLOSURE
+   - New concepts introduced gradually
+   - Tooltips for new elements
+   - "Did you know?" tips
+   - Full manual available
+
+
+================================================================================
+                     WIREFRAME SKETCHES
+================================================================================
+
+See attached wireframes for:
+1. Main menu
+2. Battle screen (desktop)
+3. Battle screen (mobile)
+4. Map screen
+5. Card detail overlay
+6. Shop screen
+7. Rest site
+8. Victory/defeat screens
+9. Settings menu
+10. Deck viewer
+
+
+================================================================================

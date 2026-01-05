@@ -1,0 +1,385 @@
+================================================================================
+                         MIND ARCHITECT
+                      COMBAT SYSTEM DESIGN
+================================================================================
+
+================================================================================
+                        BATTLE OVERVIEW
+================================================================================
+
+Combat in Mind Architect represents a philosophical debate or internal
+struggle against cognitive bias. You're not fighting with swords—you're
+constructing arguments.
+
+TERMINOLOGY:
+- PERSUASION: Your "damage" - how convincing your argument is
+- COHERENCE: Your "health" - the logical consistency of your worldview
+- ENTRENCHMENT: Enemy "health" - how embedded the bias is
+- RESISTANCE: Enemy "armor" - how defended against logic
+
+
+================================================================================
+                         TURN STRUCTURE
+================================================================================
+
+YOUR TURN
+─────────
+1. DRAW PHASE
+   - Draw 5 cards (can be modified by relics)
+   - Flaws are drawn like normal cards
+   - "Innate" cards always appear
+
+2. PLANNING PHASE
+   - View hand, enemy intent, board state
+   - No time limit
+   - Can view discard pile, deck count
+
+3. PLAY PHASE
+   - Spend Thought Points (TP) to play cards
+   - Default: 3 TP per turn
+   - Cards resolve in order played
+   - Can end turn early
+
+4. RESOLUTION PHASE
+   - All played cards form your "Argument"
+   - Damage is calculated (see below)
+   - Effects trigger in order
+   - Cards go to discard pile
+
+5. END PHASE
+   - Hand discards (unless "Retain")
+   - End-of-turn effects trigger
+   - Enemy intent updates
+
+ENEMY TURN
+──────────
+1. INTENT PHASE
+   - Enemy reveals next action (shown during your turn)
+   - You always know what's coming
+
+2. ACTION PHASE
+   - Enemy performs their action
+   - Attack, defend, special ability, or buff
+
+3. EFFECT PHASE
+   - Any ongoing effects tick
+   - Status conditions apply/expire
+
+
+================================================================================
+                      DAMAGE CALCULATION
+================================================================================
+
+Your argument's PERSUASION (damage) is calculated as follows:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   PERSUASION = (Total Weight) × (Combined Multiplier) × (Bonuses)           │
+│                                                                             │
+│   Where:                                                                    │
+│   • Total Weight = Sum of all Evidence card weights                         │
+│   • Combined Multiplier = Product of all Logic card multipliers             │
+│   • Bonuses = Relic effects, temporary buffs, special conditions            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+EXAMPLE CALCULATION:
+
+Cards Played:
+1. Observation (Weight: 3)
+2. Statistics (Weight: 5)
+3. Modus Ponens (Multiplier: 1.5x)
+4. Pattern Matching (Multiplier: 1.3x)
+5. Therefore (+2 weight as finisher)
+
+Calculation:
+- Total Weight = 3 + 5 + 2 (Therefore) = 10
+- Combined Multiplier = 1.5 × 1.3 = 1.95
+- Persuasion = 10 × 1.95 = 19.5 → 20 (rounded)
+
+WITH RELIC "Philosopher's Stone" (+0.5x to Logic):
+- Adjusted Multipliers = 2.0 × 1.8 = 3.6
+- Persuasion = 10 × 3.6 = 36
+
+
+================================================================================
+                     ARGUMENT CHAIN MECHANICS
+================================================================================
+
+Cards played in sequence form an "Argument Chain."
+Chains provide bonus damage based on length and coherence.
+
+CHAIN LENGTH BONUS:
+- 1-2 cards: No bonus
+- 3 cards: +10% damage
+- 4 cards: +25% damage
+- 5 cards: +50% damage
+- 6+ cards: +75% damage (maximum)
+
+CHAIN COHERENCE:
+Your chain must not contain contradictions. Playing cards that
+logically oppose each other breaks coherence.
+
+OPPOSING PAIRS (Cannot coexist without penalty):
+- Absolute Truth + Relativism
+- Determinism + Free Will (unless using Synthesis)
+- Rationalism + Pure Empiricism
+- Certainty + Radical Skepticism
+
+COHERENCE BREAK PENALTY:
+- Playing contradicting cards: -5 Coherence
+- Coherence break interrupts chain: No chain bonus
+- Some cards (Dialectic, Aufhebung) prevent penalty
+
+
+================================================================================
+                       COHERENCE SYSTEM
+================================================================================
+
+COHERENCE is your philosophical health.
+
+STARTING COHERENCE: 50 (can be modified)
+MAXIMUM COHERENCE: 75
+LOSING CONDITION: Coherence reaches 0
+
+GAINING COHERENCE:
+- Rest sites: +10 Coherence
+- Some relics: +1 per battle won
+- Rare cards: Conditional coherence gain
+- "Clarity" moments in narrative
+
+LOSING COHERENCE:
+- Enemy attacks: Variable damage
+- Playing contradicting cards: -5 each
+- Flaw card effects: Variable
+- Some powerful cards cost Coherence
+
+COHERENCE THRESHOLDS:
+- 50+: Full effectiveness
+- 30-49: Warning state (visual cue)
+- 15-29: Critical (some cards disabled)
+- 1-14: Desperate (simplified UI, tense music)
+- 0: Defeat - "Lost in Confusion"
+
+
+================================================================================
+                    ENEMY ENTRENCHMENT & RESISTANCE
+================================================================================
+
+ENTRENCHMENT (Enemy HP)
+───────────────────────
+How deeply the bias is embedded in thinking.
+Reduced by your Persuasion damage.
+
+RESISTANCE (Enemy Armor)
+────────────────────────
+Some biases resist certain argument types.
+Resistance reduces incoming damage of that type.
+
+RESISTANCE TYPES:
+- Evidence Resistance: Reduces damage from Evidence cards
+- Logic Resistance: Reduces multiplier effectiveness
+- Emotional Resistance: Immune to pathos-based effects
+- Authority Resistance: Expert Opinion cards less effective
+
+Example:
+- Confirmation Bias has Evidence Resistance: 3
+- Your argument deals 20 Persuasion
+- 15 of that was from Evidence weight
+- Reduced: 20 - 3 = 17 actual damage
+
+
+================================================================================
+                      ENEMY INTENT SYSTEM
+================================================================================
+
+Enemies telegraph their next action with visual indicators.
+
+INTENT TYPES:
+
+⚔️ ATTACK: Will deal Coherence damage
+   - Number shown = damage amount
+   - Color indicates type (red = direct, purple = effect)
+
+🛡️ DEFEND: Will gain Resistance or immunity
+   - Shield icon = gaining resistance
+   - Specific icon = type of defense
+
+💫 BUFF: Will strengthen itself
+   - Up arrow = power increase
+   - Clock = lasting effect
+
+🌀 SPECIAL: Unique ability
+   - Each bias has signature moves
+   - Learn patterns through play
+
+💭 DEBUFF: Will add Flaw to your deck
+   - Skull icon = incoming Flaw
+   - Type indicated by color
+
+
+================================================================================
+                        SPECIAL MECHANICS
+================================================================================
+
+SYNTHESIS MECHANIC
+──────────────────
+When you play Thesis on a card, then Antithesis on an opposing card,
+they combine into a Synthesis.
+
+Process:
+1. Play "Thesis" on Card A (e.g., "Free Will")
+2. Play Card A
+3. Play "Antithesis"
+4. Play Card B that opposes A (e.g., "Determinism")
+5. SYNTHESIS triggers:
+   - Damage: 3.0x multiplier applied
+   - New Card: "Compatibilism" added to deck
+   - No Coherence loss from contradiction
+
+Synthesis cards are powerful and represent genuine philosophical progress.
+
+STEELMANNING MECHANIC
+─────────────────────
+Using the "Steelman" card copies the enemy's strongest argument.
+
+Process:
+1. Play "Steelman" (costs 2 TP)
+2. Copy appears in your hand
+3. If you win using that card: 2x rewards
+
+This teaches the real skill of understanding opposing viewpoints.
+
+SOCRATIC CHAIN
+──────────────
+Playing multiple "Why?" cards in sequence creates escalating multipliers.
+
+Chain effect:
+- 1st Why: 1.5x
+- 2nd Why: 2.0x
+- 3rd Why: 2.5x
+- 4th Why: 3.0x
+- 5th Why: 3.5x + "Five Whys" achievement
+
+REDUCTIO AD ABSURDUM
+────────────────────
+If the enemy has a Flaw or contradiction, Reductio deals massive damage.
+
+Condition: Enemy must have:
+- A Flaw card used against you
+- An internal contradiction (rare, elite enemies)
+- A logically impossible position
+
+Damage: 2.5x multiplier + enemy loses next turn
+
+
+================================================================================
+                        DAMAGE TYPES
+================================================================================
+
+There are different "flavors" of Persuasion:
+
+LOGOS (Logical)
+───────────────
+- Primary damage type
+- Comes from Evidence + Logic combinations
+- Resisted by Logic Resistance
+- Effective against: Appeal to Emotion, Red Herring
+
+ETHOS (Credibility)
+───────────────────
+- From Authority and Expertise cards
+- Reduced by Authority Resistance
+- Effective against: Ad Hominem, Genetic Fallacy
+
+PATHOS (Emotional)
+──────────────────
+- From Narrative and Story cards
+- Reduced by Emotional Resistance
+- Effective against: Cold Logic bias, Vulcan fallacy
+
+KAIROS (Timing)
+───────────────
+- Bonus damage for perfect timing
+- Playing exactly what the situation needs
+- Cannot be resisted
+- Rare, triggered by specific conditions
+
+
+================================================================================
+                     VICTORY & DEFEAT CONDITIONS
+================================================================================
+
+VICTORY:
+- Reduce enemy Entrenchment to 0
+- Enemy admits defeat (dialogue)
+- Rewards screen appears
+
+DEFEAT:
+- Coherence reduced to 0
+- "Lost in Confusion" screen
+- Run ends (unless revive relic)
+
+SPECIAL VICTORIES:
+- "Perfect Logic": Win without Coherence loss (+bonus)
+- "Steelman Victory": Win using enemy's own logic (+2x rewards)
+- "Socratic Victory": Win using only questions (+achievement)
+
+
+================================================================================
+                         DIFFICULTY SCALING
+================================================================================
+
+Battles scale based on floor and path choice:
+
+FLOOR 1 (Foundation):
+- Enemies have 20-40 Entrenchment
+- Simple attack patterns
+- Few Flaw additions
+- Teaches basic mechanics
+
+FLOOR 2 (Challenge):
+- Enemies have 40-70 Entrenchment
+- Complex patterns
+- Multiple intents per turn
+- Requires synergy play
+
+FLOOR 3 (Mastery):
+- Enemies have 70-120 Entrenchment
+- Elite abilities
+- Flaw combos
+- Tests full understanding
+
+BOSS SCALING:
+- Floor 1 Boss: 100 Entrenchment
+- Floor 2 Boss: 150 Entrenchment
+- Floor 3 Boss: 200+ Entrenchment
+
+
+================================================================================
+                      STATUS EFFECTS
+================================================================================
+
+POSITIVE (On You):
+- FOCUSED: +1 TP next turn
+- INSPIRED: Draw +2 cards next turn
+- GROUNDED: Immune to Coherence loss next turn
+- INSIGHTFUL: See enemy deck for 1 turn
+- ELOQUENT: All cards cost -1 TP
+
+NEGATIVE (On You):
+- CONFUSED: Random card costs +1 TP
+- DOUBTFUL: -0.5x to all multipliers
+- DISTRACTED: Draw -1 card next turn
+- BIASED: Cannot play certain card types
+- SILENCED: Cannot play Meta cards
+
+ON ENEMY:
+- EXPOSED: Takes +50% damage
+- STUNNED: Skips next turn
+- WEAKENED: Deals -3 damage
+- VULNERABLE: No Resistance next turn
+- ENLIGHTENED: Enemy joins you (special ending)
+
+
+================================================================================

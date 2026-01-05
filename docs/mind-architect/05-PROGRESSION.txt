@@ -1,0 +1,515 @@
+================================================================================
+                         MIND ARCHITECT
+                    PROGRESSION SYSTEM DESIGN
+================================================================================
+
+================================================================================
+                       RUN STRUCTURE
+================================================================================
+
+Each run is a complete journey through the Abstract Realm.
+Average run length: 30-45 minutes.
+
+THREE-FLOOR STRUCTURE:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   FLOOR 1: FOUNDATION          FLOOR 2: CHALLENGE        FLOOR 3: MASTERY  │
+│   "Awakening"                  "Questioning"             "Integration"     │
+│                                                                             │
+│   • 12-15 nodes                • 15-18 nodes             • 10-12 nodes     │
+│   • Basic biases               • Complex biases          • Elite biases    │
+│   • Learn mechanics            • Test synergies          • Master combos   │
+│   • Boss: Induction            • Boss: Trolley           • Boss: Meaning   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+                          MAP SYSTEM
+================================================================================
+
+Each floor has a procedurally generated map with branching paths.
+Players choose their route, creating different experiences each run.
+
+MAP LAYOUT:
+```
+                    [BOSS]
+                    /    \
+                 [?]      [E]
+                /   \    /   \
+             [B]   [R]  [B]   [?]
+              |     |    |     |
+           [B]─[S]─[B]─[R]─[B]─[B]
+              |     |    |     |
+             [?]   [B]  [S]   [B]
+                \   |    |   /
+                 [START]
+```
+
+NODE TYPES:
+
+[B] BATTLE NODE
+───────────────
+Standard bias encounter.
+Rewards: Card choice (pick 1 of 3), gold.
+Frequency: ~50% of nodes.
+
+[E] ELITE NODE
+──────────────
+Harder enemy, better rewards.
+Rewards: Rare card choice, relic, more gold.
+Frequency: ~10% of nodes.
+Marked with skull icon.
+
+[R] REST NODE
+─────────────
+Heal or upgrade.
+Options:
+- MEDITATE: Restore 30% Coherence
+- REFINE: Upgrade a card
+- REFLECT: Remove a Flaw
+Frequency: ~15% of nodes.
+
+[S] SHOP NODE
+─────────────
+Spend gold on cards, relics, services.
+Stock: 5 cards, 2 relics, 3 services.
+Frequency: ~10% of nodes.
+
+[?] MYSTERY NODE
+────────────────
+Random event (see Events section).
+Could be good, bad, or choice-based.
+Frequency: ~15% of nodes.
+
+[T] TREASURE NODE
+─────────────────
+Free relic, no combat.
+Rare, only 1-2 per floor.
+Often requires difficult path.
+
+
+================================================================================
+                         CARD REWARDS
+================================================================================
+
+After winning battles, choose a card reward:
+
+CARD SELECTION SCREEN:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         CHOOSE A CARD                                       │
+│                                                                             │
+│   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐                      │
+│   │   [Card 1]  │   │   [Card 2]  │   │   [Card 3]  │                      │
+│   │             │   │             │   │             │                      │
+│   │   COMMON    │   │  UNCOMMON   │   │    RARE     │                      │
+│   │             │   │             │   │             │                      │
+│   └─────────────┘   └─────────────┘   └─────────────┘                      │
+│                                                                             │
+│                        [SKIP] (gain 15 gold)                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+RARITY DISTRIBUTION BY FLOOR:
+Floor 1: 70% Common / 25% Uncommon / 5% Rare
+Floor 2: 50% Common / 40% Uncommon / 10% Rare
+Floor 3: 30% Common / 50% Uncommon / 20% Rare
+
+CARD POOL FILTERING:
+- Cards match your school of thought preference
+- Previously skipped cards appear less often
+- Synergy cards appear more if you have matches
+
+
+================================================================================
+                         RELIC SYSTEM
+================================================================================
+
+Relics are permanent passive bonuses for the run.
+
+RELIC SLOTS: Unlimited (but harder to get later)
+
+RELIC SOURCES:
+- Elite battles: Choose 1 of 3
+- Boss battles: Choose 1 of 3 (rare)
+- Treasure nodes: 1 random relic
+- Shop: Purchase for gold
+- Events: Chance to find
+
+─────────────────────────────────────────────────────────────────────────────
+STARTER RELICS (One per school)
+─────────────────────────────────────────────────────────────────────────────
+
+RATIONALIST: "Descartes' Meditation"
+- Start each battle with +1 TP
+- "I think, therefore I am prepared."
+
+EMPIRICIST: "Hume's Impression"
+- Evidence cards deal +1 damage
+- "All knowledge begins with experience."
+
+PRAGMATIST: "James's Cash Value"
+- Cards that "work" in battle gain +0.5x next time
+- "Truth is what works."
+
+SKEPTIC: "Pyrrhonian Suspension"
+- Start with "Doubt" card in hand (free negation)
+- "I withhold judgment."
+
+ABSURDIST: "Sisyphus' Boulder"
+- When at <10 Coherence, deal +50% damage
+- "One must imagine Sisyphus happy."
+
+─────────────────────────────────────────────────────────────────────────────
+COMMON RELICS
+─────────────────────────────────────────────────────────────────────────────
+
+"The Philosopher's Stone"
+- All Logic cards: +0.3x multiplier
+- Classic: Transform thoughts into gold
+
+"Wittgenstein's Ladder"
+- Discard a card: Draw 2 cards
+- "Throw away the ladder after climbing"
+
+"Russell's Paradox"
+- Self-referential cards deal double damage
+- Causes chaos but power
+
+"Occam's Razor"
+- Playing ≤3 cards: +2 damage per card
+- Simplicity has power
+
+"Plato's Cave"
+- See enemy deck order
+- Knowledge is illumination
+
+"Aristotle's Golden Mean"
+- Balanced plays (Evidence = Logic) +50% damage
+- Moderation in all things
+
+"Socrates' Gadfly"
+- Questions deal +2 damage
+- Annoying but effective
+
+"Kant's Starry Sky"
+- +5 max Coherence
+- "The moral law within me"
+
+─────────────────────────────────────────────────────────────────────────────
+UNCOMMON RELICS
+─────────────────────────────────────────────────────────────────────────────
+
+"Nietzsche's Hammer"
+- First card each combat: +3 damage
+- "Philosophize with a hammer"
+
+"Spinoza's Substance"
+- Coherence cannot drop below 1 (survive one lethal)
+- All is one
+
+"Leibniz's Monad"
+- Cards played alone get +2 weight
+- Independent perfection
+
+"Berkeley's Esse Est Percipi"
+- Unseen cards (in deck) empower seen cards (in hand)
+- To be is to be perceived
+
+"Locke's Tabula Rasa"
+- Start floor 1 with no cards, but +3 card rewards
+- Blank slate, fresh start
+
+"Hegel's Dialectic"
+- Thesis + Antithesis always creates Synthesis
+- Automatic synthesis bonus
+
+"Mill's Utility Monster"
+- High-weight cards get +50% weight
+- The greatest good
+
+"Kierkegaard's Leap"
+- Once per battle: Skip logic, deal faith damage
+- Beyond reason
+
+"Confucius' Rectification"
+- Properly named cards (matching enemy weakness) +3 damage
+- Call things by their right names
+
+─────────────────────────────────────────────────────────────────────────────
+RARE RELICS
+─────────────────────────────────────────────────────────────────────────────
+
+"Nietzsche's Übermensch"
+- After killing an enemy: Permanently +0.1x to all multipliers
+- Become who you are
+
+"Buddha's Enlightenment"
+- Coherence slowly regenerates (+1 per turn)
+- Suffering ends
+
+"Lao Tzu's Wu Wei"
+- Playing 0 cards deals 5 damage
+- Action through inaction
+
+"Marcus Aurelius' Meditations"
+- Start each day (floor) at full Coherence
+- Accept what you cannot change
+
+"Epictetus' Enchiridion"
+- Immune to Flaw cards
+- Some things are in our control
+
+
+================================================================================
+                           SHOP SYSTEM
+================================================================================
+
+Shops appear on the map and offer purchases.
+
+CURRENCY: Gold (earned from battles)
+
+SHOP INVENTORY:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            AGORA OF IDEAS                                   │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│                                                                             │
+│  CARDS:                                                                     │
+│  • [Common Card 1] .............. 50g                                       │
+│  • [Common Card 2] .............. 50g                                       │
+│  • [Uncommon Card 1] ............ 80g                                       │
+│  • [Uncommon Card 2] ............ 80g                                       │
+│  • [Rare Card] .................. 150g                                      │
+│                                                                             │
+│  RELICS:                                                                    │
+│  • [Relic 1] .................... 200g                                      │
+│  • [Relic 2] .................... 200g                                      │
+│                                                                             │
+│  SERVICES:                                                                  │
+│  • Remove a Card ................ 75g (+25g each time)                      │
+│  • Remove a Flaw ................ 50g                                       │
+│  • Duplicate a Card ............. 100g                                      │
+│                                                                             │
+│  Your Gold: 245                                                             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+SHOP MECHANICS:
+- Prices increase slightly each floor
+- Rare items more common in later shops
+- Some shops have special "philosopher merchant" events
+
+
+================================================================================
+                          EVENT SYSTEM
+================================================================================
+
+Events occur at Mystery nodes. They present choices with trade-offs.
+
+─────────────────────────────────────────────────────────────────────────────
+SAMPLE EVENTS
+─────────────────────────────────────────────────────────────────────────────
+
+EVENT: "THE ALLEGORY OF THE CAVE"
+─────────────────────────────────
+You find prisoners watching shadows on a wall. They believe the shadows
+are reality. Do you:
+
+[A] Free them (Lose 10 Coherence, gain rare card "Enlightenment")
+[B] Join them (Gain 5 Coherence, add "Illusion" flaw)
+[C] Leave silently (No effect)
+
+────────────────────────────────────────────────────────────────────────────
+
+EVENT: "THE SHIP OF THESEUS"
+────────────────────────────
+A ship has had every plank replaced. Is it the same ship?
+
+[A] "Yes, identity persists" (Transform your oldest card into newest)
+[B] "No, it's a new ship" (Remove 2 cards, add 2 random cards)
+[C] "The question is meaningless" (Remove this event from future runs)
+
+────────────────────────────────────────────────────────────────────────────
+
+EVENT: "BURIDAN'S DONKEY"
+─────────────────────────
+A donkey stands between two identical bales of hay, unable to choose,
+and starves. You face two identical treasure chests. You may only take one.
+
+[A] Take the left chest (Random reward)
+[B] Take the right chest (Same random reward)
+[C] Take neither (Gain "Decisiveness" card - always choose freely)
+
+────────────────────────────────────────────────────────────────────────────
+
+EVENT: "THE EXPERIENCE MACHINE"
+───────────────────────────────
+A machine offers perfect simulated happiness. All your desires fulfilled,
+but none of it real. Do you plug in?
+
+[A] Yes (Full Coherence heal, but -10 max Coherence permanently)
+[B] No (Gain "Authentic Living" card, +5 max Coherence)
+[C] Destroy it (Gain gold, some players might have wanted it)
+
+────────────────────────────────────────────────────────────────────────────
+
+EVENT: "PASCAL'S WAGER"
+───────────────────────
+You meet a gambler who offers a bet: Believe in something unprovable
+for potentially infinite reward, or don't and risk missing out.
+
+[A] Take the wager (Add "Leap of Faith" card, risky but powerful)
+[B] Refuse (Add "Calculated Risk" card, consistent but modest)
+[C] Question the premise (Add "Question" card, challenge assumptions)
+
+
+================================================================================
+                      META-PROGRESSION
+================================================================================
+
+Progress persists between runs, creating long-term goals.
+
+─────────────────────────────────────────────────────────────────────────────
+UNLOCKABLE CONTENT
+─────────────────────────────────────────────────────────────────────────────
+
+SCHOOLS OF THOUGHT (Character Classes):
+- RATIONALIST: Unlocked from start
+- EMPIRICIST: Complete Floor 1 with any school
+- PRAGMATIST: Complete Floor 2 with any school
+- SKEPTIC: Complete the game once
+- ABSURDIST: Die 10 times (embrace failure)
+
+NEW CARDS (Added to card pool):
+- Complete specific achievements
+- Defeat specific bosses
+- Discover through events
+- Total: ~120 cards, ~30 at start, rest unlocked
+
+NEW RELICS (Added to relic pool):
+- Defeat elite enemies
+- Complete challenge runs
+- Find secrets
+
+NEW EVENTS:
+- Encounter philosophical figures
+- Make certain choices
+- Explore all paths
+
+─────────────────────────────────────────────────────────────────────────────
+INSIGHTS (Meta Currency)
+─────────────────────────────────────────────────────────────────────────────
+
+Earned from:
+- Completing runs: 10-50 Insights
+- Achievements: 5-20 Insights
+- Daily challenges: 10 Insights
+- New discoveries: 5 Insights
+
+Spent on:
+- Unlock cards early: 20-50 Insights
+- Unlock schools: 100 Insights
+- Cosmetics: Variable
+- Hints/tips: 5 Insights
+
+─────────────────────────────────────────────────────────────────────────────
+ACHIEVEMENT SYSTEM
+─────────────────────────────────────────────────────────────────────────────
+
+COMPLETION ACHIEVEMENTS:
+- "First Thoughts" - Complete Floor 1
+- "Deeper Questions" - Complete Floor 2
+- "Enlightened" - Complete the game
+- "Mastery" - Complete with all schools
+
+CHALLENGE ACHIEVEMENTS:
+- "Minimalist" - Win with ≤15 cards
+- "Maximalist" - Win with ≥40 cards
+- "Pacifist" - Win using only questions
+- "Speedrunner" - Win in <20 minutes
+- "Perfect Logic" - Win without Coherence loss
+- "The Five Whys" - Chain 5 Why? cards
+- "Synthesis Master" - Create 10 Syntheses in one run
+
+DISCOVERY ACHIEVEMENTS:
+- "Collector" - Own every card (across runs)
+- "Philosopher" - Encounter all events
+- "Scholar" - Read all lore entries
+
+PHILOSOPHICAL ACHIEVEMENTS:
+- "Steelman Champion" - Win 10 fights using enemy logic
+- "Devil's Advocate" - Win arguing FOR the bias
+- "Amor Fati" - Achieve transcendent victory
+
+
+================================================================================
+                     DAILY CHALLENGES
+================================================================================
+
+Each day offers a special challenge run with:
+- Fixed seed (everyone gets same run)
+- Modifiers (harder or weirder rules)
+- Leaderboard (score comparison)
+
+SAMPLE MODIFIERS:
+- "Socratic Mode": Can only play Question cards
+- "Tabula Rasa": Start with 0 cards, must build everything
+- "Heraclitus": All cards change each turn
+- "Parmenides": No cards can change
+- "Nihilist": -1 Coherence per turn, can you find meaning?
+
+SCORING:
+- Floor reached × 100
+- Cards played × 1
+- Enemies defeated × 10
+- Coherence remaining × 2
+- Bosses defeated × 500
+- Flaws in deck × -20
+
+
+================================================================================
+                      NEW GAME+ MODE
+================================================================================
+
+After completing the game, unlock harder modes:
+
+PHILOSOPHER+ (First NG+):
+- Enemies have +20% HP
+- Flaw cards are more punishing
+- New elite enemies
+- Alternate boss dialogue
+
+SAGE++ (Second NG+):
+- Enemies have +40% HP
+- Start with a Flaw
+- Limited card rewards
+- True final boss unlocked
+
+ENLIGHTENED+++ (Third NG+):
+- Maximum difficulty
+- No relics allowed
+- Must maintain 80%+ Coherence
+- True ending unlocked
+
+
+================================================================================
+                         SAVE SYSTEM
+================================================================================
+
+RUNS:
+- Auto-save after every node
+- Can quit and resume anytime
+- One active run per save slot
+- Three save slots
+
+META:
+- Progress saved automatically
+- Cloud sync across devices
+- Cannot be reset (permanent progress)
+
+SETTINGS:
+- Separate from save data
+- Accessibility options persist
+
+
+================================================================================

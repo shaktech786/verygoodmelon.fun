@@ -1,0 +1,263 @@
+================================================================================
+                            MIND ARCHITECT
+           A Critical Thinking Roguelike Deckbuilder
+================================================================================
+
+ELEVATOR PITCH
+--------------
+"Slay the Spire meets philosophy class. Build decks of mental models, logical
+structures, and reasoning patterns to defeat cognitive biases and construct
+increasingly powerful arguments. Your 'damage' is persuasion. Your health is
+coherence. When you 'think big enough,' you win."
+
+
+CORE CONCEPT
+------------
+You are a mind awakening in the Abstract Realm - a space between thoughts where
+ideas take physical form. To escape and achieve enlightenment, you must:
+
+1. Collect REASONING CARDS (mental models, logic patterns, evidence types)
+2. Battle COGNITIVE BIASES (enemies that warp your thinking)
+3. Build increasingly complex ARGUMENTS (combos that deal persuasion damage)
+4. Maintain your COHERENCE (health - contradictions damage you)
+5. Reach the EPIPHANY (final boss: the Ultimate Question you must answer)
+
+
+THE BALATRO INSPIRATION: SYNERGY & MULTIPLICATION
+-------------------------------------------------
+Like Balatro's jokers and hand scoring, Mind Architect uses:
+
+THOUGHT MULTIPLIERS:
+- Base reasoning cards have a "weight" (like chips)
+- Combining them creates "strength" (like multiplier)
+- Certain combos trigger bonus effects
+
+Example:
+- "Observation" card: 2 weight
+- "Pattern Recognition" card: 1.5x multiplier
+- Together: 2 x 1.5 = 3 persuasion damage
+- Add "First Principles": 2 x 1.5 x 2 = 6 persuasion damage
+
+PHILOSOPHICAL JOKERS (passive bonuses):
+- "Occam's Razor": Simpler arguments deal +50% damage
+- "Steel Man": Using opponent's best version gives 2x
+- "Socratic Method": Questions count as 2 cards
+- "Dialectic": Thesis + Antithesis = Synthesis (triple combo)
+
+
+CARD TYPES (THE DECK)
+---------------------
+
+1. EVIDENCE CARDS (Base damage)
+   - Observation (1 weight) - raw sensory data
+   - Testimony (2 weight) - what others have said
+   - Statistics (3 weight) - numbers and data
+   - Experiment (4 weight) - tested results
+   - Axiom (5 weight) - self-evident truths
+
+2. LOGIC CARDS (Multipliers)
+   - Deduction (1.5x) - from general to specific
+   - Induction (1.3x, can stack) - from specific to general
+   - Abduction (2x, risky) - best explanation
+   - Analogy (1.8x) - similar patterns
+   - Syllogism (2.5x, requires 2 premises)
+
+3. FRAMEWORK CARDS (Structural bonuses)
+   - If-Then (chains two cards)
+   - And (combines two arguments)
+   - Or (choose best outcome)
+   - Not (negates bias effects)
+   - Therefore (finishes argument, bonus damage)
+
+4. META CARDS (Special abilities)
+   - Steelman (copy enemy's best card)
+   - Devil's Advocate (flip a card's effect)
+   - Reductio (if enemy has contradiction, massive damage)
+   - Thought Experiment (peek at outcomes)
+   - Socratic Question (force enemy to reveal card)
+
+
+ENEMIES: COGNITIVE BIASES
+-------------------------
+
+Each bias has a unique attack pattern and weakness:
+
+- CONFIRMATION BIAS (HP: 20)
+  - Only takes damage from evidence that contradicts its belief
+  - Attack: Forces you to discard contradicting cards
+  - Weakness: Diverse evidence decks
+
+- SUNK COST (HP: 25)
+  - Gets stronger the longer the fight goes
+  - Attack: Locks one of your cards each turn
+  - Weakness: Quick, decisive arguments
+
+- SURVIVORSHIP BIAS (HP: 18)
+  - Invisible HP bar, can't see true health
+  - Attack: Hides your weaker cards
+  - Weakness: Statistics cards reveal truth
+
+- DUNNING-KRUGER (HP: 15, thinks it's 50)
+  - Overconfident, leaves openings
+  - Attack: Boosts your weak cards (trap!)
+  - Weakness: Humility cards counter
+
+- APPEAL TO AUTHORITY (HP: 30)
+  - Immune to Testimony cards
+  - Attack: Your expert cards help it
+  - Weakness: First principles, direct evidence
+
+- STRAWMAN (HP: 10, regenerates)
+  - Easy to "defeat" but always comes back distorted
+  - Attack: Distorts your last argument
+  - Weakness: Precise, steelmanned arguments
+
+
+BOSS FIGHTS: THE BIG QUESTIONS
+------------------------------
+
+Each "floor" ends with a philosophical boss:
+
+FLOOR 1: The Problem of Induction
+- "Just because the sun rose yesterday, why will it rise tomorrow?"
+- Requires: Pattern + Probability + Pragmatic reasoning
+
+FLOOR 2: The Trolley Problem
+- "What is the right action when all choices harm someone?"
+- Requires: Ethical framework + Consequences + Intention
+
+FLOOR 3: The Ship of Theseus
+- "If every part is replaced, is it still the same thing?"
+- Requires: Identity + Change + Continuity arguments
+
+FINAL BOSS: The Meaning of Life
+- "Why does anything matter?"
+- Requires: Complete philosophical system you've built
+- Uses ALL your cards, tests every synergy
+
+
+PROGRESSION SYSTEM
+------------------
+
+RUN STRUCTURE:
+- 3 floors, 10-15 encounters each
+- Choose paths: Easy bias, hard bias, mystery, rest, shop
+- Collect new cards, upgrade existing ones
+- Find relics (passive buffs)
+
+UPGRADES:
+- Cards can be "refined" (increase weight/multiplier)
+- Cards can be "specialized" (add conditions for bonus)
+- Cards can be "combined" (merge two into one powerful card)
+
+RELICS (Joker-like passives):
+- "The Philosopher's Stone": All logic cards +0.5x
+- "Descartes' Demon": Once per fight, doubt everything (reset)
+- "Wittgenstein's Ladder": Discard after use for +1 card draw
+- "Russell's Paradox": Sets that contain themselves explode
+- "Hume's Fork": Evidence cards sort into two piles
+
+
+META-PROGRESSION (Roguelite elements)
+-------------------------------------
+
+UNLOCK SYSTEM:
+- Beat bosses to unlock new card types
+- Discover biases to learn their counters permanently
+- Collect "Insights" (currency) for meta upgrades
+
+SCHOOLS OF THOUGHT (Character classes):
+- RATIONALIST: Starts with logic cards, weak evidence
+- EMPIRICIST: Starts with evidence, weak logic
+- PRAGMATIST: Balanced, cards get stronger if "useful"
+- SKEPTIC: Starts with questions, must build everything
+- ABSURDIST: Random starting deck, embraces chaos
+
+
+UNIQUE MECHANICS
+----------------
+
+1. COHERENCE (Health)
+   - Your arguments must not contradict
+   - Playing opposing cards damages YOU
+   - Example: "Absolute truth exists" + "All truth is relative" = 10 self-damage
+   - Strategic: Sometimes worth the self-damage for power
+
+2. ARGUMENT CHAINS
+   - Cards can link (If-Then, And, Therefore)
+   - Longer chains = exponential power
+   - But chains can be "broken" by biases
+   - Risk/reward: 5-card chain vs safe 2-card plays
+
+3. THE SYNTHESIS SYSTEM
+   - Thesis card + Antithesis card = Synthesis
+   - Synthesis is stronger than either alone
+   - "Free will" + "Determinism" = "Compatibilism" (new card!)
+   - Encourages collecting opposing ideas
+
+4. DEVIL'S ADVOCATE MODE
+   - Optionally argue FOR the bias
+   - Extremely hard but massive rewards
+   - Forces you to understand opposing views
+
+
+WHY THIS FITS VERYGOODMELON.FUN
+-------------------------------
+
+PHILOSOPHICAL DEPTH:
+- Actually teaches critical thinking
+- Names and explains real mental models
+- Players learn while playing
+
+REDUCES ANXIETY:
+- Understanding biases = less self-judgment
+- Building arguments = sense of control
+- No time pressure (turn-based)
+
+UNIQUE TWIST:
+- Not just "play cards, deal damage"
+- Arguments must be coherent
+- Teaches real logic patterns
+
+REPLAYABILITY:
+- Different schools of thought
+- Procedural bias combinations
+- Multiple paths to enlightenment
+
+
+VISUAL STYLE
+------------
+- Paper-craft aesthetic (like thoughts on paper)
+- Hand-drawn philosophical diagrams
+- Floating in abstract "thought-space"
+- Cards look like index cards with handwriting
+- Biases appear as distorted, shifting shapes
+
+
+MINIMUM VIABLE VERSION
+----------------------
+
+For initial release:
+- 1 floor (5 biases + 1 boss)
+- 20 starter cards
+- 5 relics
+- 1 school of thought
+- Tutorial on basic logic patterns
+
+Can expand to:
+- 3 floors, 15+ biases, 60+ cards
+- 4 schools of thought
+- Daily challenges
+- Multiplayer debate mode
+
+
+SUMMARY
+-------
+Mind Architect is a roguelike deckbuilder where your deck is your mind,
+your cards are ways of thinking, and your enemies are the biases that
+distort clear thought. By playing it, players actually get better at
+critical thinking while enjoying deep strategic gameplay.
+
+"Build your mind. Defeat your biases. Think your way to enlightenment."
+
+================================================================================

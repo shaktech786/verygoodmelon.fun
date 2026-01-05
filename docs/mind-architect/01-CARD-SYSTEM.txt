@@ -1,0 +1,437 @@
+================================================================================
+                         MIND ARCHITECT
+                      CARD SYSTEM DESIGN
+================================================================================
+
+================================================================================
+                        CARD ANATOMY
+================================================================================
+
+Every card has the following properties:
+
+┌─────────────────────────────────────┐
+│  [ICON]           [COST: ●●○]       │
+│                                     │
+│         CARD NAME                   │
+│         ──────────                  │
+│         Card Type                   │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │                             │    │
+│  │      Card Illustration      │    │
+│  │                             │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│  WEIGHT: 3    MULTIPLIER: --        │
+│                                     │
+│  "Card effect text goes here.       │
+│   May include conditions."          │
+│                                     │
+│  ─────────────────────────────────  │
+│  Flavor text in italics             │
+│                                     │
+│  [RARITY: ★★☆]      [SCHOOL: ◆]    │
+└─────────────────────────────────────┘
+
+PROPERTIES EXPLAINED:
+
+COST (Thought Points - TP)
+- 0-3 TP per card
+- You have 3 TP per turn (can be modified)
+- Unspent TP does NOT carry over
+
+WEIGHT (Base Damage)
+- Only on Evidence cards
+- Range: 1-8
+- Represents argument strength
+
+MULTIPLIER
+- Only on Logic cards
+- Range: 1.2x - 3.0x
+- Applied to total weight in chain
+
+RARITY
+- Common (★☆☆): 60% of card pool
+- Uncommon (★★☆): 30% of card pool
+- Rare (★★★): 10% of card pool
+
+SCHOOL
+- Which school of thought favors this card
+- Affects starting deck composition
+
+
+================================================================================
+                       CARD CATEGORIES
+================================================================================
+
+There are 5 main card categories:
+
+1. EVIDENCE CARDS (Blue) - Base damage dealers
+2. LOGIC CARDS (Yellow) - Multipliers and modifiers
+3. FRAMEWORK CARDS (Green) - Structural/combo enablers
+4. META CARDS (Purple) - Special abilities
+5. FLAW CARDS (Red) - Negative cards gained from enemies
+
+
+================================================================================
+                    CATEGORY 1: EVIDENCE CARDS
+================================================================================
+
+Evidence cards provide the base WEIGHT for your arguments.
+They are the foundation that Logic cards multiply.
+
+TIER 1 - WEAK EVIDENCE (Weight 1-2)
+───────────────────────────────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ WEIGHT │ EFFECT                                 │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Anecdote          │  0   │   1    │ Draw 1 card.                           │
+│ Hearsay           │  0   │   1    │ Copy the weight of another Evidence.   │
+│ Intuition         │  1   │   2    │ Peek at top 2 cards of draw pile.      │
+│ Gut Feeling       │  0   │   1    │ +1 weight if you have no Logic cards.  │
+│ Memory            │  1   │   2    │ Retrieve 1 card from discard.          │
+│ Rumor             │  0   │   1    │ 50% chance: +2 weight.                 │
+│ Impression        │  1   │   1    │ Retain in hand next turn.              │
+└────────────────────────────────────────────────────────────────────────────┘
+
+TIER 2 - MODERATE EVIDENCE (Weight 3-4)
+───────────────────────────────────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ WEIGHT │ EFFECT                                 │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Observation       │  1   │   3    │ (No special effect - pure weight)      │
+│ Testimony         │  1   │   3    │ +1 weight per Testimony this fight.    │
+│ Case Study        │  2   │   4    │ +2 weight if targeting specific bias.  │
+│ Survey Data       │  1   │   3    │ +1 weight per unique card type played. │
+│ Expert Opinion    │  2   │   4    │ Immune to "Dismiss" effects.           │
+│ Historical Record │  2   │   4    │ Cannot be discarded by enemy.          │
+│ Photograph        │  1   │   3    │ Cannot be distorted by Strawman.       │
+└────────────────────────────────────────────────────────────────────────────┘
+
+TIER 3 - STRONG EVIDENCE (Weight 5-6)
+─────────────────────────────────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ WEIGHT │ EFFECT                                 │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Statistics        │  2   │   5    │ +1 weight per 10 enemy HP remaining.   │
+│ Experiment        │  2   │   5    │ If replayed, +2 weight.                │
+│ Peer Review       │  2   │   5    │ Double weight if you have Testimony.   │
+│ Replication       │  3   │   6    │ Copy an Evidence card played this turn.│
+│ Meta-Analysis     │  3   │   6    │ +1 weight per Evidence in discard.     │
+│ Direct Experience │  2   │   5    │ Cannot be negated or reduced.          │
+│ Controlled Trial  │  3   │   6    │ Ignore enemy armor this turn.          │
+└────────────────────────────────────────────────────────────────────────────┘
+
+TIER 4 - FOUNDATIONAL EVIDENCE (Weight 7-8)
+───────────────────────────────────────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ WEIGHT │ EFFECT                                 │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Axiom             │  3   │   7    │ Self-evident. Immune to all negation.  │
+│ Mathematical Proof│  3   │   8    │ If Logic card follows, +3 weight.      │
+│ Laws of Nature    │  3   │   7    │ Cannot be removed from your deck.      │
+│ Cogito            │  3   │   8    │ "I think therefore I am" - unshakeable.│
+│ Tautology         │  2   │   7    │ Always true but -1 TP next turn.       │
+│ First Principle   │  3   │   8    │ All other Evidence +1 weight this turn.│
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+                     CATEGORY 2: LOGIC CARDS
+================================================================================
+
+Logic cards provide MULTIPLIERS to your argument's total weight.
+They can also provide conditional bonuses.
+
+DEDUCTIVE LOGIC (Reliable multipliers)
+──────────────────────────────────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ MULT   │ EFFECT                                 │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Modus Ponens      │  1   │ 1.5x   │ If P then Q. P. Therefore Q.           │
+│ Modus Tollens     │  1   │ 1.5x   │ If P then Q. Not Q. Therefore not P.   │
+│ Syllogism         │  2   │ 2.0x   │ Requires 2+ Evidence cards this chain. │
+│ Disjunctive       │  1   │ 1.3x   │ P or Q. Not P. Therefore Q.            │
+│ Hypothetical      │  2   │ 1.8x   │ If A→B and B→C, then A→C.              │
+│ Categorical       │  2   │ 1.7x   │ All X are Y. Z is X. Z is Y.           │
+│ Reductio          │  3   │ 2.5x   │ Triple damage if enemy has Flaw card.  │
+└────────────────────────────────────────────────────────────────────────────┘
+
+INDUCTIVE LOGIC (Stacking multipliers)
+──────────────────────────────────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ MULT   │ EFFECT                                 │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Generalization    │  1   │ 1.2x   │ Stacks: each copy adds +0.2x.          │
+│ Analogy           │  1   │ 1.4x   │ +0.3x if you played this card before.  │
+│ Causal Inference  │  2   │ 1.5x   │ +0.5x if 3+ Evidence played.           │
+│ Pattern Matching  │  1   │ 1.3x   │ +0.2x per matching card type in hand.  │
+│ Enumeration       │  2   │ 1.6x   │ +0.1x per card played this turn.       │
+│ Statistical Leap  │  2   │ 1.8x   │ Risky: 20% chance of 0.5x instead.     │
+└────────────────────────────────────────────────────────────────────────────┘
+
+ABDUCTIVE LOGIC (High risk, high reward)
+────────────────────────────────────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ MULT   │ EFFECT                                 │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Best Explanation  │  2   │ 2.0x   │ 30% chance to deal 0 damage.           │
+│ Inference         │  1   │ 1.6x   │ If wrong, lose 2 coherence.            │
+│ Hypothesis        │  2   │ 2.2x   │ Must be "confirmed" by next turn.      │
+│ Educated Guess    │  1   │ 1.8x   │ -0.5x for each Flaw card you have.     │
+│ Occam's Razor     │  2   │ 2.5x   │ Only works if 3 or fewer cards played. │
+│ Leap of Faith     │  3   │ 3.0x   │ Costs 3 coherence. Cannot be reduced.  │
+└────────────────────────────────────────────────────────────────────────────┘
+
+DIALECTICAL LOGIC (Synthesis mechanics)
+───────────────────────────────────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ MULT   │ EFFECT                                 │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Thesis            │  1   │ 1.0x   │ Mark a card. If Antithesis follows...  │
+│ Antithesis        │  1   │ 1.0x   │ ...combine for Synthesis (3.0x).       │
+│ Synthesis         │  0   │ 3.0x   │ Auto-generated from Thesis+Antithesis. │
+│ Dialectic         │  3   │ 2.0x   │ Play with 2 opposing cards for 4.0x.   │
+│ Aufhebung         │  2   │ 1.5x   │ Preserve both sides: no coherence loss.│
+│ Negation          │  1   │ 1.2x   │ Flip one card's effect.                │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+                   CATEGORY 3: FRAMEWORK CARDS
+================================================================================
+
+Framework cards structure your argument and enable combos.
+They don't deal damage directly but modify how other cards work.
+
+CONNECTIVES
+───────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ EFFECT                                          │
+├────────────────────────────────────────────────────────────────────────────┤
+│ If-Then           │  1   │ Link 2 cards: second gains +50% effect.         │
+│ And               │  0   │ Play 2 cards as one action.                     │
+│ Or                │  1   │ Choose best outcome of 2 possible plays.        │
+│ Not               │  1   │ Negate next enemy effect.                       │
+│ Therefore         │  1   │ Finisher: +2 weight if ending argument.         │
+│ Because           │  0   │ Evidence after this gains +1 weight.            │
+│ Unless            │  1   │ Conditional: effect only if enemy acts.         │
+│ Although          │  1   │ Acknowledge weakness: immune to counters.       │
+└────────────────────────────────────────────────────────────────────────────┘
+
+STRUCTURAL
+──────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ EFFECT                                          │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Premise           │  1   │ Must be played before Conclusion cards.         │
+│ Conclusion        │  2   │ 2x damage if Premise was played first.          │
+│ Qualification     │  0   │ Reduce incoming coherence damage by 2.          │
+│ Caveat            │  1   │ Next argument cannot be countered.              │
+│ Amendment         │  1   │ Modify a card in play: +1 to any stat.          │
+│ Parenthetical     │  0   │ Insert a card into existing chain.              │
+│ Footnote          │  0   │ Draw 1 at end of turn if you played 4+ cards.   │
+│ Citation          │  1   │ Copy effect of last Evidence played.            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+RHETORICAL
+──────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ EFFECT                                          │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Emphasis          │  1   │ Double the weight of one Evidence card.         │
+│ Repetition        │  0   │ Play same card twice (costs 1 extra TP).        │
+│ Contrast          │  1   │ +3 damage if playing opposing card types.       │
+│ Parallel          │  1   │ All same-type cards this turn share bonuses.    │
+│ Question          │  0   │ Force enemy to reveal next action.              │
+│ Rhetorical Q      │  1   │ Auto-answer: counts as 2 cards played.          │
+│ Metaphor          │  1   │ Treat one card type as another.                 │
+│ Irony             │  2   │ Damage from your Flaws deals to enemy instead.  │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+                    CATEGORY 4: META CARDS
+================================================================================
+
+Meta cards represent advanced thinking techniques.
+They manipulate the game state in powerful ways.
+
+EPISTEMIC TOOLS
+───────────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ EFFECT                                          │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Steelman          │  2   │ Copy enemy's strongest card for this turn.      │
+│ Devil's Advocate  │  2   │ Argue for enemy: if you win, 2x rewards.        │
+│ Thought Experiment│  1   │ Preview 3 possible outcomes, choose one.        │
+│ Reframe           │  1   │ Change one card's type (Evidence↔Logic).        │
+│ Deconstruction    │  2   │ Break enemy card into 2 weaker versions.        │
+│ First Principles  │  3   │ Remove all non-Axiom cards, triple Axiom weight.│
+│ Lateral Thinking  │  1   │ Draw 3, discard 3. No cost.                     │
+│ Metacognition     │  2   │ See your deck order, rearrange top 5.           │
+└────────────────────────────────────────────────────────────────────────────┘
+
+SOCRATIC METHOD
+───────────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ EFFECT                                          │
+├────────────────────────────────────────────────────────────────────────────┤
+│ What Is X?        │  0   │ Enemy must define term: reveals weakness.       │
+│ Why?              │  1   │ Chain: each Why adds +0.5x multiplier.          │
+│ How Do You Know?  │  1   │ Force enemy to use Evidence or lose turn.       │
+│ What If?          │  1   │ Create hypothetical: test enemy response.       │
+│ Is It Always?     │  1   │ Find exception: deal bonus damage.              │
+│ Says Who?         │  0   │ Negate Authority-based enemy cards.             │
+│ Compared To What? │  1   │ Relative frame: +2 weight to comparisons.       │
+│ Elenchus          │  3   │ Ultimate question: stun enemy 1 turn.           │
+└────────────────────────────────────────────────────────────────────────────┘
+
+MENTAL MODELS
+─────────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ COST │ EFFECT                                          │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Inversion         │  1   │ Consider opposite: +50% if enemy was attacking. │
+│ Second-Order      │  2   │ Think about thinking: draw 2, +1 TP this turn.  │
+│ Probabilistic     │  1   │ Assign odds: reduce damage variance.            │
+│ Systems Thinking  │  2   │ All cards interact: +1 weight per card played.  │
+│ Circle of Comp.   │  1   │ Stay in expertise: +2 weight to specialty.      │
+│ Map ≠ Territory   │  1   │ Reality check: immune to illusion effects.      │
+│ Falsifiability    │  2   │ If disprovable, +3 weight. If not, 0 weight.    │
+│ Hanlon's Razor    │  1   │ Assume no malice: reduce enemy damage by 2.     │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+                    CATEGORY 5: FLAW CARDS
+================================================================================
+
+Flaw cards are NEGATIVE cards added to your deck by enemies.
+They represent corrupted thinking that weakens your arguments.
+
+You cannot remove Flaws normally - only through special means.
+
+LOGICAL FALLACIES
+─────────────────
+┌────────────────────────────────────────────────────────────────────────────┐
+│ NAME              │ EFFECT                                                 │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Ad Hominem        │ -2 weight when played. Cannot be discarded.            │
+│ Straw Man         │ Distorts your next Evidence card.                      │
+│ False Dilemma     │ Can only play 2 cards next turn.                       │
+│ Slippery Slope    │ Each card costs +1 TP this turn.                       │
+│ Circular Reason   │ This card keeps returning to your hand.                │
+│ Appeal to Emotion │ Your Logic cards lose 0.5x multiplier.                 │
+│ Hasty General.    │ Your Inductive cards have 50% fail chance.             │
+│ Post Hoc          │ Causal cards deal 0 damage.                            │
+│ Equivocation      │ One random card changes meaning (bad).                 │
+│ Begging Question  │ Your Conclusion cards require 2 Premises.              │
+└────────────────────────────────────────────────────────────────────────────┘
+
+REMOVING FLAWS:
+- "Clarity" relic: Remove 1 Flaw per rest site
+- "Reductio" card: Triple damage if enemy has Flaw (transfers it)
+- "Self-Correction" event: Pay coherence to remove Flaws
+- Boss defeat: Remove all Flaws gained that floor
+
+
+================================================================================
+                        SYNERGY EXAMPLES
+================================================================================
+
+BASIC COMBO (Weight + Multiplier):
+Observation (3) + Modus Ponens (1.5x) = 4.5 → 5 damage
+
+CHAIN COMBO (Multiple multipliers):
+Statistics (5) + Pattern Matching (1.3x) + Syllogism (2.0x) = 13 damage
+
+SYNTHESIS COMBO (Dialectic):
+Thesis + "Free Will" + Antithesis + "Determinism" = Synthesis "Compatibilism"
+Base effect: 3.0x multiplier + new card added to deck
+
+STEELMAN COMBO (Meta play):
+Copy enemy's Confirmation Bias → Use against them → 2x damage
+
+SOCRATIC CHAIN:
+Why? (1.5x) + Why? (2.0x) + Why? (2.5x) + Why? (3.0x) + Why? (3.5x) = 3.5x
+"The Five Whys" achievement unlocked
+
+
+================================================================================
+                       CARD UPGRADE SYSTEM
+================================================================================
+
+At Rest Sites, you can upgrade cards:
+
+UPGRADE TYPES:
+1. ENHANCE: +1 weight or +0.3x multiplier
+2. REDUCE COST: -1 TP cost (minimum 0)
+3. SPECIALIZE: Add conditional bonus (+2 if...)
+4. INNATE: Card always in opening hand
+5. RETAIN: Card stays in hand between turns
+
+VISUAL INDICATOR:
+- Upgraded cards have golden border
+- Card name becomes "Enhanced [Name]"
+
+
+================================================================================
+                      STARTING DECKS BY SCHOOL
+================================================================================
+
+RATIONALIST (Logic-heavy):
+- 2x Observation
+- 2x Modus Ponens
+- 1x Syllogism
+- 1x If-Then
+- 1x Therefore
+- 1x First Principles
+- 2x Intuition
+
+EMPIRICIST (Evidence-heavy):
+- 3x Observation
+- 2x Experiment
+- 1x Statistics
+- 1x Generalization
+- 1x Pattern Matching
+- 2x Survey Data
+
+PRAGMATIST (Balanced):
+- 2x Observation
+- 1x Testimony
+- 1x Modus Ponens
+- 1x Analogy
+- 1x If-Then
+- 1x Because
+- 1x Reframe
+- 2x Anecdote
+
+SKEPTIC (Question-heavy):
+- 2x Anecdote
+- 1x Why?
+- 1x What Is X?
+- 1x How Do You Know?
+- 1x Not
+- 1x Deconstruction
+- 2x Question
+- 1x Falsifiability
+
+ABSURDIST (Random):
+- 10 random cards from all categories
+- Guaranteed: 1 Leap of Faith
+
+
+================================================================================
+                         CARD RARITY DISTRIBUTION
+================================================================================
+
+In card reward screens:
+- Floor 1: 70% Common, 25% Uncommon, 5% Rare
+- Floor 2: 50% Common, 40% Uncommon, 10% Rare
+- Floor 3: 30% Common, 50% Uncommon, 20% Rare
+
+Boss rewards always offer 1 Rare card.
+
+
+================================================================================

@@ -1,0 +1,684 @@
+================================================================================
+                         MIND ARCHITECT
+                   TECHNICAL IMPLEMENTATION PLAN
+================================================================================
+
+================================================================================
+                       TECHNOLOGY STACK
+================================================================================
+
+FRONTEND:
+- Framework: Next.js 15+ (App Router)
+- Language: TypeScript (strict mode)
+- Styling: Tailwind CSS v4
+- State Management: Zustand
+- Animation: Framer Motion
+- Canvas (if needed): React Konva or vanilla Canvas
+
+BACKEND:
+- API: Next.js API Routes
+- Database: Supabase (PostgreSQL)
+- Auth: Supabase Auth (optional, for save sync)
+- AI: Google Gemini 2.0 Flash (for dynamic content)
+
+DEPLOYMENT:
+- Platform: Vercel
+- CDN: Vercel Edge
+- Analytics: Vercel Speed Insights
+
+
+================================================================================
+                     PROJECT STRUCTURE
+================================================================================
+
+```
+verygoodmelon.fun/
+├── app/
+│   ├── games/
+│   │   └── mind-architect/
+│   │       ├── page.tsx              # Main game page
+│   │       ├── layout.tsx            # Game-specific layout
+│   │       └── components/           # Game components
+│   │           ├── Battle/
+│   │           │   ├── BattleScreen.tsx
+│   │           │   ├── EnemyArea.tsx
+│   │           │   ├── PlayArea.tsx
+│   │           │   ├── HandArea.tsx
+│   │           │   └── DamageCalculator.tsx
+│   │           ├── Cards/
+│   │           │   ├── Card.tsx
+│   │           │   ├── CardHand.tsx
+│   │           │   ├── CardDetail.tsx
+│   │           │   └── CardReward.tsx
+│   │           ├── Map/
+│   │           │   ├── MapScreen.tsx
+│   │           │   ├── MapNode.tsx
+│   │           │   └── MapPath.tsx
+│   │           ├── UI/
+│   │           │   ├── GameHeader.tsx
+│   │           │   ├── CoherenceBar.tsx
+│   │           │   ├── TPIndicator.tsx
+│   │           │   └── EndTurnButton.tsx
+│   │           └── Screens/
+│   │               ├── MainMenu.tsx
+│   │               ├── ShopScreen.tsx
+│   │               ├── RestScreen.tsx
+│   │               ├── VictoryScreen.tsx
+│   │               └── DefeatScreen.tsx
+│   │
+│   └── api/
+│       └── mind-architect/
+│           ├── save/route.ts         # Save game state
+│           ├── load/route.ts         # Load game state
+│           ├── leaderboard/route.ts  # Daily challenge scores
+│           └── generate/route.ts     # AI-generated content
+│
+├── lib/
+│   └── games/
+│       └── mind-architect/
+│           ├── store/
+│           │   ├── gameStore.ts      # Main game state
+│           │   ├── battleStore.ts    # Battle-specific state
+│           │   └── metaStore.ts      # Meta-progression state
+│           ├── data/
+│           │   ├── cards.ts          # All card definitions
+│           │   ├── enemies.ts        # All enemy definitions
+│           │   ├── bosses.ts         # Boss configurations
+│           │   ├── relics.ts         # Relic definitions
+│           │   ├── events.ts         # Event definitions
+│           │   └── schools.ts        # School configurations
+│           ├── engine/
+│           │   ├── damage.ts         # Damage calculation
+│           │   ├── effects.ts        # Effect resolution
+│           │   ├── ai.ts             # Enemy AI behavior
+│           │   ├── mapgen.ts         # Map generation
+│           │   └── shuffle.ts        # Deck operations
+│           └── utils/
+│               ├── rng.ts            # Seeded random
+│               ├── storage.ts        # LocalStorage helpers
+│               └── constants.ts      # Game constants
+│
+├── types/
+│   └── mind-architect.ts             # Type definitions
+│
+└── public/
+    └── games/
+        └── mind-architect/
+            ├── cards/                 # Card artwork
+            ├── enemies/               # Enemy artwork
+            ├── ui/                    # UI elements
+            └── audio/                 # Sound effects
+```
+
+
+================================================================================
+                       CORE DATA STRUCTURES
+================================================================================
+
+```typescript
+// types/mind-architect.ts
+
+// Card Types
+interface Card {
+  id: string
+  name: string
+  type: 'evidence' | 'logic' | 'framework' | 'meta' | 'flaw'
+  cost: number
+  weight?: number           // For evidence cards
+  multiplier?: number       // For logic cards
+  effect?: CardEffect       // Special effects
+  description: string
+  flavorText: string
+  rarity: 'common' | 'uncommon' | 'rare'
+  school?: School           // Preferred school
+  upgraded: boolean
+  innate?: boolean
+  retain?: boolean
+}
+
+interface CardEffect {
+  type: 'damage' | 'draw' | 'discard' | 'buff' | 'debuff' | 'special'
+  value?: number
+  condition?: Condition
+  target?: 'self' | 'enemy' | 'card' | 'all'
+}
+
+// Enemy Types
+interface Enemy {
+  id: string
+  name: string
+  maxHP: number
+  currentHP: number
+  resistances: Resistances
+  pattern: AttackPattern[]
+  currentPatternIndex: number
+  statusEffects: StatusEffect[]
+  dialogue: EnemyDialogue
+}
+
+interface AttackPattern {
+  intent: 'attack' | 'defend' | 'buff' | 'debuff' | 'special'
+  damage?: number
+  effect?: Effect
+  description: string
+}
+
+// Game State
+interface GameState {
+  // Run state
+  currentFloor: number
+  currentNode: MapNode
+  map: Map[]
+
+  // Player state
+  coherence: number
+  maxCoherence: number
+  deck: Card[]
+  hand: Card[]
+  drawPile: Card[]
+  discardPile: Card[]
+  relics: Relic[]
+  gold: number
+
+  // Battle state
+  inBattle: boolean
+  currentEnemy: Enemy | null
+  playArea: Card[]
+  thoughtPoints: number
+  maxThoughtPoints: number
+  turnNumber: number
+
+  // Meta state
+  school: School
+  unlockedCards: string[]
+  unlockedRelics: string[]
+  insights: number
+  achievements: string[]
+}
+
+// Battle Resolution
+interface TurnResult {
+  damageDealt: number
+  damageBreakdown: DamageBreakdown
+  coherenceLost: number
+  cardsDrawn: number
+  effectsTriggered: EffectResult[]
+  enemyDefeated: boolean
+  playerDefeated: boolean
+}
+
+interface DamageBreakdown {
+  totalWeight: number
+  totalMultiplier: number
+  chainBonus: number
+  relicBonuses: number
+  finalDamage: number
+}
+```
+
+
+================================================================================
+                      DAMAGE ENGINE
+================================================================================
+
+```typescript
+// lib/games/mind-architect/engine/damage.ts
+
+export function calculateDamage(
+  playedCards: Card[],
+  relics: Relic[],
+  enemy: Enemy
+): DamageBreakdown {
+
+  // 1. Calculate total weight from evidence cards
+  let totalWeight = 0
+  for (const card of playedCards) {
+    if (card.type === 'evidence' && card.weight) {
+      totalWeight += card.weight
+    }
+  }
+
+  // 2. Apply card-specific weight bonuses
+  for (const card of playedCards) {
+    if (card.effect?.type === 'weight_bonus') {
+      totalWeight += evaluateEffect(card.effect, playedCards)
+    }
+  }
+
+  // 3. Calculate combined multiplier from logic cards
+  let totalMultiplier = 1.0
+  for (const card of playedCards) {
+    if (card.type === 'logic' && card.multiplier) {
+      totalMultiplier *= card.multiplier
+    }
+  }
+
+  // 4. Apply relic multiplier bonuses
+  for (const relic of relics) {
+    if (relic.effect.type === 'multiplier_bonus') {
+      totalMultiplier += relic.effect.value
+    }
+  }
+
+  // 5. Calculate chain bonus
+  const chainLength = playedCards.length
+  let chainBonus = 1.0
+  if (chainLength >= 3) chainBonus = 1.10
+  if (chainLength >= 4) chainBonus = 1.25
+  if (chainLength >= 5) chainBonus = 1.50
+  if (chainLength >= 6) chainBonus = 1.75
+
+  // 6. Check for coherence breaks (contradictions)
+  const hasContradiction = checkContradictions(playedCards)
+  if (hasContradiction) {
+    chainBonus = 1.0 // No chain bonus if incoherent
+  }
+
+  // 7. Apply enemy resistance
+  let resistanceReduction = 0
+  if (enemy.resistances.evidence > 0) {
+    const evidenceWeight = playedCards
+      .filter(c => c.type === 'evidence')
+      .reduce((sum, c) => sum + (c.weight || 0), 0)
+    resistanceReduction = Math.min(enemy.resistances.evidence, evidenceWeight)
+  }
+
+  // 8. Final calculation
+  const rawDamage = totalWeight * totalMultiplier * chainBonus
+  const finalDamage = Math.max(0, Math.round(rawDamage - resistanceReduction))
+
+  return {
+    totalWeight,
+    totalMultiplier,
+    chainBonus,
+    relicBonuses: /* calculated */,
+    resistanceReduction,
+    finalDamage
+  }
+}
+
+function checkContradictions(cards: Card[]): boolean {
+  const contradictionPairs = [
+    ['absolute_truth', 'relativism'],
+    ['determinism', 'free_will'],
+    ['certainty', 'radical_skepticism'],
+  ]
+
+  const cardIds = cards.map(c => c.id)
+  for (const [a, b] of contradictionPairs) {
+    if (cardIds.includes(a) && cardIds.includes(b)) {
+      // Check for Synthesis or Dialectic cards that prevent penalty
+      const hasSynthesis = cards.some(c =>
+        c.id === 'synthesis' || c.id === 'dialectic' || c.id === 'aufhebung'
+      )
+      if (!hasSynthesis) return true
+    }
+  }
+  return false
+}
+```
+
+
+================================================================================
+                       STATE MANAGEMENT
+================================================================================
+
+```typescript
+// lib/games/mind-architect/store/gameStore.ts
+
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+interface GameStore {
+  // State
+  gameState: GameState
+
+  // Actions
+  startNewRun: (school: School) => void
+  selectNode: (nodeId: string) => void
+  startBattle: (enemyId: string) => void
+  playCard: (cardIndex: number) => void
+  endTurn: () => void
+  undoLastAction: () => void
+  rest: (action: 'heal' | 'upgrade' | 'removeFlaw') => void
+  shopPurchase: (itemId: string) => void
+
+  // Computed
+  canPlayCard: (card: Card) => boolean
+  getDamagePreview: () => DamageBreakdown
+}
+
+export const useGameStore = create<GameStore>()(
+  persist(
+    (set, get) => ({
+      gameState: initialGameState,
+
+      playCard: (cardIndex: number) => {
+        const state = get().gameState
+        const card = state.hand[cardIndex]
+
+        if (!get().canPlayCard(card)) return
+
+        set((s) => ({
+          gameState: {
+            ...s.gameState,
+            hand: s.gameState.hand.filter((_, i) => i !== cardIndex),
+            playArea: [...s.gameState.playArea, card],
+            thoughtPoints: s.gameState.thoughtPoints - card.cost
+          }
+        }))
+      },
+
+      endTurn: () => {
+        const state = get().gameState
+
+        // Calculate and apply damage
+        const damage = calculateDamage(
+          state.playArea,
+          state.relics,
+          state.currentEnemy!
+        )
+
+        // Apply to enemy
+        const newEnemyHP = state.currentEnemy!.currentHP - damage.finalDamage
+
+        // Enemy turn
+        const enemyAction = getEnemyAction(state.currentEnemy!)
+        const coherenceLost = enemyAction.damage || 0
+
+        // ... update state
+      },
+
+      canPlayCard: (card: Card) => {
+        return get().gameState.thoughtPoints >= card.cost
+      },
+
+      getDamagePreview: () => {
+        const state = get().gameState
+        return calculateDamage(
+          state.playArea,
+          state.relics,
+          state.currentEnemy!
+        )
+      }
+    }),
+    {
+      name: 'mind-architect-game',
+      partialize: (state) => ({
+        // Only persist certain fields
+        gameState: {
+          ...state.gameState,
+          // Don't persist transient UI state
+        }
+      })
+    }
+  )
+)
+```
+
+
+================================================================================
+                      MAP GENERATION
+================================================================================
+
+```typescript
+// lib/games/mind-architect/engine/mapgen.ts
+
+interface MapNode {
+  id: string
+  type: 'battle' | 'elite' | 'rest' | 'shop' | 'mystery' | 'treasure' | 'boss'
+  x: number
+  y: number
+  connections: string[]
+  visited: boolean
+  enemyId?: string
+  eventId?: string
+}
+
+export function generateFloorMap(
+  floor: number,
+  seed: number
+): MapNode[] {
+  const rng = createSeededRandom(seed)
+
+  // Floor parameters
+  const rows = floor === 3 ? 10 : floor === 2 ? 15 : 12
+  const minWidth = 2
+  const maxWidth = 4
+
+  const nodes: MapNode[] = []
+
+  // Generate nodes row by row
+  for (let row = 0; row < rows; row++) {
+    const nodesInRow = rng.intBetween(minWidth, maxWidth)
+
+    for (let i = 0; i < nodesInRow; i++) {
+      const nodeType = determineNodeType(row, rows, floor, rng)
+
+      nodes.push({
+        id: `${floor}-${row}-${i}`,
+        type: nodeType,
+        x: calculateXPosition(i, nodesInRow),
+        y: row,
+        connections: [],
+        visited: false,
+        enemyId: nodeType === 'battle' || nodeType === 'elite'
+          ? selectEnemy(floor, nodeType, rng)
+          : undefined
+      })
+    }
+  }
+
+  // Add boss node at top
+  nodes.push({
+    id: `${floor}-boss`,
+    type: 'boss',
+    x: 0.5,
+    y: rows,
+    connections: [],
+    visited: false,
+    enemyId: getBossId(floor)
+  })
+
+  // Connect nodes
+  connectNodes(nodes, rng)
+
+  return nodes
+}
+
+function determineNodeType(
+  row: number,
+  totalRows: number,
+  floor: number,
+  rng: SeededRandom
+): MapNode['type'] {
+  // Boss is always at top
+  if (row === totalRows) return 'boss'
+
+  // Guaranteed rest before boss
+  if (row === totalRows - 1 && rng.random() < 0.5) return 'rest'
+
+  // Node type distribution
+  const roll = rng.random()
+  if (roll < 0.50) return 'battle'
+  if (roll < 0.60) return 'elite'
+  if (roll < 0.75) return 'rest'
+  if (roll < 0.85) return 'shop'
+  if (roll < 0.95) return 'mystery'
+  return 'treasure'
+}
+```
+
+
+================================================================================
+                    ENEMY AI SYSTEM
+================================================================================
+
+```typescript
+// lib/games/mind-architect/engine/ai.ts
+
+export function getEnemyAction(enemy: Enemy): AttackPattern {
+  const pattern = enemy.pattern[enemy.currentPatternIndex]
+
+  // Advance pattern for next turn
+  enemy.currentPatternIndex =
+    (enemy.currentPatternIndex + 1) % enemy.pattern.length
+
+  return pattern
+}
+
+// Pattern definitions for each enemy
+export const ENEMY_PATTERNS: Record<string, AttackPattern[]> = {
+  'confirmation_bias': [
+    { intent: 'defend', effect: { type: 'shield' }, description: 'Belief Shield' },
+    { intent: 'attack', damage: 5, description: 'Selective Attention' },
+    { intent: 'buff', effect: { type: 'resistance', value: 2 }, description: 'Echo Chamber' },
+    { intent: 'attack', damage: 8, description: 'Reinforced Belief' },
+  ],
+
+  'sunk_cost_fallacy': [
+    { intent: 'attack', damage: 4, effect: { type: 'scaling', perTurn: 1 }, description: 'Too Far In' },
+    { intent: 'debuff', effect: { type: 'lock_card' }, description: 'Accumulated Weight' },
+    { intent: 'attack', damage: 6, effect: { type: 'remove_most_played' }, description: 'Wasted Investment' },
+    { intent: 'special', damage: 10, effect: { type: 'self_damage', value: 5 }, description: 'Doubling Down' },
+  ],
+
+  // ... more enemy patterns
+}
+```
+
+
+================================================================================
+                     SAVE SYSTEM
+================================================================================
+
+```typescript
+// Save to localStorage + optional Supabase sync
+
+export async function saveGame(state: GameState): Promise<void> {
+  // Always save to localStorage
+  localStorage.setItem('mind-architect-save', JSON.stringify({
+    state,
+    timestamp: Date.now(),
+    version: GAME_VERSION
+  }))
+
+  // If logged in, also sync to Supabase
+  if (isLoggedIn()) {
+    await supabase
+      .from('mind_architect_saves')
+      .upsert({
+        user_id: getCurrentUserId(),
+        save_data: state,
+        updated_at: new Date().toISOString()
+      })
+  }
+}
+
+export async function loadGame(): Promise<GameState | null> {
+  // Try localStorage first (faster)
+  const localSave = localStorage.getItem('mind-architect-save')
+
+  if (localSave) {
+    const parsed = JSON.parse(localSave)
+    if (parsed.version === GAME_VERSION) {
+      return parsed.state
+    }
+  }
+
+  // If logged in, check cloud save
+  if (isLoggedIn()) {
+    const { data } = await supabase
+      .from('mind_architect_saves')
+      .select('save_data')
+      .eq('user_id', getCurrentUserId())
+      .single()
+
+    if (data) {
+      return data.save_data
+    }
+  }
+
+  return null
+}
+```
+
+
+================================================================================
+                   DEVELOPMENT PHASES
+================================================================================
+
+PHASE 1: CORE LOOP (2-3 weeks)
+- Basic card playing
+- Damage calculation
+- Single enemy battle
+- Win/lose conditions
+
+PHASE 2: CONTENT (2-3 weeks)
+- All Floor 1 cards
+- All Floor 1 enemies
+- Floor 1 boss
+- Basic map
+
+PHASE 3: SYSTEMS (2-3 weeks)
+- Relic system
+- Shop
+- Rest sites
+- Events
+
+PHASE 4: FLOORS 2-3 (3-4 weeks)
+- Remaining cards
+- Remaining enemies
+- Bosses
+- Full map generation
+
+PHASE 5: META (1-2 weeks)
+- Unlocks
+- Achievements
+- Schools of thought
+- Save system
+
+PHASE 6: POLISH (2-3 weeks)
+- Animations
+- Sound
+- Accessibility
+- Performance
+
+PHASE 7: LAUNCH (1 week)
+- Testing
+- Bug fixes
+- Deployment
+- Analytics
+
+
+================================================================================
+                     MVP FEATURE LIST
+================================================================================
+
+MUST HAVE (Launch):
+- [ ] 3 floors with bosses
+- [ ] 50+ unique cards
+- [ ] 15+ enemies
+- [ ] 10+ relics
+- [ ] 10+ events
+- [ ] 2 schools of thought
+- [ ] Save/load
+- [ ] Keyboard navigation
+- [ ] Mobile support
+
+SHOULD HAVE (Post-launch):
+- [ ] All 5 schools
+- [ ] Daily challenges
+- [ ] Leaderboards
+- [ ] Cloud saves
+- [ ] All achievements
+- [ ] Full sound design
+
+NICE TO HAVE (Future):
+- [ ] Endless mode
+- [ ] Custom challenges
+- [ ] Mod support
+- [ ] Multiplayer debates
+
+
+================================================================================

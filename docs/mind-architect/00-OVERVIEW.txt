@@ -1,0 +1,251 @@
+================================================================================
+                         MIND ARCHITECT
+              COMPREHENSIVE GAME DESIGN DOCUMENT
+================================================================================
+
+Document Version: 1.0
+Last Updated: 2025
+Status: Initial Design Phase
+
+================================================================================
+                          TABLE OF CONTENTS
+================================================================================
+
+00-OVERVIEW.txt ........... This file - Vision, pillars, core loop
+01-CARD-SYSTEM.txt ........ Complete card taxonomy and mechanics
+02-COMBAT-SYSTEM.txt ...... Battle flow, damage calculation, combos
+03-ENEMIES.txt ............ All biases, attack patterns, AI behavior
+04-BOSSES.txt ............. Boss encounters and puzzle design
+05-PROGRESSION.txt ........ Run structure, meta-progression, unlocks
+06-NARRATIVE.txt .......... Story, lore, character development
+07-UI-UX.txt .............. Interface design, player experience
+08-AUDIO-VISUAL.txt ....... Art direction, sound design
+09-BALANCE.txt ............ Tuning guidelines, difficulty curves
+10-IMPLEMENTATION.txt ..... Technical considerations for web
+
+================================================================================
+                            GAME VISION
+================================================================================
+
+HIGH CONCEPT
+------------
+Mind Architect is a roguelike deckbuilder where you construct arguments from
+mental models, logical structures, and evidence to defeat cognitive biases.
+Your deck IS your mind. Your damage IS persuasion. Your health IS coherence.
+
+UNIQUE SELLING POINTS
+---------------------
+1. Actually teaches critical thinking through gameplay
+2. Arguments must be internally consistent (coherence mechanic)
+3. Synthesis system rewards understanding opposing views
+4. Enemies are real cognitive biases with accurate behaviors
+5. Accessible browser-based play on VeryGoodMelon.fun
+
+TARGET AUDIENCE
+---------------
+Primary: Adults 18-45 interested in:
+- Strategy/deckbuilder games (Slay the Spire, Balatro, Inscryption fans)
+- Philosophy and critical thinking
+- Self-improvement through games
+
+Secondary:
+- Educators looking for teaching tools
+- Casual players who enjoy puzzle games
+- Philosophy students and enthusiasts
+
+
+================================================================================
+                          DESIGN PILLARS
+================================================================================
+
+PILLAR 1: THINK TO WIN
+----------------------
+Every mechanic reinforces critical thinking skills:
+- Card selection = choosing reasoning strategies
+- Damage calculation = understanding argument strength
+- Enemy weaknesses = recognizing bias vulnerabilities
+- Coherence system = maintaining logical consistency
+
+Players should feel SMARTER after playing.
+
+PILLAR 2: ELEGANT COMPLEXITY
+----------------------------
+Simple rules, emergent depth:
+- Core mechanics learnable in 5 minutes
+- Mastery requires understanding philosophy
+- Every card interaction makes intuitive sense
+- No arbitrary rules - everything connects to real logic
+
+PILLAR 3: MEANINGFUL CHOICES
+----------------------------
+Every decision matters:
+- Card selection affects future options
+- Path choices change difficulty
+- Argument chains require planning
+- Risk/reward in coherence damage
+
+No "always correct" plays - context determines strategy.
+
+PILLAR 4: CALM INTENSITY
+------------------------
+Engaging without anxiety:
+- Turn-based (no time pressure)
+- Clear information (no hidden RNG)
+- Undo last action (prevent misclicks)
+- Auto-save (no loss of progress)
+- Meditative aesthetic (thinking space)
+
+
+================================================================================
+                           CORE LOOP
+================================================================================
+
+MICRO LOOP (Single Turn)
+------------------------
+1. VIEW: See your hand, enemy state, coherence
+2. THINK: Plan your argument chain
+3. PLAY: Select and combine cards
+4. RESOLVE: Watch damage/effects apply
+5. DRAW: Replenish hand for next turn
+
+MESO LOOP (Single Battle)
+-------------------------
+1. ASSESS: Identify bias type and weakness
+2. BUILD: Construct argument strategy
+3. EXECUTE: Play cards over multiple turns
+4. ADAPT: Respond to enemy actions
+5. CONCLUDE: Defeat bias or lose coherence
+
+MACRO LOOP (Single Run)
+-----------------------
+1. START: Choose school of thought, begin run
+2. NAVIGATE: Select path through map
+3. BATTLE: Face biases and collect cards
+4. UPGRADE: Improve deck at rest sites
+5. BOSS: Face the Big Question
+6. PROGRESS: Advance to next floor or end
+
+META LOOP (Across Runs)
+-----------------------
+1. ATTEMPT: Complete or fail a run
+2. UNLOCK: Gain new cards, relics, schools
+3. LEARN: Internalize strategies and logic
+4. RETRY: Apply knowledge to new run
+
+
+================================================================================
+                        MOMENT-TO-MOMENT FEEL
+================================================================================
+
+We want players to feel:
+
+DURING CARD SELECTION:
+"This evidence plus this logic should work... but wait, if I play
+Observation first, then Pattern Recognition multiplies it... YES."
+
+DURING DAMAGE CALCULATION:
+"2 weight x 1.5 multiplier x 1.5 from my relic = 4.5, rounded to 5...
+I love seeing these numbers stack!"
+
+DURING COHERENCE MANAGEMENT:
+"I have 'Absolute Truth' in my argument, but 'Skepticism' would deal
+massive damage here... is -3 coherence worth the 12 persuasion?"
+
+DURING BOSS FIGHTS:
+"The Trolley Problem... I need Ethical Framework + Consequences...
+I have Utilitarianism but I traded away Deontology... damn, I need
+to build around what I have."
+
+AFTER WINNING A RUN:
+"I actually understand inductive reasoning better now. And I can
+recognize when I'm using confirmation bias in real life."
+
+
+================================================================================
+                         SUCCESS METRICS
+================================================================================
+
+DESIGN GOALS (How we measure success)
+-------------------------------------
+1. COMPLETION RATE: 20-30% of runs should end in victory
+2. SESSION LENGTH: Average 30-45 minutes per run
+3. REPLAY VALUE: Players attempt 5+ runs before boredom
+4. LEARNING TRANSFER: Players report thinking differently in real life
+5. ACCESSIBILITY: Playable with keyboard only, screen reader support
+
+ANTI-GOALS (What we're NOT trying to do)
+----------------------------------------
+1. NOT maximizing time spent (no addiction loops)
+2. NOT creating frustrating difficulty spikes
+3. NOT hiding information (no unfair surprises)
+4. NOT requiring philosophy knowledge to start
+5. NOT punishing experimentation
+
+
+================================================================================
+                         REFERENCE GAMES
+================================================================================
+
+SLAY THE SPIRE - What we're borrowing:
+- Deckbuilding during run
+- Path selection on map
+- Relic system
+- Three-floor structure
+- Card upgrade system
+
+BALATRO - What we're borrowing:
+- Joker-style passive modifiers
+- Multiplication-based scoring
+- Visual satisfaction of big numbers
+- "Poker hand" = "Argument chain" parallel
+
+INSCRYPTION - What we're borrowing:
+- Darker philosophical undertones
+- Meta-narrative elements
+- Sacrifice/cost mechanics
+- Memorable boss encounters
+
+BABA IS YOU - What we're borrowing:
+- Rules as manipulable objects
+- "Aha!" moments from logic
+- Minimalist aesthetic
+- Puzzle-like encounters
+
+
+================================================================================
+                      PHILOSOPHICAL FRAMEWORK
+================================================================================
+
+The game is built on real epistemology:
+
+EVIDENCE HIERARCHY (reflected in card weights):
+1. Axiom (self-evident) - highest weight
+2. Empirical (tested) - high weight
+3. Statistical (data) - medium weight
+4. Testimonial (reported) - low weight
+5. Anecdotal (singular) - lowest weight
+
+LOGICAL VALIDITY (reflected in multipliers):
+- Deductive (certain if premises true) - reliable multiplier
+- Inductive (probable) - stacking multiplier
+- Abductive (best explanation) - high risk/reward
+
+COHERENTISM VS FOUNDATIONALISM:
+- Coherence health represents coherentist epistemology
+- Some relics enable foundationalist play (Axiom immunity)
+
+DIALECTICAL METHOD:
+- Thesis + Antithesis = Synthesis is a core mechanic
+- Encourages collecting opposing views
+
+
+================================================================================
+                         NEXT DOCUMENTS
+================================================================================
+
+Continue reading:
+- 01-CARD-SYSTEM.txt for complete card taxonomy
+- 02-COMBAT-SYSTEM.txt for battle mechanics
+- 03-ENEMIES.txt for all cognitive biases
+
+================================================================================

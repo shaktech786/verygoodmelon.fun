@@ -1,0 +1,545 @@
+================================================================================
+                         MIND ARCHITECT
+                    ENEMY (BIAS) DESIGN
+================================================================================
+
+================================================================================
+                       ENEMY PHILOSOPHY
+================================================================================
+
+Every enemy is a real cognitive bias. Fighting them teaches players to
+recognize and overcome these patterns in real life.
+
+DESIGN PRINCIPLES:
+1. Behavior reflects actual bias pattern
+2. Weakness matches real-world counter
+3. Flaw cards represent how bias corrupts thinking
+4. Defeating bias = understanding it
+
+ENEMY CATEGORIES:
+- CONFIRMATION BIASES: Seek supporting evidence
+- LOGICAL FALLACIES: Broken reasoning patterns
+- EMOTIONAL BIASES: Feeling-based distortions
+- SOCIAL BIASES: Other-people-based errors
+- MEMORY BIASES: Past-based distortions
+
+
+================================================================================
+                    FLOOR 1: FOUNDATION BIASES
+================================================================================
+Simpler patterns, teach basic mechanics.
+Entrenchment: 20-40 HP
+
+─────────────────────────────────────────────────────────────────────────────
+CONFIRMATION BIAS
+─────────────────────────────────────────────────────────────────────────────
+"I only see what I already believe."
+
+VISUAL: A figure with tunnel vision, surrounded by discarded contrary evidence.
+
+ENTRENCHMENT: 35
+RESISTANCES: Evidence Resistance +2 (for confirming evidence)
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Selective Attention  │   5    │ Your highest-weight Evidence is discarded. │
+│ Echo Chamber         │   3    │ Gains +2 Resistance for 2 turns.           │
+│ Belief Shield        │   0    │ Immune to damage unless you play diverse   │
+│                      │        │ card types (Evidence + Logic + Framework). │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+PATTERN:
+Turn 1: Belief Shield
+Turn 2: Selective Attention
+Turn 3: Echo Chamber
+Turn 4: Attack (8 damage)
+Repeat
+
+WEAKNESS:
+- Diverse evidence deck (different sources)
+- Playing contradicting evidence first (shocks it)
+- Steelmanning (using its own logic)
+
+FLAW ADDED: "Tunnel Vision" - One card type deals -2 damage.
+
+COUNTER-STRATEGY:
+Don't rely on one evidence type. Mix Observation + Testimony + Statistics.
+The bias can't dismiss all sources.
+
+EDUCATIONAL NOTE:
+"Confirmation bias makes us seek information that confirms what we already
+believe, while ignoring contradicting evidence. Combat it by actively
+seeking disconfirming information."
+
+─────────────────────────────────────────────────────────────────────────────
+AVAILABILITY HEURISTIC
+─────────────────────────────────────────────────────────────────────────────
+"If I can think of an example, it must be common."
+
+VISUAL: A brain overflowing with vivid images, pushing out dry statistics.
+
+ENTRENCHMENT: 25
+RESISTANCES: None (but special mechanic)
+
+SPECIAL MECHANIC:
+Recently played cards deal less damage. It "adjusts" to what's available.
+Card damage reduced by -1 for each time played this battle.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Vivid Memory         │   6    │ Your Anecdote cards get +3 weight (trap!). │
+│ Recency Flood        │   4    │ Last 3 cards you played go to bottom of    │
+│                      │        │ draw pile.                                 │
+│ Frequency Illusion   │   3    │ One random card appears 3x in your hand.   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+WEAKNESS:
+- Statistics and base rates
+- Playing varied cards (no repetition)
+- Meta-Analysis (counters recency)
+
+FLAW ADDED: "Recency Bias" - Newest card in hand costs +1 TP.
+
+─────────────────────────────────────────────────────────────────────────────
+ANCHORING BIAS
+─────────────────────────────────────────────────────────────────────────────
+"First number I heard must be right."
+
+VISUAL: A heavy anchor chained to a brain, pulling it down.
+
+ENTRENCHMENT: 30
+RESISTANCES: Logic Resistance +1
+
+SPECIAL MECHANIC:
+Locks onto the first card you play each turn. That card type deals
+-50% damage for the rest of the fight unless broken.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Set the Anchor       │   0    │ Your first card becomes "anchored."        │
+│ Weight of First      │   5    │ Anchored card type deals -50% damage.      │
+│ Stubborn Reference   │   7    │ If you play 3+ of anchored type, stun self.│
+└──────────────────────────────────────────────────────────────────────────────┘
+
+WEAKNESS:
+- Opening with "Not" card (negates anchor)
+- Diverse first-card choices
+- Reframe card (changes card type)
+
+FLAW ADDED: "Fixed Reference" - First card each turn costs +1 TP.
+
+─────────────────────────────────────────────────────────────────────────────
+DUNNING-KRUGER EFFECT
+─────────────────────────────────────────────────────────────────────────────
+"I know everything about this topic I just learned."
+
+VISUAL: A small figure casting a massive, confident shadow.
+
+ENTRENCHMENT: 15 (thinks it's 60)
+RESISTANCES: Immune to Doubt effects
+
+SPECIAL MECHANIC:
+HP bar shows 60, but real HP is 15. Overconfident attacks leave openings.
+When "defeated" at fake 0, reveals true HP (already at 15).
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Peak of Mt. Stupid   │  10    │ BUT you get +1 TP next turn (overconfident)│
+│ Dismiss the Experts  │   6    │ Expert Opinion cards deal 0 damage.        │
+│ I Knew That          │   4    │ Copies your last card (badly—half effect). │
+│ Supreme Confidence   │   0    │ Gains 5 fake Resistance (doesn't work).    │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+WEAKNESS:
+- Just attack consistently (it's weak despite bravado)
+- Wait for openings after big attacks
+- Humility cards deal bonus damage
+
+FLAW ADDED: "Overconfidence" - +1 to all card weights (seems good, but
+activates enemy effects that punish high weight).
+
+─────────────────────────────────────────────────────────────────────────────
+BANDWAGON EFFECT
+─────────────────────────────────────────────────────────────────────────────
+"Everyone believes it, so it must be true."
+
+VISUAL: A crowd all pointing the same direction, trampling evidence.
+
+ENTRENCHMENT: 30
+RESISTANCES: Testimony Resistance +3
+
+SPECIAL MECHANIC:
+Gets stronger for each Testimony/Expert card you play.
++2 damage per social proof card used.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Popular Opinion      │  3+X   │ X = number of Testimony cards you've played│
+│ Mob Mentality        │   8    │ Adds "Conformity" flaw to your deck.       │
+│ Appeal to Masses     │   5    │ Your next solo card deals -3 damage.       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+WEAKNESS:
+- Direct Evidence (Observation, Experiment)
+- Independent thinking cards
+- Avoid Testimony-heavy decks
+
+FLAW ADDED: "Conformity" - Playing unique cards costs +1 TP.
+
+
+================================================================================
+                    FLOOR 2: CHALLENGE BIASES
+================================================================================
+More complex patterns, require synergy play.
+Entrenchment: 40-70 HP
+
+─────────────────────────────────────────────────────────────────────────────
+SUNK COST FALLACY
+─────────────────────────────────────────────────────────────────────────────
+"I've invested too much to quit now."
+
+VISUAL: A figure buried under accumulated baggage, still adding more.
+
+ENTRENCHMENT: 55
+RESISTANCES: None initially (grows over time)
+
+SPECIAL MECHANIC:
+Gets +1 Resistance every turn. Gains +2 damage every turn.
+The longer the fight, the harder it becomes. End it fast.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Too Far In           │  4+T   │ T = turn number                            │
+│ Accumulated Weight   │   0    │ Locks one of your cards (unusable).        │
+│ Doubling Down        │  10    │ Self-damages for 5 (desperate).            │
+│ Wasted Investment    │   6    │ Remove your most-played card from deck.    │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+PATTERN:
+Escalating. Each turn is harder than the last.
+Must be defeated in 4-5 turns or becomes nearly impossible.
+
+WEAKNESS:
+- Decisive, high-damage openers
+- First Principles (ignores past)
+- Fresh Start cards (reset mechanics)
+
+FLAW ADDED: "Past Investment" - Cards you've played 3+ times cost +2 TP.
+
+EDUCATIONAL NOTE:
+"Sunk costs are gone—they shouldn't influence future decisions. The only
+relevant question is: what's the best choice going forward?"
+
+─────────────────────────────────────────────────────────────────────────────
+SURVIVORSHIP BIAS
+─────────────────────────────────────────────────────────────────────────────
+"Look at all the successful cases! (Ignore the failures.)"
+
+VISUAL: A spotlight on winners, shadows hiding a graveyard of attempts.
+
+ENTRENCHMENT: ??? (Hidden)
+RESISTANCES: Evidence Resistance +2
+
+SPECIAL MECHANIC:
+HP is hidden. Cannot see true remaining Entrenchment.
+Shows only successful "blocks" (when damage is negated).
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Success Stories      │   6    │ Hides your lowest-weight cards.            │
+│ Visible Victories    │   4    │ Only your top 2 cards are visible.         │
+│ Hidden Failures      │   0    │ Heals 10 HP (you can't see it happen).     │
+│ Selection Effect     │   8    │ Strongest card deals 0 damage this turn.   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+WEAKNESS:
+- Statistics cards (reveal truth)
+- Meta-Analysis (sees full picture)
+- Base Rate cards (counter selection)
+
+FLAW ADDED: "Success Blindness" - Can't see card weights until played.
+
+─────────────────────────────────────────────────────────────────────────────
+FALSE DICHOTOMY
+─────────────────────────────────────────────────────────────────────────────
+"It's either this or that. No other options exist."
+
+VISUAL: A figure pointing at two options while a third door glows unnoticed.
+
+ENTRENCHMENT: 45
+RESISTANCES: Framework Resistance +2
+
+SPECIAL MECHANIC:
+Each turn, forces you to choose between two options.
+Often both options are bad. Can be escaped with certain cards.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Binary Choice        │   0    │ Choose: Discard hand OR lose 5 Coherence.  │
+│ Excluded Middle      │   7    │ "Or" and "And" cards are disabled.         │
+│ Forced Frame         │   5    │ Can only play 2 card types next turn.      │
+│ Simplification       │   4    │ Removes all Framework cards from hand.     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+WEAKNESS:
+- "Or" card escapes false choices
+- Lateral Thinking (finds third option)
+- Reframe card (changes the frame)
+
+FLAW ADDED: "False Dilemma" - Can only play 2 cards per turn.
+
+─────────────────────────────────────────────────────────────────────────────
+STRAWMAN
+─────────────────────────────────────────────────────────────────────────────
+"That's not what they said, but this version is easier to attack."
+
+VISUAL: A scarecrow version of an argument, being triumphantly destroyed.
+
+ENTRENCHMENT: 25 (regenerates)
+RESISTANCES: None
+
+SPECIAL MECHANIC:
+When "defeated," regenerates with 15 HP and distorts your deck.
+Must be defeated 3 times OR killed with precise argument.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Misrepresent         │   4    │ Changes one card's text (worse effect).    │
+│ Attack the Dummy     │   6    │ Deals damage based on YOUR weakest card.   │
+│ Exaggerate           │   0    │ Doubles a card's weight (but makes fragile)│
+│ Twist Words          │   5    │ Next card does opposite of intended.       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+TRUE DEFEAT:
+- Kill with Steelmanned argument (using its logic properly)
+- Use "Clarification" card (prevents distortion)
+- Hit with Photograph (cannot be distorted)
+
+FLAW ADDED: "Misrepresentation" - One card's effect is permanently twisted.
+
+─────────────────────────────────────────────────────────────────────────────
+APPEAL TO AUTHORITY
+─────────────────────────────────────────────────────────────────────────────
+"Dr. Famous said it, so it must be true."
+
+VISUAL: A figure kneeling before a giant diploma, ignoring contradicting data.
+
+ENTRENCHMENT: 60
+RESISTANCES: Testimony IMMUNITY, Evidence Resistance +1
+
+SPECIAL MECHANIC:
+Completely immune to Testimony and Expert cards.
+Your Authority cards heal it instead of damage.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Credentials Check    │   0    │ Expert cards heal enemy 10 HP.             │
+│ Citation Needed      │   6    │ Unfootnoted cards deal -2 damage.          │
+│ Published Authority  │   8    │ Adds "Credential Worship" flaw.            │
+│ Peer Pressure        │   5    │ Forces you to play Testimony (heals it).   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+WEAKNESS:
+- Direct Evidence (Observation, Experiment)
+- First Principles (ignores authority)
+- "Says Who?" card (direct counter)
+
+FLAW ADDED: "Credential Worship" - Must play Expert card each turn or -3 Coherence.
+
+
+================================================================================
+                     FLOOR 3: MASTERY BIASES
+================================================================================
+Complex multi-phase patterns, test full understanding.
+Entrenchment: 70-120 HP
+
+─────────────────────────────────────────────────────────────────────────────
+COGNITIVE DISSONANCE
+─────────────────────────────────────────────────────────────────────────────
+"These conflicting beliefs can both be true. Right? RIGHT?"
+
+VISUAL: A brain split in two, each half arguing with the other.
+
+ENTRENCHMENT: 100
+RESISTANCES: Immune to single-type damage
+
+SPECIAL MECHANIC:
+Has TWO health bars (50 each) that must be damaged simultaneously.
+If you only damage one, it heals the other for 5 HP.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Split Mind           │  5+5   │ Two separate attacks, must block both.     │
+│ Rationalization      │   0    │ Heals 15 HP on whichever bar is lower.     │
+│ Uncomfortable Truth  │   8    │ Coherence damage equal to your deck size.  │
+│ Denial Wave          │   6    │ All Evidence deals 0 damage next turn.     │
+│ Belief Protection    │  10    │ Targets the card type you've used most.    │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+WEAKNESS:
+- Balanced decks that hit both bars
+- Synthesis cards (resolve contradiction for massive damage)
+- Dialectic (turns contradiction into weapon)
+
+FLAW ADDED: "Inner Conflict" - Playing 2 of same type costs 3 Coherence.
+
+─────────────────────────────────────────────────────────────────────────────
+THE BACKFIRE EFFECT
+─────────────────────────────────────────────────────────────────────────────
+"When confronted with facts, I believe my position MORE strongly."
+
+VISUAL: A figure behind a mirror—your evidence reflects back at you.
+
+ENTRENCHMENT: 80
+RESISTANCES: Variable (increases with damage)
+
+SPECIAL MECHANIC:
+Every time you deal damage, it gains Resistance to that damage type.
+Strong Evidence makes it HARDER to defeat.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Dig In               │   0    │ +3 Resistance to your highest damage type. │
+│ Entrench Further     │   6    │ Your next Evidence card heals it for 5.    │
+│ Counter-Argue        │  dmg   │ Deals damage equal to last damage taken.   │
+│ Motivated Reasoning  │   8    │ Your Logic multipliers become 0.8x.        │
+│ Identity Threat      │  10    │ 5 Coherence damage per Axiom card.         │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+WEAKNESS:
+- Gentle questioning (Socratic cards)
+- Building trust before evidence
+- Starting small (low-damage chip away)
+- Lateral approach (not direct confrontation)
+
+FLAW ADDED: "Defensive Thinking" - Strong cards (5+ weight) deal -3 damage.
+
+─────────────────────────────────────────────────────────────────────────────
+HINDSIGHT BIAS
+─────────────────────────────────────────────────────────────────────────────
+"I knew it all along. (I didn't.)"
+
+VISUAL: A figure looking at past through rose-tinted glasses, history rewriting itself.
+
+ENTRENCHMENT: 75
+RESISTANCES: Memory-type cards Resistance +5
+
+SPECIAL MECHANIC:
+Rewrites history of the battle. Can "undo" your past turns.
+Discard pile becomes unreliable.
+
+ATTACKS:
+┌──────────────────────┬────────┬────────────────────────────────────────────┐
+│ NAME                 │ DAMAGE │ EFFECT                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Rewrite History      │   0    │ Last turn's damage is undone.              │
+│ I Knew It            │   7    │ Predicts your next card, +5 damage if right│
+│ Obvious In Hindsight │   5    │ Removes "discovered" cards from deck.      │
+│ False Memory         │   6    │ Shuffles cards from discard into deck.     │
+│ Selective Recall     │   4    │ Your Memory cards add Flaws.               │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+WEAKNESS:
+- Immediate-effect cards (can't undo)
+- Recording cards (prevent rewrite)
+- Present-focused reasoning
+
+FLAW ADDED: "Creeping Determinism" - Past cards seem inevitable, lose flexibility.
+
+
+================================================================================
+                       ELITE ENEMIES
+================================================================================
+Mini-bosses that appear on hard paths. More complex, higher rewards.
+
+─────────────────────────────────────────────────────────────────────────────
+THE FUNDAMENTAL ATTRIBUTION ERROR
+─────────────────────────────────────────────────────────────────────────────
+"Their failure is their fault. My failure is circumstance."
+
+ENTRENCHMENT: 90
+Has two modes: judging you (harsh) and defending self (gentle).
+
+ATTACKS:
+- When attacking: Hits hard, blames your "weakness"
+- When defending: Excuses everything with situational factors
+
+WEAKNESS: Consistency—treating self and other the same.
+
+─────────────────────────────────────────────────────────────────────────────
+THE JUST-WORLD FALLACY
+─────────────────────────────────────────────────────────────────────────────
+"Bad things happen to bad people. Good things happen to good people."
+
+ENTRENCHMENT: 85
+Gains massive damage when you have Flaw cards.
+
+ATTACKS:
+- "You Deserved It": Damage scales with your Flaws
+- "Karma Accounting": Heals when dealing damage
+- "Victim Blaming": Adds Flaw when you lose Coherence
+
+WEAKNESS: Random-effect cards (chaos breaks just-world).
+
+─────────────────────────────────────────────────────────────────────────────
+THE HALO EFFECT
+─────────────────────────────────────────────────────────────────────────────
+"They're attractive, so they must be smart/kind/competent."
+
+ENTRENCHMENT: 70
+Buffs itself with every positive trait it "reveals."
+
+ATTACKS:
+- Stacks buffs that must be individually removed
+- Your Evidence about it gets distorted by "aura"
+
+WEAKNESS: Analysis cards that see through the halo.
+
+
+================================================================================
+                  DESIGN NOTES FOR ENEMIES
+================================================================================
+
+VISUAL DESIGN:
+- Each bias should be immediately recognizable
+- Color coding matches bias family
+- Attack intents are always visible
+- Damage numbers are clear
+
+AUDIO:
+- Each bias has signature sound
+- Attack sounds reflect personality
+- Defeat sounds are satisfying but not mean
+
+DIALOGUE:
+- Biases "speak" in character
+- Dialogue reflects the bias pattern
+- Defeat dialogue shows understanding
+- Educational without being preachy
+
+
+================================================================================
