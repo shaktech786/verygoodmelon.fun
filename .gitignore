@@ -50,3 +50,6 @@ avatar-generation.log
 mcp-servers/flux-pro/node_modules
 *.md
 .playwright-mcp/
+
+# temporary files (face images, etc.)
+.tmp/

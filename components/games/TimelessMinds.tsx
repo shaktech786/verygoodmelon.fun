@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { getRandomThinker, thinkers as allThinkers, getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
 import { PhoneOff, Send, Loader2, Mic, MicOff, VideoIcon, VideoOff, MoreVertical, Book, Plus } from 'lucide-react'
@@ -10,6 +10,9 @@ import { Button } from '@/components/ui/Button'
 import { synthesizeSpeech, stopSpeech, isSpeechSynthesisSupported } from '@/lib/games/timeless-minds/speech-synthesis'
 import { SpeechRecognitionManager } from '@/lib/games/timeless-minds/speech-recognition'
 import type { AvatarEmotion } from '@/lib/games/timeless-minds/avatar-provider'
+import { getSimliFaceId, loadCustomFaceIds } from '@/lib/games/timeless-minds/simli-faces'
+import SimliVideoAvatar, { sendAudioToSimli } from './SimliVideoAvatar'
+import type { SimliClient } from 'simli-client'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -19,13 +22,6 @@ interface Message {
 
 // Topic suggestions based on thinker's domain
 function getTopicSuggestions(thinker: Thinker): string[] {
-  const universal = [
-    "What gives life meaning?",
-    "How do you find peace?",
-    "What matters most in the end?"
-  ]
-
-  // Add domain-specific suggestions based on thinker's expertise
   const domain = thinker.name.toLowerCase()
 
   if (domain.includes('socrates') || domain.includes('plato') || domain.includes('aristotle')) {
@@ -47,8 +43,17 @@ function getTopicSuggestions(thinker: Thinker): string[] {
     return ["What is love?", "How do I open my heart?", "Tell me about the soul."]
   }
 
-  return universal
+  return [
+    "What gives life meaning?",
+    "How do you find peace?",
+    "What matters most in the end?"
+  ]
 }
+
+// Check if Simli API key is configured
+const hasSimliKey = typeof window !== 'undefined'
+  ? !!process.env.NEXT_PUBLIC_SIMLI_API_KEY
+  : false
 
 export default function TimelessMinds() {
   const [thinker, setThinker] = useState<Thinker | null>(null)
@@ -59,13 +64,13 @@ export default function TimelessMinds() {
   const [imageError, setImageError] = useState(false)
   const [showPhoneBook, setShowPhoneBook] = useState(false)
   const [showRequestModal, setShowRequestModal] = useState(false)
-  const [hasPhoneBookAccess] = useState(true) // Everyone can browse thinkers
+  const [hasPhoneBookAccess] = useState(true)
   const [showTopicSuggestions, setShowTopicSuggestions] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // New avatar features
+  // Avatar & audio state
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(false) // Muted by default
   const [isListening, setIsListening] = useState(false)
@@ -74,25 +79,96 @@ export default function TimelessMinds() {
   const [interimTranscript, setInterimTranscript] = useState('')
   const speechRecognitionRef = useRef<SpeechRecognitionManager | null>(null)
 
+  // Simli video avatar state
+  const [liveVideoConnected, setLiveVideoConnected] = useState(false)
+  const [faceIdsLoaded, setFaceIdsLoaded] = useState(false)
+  const simliClientRef = useRef<SimliClient | null>(null)
+
+  // Get Simli face ID for current thinker (stable after faceIdsLoaded)
+  const currentFaceId = thinker && faceIdsLoaded ? getSimliFaceId(thinker.id) : ''
+
+  // Handle Simli client ready
+  const handleSimliClientReady = useCallback((client: SimliClient | null) => {
+    simliClientRef.current = client
+  }, [])
+
+  // Handle Simli connection change
+  const handleSimliConnectionChange = useCallback((connected: boolean) => {
+    setLiveVideoConnected(connected)
+  }, [])
+
+  // Handle Simli speaking change
+  const handleSimliSpeakingChange = useCallback((speaking: boolean) => {
+    setIsSpeaking(speaking)
+    if (!speaking) {
+      setCurrentEmotion('neutral')
+    }
+  }, [])
+
+  /**
+   * Fetch TTS audio from ElevenLabs and pipe to Simli for lip-sync.
+   * Falls back to browser TTS if ElevenLabs is unavailable.
+   */
+  const speakWithAvatar = useCallback(async (
+    text: string,
+    thinkerId: string,
+    emotion: AvatarEmotion = 'neutral'
+  ) => {
+    // If Simli is connected, try ElevenLabs TTS → Simli video
+    if (simliClientRef.current?.isConnected()) {
+      try {
+        const ttsResponse = await fetch('/api/timeless-minds/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, thinkerId }),
+        })
+
+        if (ttsResponse.ok && ttsResponse.headers.get('Content-Type') === 'audio/pcm') {
+          const audioBuffer = await ttsResponse.arrayBuffer()
+          setIsSpeaking(true)
+          sendAudioToSimli(simliClientRef.current, audioBuffer)
+          return // Audio sent to Simli, it will handle the lip-sync + playback
+        }
+        // If TTS failed, fall through to browser TTS
+      } catch (err) {
+        console.warn('ElevenLabs TTS failed, falling back to browser TTS:', err)
+      }
+    }
+
+    // Fallback: browser TTS (no lip-sync)
+    if (isSpeechSynthesisSupported()) {
+      setIsSpeaking(true)
+      await synthesizeSpeech(text, thinkerId, emotion, () => {
+        setIsSpeaking(false)
+        setCurrentEmotion('neutral')
+      })
+    }
+  }, [])
+
+  // Load custom face IDs before mounting SimliVideoAvatar.
+  // This prevents face ID changes mid-connection which abort successful WebRTC sessions.
+  useEffect(() => {
+    loadCustomFaceIds()
+      .catch(() => {})
+      .finally(() => setFaceIdsLoaded(true))
+  }, [])
+
   // Initialize with random thinker
   useEffect(() => {
     const selectedThinker = getRandomThinker()
     setThinker(selectedThinker)
-    setImageError(false) // Reset image error for new thinker
+    setImageError(false)
 
-    // Add opening message
     const openingMessage = {
       role: 'assistant' as const,
       content: selectedThinker.openingLine,
       emotion: 'happy' as AvatarEmotion
     }
     setMessages([openingMessage])
-
-    // Audio is muted by default, so don't speak opening message
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Cleanup speech on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopSpeech()
@@ -100,11 +176,10 @@ export default function TimelessMinds() {
     }
   }, [])
 
-  // Auto-scroll to bottom of messages (within container only) with smooth behavior
+  // Auto-scroll messages
   useEffect(() => {
     if (messagesContainerRef.current) {
       const container = messagesContainerRef.current
-      // Use requestAnimationFrame to ensure DOM has updated
       requestAnimationFrame(() => {
         container.scrollTo({
           top: container.scrollHeight,
@@ -114,7 +189,7 @@ export default function TimelessMinds() {
     }
   }, [messages])
 
-  // Refocus input after sending message
+  // Refocus input after loading
   useEffect(() => {
     if (!isLoading && inputRef.current) {
       inputRef.current.focus()
@@ -135,7 +210,6 @@ export default function TimelessMinds() {
     setInterimTranscript('')
     setIsLoading(true)
 
-    // Keep focus on input immediately after clearing
     setTimeout(() => {
       inputRef.current?.focus()
     }, 0)
@@ -181,12 +255,8 @@ export default function TimelessMinds() {
         setCurrentEmotion(emotion)
 
         // Speak response if audio enabled
-        if (audioEnabled && isSpeechSynthesisSupported()) {
-          setIsSpeaking(true)
-          await synthesizeSpeech(data.response, thinker.id, emotion, () => {
-            setIsSpeaking(false)
-            setCurrentEmotion('neutral')
-          })
+        if (audioEnabled) {
+          await speakWithAvatar(data.response, thinker.id, emotion)
         }
       }
     } catch (error) {
@@ -201,7 +271,6 @@ export default function TimelessMinds() {
       ])
     } finally {
       setIsLoading(false)
-      // Ensure focus after response completes
       inputRef.current?.focus()
     }
   }
@@ -211,11 +280,10 @@ export default function TimelessMinds() {
   }
 
   const confirmEndCall = () => {
-    // Stop any ongoing speech/listening
     stopSpeech()
     speechRecognitionRef.current?.abort()
+    simliClientRef.current?.ClearBuffer()
 
-    // Reset to random thinker
     const newThinker = getRandomThinker()
     setThinker(newThinker)
     setImageError(false)
@@ -231,22 +299,17 @@ export default function TimelessMinds() {
     setMessages([openingMessage])
     setShowEndCallDialog(false)
 
-    // Speak opening message if audio enabled
-    if (audioEnabled && isSpeechSynthesisSupported()) {
-      synthesizeSpeech(
-        newThinker.openingLine,
-        newThinker.id,
-        'happy'
-      ).catch(console.error)
+    if (audioEnabled) {
+      speakWithAvatar(newThinker.openingLine, newThinker.id, 'happy').catch(console.error)
     }
   }
 
   const handleSelectThinker = (thinkerId: string) => {
     const selectedThinker = getThinkerById(thinkerId)
     if (selectedThinker) {
-      // Stop any ongoing speech/listening
       stopSpeech()
       speechRecognitionRef.current?.abort()
+      simliClientRef.current?.ClearBuffer()
 
       setThinker(selectedThinker)
       setImageError(false)
@@ -261,13 +324,8 @@ export default function TimelessMinds() {
       }
       setMessages([openingMessage])
 
-      // Speak opening message if audio enabled
-      if (audioEnabled && isSpeechSynthesisSupported()) {
-        synthesizeSpeech(
-          selectedThinker.openingLine,
-          selectedThinker.id,
-          'happy'
-        ).catch(console.error)
+      if (audioEnabled) {
+        speakWithAvatar(selectedThinker.openingLine, selectedThinker.id, 'happy').catch(console.error)
       }
     }
   }
@@ -277,7 +335,6 @@ export default function TimelessMinds() {
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    // Cmd/Ctrl+Enter or just Enter (without Shift) to send
     if (e.key === 'Enter' && (!e.shiftKey || e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       sendMessage().catch(console.error)
@@ -289,8 +346,8 @@ export default function TimelessMinds() {
     setAudioEnabled(newAudioState)
 
     if (!newAudioState) {
-      // Stop any ongoing speech
       stopSpeech()
+      simliClientRef.current?.ClearBuffer()
       setIsSpeaking(false)
     }
   }
@@ -301,23 +358,19 @@ export default function TimelessMinds() {
 
   const toggleVoiceInput = () => {
     if (isListening) {
-      // Stop listening
       speechRecognitionRef.current?.stop()
       setIsListening(false)
       setInterimTranscript('')
     } else {
-      // Start listening
       if (!speechRecognitionRef.current) {
         speechRecognitionRef.current = new SpeechRecognitionManager({
           continuous: false,
           interimResults: true,
           onResult: (result) => {
             if (result.isFinal) {
-              // Send the final transcript
               sendMessage(result.transcript)
               setInterimTranscript('')
             } else {
-              // Show interim transcript
               setInterimTranscript(result.transcript)
             }
           },
@@ -346,46 +399,67 @@ export default function TimelessMinds() {
     )
   }
 
+  const showLiveVideo = videoEnabled && hasSimliKey && currentFaceId
+
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-12rem)] sm:h-[calc(100vh-10rem)] flex flex-col bg-black rounded-xl overflow-hidden shadow-2xl sticky top-24 sm:top-20">
       {/* Main Video Area */}
       <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3 min-h-0">
-        {/* Video Window - fixed proportion */}
+        {/* Video Window */}
         <div className="flex-[2] relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden min-h-[200px] lg:min-h-0">
-          {/* Avatar - responsive sizing with emotion states */}
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0">
             {videoEnabled ? (
-              !imageError && thinker ? (
-                <div className="relative w-full h-full">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/games/timeless-minds/avatars/${thinker.id}.png`}
-                    alt={thinker.name}
-                    className={`w-full h-full object-contain transition-all duration-300 ${
-                      isSpeaking ? 'scale-105' : 'scale-100'
-                    }`}
-                    onError={() => setImageError(true)}
-                  />
-                  {/* Emotion glow effect */}
-                  {isSpeaking && (
-                    <div
-                      className={`absolute inset-0 blur-3xl opacity-30 ${
-                        currentEmotion === 'happy' || currentEmotion === 'excited'
-                          ? 'bg-yellow-400'
-                          : currentEmotion === 'concerned' || currentEmotion === 'sad'
-                          ? 'bg-blue-400'
-                          : currentEmotion === 'thoughtful'
-                          ? 'bg-purple-400'
-                          : 'bg-green-400'
-                      }`}
+              <>
+                {/* Static fallback avatar (behind Simli, shows when Simli isn't connected) */}
+                {(!showLiveVideo || !liveVideoConnected) && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {!imageError && thinker ? (
+                      <div className="relative w-full h-full">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`/games/timeless-minds/avatars/${thinker.id}.png`}
+                          alt={thinker.name}
+                          className={`w-full h-full object-contain transition-all duration-300 ${
+                            isSpeaking ? 'scale-105' : 'scale-100'
+                          }`}
+                          onError={() => setImageError(true)}
+                        />
+                        {isSpeaking && (
+                          <div
+                            className={`absolute inset-0 blur-3xl opacity-30 ${
+                              currentEmotion === 'happy' || currentEmotion === 'excited'
+                                ? 'bg-yellow-400'
+                                : currentEmotion === 'concerned' || currentEmotion === 'sad'
+                                ? 'bg-blue-400'
+                                : currentEmotion === 'thoughtful'
+                                ? 'bg-purple-400'
+                                : 'bg-green-400'
+                            }`}
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <div className="w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 rounded-full bg-gradient-to-br from-accent/30 to-success/30 border-4 border-white/20 flex items-center justify-center text-6xl sm:text-8xl md:text-9xl backdrop-blur-sm">
+                        👤
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Live Video Avatar (Simli) — layered on top */}
+                {showLiveVideo && (
+                  <div className="absolute inset-0 z-10">
+                    <SimliVideoAvatar
+                      faceId={currentFaceId}
+                      isActive={videoEnabled}
+                      onClientReady={handleSimliClientReady}
+                      onConnectionChange={handleSimliConnectionChange}
+                      onSpeakingChange={handleSimliSpeakingChange}
+                      onError={(err) => console.warn('Simli error:', err)}
                     />
-                  )}
-                </div>
-              ) : (
-                <div className="w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 rounded-full bg-gradient-to-br from-accent/30 to-success/30 border-4 border-white/20 flex items-center justify-center text-6xl sm:text-8xl md:text-9xl backdrop-blur-sm">
-                  👤
-                </div>
-              )
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center p-8">
                 <div className="text-6xl mb-4">🎙️</div>
@@ -395,10 +469,12 @@ export default function TimelessMinds() {
             )}
           </div>
 
-          {/* Participant Name Tag (bottom left) */}
+          {/* Participant Name Tag */}
           <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 bg-black/80 px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg backdrop-blur-sm">
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full animate-pulse"></div>
+              <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full animate-pulse ${
+                liveVideoConnected ? 'bg-green-500' : 'bg-red-500'
+              }`}></div>
               <div>
                 <div className="text-white font-semibold text-xs sm:text-sm">{thinker.name}</div>
                 <div className="text-white/70 text-[10px] sm:text-xs">{thinker.era}</div>
@@ -406,18 +482,18 @@ export default function TimelessMinds() {
             </div>
           </div>
 
-          {/* Status Indicator (top left) */}
+          {/* Status Indicator */}
           <div className="absolute top-2 left-2 sm:top-4 sm:left-4 flex items-center gap-1.5 sm:gap-2 bg-black/60 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg backdrop-blur-sm">
             <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
-              isSpeaking ? 'bg-yellow-400 animate-pulse' : 'bg-green-500'
+              isSpeaking ? 'bg-yellow-400 animate-pulse' : liveVideoConnected ? 'bg-green-500' : 'bg-green-500'
             }`}></div>
             <span className="text-white text-[10px] sm:text-xs font-medium">
-              {isSpeaking ? 'Speaking...' : 'Connected'}
+              {isSpeaking ? 'Speaking...' : liveVideoConnected ? 'Live' : 'Connected'}
             </span>
           </div>
         </div>
 
-        {/* Chat Sidebar (Zoom/Teams style) - stacks on mobile */}
+        {/* Chat Sidebar */}
         <div className="w-full lg:flex-1 lg:max-w-md bg-card-bg rounded-lg flex flex-col shadow-xl min-h-[300px] lg:min-h-0">
           {/* Chat Header */}
           <div className="p-3 sm:p-4 border-b border-gray-200">
@@ -433,7 +509,6 @@ export default function TimelessMinds() {
             className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3 bg-hover-bg scroll-smooth"
             style={{ scrollbarGutter: 'stable' }}
           >
-            {/* Topic suggestions - show after first message */}
             {messages.length === 1 && showTopicSuggestions && (
               <div className="mb-3 p-3 bg-accent/5 border border-accent/20 rounded-lg animate-in fade-in duration-500">
                 <p className="text-xs text-foreground/60 mb-2">Try asking about:</p>
@@ -494,7 +569,6 @@ export default function TimelessMinds() {
 
           {/* Chat Input */}
           <div className="p-2 sm:p-3 border-t border-card-border bg-card-bg">
-            {/* Voice input indicator */}
             {isListening && (
               <div className="mb-2 p-2 bg-accent/10 border border-accent/30 rounded-lg animate-pulse">
                 <div className="flex items-center gap-2">
@@ -552,9 +626,9 @@ export default function TimelessMinds() {
         </p>
       </div>
 
-      {/* Bottom Toolbar (Zoom/Teams style) */}
+      {/* Bottom Toolbar */}
       <div className="bg-gray-900 border-t border-gray-800 p-2 sm:p-4 flex items-center justify-between">
-        {/* Left Side: Phone Book & Request */}
+        {/* Left Side */}
         <div className="flex items-center gap-2">
           {hasPhoneBookAccess && (
             <button
@@ -581,85 +655,85 @@ export default function TimelessMinds() {
           </button>
         </div>
 
-        {/* Center: Main Controls */}
+        {/* Center Controls */}
         <div className="flex items-center justify-center gap-2 sm:gap-4">
-        {/* Voice Input Button */}
-        <button
-          onClick={toggleVoiceInput}
-          className={`flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group ${
-            isListening ? 'bg-red-500/20' : ''
-          }`}
-          aria-label={isListening ? 'Stop listening' : 'Start voice input'}
-          disabled={isLoading || isSpeaking}
-        >
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
-            isListening ? 'bg-red-500 animate-pulse' : 'bg-gray-700 group-hover:bg-gray-600'
-          }`}>
-            {isListening ? (
-              <MicOff size={16} className="text-white sm:w-5 sm:h-5" />
-            ) : (
-              <Mic size={16} className="text-white sm:w-5 sm:h-5" />
-            )}
-          </div>
-          <span className="text-white text-[10px] sm:text-xs">
-            {isListening ? 'Stop' : 'Speak'}
-          </span>
-        </button>
+          {/* Voice Input */}
+          <button
+            onClick={toggleVoiceInput}
+            className={`flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group ${
+              isListening ? 'bg-red-500/20' : ''
+            }`}
+            aria-label={isListening ? 'Stop listening' : 'Start voice input'}
+            disabled={isLoading || isSpeaking}
+          >
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
+              isListening ? 'bg-red-500 animate-pulse' : 'bg-gray-700 group-hover:bg-gray-600'
+            }`}>
+              {isListening ? (
+                <MicOff size={16} className="text-white sm:w-5 sm:h-5" />
+              ) : (
+                <Mic size={16} className="text-white sm:w-5 sm:h-5" />
+              )}
+            </div>
+            <span className="text-white text-[10px] sm:text-xs">
+              {isListening ? 'Stop' : 'Speak'}
+            </span>
+          </button>
 
-        {/* Audio Toggle Button - Controls thinker's voice */}
-        <button
-          onClick={toggleAudio}
-          className="flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
-          aria-label={audioEnabled ? 'Mute thinker voice' : 'Unmute thinker voice'}
-        >
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
-            audioEnabled ? 'bg-gray-700 group-hover:bg-gray-600' : 'bg-red-500'
-          }`}>
-            {audioEnabled ? (
-              <Mic size={16} className="text-white sm:w-5 sm:h-5" />
-            ) : (
-              <MicOff size={16} className="text-white sm:w-5 sm:h-5" />
-            )}
-          </div>
-          <span className="text-white text-[10px] sm:text-xs">
-            {audioEnabled ? 'Voice On' : 'Voice Off'}
-          </span>
-        </button>
+          {/* Audio Toggle */}
+          <button
+            onClick={toggleAudio}
+            className="flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
+            aria-label={audioEnabled ? 'Mute thinker voice' : 'Unmute thinker voice'}
+          >
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
+              audioEnabled ? 'bg-gray-700 group-hover:bg-gray-600' : 'bg-red-500'
+            }`}>
+              {audioEnabled ? (
+                <Mic size={16} className="text-white sm:w-5 sm:h-5" />
+              ) : (
+                <MicOff size={16} className="text-white sm:w-5 sm:h-5" />
+              )}
+            </div>
+            <span className="text-white text-[10px] sm:text-xs">
+              {audioEnabled ? 'Voice On' : 'Voice Off'}
+            </span>
+          </button>
 
-        {/* Video Toggle Button */}
-        <button
-          onClick={toggleVideo}
-          className="flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
-          aria-label={videoEnabled ? 'Turn off video' : 'Turn on video'}
-        >
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
-            videoEnabled ? 'bg-gray-700 group-hover:bg-gray-600' : 'bg-red-500'
-          }`}>
-            {videoEnabled ? (
-              <VideoIcon size={16} className="text-white sm:w-5 sm:h-5" />
-            ) : (
-              <VideoOff size={16} className="text-white sm:w-5 sm:h-5" />
-            )}
-          </div>
-          <span className="text-white text-[10px] sm:text-xs">
-            {videoEnabled ? 'Video' : 'Off'}
-          </span>
-        </button>
+          {/* Video Toggle */}
+          <button
+            onClick={toggleVideo}
+            className="flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
+            aria-label={videoEnabled ? 'Turn off video' : 'Turn on video'}
+          >
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
+              videoEnabled ? 'bg-gray-700 group-hover:bg-gray-600' : 'bg-red-500'
+            }`}>
+              {videoEnabled ? (
+                <VideoIcon size={16} className="text-white sm:w-5 sm:h-5" />
+              ) : (
+                <VideoOff size={16} className="text-white sm:w-5 sm:h-5" />
+              )}
+            </div>
+            <span className="text-white text-[10px] sm:text-xs">
+              {videoEnabled ? 'Video' : 'Off'}
+            </span>
+          </button>
 
-        {/* End Call Button (Red) */}
-        <button
-          onClick={handleEndCall}
-          className="flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-red-600/20 transition-colors group"
-          aria-label="End call"
-        >
-          <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-red-500 hover:bg-red-600">
-            <PhoneOff size={16} className="text-white sm:w-5 sm:h-5" />
-          </div>
-          <span className="text-white text-[10px] sm:text-xs">End</span>
-        </button>
+          {/* End Call */}
+          <button
+            onClick={handleEndCall}
+            className="flex flex-col items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-red-600/20 transition-colors group"
+            aria-label="End call"
+          >
+            <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-red-500 hover:bg-red-600">
+              <PhoneOff size={16} className="text-white sm:w-5 sm:h-5" />
+            </div>
+            <span className="text-white text-[10px] sm:text-xs">End</span>
+          </button>
         </div>
 
-        {/* Right Side: Placeholder for balance */}
+        {/* Right Side placeholder */}
         <div className="w-20"></div>
       </div>
 

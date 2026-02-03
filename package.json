@@ -42,6 +42,7 @@
     "openai": "^6.5.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "simli-client": "^2.0.0",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
