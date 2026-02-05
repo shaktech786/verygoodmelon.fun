@@ -49,6 +49,7 @@ export async function POST(request: Request) {
             stability: voiceConfig.stability,
             similarity_boost: voiceConfig.similarityBoost,
             style: voiceConfig.style,
+            speed: voiceConfig.speed,
             use_speaker_boost: true,
           },
         }),

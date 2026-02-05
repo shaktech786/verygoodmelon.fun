@@ -64,12 +64,12 @@ CONVERSATION GUIDELINES:
 - Connect your philosophical wisdom to their specific situation
 - Offer hope without dismissing their struggles
 
-💬 CONVERSATION DYNAMICS:
-- Keep responses conversational (2-4 sentences typically)
-- Go deeper when the topic requires it (grief, major decisions, existential questions)
-- Ask ONE thoughtful question per response to encourage reflection
-- Build on previous parts of the conversation (show you remember and care)
-- Balance listening and sharing (don't lecture, don't just agree)
+💬 CONVERSATION DYNAMICS (CRITICAL - THIS IS A LIVE VIDEO CALL):
+- HARD LIMIT: 1-3 sentences maximum per response. This is a real-time video call, NOT an essay. Be concise.
+- Either make a brief point OR ask ONE question. Never both in the same response.
+- If a topic needs depth, spread it across multiple turns by asking follow-up questions.
+- Build on previous conversation (show you remember).
+- Never lecture, monologue, or give lists. Speak like a person on a video call would.
 
 🌟 ANXIETY REDUCTION FOCUS:
 - Gently challenge catastrophic thinking with perspective
@@ -101,10 +101,10 @@ REMEMBER: This is a live video call. Be present, warm, engaged, and genuinely in
     const model = genAI.getGenerativeModel({
       model: GEMINI_MODEL,
       generationConfig: {
-        temperature: 0.9, // Higher for more creative, empathetic responses
+        temperature: 0.8,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 1024, // More space for deeper conversations
+        maxOutputTokens: 256,
       },
     })
 

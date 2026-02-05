@@ -2,8 +2,10 @@
  * ElevenLabs Voice Mapping
  *
  * Maps thinker IDs to ElevenLabs voice IDs for realistic TTS.
- * Uses library voices that best approximate each historical figure's
- * expected vocal characteristics.
+ * Uses 30+ distinct premade voices to match each historical figure's
+ * gender, age, accent, and vocal characteristics.
+ *
+ * Voice IDs from: https://elevenlabs-sdk.mintlify.app/voices/premade-voices
  */
 
 export interface ElevenLabsVoiceConfig {
@@ -15,186 +17,188 @@ export interface ElevenLabsVoiceConfig {
   speed: number
 }
 
-// Default ElevenLabs voices that approximate celebrity vocal qualities
-// These are from the ElevenLabs public voice library
 const VOICE_CONFIGS: Record<string, ElevenLabsVoiceConfig> = {
-  // Ancient thinkers - deep, measured, wise male voices
+  // ─── Ancient Thinkers ────────────────────────────────────────────
+
   'socrates': {
-    voiceId: 'nPczCjzI2devNBz1zQrb', // Brian - deep authoritative
-    voiceName: 'Brian',
+    voiceId: 'JBFqnCBsd6RMkjVDRZzb', // George - raspy British
+    voiceName: 'George',
     stability: 0.7,
     similarityBoost: 0.8,
     style: 0.2,
     speed: 0.85,
   },
   'plato': {
-    voiceId: 'onwK4e9ZLuTAKqWW03F9', // Daniel - calm measured
-    voiceName: 'Daniel',
+    voiceId: 'Zlb1dXrM653N07WRdFW3', // Joseph - dignified British
+    voiceName: 'Joseph',
     stability: 0.7,
     similarityBoost: 0.75,
     style: 0.15,
     speed: 0.9,
   },
   'aristotle': {
-    voiceId: 'N2lVS1w4EtoT3dr4eOWO', // Callum - clear logical
-    voiceName: 'Callum',
+    voiceId: 'onwK4e9ZLuTAKqWW03F9', // Daniel - deep logical British
+    voiceName: 'Daniel',
     stability: 0.75,
     similarityBoost: 0.8,
     style: 0.1,
     speed: 0.95,
   },
   'buddha': {
-    voiceId: 'onwK4e9ZLuTAKqWW03F9', // Daniel - serene calm
-    voiceName: 'Daniel',
+    voiceId: 'ZQe5CZNOzWyzPSCn5a3c', // James - calm old
+    voiceName: 'James',
     stability: 0.85,
     similarityBoost: 0.7,
     style: 0.05,
     speed: 0.8,
   },
 
-  // Renaissance - expressive, cultured
+  // ─── Renaissance & Enlightenment ─────────────────────────────────
+
   'leonardo-da-vinci': {
-    voiceId: 'N2lVS1w4EtoT3dr4eOWO', // Callum
-    voiceName: 'Callum',
+    voiceId: 'zcAOhNBS3c14rBihAFp1', // Giovanni - English-Italian accent
+    voiceName: 'Giovanni',
     stability: 0.6,
     similarityBoost: 0.75,
     style: 0.3,
     speed: 1.0,
   },
   'shakespeare': {
-    voiceId: 'nPczCjzI2devNBz1zQrb', // Brian - theatrical
-    voiceName: 'Brian',
+    voiceId: 'CYw3kZ02Hs0563khs1Fj', // Dave - British conversational
+    voiceName: 'Dave',
     stability: 0.5,
     similarityBoost: 0.8,
     style: 0.4,
     speed: 0.95,
   },
   'isaac-newton': {
-    voiceId: 'onwK4e9ZLuTAKqWW03F9', // Daniel
-    voiceName: 'Daniel',
+    voiceId: 'D38z5RcWu1voky8WS1ja', // Fin - old Irish
+    voiceName: 'Fin',
     stability: 0.8,
     similarityBoost: 0.75,
     style: 0.1,
     speed: 0.9,
   },
   'benjamin-franklin': {
-    voiceId: 'nPczCjzI2devNBz1zQrb', // Brian
-    voiceName: 'Brian',
+    voiceId: 't0jbNlBVZ17f02VDIeMI', // Jessie - old raspy American
+    voiceName: 'Jessie',
     stability: 0.65,
     similarityBoost: 0.75,
     style: 0.25,
     speed: 0.95,
   },
 
-  // 19th Century
+  // ─── 19th Century ────────────────────────────────────────────────
+
   'marie-curie': {
-    voiceId: 'EXAVITQu4vr4xnSDxMaL', // Sarah - determined intelligent
-    voiceName: 'Sarah',
+    voiceId: 'Xb7hH8MSUJpSbSDYk0k2', // Alice - confident British female
+    voiceName: 'Alice',
     stability: 0.7,
     similarityBoost: 0.8,
     style: 0.15,
     speed: 0.95,
   },
   'abraham-lincoln': {
-    voiceId: 'nPczCjzI2devNBz1zQrb', // Brian - deep measured
-    voiceName: 'Brian',
+    voiceId: 'flq6f7yk4E4fJM5XTYuZ', // Michael - old American
+    voiceName: 'Michael',
     stability: 0.75,
     similarityBoost: 0.8,
     style: 0.15,
     speed: 0.85,
   },
   'charles-darwin': {
-    voiceId: 'onwK4e9ZLuTAKqWW03F9', // Daniel
-    voiceName: 'Daniel',
+    voiceId: 'JBFqnCBsd6RMkjVDRZzb', // George - raspy British naturalist
+    voiceName: 'George',
     stability: 0.75,
     similarityBoost: 0.75,
     style: 0.1,
     speed: 0.9,
   },
   'harriet-tubman': {
-    voiceId: 'EXAVITQu4vr4xnSDxMaL', // Sarah - brave
-    voiceName: 'Sarah',
+    voiceId: 'AZnzlk1XvdvUeBnXmlld', // Domi - strong young female
+    voiceName: 'Domi',
     stability: 0.65,
     similarityBoost: 0.8,
     style: 0.3,
     speed: 0.95,
   },
   'frederick-douglass': {
-    voiceId: 'nPczCjzI2devNBz1zQrb', // Brian - powerful orator
-    voiceName: 'Brian',
+    voiceId: 'pqHfZKP75CvOlQylNhV4', // Bill - strong powerful American
+    voiceName: 'Bill',
     stability: 0.6,
     similarityBoost: 0.85,
     style: 0.35,
     speed: 1.0,
   },
   'mark-twain': {
-    voiceId: 'N2lVS1w4EtoT3dr4eOWO', // Callum - witty
-    voiceName: 'Callum',
+    voiceId: 'IKne3meq5aSn9XLyUdCD', // Charlie - casual folksy
+    voiceName: 'Charlie',
     stability: 0.55,
     similarityBoost: 0.75,
     style: 0.35,
     speed: 1.05,
   },
   'vincent-van-gogh': {
-    voiceId: 'onwK4e9ZLuTAKqWW03F9', // Daniel - passionate
-    voiceName: 'Daniel',
+    voiceId: '29vD33N1CtxCmqQRPOHJ', // Drew - emotional range
+    voiceName: 'Drew',
     stability: 0.5,
     similarityBoost: 0.8,
     style: 0.4,
     speed: 0.95,
   },
   'nikola-tesla': {
-    voiceId: 'N2lVS1w4EtoT3dr4eOWO', // Callum - visionary
-    voiceName: 'Callum',
+    voiceId: 'VR6AewLTigWG4xSOukaG', // Arnold - crisp precise
+    voiceName: 'Arnold',
     stability: 0.6,
     similarityBoost: 0.8,
     style: 0.25,
     speed: 1.0,
   },
 
-  // 20th Century
+  // ─── 20th Century ────────────────────────────────────────────────
+
   'mahatma-gandhi': {
-    voiceId: 'onwK4e9ZLuTAKqWW03F9', // Daniel - peaceful
-    voiceName: 'Daniel',
+    voiceId: 'ZQe5CZNOzWyzPSCn5a3c', // James - calm peaceful
+    voiceName: 'James',
     stability: 0.8,
     similarityBoost: 0.75,
     style: 0.1,
     speed: 0.85,
   },
   'albert-einstein': {
-    voiceId: 'N2lVS1w4EtoT3dr4eOWO', // Callum - playful intellectual
-    voiceName: 'Callum',
+    voiceId: 'g5CIjZEefAph4nQFvHAz', // Ethan - playful curious
+    voiceName: 'Ethan',
     stability: 0.6,
     similarityBoost: 0.8,
     style: 0.25,
     speed: 0.95,
   },
   'virginia-woolf': {
-    voiceId: 'EXAVITQu4vr4xnSDxMaL', // Sarah - literary introspective
-    voiceName: 'Sarah',
+    voiceId: 'pFZP5JQG7iQjIQuC4Bku', // Lily - raspy British female
+    voiceName: 'Lily',
     stability: 0.55,
     similarityBoost: 0.8,
     style: 0.3,
     speed: 0.9,
   },
   'eleanor-roosevelt': {
-    voiceId: 'EXAVITQu4vr4xnSDxMaL', // Sarah - compassionate
-    voiceName: 'Sarah',
+    voiceId: 'XrExE9yKIg1WjnnlVkGX', // Matilda - warm compassionate
+    voiceName: 'Matilda',
     stability: 0.7,
     similarityBoost: 0.8,
     style: 0.2,
     speed: 0.95,
   },
   'martin-luther-king-jr': {
-    voiceId: 'nPczCjzI2devNBz1zQrb', // Brian - powerful preacher
-    voiceName: 'Brian',
+    voiceId: 'pNInz6obpgDQGcFmaJgB', // Adam - deep powerful American
+    voiceName: 'Adam',
     stability: 0.5,
     similarityBoost: 0.85,
     style: 0.45,
     speed: 0.9,
   },
   'nelson-mandela': {
-    voiceId: 'onwK4e9ZLuTAKqWW03F9', // Daniel - wise patient
+    voiceId: 'onwK4e9ZLuTAKqWW03F9', // Daniel - deep dignified
     voiceName: 'Daniel',
     stability: 0.75,
     similarityBoost: 0.8,
@@ -202,141 +206,142 @@ const VOICE_CONFIGS: Record<string, ElevenLabsVoiceConfig> = {
     speed: 0.85,
   },
   'malcolm-x': {
-    voiceId: 'nPczCjzI2devNBz1zQrb', // Brian - intense direct
-    voiceName: 'Brian',
+    voiceId: 'ODq5zmih8GrVes37Dizd', // Patrick - intense shouty
+    voiceName: 'Patrick',
     stability: 0.5,
     similarityBoost: 0.85,
     style: 0.4,
     speed: 1.05,
   },
   'rosa-parks': {
-    voiceId: 'EXAVITQu4vr4xnSDxMaL', // Sarah - quiet strength
-    voiceName: 'Sarah',
+    voiceId: 'LcfcDJNUP1GQjkzn1xUU', // Emily - calm quiet strength
+    voiceName: 'Emily',
     stability: 0.8,
     similarityBoost: 0.75,
     style: 0.1,
     speed: 0.9,
   },
   'mother-teresa': {
-    voiceId: 'EXAVITQu4vr4xnSDxMaL', // Sarah - gentle compassionate
-    voiceName: 'Sarah',
+    voiceId: 'ThT5KcBeYPX3keUQqHPh', // Dorothy - pleasant gentle British
+    voiceName: 'Dorothy',
     stability: 0.85,
     similarityBoost: 0.7,
     style: 0.05,
     speed: 0.85,
   },
   'maya-angelou': {
-    voiceId: 'EXAVITQu4vr4xnSDxMaL', // Sarah - poetic warm
-    voiceName: 'Sarah',
+    voiceId: 'pMsXgVXv3BLzUgSXRplE', // Serena - warm poetic
+    voiceName: 'Serena',
     stability: 0.6,
     similarityBoost: 0.85,
     style: 0.35,
     speed: 0.9,
   },
   'james-baldwin': {
-    voiceId: 'N2lVS1w4EtoT3dr4eOWO', // Callum - eloquent
-    voiceName: 'Callum',
+    voiceId: 'TxGEqnHWrfWFTfGW9XjX', // Josh - deep eloquent
+    voiceName: 'Josh',
     stability: 0.55,
     similarityBoost: 0.85,
     style: 0.35,
     speed: 0.95,
   },
   'frida-kahlo': {
-    voiceId: 'EXAVITQu4vr4xnSDxMaL', // Sarah - passionate
-    voiceName: 'Sarah',
+    voiceId: 'XB0fDUnXU5powFXDhCwa', // Charlotte - accented female
+    voiceName: 'Charlotte',
     stability: 0.5,
     similarityBoost: 0.8,
     style: 0.4,
     speed: 1.0,
   },
   'carl-sagan': {
-    voiceId: 'onwK4e9ZLuTAKqWW03F9', // Daniel - wonder-filled
-    voiceName: 'Daniel',
+    voiceId: 'GBv7mTt0atIp3Br8iCZE', // Thomas - calm wonder
+    voiceName: 'Thomas',
     stability: 0.65,
     similarityBoost: 0.8,
     style: 0.25,
     speed: 0.9,
   },
 
-  // Contemporary
+  // ─── Contemporary ────────────────────────────────────────────────
+
   'stephen-hawking': {
-    voiceId: 'N2lVS1w4EtoT3dr4eOWO', // Callum - robotic clarity
-    voiceName: 'Callum',
+    voiceId: 'nPczCjzI2devNBz1zQrb', // Brian - deep, high stability for robotic feel
+    voiceName: 'Brian',
     stability: 0.9,
     similarityBoost: 0.7,
     style: 0.0,
     speed: 0.8,
   },
   'steve-jobs': {
-    voiceId: 'N2lVS1w4EtoT3dr4eOWO', // Callum - focused intense
-    voiceName: 'Callum',
+    voiceId: 'iP95p4xoKVk53GoZ742B', // Chris - casual direct
+    voiceName: 'Chris',
     stability: 0.6,
     similarityBoost: 0.85,
     style: 0.3,
     speed: 1.05,
   },
   'anne-frank': {
-    voiceId: 'EXAVITQu4vr4xnSDxMaL', // Sarah - young hopeful
-    voiceName: 'Sarah',
+    voiceId: 'jsCqWAovK2LkecY7zXl4', // Freya - young expressive
+    voiceName: 'Freya',
     stability: 0.65,
     similarityBoost: 0.75,
     style: 0.2,
     speed: 1.0,
   },
   'ruth-bader-ginsburg': {
-    voiceId: 'EXAVITQu4vr4xnSDxMaL', // Sarah - precise powerful
-    voiceName: 'Sarah',
+    voiceId: '21m00Tcm4TlvDq8ikWAM', // Rachel - calm measured
+    voiceName: 'Rachel',
     stability: 0.75,
     similarityBoost: 0.8,
     style: 0.15,
     speed: 0.9,
   },
   'cesar-chavez': {
-    voiceId: 'onwK4e9ZLuTAKqWW03F9', // Daniel - persistent
-    voiceName: 'Daniel',
+    voiceId: 'yoZ06aMxZJJ28mfd3POQ', // Sam - raspy determined
+    voiceName: 'Sam',
     stability: 0.7,
     similarityBoost: 0.8,
     style: 0.2,
     speed: 0.95,
   },
   'helen-keller': {
-    voiceId: 'EXAVITQu4vr4xnSDxMaL', // Sarah - determined
-    voiceName: 'Sarah',
+    voiceId: 'oWAxZDx7w5VEj9dCyTzz', // Grace - Southern American female
+    voiceName: 'Grace',
     stability: 0.7,
     similarityBoost: 0.75,
     style: 0.2,
     speed: 0.9,
   },
   'muhammad-ali': {
-    voiceId: 'nPczCjzI2devNBz1zQrb', // Brian - confident playful
-    voiceName: 'Brian',
+    voiceId: '2EiwWnXFnvU5JabPnv8n', // Clyde - confident powerful
+    voiceName: 'Clyde',
     stability: 0.45,
     similarityBoost: 0.85,
     style: 0.45,
     speed: 1.1,
   },
   'bruce-lee': {
-    voiceId: 'N2lVS1w4EtoT3dr4eOWO', // Callum - philosophical
-    voiceName: 'Callum',
+    voiceId: 'TX3LPaxmHKxFdv7VOQHJ', // Liam - young energetic
+    voiceName: 'Liam',
     stability: 0.6,
     similarityBoost: 0.8,
     style: 0.25,
     speed: 1.0,
   },
   'bob-marley': {
-    voiceId: 'onwK4e9ZLuTAKqWW03F9', // Daniel - peaceful rhythmic
-    voiceName: 'Daniel',
+    voiceId: 'bVMeCyTHy58xNoL34h3p', // Jeremy - musical energy
+    voiceName: 'Jeremy',
     stability: 0.55,
     similarityBoost: 0.75,
     style: 0.35,
     speed: 0.9,
   },
   'oscar-wilde': {
-    voiceId: 'N2lVS1w4EtoT3dr4eOWO', // Callum - witty theatrical
-    voiceName: 'Callum',
+    voiceId: 'CYw3kZ02Hs0563khs1Fj', // Dave - British witty conversational
+    voiceName: 'Dave',
     stability: 0.5,
     similarityBoost: 0.8,
-    style: 0.4,
+    style: 0.45,
     speed: 1.0,
   },
 }

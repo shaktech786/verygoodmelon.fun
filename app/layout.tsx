@@ -61,6 +61,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Import map for TalkingHead 3D avatar library (loaded at runtime from /talkinghead/) */}
+        <script
+          type="importmap"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              imports: {
+                "three": "https://esm.sh/three@0.180.0",
+                "three/": "https://esm.sh/three@0.180.0/",
+              },
+            }),
+          }}
+        />
+      </head>
       <body className={`${quicksand.variable} antialiased`} suppressHydrationWarning>
         <AmbientParticles />
         <a href="#main-content" className="skip-to-content">

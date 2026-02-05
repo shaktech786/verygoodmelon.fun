@@ -31,6 +31,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@isoterik/react-word-cloud": "^1.2.0",
+    "@met4citizen/talkinghead": "^1.7.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.75.0",
     "@vercel/speed-insights": "^1.2.0",
@@ -42,7 +43,7 @@
     "openai": "^6.5.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "simli-client": "^2.0.0",
+    "simli-client": "^1.2.20",
     "zustand": "^5.0.8"
   },
   "devDependencies": {

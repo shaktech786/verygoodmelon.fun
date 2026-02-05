@@ -38,6 +38,8 @@
   "exclude": [
     "node_modules",
     "mcp-servers",
-    "scripts"
+    "scripts",
+    "__tests__",
+    "tests"
   ]
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { getRandomThinker, thinkers as allThinkers, getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
 import { PhoneOff, Send, Loader2, Mic, MicOff, VideoIcon, VideoOff, MoreVertical, Book, Plus } from 'lucide-react'
@@ -10,9 +10,11 @@ import { Button } from '@/components/ui/Button'
 import { synthesizeSpeech, stopSpeech, isSpeechSynthesisSupported } from '@/lib/games/timeless-minds/speech-synthesis'
 import { SpeechRecognitionManager } from '@/lib/games/timeless-minds/speech-recognition'
 import type { AvatarEmotion } from '@/lib/games/timeless-minds/avatar-provider'
-import { getSimliFaceId, loadCustomFaceIds } from '@/lib/games/timeless-minds/simli-faces'
-import SimliVideoAvatar, { sendAudioToSimli } from './SimliVideoAvatar'
-import type { SimliClient } from 'simli-client'
+import type { AvatarHandle } from '@/lib/games/timeless-minds/avatar-providers/types'
+import { getActiveProvider, getProviderMeta } from '@/lib/games/timeless-minds/avatar-providers/registry'
+import { resolveAvatarId } from '@/lib/games/timeless-minds/avatar-providers/resolve-avatar-id'
+import { loadCustomFaceIds } from '@/lib/games/timeless-minds/simli-faces'
+import AvatarRenderer from './avatars/AvatarRenderer'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -50,18 +52,12 @@ function getTopicSuggestions(thinker: Thinker): string[] {
   ]
 }
 
-// Check if Simli API key is configured
-const hasSimliKey = typeof window !== 'undefined'
-  ? !!process.env.NEXT_PUBLIC_SIMLI_API_KEY
-  : false
-
 export default function TimelessMinds() {
   const [thinker, setThinker] = useState<Thinker | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showEndCallDialog, setShowEndCallDialog] = useState(false)
-  const [imageError, setImageError] = useState(false)
   const [showPhoneBook, setShowPhoneBook] = useState(false)
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [hasPhoneBookAccess] = useState(true)
@@ -72,92 +68,136 @@ export default function TimelessMinds() {
 
   // Avatar & audio state
   const [videoEnabled, setVideoEnabled] = useState(true)
-  const [audioEnabled, setAudioEnabled] = useState(false) // Muted by default
+  const [audioEnabled, setAudioEnabled] = useState(true)
   const [isListening, setIsListening] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [currentEmotion, setCurrentEmotion] = useState<AvatarEmotion>('neutral')
   const [interimTranscript, setInterimTranscript] = useState('')
   const speechRecognitionRef = useRef<SpeechRecognitionManager | null>(null)
 
-  // Simli video avatar state
-  const [liveVideoConnected, setLiveVideoConnected] = useState(false)
-  const [faceIdsLoaded, setFaceIdsLoaded] = useState(false)
-  const simliClientRef = useRef<SimliClient | null>(null)
+  // Provider-agnostic avatar state
+  const [avatarConnected, setAvatarConnected] = useState(false)
+  const [providerReady, setProviderReady] = useState(false)
+  const avatarHandleRef = useRef<AvatarHandle | null>(null)
 
-  // Get Simli face ID for current thinker (stable after faceIdsLoaded)
-  const currentFaceId = thinker && faceIdsLoaded ? getSimliFaceId(thinker.id) : ''
+  // Read provider config once
+  const activeProvider = useMemo(() => getActiveProvider(), [])
+  const providerMeta = useMemo(() => getProviderMeta(activeProvider), [activeProvider])
 
-  // Handle Simli client ready
-  const handleSimliClientReady = useCallback((client: SimliClient | null) => {
-    simliClientRef.current = client
+  // Resolve avatar ID for current thinker + provider
+  const avatarId = useMemo(() => {
+    if (!thinker || !providerReady) return ''
+    return resolveAvatarId(thinker.id, activeProvider)
+  }, [thinker, activeProvider, providerReady])
+
+  // Handle avatar connection change
+  const handleAvatarConnectionChange = useCallback((connected: boolean) => {
+    setAvatarConnected(connected)
   }, [])
 
-  // Handle Simli connection change
-  const handleSimliConnectionChange = useCallback((connected: boolean) => {
-    setLiveVideoConnected(connected)
-  }, [])
-
-  // Handle Simli speaking change
-  const handleSimliSpeakingChange = useCallback((speaking: boolean) => {
+  // Handle avatar speaking change
+  const handleAvatarSpeakingChange = useCallback((speaking: boolean) => {
     setIsSpeaking(speaking)
     if (!speaking) {
       setCurrentEmotion('neutral')
     }
   }, [])
 
+  // Callback ref for AvatarRenderer's imperative handle
+  const avatarRef = useCallback((handle: AvatarHandle | null) => {
+    avatarHandleRef.current = handle
+  }, [])
+
   /**
-   * Fetch TTS audio from ElevenLabs and pipe to Simli for lip-sync.
-   * Falls back to browser TTS if ElevenLabs is unavailable.
+   * Provider-agnostic speech routing:
+   * 1. If provider canSpeakText + handle connected → handle.speakText() (TalkingHead)
+   * 2. If provider needsServerAudio + handle connected → fetch ElevenLabs PCM16 → handle.sendAudio() (Simli)
+   * 3. Fallback → browser TTS
    */
   const speakWithAvatar = useCallback(async (
     text: string,
     thinkerId: string,
     emotion: AvatarEmotion = 'neutral'
   ) => {
-    // If Simli is connected, try ElevenLabs TTS → Simli video
-    if (simliClientRef.current?.isConnected()) {
+    const handle = avatarHandleRef.current
+    const handleConnected = handle?.isConnected() ?? false
+    console.log('[TTS] speakWithAvatar called', { thinkerId, provider: activeProvider, handleConnected, textLength: text.length })
+
+    // Path 1: Provider has built-in TTS (TalkingHead)
+    if (providerMeta.canSpeakText && handleConnected && handle) {
       try {
+        console.log('[TTS] Using provider speakText (built-in TTS)')
+        setIsSpeaking(true)
+        await handle.speakText(text)
+        return
+      } catch (err) {
+        console.warn('[TTS] Provider speakText failed, falling back:', err)
+      }
+    }
+
+    // Path 2: Provider needs server audio (Simli)
+    if (providerMeta.needsServerAudio && handleConnected && handle) {
+      try {
+        console.log('[TTS] Fetching ElevenLabs audio for provider...')
         const ttsResponse = await fetch('/api/timeless-minds/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text, thinkerId }),
         })
 
-        if (ttsResponse.ok && ttsResponse.headers.get('Content-Type') === 'audio/pcm') {
+        const contentType = ttsResponse.headers.get('Content-Type')
+
+        if (ttsResponse.ok && contentType?.includes('audio/pcm')) {
           const audioBuffer = await ttsResponse.arrayBuffer()
-          setIsSpeaking(true)
-          sendAudioToSimli(simliClientRef.current, audioBuffer)
-          return // Audio sent to Simli, it will handle the lip-sync + playback
+          if (audioBuffer.byteLength > 0) {
+            console.log('[TTS] Sending', audioBuffer.byteLength, 'bytes to avatar provider')
+            setIsSpeaking(true)
+            handle.sendAudio(audioBuffer)
+            return
+          }
+          console.warn('[TTS] Empty audio buffer received')
+        } else {
+          const errorBody = await ttsResponse.text().catch(() => 'unknown')
+          console.warn('[TTS] ElevenLabs failed:', ttsResponse.status, errorBody)
         }
-        // If TTS failed, fall through to browser TTS
       } catch (err) {
-        console.warn('ElevenLabs TTS failed, falling back to browser TTS:', err)
+        console.warn('[TTS] ElevenLabs fetch error, falling back:', err)
       }
     }
 
-    // Fallback: browser TTS (no lip-sync)
-    if (isSpeechSynthesisSupported()) {
-      setIsSpeaking(true)
-      await synthesizeSpeech(text, thinkerId, emotion, () => {
-        setIsSpeaking(false)
-        setCurrentEmotion('neutral')
-      })
+    // Path 3: Browser TTS fallback (static provider or errors above)
+    try {
+      if (isSpeechSynthesisSupported()) {
+        console.log('[TTS] Using browser speech synthesis fallback')
+        setIsSpeaking(true)
+        await synthesizeSpeech(text, thinkerId, emotion, () => {
+          setIsSpeaking(false)
+          setCurrentEmotion('neutral')
+        })
+      } else {
+        console.warn('[TTS] No TTS available')
+      }
+    } catch (err) {
+      console.warn('[TTS] Browser TTS error:', err)
+      setIsSpeaking(false)
     }
-  }, [])
+  }, [activeProvider, providerMeta])
 
-  // Load custom face IDs before mounting SimliVideoAvatar.
-  // This prevents face ID changes mid-connection which abort successful WebRTC sessions.
+  // Load Simli custom face IDs if using Simli provider, otherwise mark ready immediately
   useEffect(() => {
-    loadCustomFaceIds()
-      .catch(() => {})
-      .finally(() => setFaceIdsLoaded(true))
-  }, [])
+    if (activeProvider === 'simli') {
+      loadCustomFaceIds()
+        .catch(() => {})
+        .finally(() => setProviderReady(true))
+    } else {
+      setProviderReady(true)
+    }
+  }, [activeProvider])
 
   // Initialize with random thinker
   useEffect(() => {
     const selectedThinker = getRandomThinker()
     setThinker(selectedThinker)
-    setImageError(false)
 
     const openingMessage = {
       role: 'assistant' as const,
@@ -254,8 +294,9 @@ export default function TimelessMinds() {
         setMessages(prev => [...prev, assistantMessage])
         setCurrentEmotion(emotion)
 
-        // Speak response if audio enabled
-        if (audioEnabled) {
+        // Speak when avatar is connected or audio is enabled (browser TTS fallback)
+        const handleConnected = avatarHandleRef.current?.isConnected() ?? false
+        if (handleConnected || audioEnabled) {
           await speakWithAvatar(data.response, thinker.id, emotion)
         }
       }
@@ -282,11 +323,10 @@ export default function TimelessMinds() {
   const confirmEndCall = () => {
     stopSpeech()
     speechRecognitionRef.current?.abort()
-    simliClientRef.current?.ClearBuffer()
+    avatarHandleRef.current?.clearBuffer()
 
     const newThinker = getRandomThinker()
     setThinker(newThinker)
-    setImageError(false)
     setCurrentEmotion('neutral')
     setIsSpeaking(false)
     setIsListening(false)
@@ -299,7 +339,8 @@ export default function TimelessMinds() {
     setMessages([openingMessage])
     setShowEndCallDialog(false)
 
-    if (audioEnabled) {
+    const handleConnected = avatarHandleRef.current?.isConnected() ?? false
+    if (handleConnected || audioEnabled) {
       speakWithAvatar(newThinker.openingLine, newThinker.id, 'happy').catch(console.error)
     }
   }
@@ -309,10 +350,9 @@ export default function TimelessMinds() {
     if (selectedThinker) {
       stopSpeech()
       speechRecognitionRef.current?.abort()
-      simliClientRef.current?.ClearBuffer()
+      avatarHandleRef.current?.clearBuffer()
 
       setThinker(selectedThinker)
-      setImageError(false)
       setCurrentEmotion('neutral')
       setIsSpeaking(false)
       setIsListening(false)
@@ -324,7 +364,8 @@ export default function TimelessMinds() {
       }
       setMessages([openingMessage])
 
-      if (audioEnabled) {
+      const handleConnected = avatarHandleRef.current?.isConnected() ?? false
+      if (handleConnected || audioEnabled) {
         speakWithAvatar(selectedThinker.openingLine, selectedThinker.id, 'happy').catch(console.error)
       }
     }
@@ -347,7 +388,7 @@ export default function TimelessMinds() {
 
     if (!newAudioState) {
       stopSpeech()
-      simliClientRef.current?.ClearBuffer()
+      avatarHandleRef.current?.clearBuffer()
       setIsSpeaking(false)
     }
   }
@@ -399,8 +440,6 @@ export default function TimelessMinds() {
     )
   }
 
-  const showLiveVideo = videoEnabled && hasSimliKey && currentFaceId
-
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-12rem)] sm:h-[calc(100vh-10rem)] flex flex-col bg-black rounded-xl overflow-hidden shadow-2xl sticky top-24 sm:top-20">
       {/* Main Video Area */}
@@ -409,60 +448,23 @@ export default function TimelessMinds() {
         <div className="flex-[2] relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden min-h-[200px] lg:min-h-0">
           <div className="absolute inset-0">
             {videoEnabled ? (
-              <>
-                {/* Static fallback avatar (behind Simli, shows when Simli isn't connected) */}
-                {(!showLiveVideo || !liveVideoConnected) && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    {!imageError && thinker ? (
-                      <div className="relative w-full h-full">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`/games/timeless-minds/avatars/${thinker.id}.png`}
-                          alt={thinker.name}
-                          className={`w-full h-full object-contain transition-all duration-300 ${
-                            isSpeaking ? 'scale-105' : 'scale-100'
-                          }`}
-                          onError={() => setImageError(true)}
-                        />
-                        {isSpeaking && (
-                          <div
-                            className={`absolute inset-0 blur-3xl opacity-30 ${
-                              currentEmotion === 'happy' || currentEmotion === 'excited'
-                                ? 'bg-yellow-400'
-                                : currentEmotion === 'concerned' || currentEmotion === 'sad'
-                                ? 'bg-blue-400'
-                                : currentEmotion === 'thoughtful'
-                                ? 'bg-purple-400'
-                                : 'bg-green-400'
-                            }`}
-                          />
-                        )}
-                      </div>
-                    ) : (
-                      <div className="w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 rounded-full bg-gradient-to-br from-accent/30 to-success/30 border-4 border-white/20 flex items-center justify-center text-6xl sm:text-8xl md:text-9xl backdrop-blur-sm">
-                        👤
-                      </div>
-                    )}
-                  </div>
+              <div className="absolute inset-0">
+                {avatarId && (
+                  <AvatarRenderer
+                    ref={avatarRef}
+                    avatarId={avatarId}
+                    isActive={videoEnabled}
+                    audioMuted={!audioEnabled}
+                    emotion={currentEmotion}
+                    onConnectionChange={handleAvatarConnectionChange}
+                    onSpeakingChange={handleAvatarSpeakingChange}
+                    onError={(err) => console.warn('Avatar error:', err)}
+                  />
                 )}
-
-                {/* Live Video Avatar (Simli) — layered on top */}
-                {showLiveVideo && (
-                  <div className="absolute inset-0 z-10">
-                    <SimliVideoAvatar
-                      faceId={currentFaceId}
-                      isActive={videoEnabled}
-                      onClientReady={handleSimliClientReady}
-                      onConnectionChange={handleSimliConnectionChange}
-                      onSpeakingChange={handleSimliSpeakingChange}
-                      onError={(err) => console.warn('Simli error:', err)}
-                    />
-                  </div>
-                )}
-              </>
+              </div>
             ) : (
               <div className="text-center p-8">
-                <div className="text-6xl mb-4">🎙️</div>
+                <div className="text-6xl mb-4">&#x1F399;&#xFE0F;</div>
                 <p className="text-white/70">Audio Only Mode</p>
                 <p className="text-white/50 text-sm mt-2">Turn on video to see {thinker?.name}</p>
               </div>
@@ -473,7 +475,7 @@ export default function TimelessMinds() {
           <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 bg-black/80 px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg backdrop-blur-sm">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full animate-pulse ${
-                liveVideoConnected ? 'bg-green-500' : 'bg-red-500'
+                avatarConnected ? 'bg-green-500' : 'bg-red-500'
               }`}></div>
               <div>
                 <div className="text-white font-semibold text-xs sm:text-sm">{thinker.name}</div>
@@ -485,10 +487,10 @@ export default function TimelessMinds() {
           {/* Status Indicator */}
           <div className="absolute top-2 left-2 sm:top-4 sm:left-4 flex items-center gap-1.5 sm:gap-2 bg-black/60 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg backdrop-blur-sm">
             <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
-              isSpeaking ? 'bg-yellow-400 animate-pulse' : liveVideoConnected ? 'bg-green-500' : 'bg-green-500'
+              isSpeaking ? 'bg-yellow-400 animate-pulse' : avatarConnected ? 'bg-green-500' : 'bg-green-500'
             }`}></div>
             <span className="text-white text-[10px] sm:text-xs font-medium">
-              {isSpeaking ? 'Speaking...' : liveVideoConnected ? 'Live' : 'Connected'}
+              {isSpeaking ? 'Speaking...' : avatarConnected ? 'Live' : 'Connected'}
             </span>
           </div>
         </div>
@@ -587,7 +589,7 @@ export default function TimelessMinds() {
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyPress}
                 placeholder={isListening ? 'Listening...' : 'Type a message...'}
                 className="flex-1 px-2 py-1.5 sm:px-3 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 text-xs sm:text-sm transition-all"
                 disabled={isLoading || isListening}
@@ -614,7 +616,7 @@ export default function TimelessMinds() {
       {/* Disclaimer */}
       <div className="bg-black/80 px-2 sm:px-4 py-1.5 sm:py-2 text-center text-[9px] sm:text-[10px] text-white/60 border-t border-gray-800/50">
         <p>
-          ⚠️ <strong>Disclaimer:</strong> AI simulation for entertainment only. Not real conversations.
+          &#x26A0;&#xFE0F; <strong>Disclaimer:</strong> AI simulation for entertainment only. Not real conversations.
           AI-generated interpretations based on historical records.{' '}
           <a
             href="/games/timeless-minds/disclaimer"
