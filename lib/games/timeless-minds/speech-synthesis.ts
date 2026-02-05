@@ -57,6 +57,21 @@ const VOICE_PROFILES: Record<string, VoiceCharacteristics> = {
   'default': { pitch: 1.0, rate: 1.0, volume: 1 }
 }
 
+// Female thinker IDs — used to select an appropriate browser TTS voice
+const FEMALE_THINKERS = new Set([
+  'marie-curie',
+  'harriet-tubman',
+  'virginia-woolf',
+  'eleanor-roosevelt',
+  'rosa-parks',
+  'mother-teresa',
+  'maya-angelou',
+  'frida-kahlo',
+  'anne-frank',
+  'ruth-bader-ginsburg',
+  'helen-keller',
+])
+
 // Emotion modifiers
 const EMOTION_MODIFIERS: Record<AvatarEmotion, Partial<VoiceCharacteristics>> = {
   'neutral': {},
@@ -96,11 +111,23 @@ export function synthesizeSpeech(
     utterance.rate = emotionMod.rate || baseProfile.rate
     utterance.volume = emotionMod.volume || baseProfile.volume
 
-    // Try to select a suitable voice
+    // Select a gender-appropriate English voice
     const voices = window.speechSynthesis.getVoices()
-    const preferredVoice = voices.find(v =>
-      v.lang.startsWith('en-') && v.name.includes('Natural')
-    ) || voices.find(v => v.lang.startsWith('en-'))
+    const englishVoices = voices.filter(v => v.lang.startsWith('en-'))
+    const isFemale = FEMALE_THINKERS.has(thinkerId)
+
+    // Common male/female voice name patterns across browsers
+    const maleHints = ['daniel', 'james', 'thomas', 'aaron', 'gordon', 'male', 'guy', 'lee', 'oliver', 'ralph', 'reed', 'rishi', 'fred']
+    const femaleHints = ['samantha', 'karen', 'moira', 'tessa', 'fiona', 'victoria', 'female', 'zoe', 'kate', 'susan', 'allison', 'ava']
+    const genderHints = isFemale ? femaleHints : maleHints
+
+    const genderMatchVoice = englishVoices.find(v => {
+      const nameLower = v.name.toLowerCase()
+      return genderHints.some(hint => nameLower.includes(hint))
+    })
+
+    const naturalVoice = englishVoices.find(v => v.name.includes('Natural'))
+    const preferredVoice = genderMatchVoice || naturalVoice || englishVoices[0]
 
     if (preferredVoice) {
       utterance.voice = preferredVoice
