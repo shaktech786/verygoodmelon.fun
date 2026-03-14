@@ -77,7 +77,7 @@ NOW: Return your response as valid JSON with this EXACT structure (no markdown, 
     let issueData
     try {
       issueData = JSON.parse(response)
-    } catch (parseError) {
+    } catch (_parseError) {
       // Try extracting from code blocks if direct parse fails
       const jsonMatch = response.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/)
       if (jsonMatch) {

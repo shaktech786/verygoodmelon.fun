@@ -227,6 +227,10 @@ export function useDrag<T extends HTMLElement = HTMLDivElement>(
       document.removeEventListener('touchmove', handleTouchMove)
       document.removeEventListener('touchend', handleTouchEnd)
     }
+    // state.delta is intentionally omitted from deps: including it would re-register all event
+    // listeners on every drag movement, breaking drag behavior. The delta is read via closure
+    // at the time of dragEnd, which is correct.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.isDragging, onDragStart, onDrag, onDragEnd, axis])
 
   return { ref, ...state }

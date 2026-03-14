@@ -59,7 +59,8 @@ export default function FirstWords() {
   const loadWordCloud = async () => {
     try {
       // Fetch all first words
-      const { data, error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
         .from('first_words')
         .select('words')
         .order('created_at', { ascending: false })
@@ -109,7 +110,8 @@ export default function FirstWords() {
     setLoading(true)
 
     try {
-      const { error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
         .from('first_words')
         .insert([{ words: input.trim() }])
 

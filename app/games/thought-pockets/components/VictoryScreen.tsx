@@ -7,7 +7,6 @@
 
 import { useRouter } from 'next/navigation'
 import { useGameStore } from '@/lib/games/thought-pockets/store/gameStore'
-import { cn } from '@/lib/utils'
 
 // =============================================================================
 // VICTORY SCREEN
@@ -55,7 +54,7 @@ export function VictoryScreen() {
             answer to the Meaning of Life.
           </p>
           <p className="text-lg text-amber-400 mt-4 italic font-serif">
-            "The unexamined life is not worth living." - Socrates
+            &quot;The unexamined life is not worth living.&quot; - Socrates
           </p>
         </div>
 

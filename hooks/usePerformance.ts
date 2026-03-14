@@ -5,12 +5,6 @@ import { useEffect, useRef, useState } from 'react'
 /**
  * Performance metrics interface
  */
-interface PerformanceMetrics {
-  fps: number
-  renderTime: number
-  memoryUsage?: number
-}
-
 /**
  * Hook to monitor FPS (frames per second)
  * Useful for detecting performance issues
@@ -18,7 +12,7 @@ interface PerformanceMetrics {
 export function useFPS() {
   const [fps, setFps] = useState(60)
   const frameCountRef = useRef(0)
-  const lastTimeRef = useRef(performance.now())
+  const lastTimeRef = useRef(0)
   const requestRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
@@ -53,9 +47,12 @@ export function useFPS() {
  * Hook to measure component render time
  */
 export function useRenderTime(componentName: string) {
-  const renderStartRef = useRef(performance.now())
+  const renderStartRef = useRef(0)
   const [renderTime, setRenderTime] = useState(0)
 
+  // Intentionally has no dependency array: this effect must run after every render
+  // to measure actual render duration. The setRenderTime call is the whole point.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const renderEnd = performance.now()
     const duration = renderEnd - renderStartRef.current
@@ -171,36 +168,37 @@ export function useWebVitals() {
     // TTFB
     const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
     if (navigation) {
-      setVitals(prev => ({
+      queueMicrotask(() => setVitals(prev => ({
         ...prev,
         ttfb: navigation.responseStart - navigation.requestStart
-      }))
+      })))
     }
 
     // LCP
     const lcpObserver = new PerformanceObserver((list) => {
       const entries = list.getEntries()
-      const lastEntry = entries[entries.length - 1] as any
-      setVitals(prev => ({ ...prev, lcp: lastEntry.renderTime || lastEntry.loadTime }))
+      const lastEntry = entries[entries.length - 1] as PerformanceEntry & { renderTime?: number; loadTime?: number }
+      setVitals(prev => ({ ...prev, lcp: lastEntry.renderTime || lastEntry.loadTime || null }))
     })
 
     try {
       lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true })
-    } catch (e) {
+    } catch (_e) {
       // Not supported
     }
 
     // FID
     const fidObserver = new PerformanceObserver((list) => {
       const entries = list.getEntries()
-      entries.forEach((entry: any) => {
-        setVitals(prev => ({ ...prev, fid: entry.processingStart - entry.startTime }))
+      entries.forEach((entry) => {
+        const fidEntry = entry as PerformanceEntry & { processingStart: number }
+        setVitals(prev => ({ ...prev, fid: fidEntry.processingStart - fidEntry.startTime }))
       })
     })
 
     try {
       fidObserver.observe({ type: 'first-input', buffered: true })
-    } catch (e) {
+    } catch (_e) {
       // Not supported
     }
 
@@ -208,8 +206,9 @@ export function useWebVitals() {
     let clsValue = 0
     const clsObserver = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
-        if (!(entry as any).hadRecentInput) {
-          clsValue += (entry as any).value
+        const layoutEntry = entry as PerformanceEntry & { hadRecentInput: boolean; value: number }
+        if (!layoutEntry.hadRecentInput) {
+          clsValue += layoutEntry.value
           setVitals(prev => ({ ...prev, cls: clsValue }))
         }
       }
@@ -217,7 +216,7 @@ export function useWebVitals() {
 
     try {
       clsObserver.observe({ type: 'layout-shift', buffered: true })
-    } catch (e) {
+    } catch (_e) {
       // Not supported
     }
 
@@ -320,7 +319,7 @@ export function useLongTasks() {
 
     try {
       observer.observe({ type: 'longtask', buffered: true })
-    } catch (e) {
+    } catch (_e) {
       // Not supported
     }
 

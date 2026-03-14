@@ -7,12 +7,11 @@
 
 import { useState, useMemo } from 'react'
 import { useGameStore } from '@/lib/games/thought-pockets/store/gameStore'
-import { useBattleStore } from '@/lib/games/thought-pockets/store/battleStore'
 import { Card as CardType, Relic } from '@/types/thought-pockets'
 import { Card as CardComponent } from './Card'
 import { cn } from '@/lib/utils'
 import { getCardRewards, getGoldReward } from '@/lib/games/thought-pockets/data/shop'
-import { COMMON_RELICS, UNCOMMON_RELICS, RARE_RELICS, BOSS_RELICS } from '@/lib/games/thought-pockets/data/relics'
+import { COMMON_RELICS, UNCOMMON_RELICS, BOSS_RELICS } from '@/lib/games/thought-pockets/data/relics'
 
 // =============================================================================
 // REWARD SCREEN

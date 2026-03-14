@@ -1,4 +1,4 @@
-import { TYPOGRAPHY, getTypographyClasses } from '@/lib/utils/typography'
+import { TYPOGRAPHY, getTypography } from '@/lib/utils/typography'
 
 describe('typography utilities', () => {
   describe('TYPOGRAPHY constants', () => {
@@ -27,24 +27,24 @@ describe('typography utilities', () => {
     })
   })
 
-  describe('getTypographyClasses', () => {
+  describe('getTypography', () => {
     it('returns correct classes for display variants', () => {
-      expect(getTypographyClasses('display', 'xl')).toBe(TYPOGRAPHY.display.xl)
-      expect(getTypographyClasses('display', 'lg')).toBe(TYPOGRAPHY.display.lg)
+      expect(getTypography('display.xl')).toBe(TYPOGRAPHY.display.xl)
+      expect(getTypography('display.lg')).toBe(TYPOGRAPHY.display.lg)
     })
 
     it('returns correct classes for heading variants', () => {
-      expect(getTypographyClasses('heading', 'h1')).toBe(TYPOGRAPHY.heading.h1)
-      expect(getTypographyClasses('heading', 'h2')).toBe(TYPOGRAPHY.heading.h2)
+      expect(getTypography('heading.h1')).toBe(TYPOGRAPHY.heading.h1)
+      expect(getTypography('heading.h2')).toBe(TYPOGRAPHY.heading.h2)
     })
 
     it('returns correct classes for body variants', () => {
-      expect(getTypographyClasses('body', 'lg')).toBe(TYPOGRAPHY.body.lg)
-      expect(getTypographyClasses('body', 'sm')).toBe(TYPOGRAPHY.body.sm)
+      expect(getTypography('body.lg')).toBe(TYPOGRAPHY.body.lg)
+      expect(getTypography('body.sm')).toBe(TYPOGRAPHY.body.sm)
     })
 
     it('merges with additional classes', () => {
-      const result = getTypographyClasses('body', 'md', 'text-accent')
+      const result = getTypography('body.md', 'text-accent')
       expect(result).toContain(TYPOGRAPHY.body.md)
       expect(result).toContain('text-accent')
     })

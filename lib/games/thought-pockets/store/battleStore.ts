@@ -12,7 +12,6 @@ import {
   StatusEffect,
   DamageBreakdown,
   BattleAction,
-  Relic,
 } from '@/types/thought-pockets'
 import { calculateDamage, calculateCoherenceDamage } from '../engine/damage'
 import { getRandomEnemy, getEnemyById, getNextPattern, advancePattern } from '../data/enemies'
@@ -451,7 +450,6 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     // Calculate coherence damage from contradictions
-    const gameState = useGameStore.getState().gameState
     const coherenceDamage = calculateCoherenceDamage(
       state.playArea,
       state.playerStatusEffects

@@ -8,7 +8,7 @@
  * - Dialogue adds educational value and personality
  */
 
-import { Enemy, AttackPattern, EnemyDialogue } from '@/types/thought-pockets'
+import { Enemy, AttackPattern } from '@/types/thought-pockets'
 
 // =============================================================================
 // FLOOR 1 ENEMIES - Basic Biases (40-60 HP)

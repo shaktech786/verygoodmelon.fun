@@ -198,7 +198,7 @@ export function MapScreen() {
         </svg>
 
         {/* Nodes */}
-        {gameState.map.nodes.map((node, index) => {
+        {gameState.map.nodes.map((node, _index) => {
           const pos = getNodePosition(node)
           const isAvailable = node.available
           const isVisited = node.visited
@@ -308,7 +308,7 @@ function MapNodeComponent({
   onLeave,
 }: MapNodeComponentProps) {
   const isBoss = node.type === 'boss'
-  const size = isBoss ? 56 : 44
+  const _size = isBoss ? 56 : 44
 
   return (
     <button

@@ -46,7 +46,7 @@ export function Card({
   onClick,
   isPlayable = true,
   isSelected = false,
-  isInHand = false,
+  isInHand: _isInHand = false,
   size = 'md',
   className,
   style,

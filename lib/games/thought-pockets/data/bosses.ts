@@ -9,7 +9,7 @@
  * - Multiple victory conditions (damage, philosophy score, special)
  */
 
-import { Boss, BossPhase, BossReward, AttackPattern } from '@/types/thought-pockets'
+import { Boss, AttackPattern } from '@/types/thought-pockets'
 
 // =============================================================================
 // FLOOR 1 BOSS: THE PROBLEM OF INDUCTION

@@ -266,6 +266,15 @@ export function Game({ onComplete }: GameProps) {
 
 ---
 
+## Build & Verification
+
+- Always ensure strict TypeScript compilation passes after changes: `npm run typecheck`
+- When fixing build or lint errors, research the correct approach first. Implement in one pass — do not use trial-and-error with multiple config tweaks.
+- Run `npm run qa` (typecheck + lint + build + e2e) before considering work complete.
+- Use `/preflight` skill for full pre-launch readiness sweeps.
+
+---
+
 ## Development Workflow
 
 ### Before Committing

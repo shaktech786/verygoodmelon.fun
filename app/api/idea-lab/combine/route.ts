@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-// Validate API key on initialization
-const apiKey = process.env.GOOGLE_GEMINI_API_KEY
-if (!apiKey) {
-  throw new Error('GOOGLE_GEMINI_API_KEY environment variable is not configured')
-}
-
-// Initialize Google Gemini
-const genAI = new GoogleGenerativeAI(apiKey)
 const GEMINI_MODEL = 'gemini-2.0-flash'
+
+function getGenAI() {
+  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
+  if (!apiKey) {
+    throw new Error('GOOGLE_GEMINI_API_KEY environment variable is not configured')
+  }
+  return new GoogleGenerativeAI(apiKey)
+}
 
 // Known combinations for consistency and instant responses
 const KNOWN_COMBINATIONS: Record<string, { name: string; emoji: string; description: string }> = {
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use AI for unknown combinations
-    const model = genAI.getGenerativeModel({
+    const model = getGenAI().getGenerativeModel({
       model: GEMINI_MODEL,
       generationConfig: {
         temperature: 0.8,

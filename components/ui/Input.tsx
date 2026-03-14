@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, TextareaHTMLAttributes, forwardRef } from 'react'
+import { InputHTMLAttributes, TextareaHTMLAttributes, forwardRef, useId } from 'react'
 import { cn } from '@/lib/utils/cn'
 
 interface BaseInputProps {
@@ -29,7 +29,8 @@ const errorStyles = 'border-danger focus:border-danger focus:ring-danger'
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, helperText, required, variant = 'default', className, id, ...props }, ref) => {
-    const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`
+    const generatedId = useId()
+    const inputId = id || `input-${generatedId}`
     const hasError = !!error
 
     return (
@@ -76,7 +77,8 @@ Input.displayName = 'Input'
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, error, helperText, required, variant = 'default', resize = false, className, id, ...props }, ref) => {
-    const textareaId = id || `textarea-${Math.random().toString(36).substr(2, 9)}`
+    const generatedId = useId()
+    const textareaId = id || `textarea-${generatedId}`
     const hasError = !!error
 
     return (

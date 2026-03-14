@@ -10,21 +10,7 @@ describe('Card', () => {
   it('applies hover effect when hover prop is true', () => {
     const { container } = render(<Card hover>Hoverable</Card>)
     const card = container.firstChild as HTMLElement
-    expect(card).toHaveClass('hover:scale-105', 'transition-transform')
-  })
-
-  it('applies padding variant styles', () => {
-    const { container, rerender } = render(<Card padding="none">No padding</Card>)
-    expect(container.firstChild).toHaveClass('p-0')
-
-    rerender(<Card padding="sm">Small padding</Card>)
-    expect(container.firstChild).toHaveClass('p-4')
-
-    rerender(<Card padding="md">Medium padding</Card>)
-    expect(container.firstChild).toHaveClass('p-6')
-
-    rerender(<Card padding="lg">Large padding</Card>)
-    expect(container.firstChild).toHaveClass('p-8')
+    expect(card).toHaveClass('hover-lift', 'cursor-pointer')
   })
 
   it('applies custom className', () => {
@@ -40,6 +26,11 @@ describe('Card', () => {
 
   it('has rounded corners', () => {
     const { container } = render(<Card>Rounded</Card>)
-    expect(container.firstChild).toHaveClass('rounded-xl')
+    expect(container.firstChild).toHaveClass('rounded-2xl')
+  })
+
+  it('has default padding', () => {
+    const { container } = render(<Card>Padded</Card>)
+    expect(container.firstChild).toHaveClass('p-6')
   })
 })

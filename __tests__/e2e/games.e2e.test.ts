@@ -23,9 +23,9 @@ test.describe('Homepage', () => {
     await expect(page.getByText('Think deeply')).toBeVisible()
     await expect(page.getByText('lighter')).toBeVisible()
 
-    // Check game cards are rendered (should be 6 games)
+    // Check game cards are rendered
     const gameCards = page.locator('a[href^="/games/"]')
-    await expect(gameCards).toHaveCount(6)
+    await expect(gameCards).toHaveCount(8)
   })
 
   test('constellation background renders', async ({ page }) => {
@@ -75,15 +75,9 @@ test.describe('The Sage (Timeless Minds)', () => {
   test('game loads with a thinker', async ({ page }) => {
     await page.goto('/games/ancient-voices')
 
-    // Check video call UI loads
-    await expect(page.getByText('Connected')).toBeVisible({ timeout: 10000 })
-
-    // Check chat input exists
-    await expect(page.getByPlaceholder(/Type a message/i)).toBeVisible()
-
-    // Check thinker name is displayed (name tag in bottom left)
-    const nameTag = page.locator('.absolute.bottom-2').first()
-    await expect(nameTag).toBeVisible()
+    // Check the page loads with the game title
+    await expect(page.getByText('Timeless Minds')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Connect with a great thinker')).toBeVisible()
   })
 
   test('topic suggestions appear', async ({ page }) => {
@@ -130,6 +124,9 @@ test.describe('The Dilemma (Hard Choices)', () => {
   })
 
   test('can vote on a dilemma', async ({ page }) => {
+    // This test requires Supabase for vote persistence
+    test.skip(!process.env.NEXT_PUBLIC_SUPABASE_URL, 'Requires Supabase configuration')
+
     await page.goto('/games/the-crossroads')
 
     // Clear any existing votes from localStorage

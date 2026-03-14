@@ -151,12 +151,11 @@ export function useAccessibility() {
   const [settings, setSettings] = useState<AccessibilitySettings>(loadSettings)
   const [isInitialized, setIsInitialized] = useState(false)
 
-  // Initialize and apply settings on mount
+  // Apply settings on mount (lazy initializer already loaded from localStorage)
   useEffect(() => {
-    const initialSettings = loadSettings()
-    setSettings(initialSettings)
-    applySettings(initialSettings)
-    setIsInitialized(true)
+    applySettings(settings)
+    queueMicrotask(() => setIsInitialized(true))
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only run on mount
   }, [])
 
   // Save and apply settings on change

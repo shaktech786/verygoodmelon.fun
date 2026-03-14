@@ -103,8 +103,8 @@ const TalkingHeadAvatar = forwardRef<AvatarHandle, AvatarComponentProps>(
             'return import(/* webpackIgnore: true */ "/talkinghead/talkinghead.mjs")'
           ) as () => Promise<{ TalkingHead: new (container: HTMLElement, options: Record<string, unknown>) => TalkingHeadInstance }>
 
-          const module = await loadModule()
-          const { TalkingHead } = module
+          const simliModule = await loadModule()
+          const { TalkingHead } = simliModule
 
           if (aborted) return
 

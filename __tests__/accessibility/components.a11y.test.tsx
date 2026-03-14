@@ -108,7 +108,7 @@ describe('Accessibility Tests', () => {
 
     it('should have proper dialog role', async () => {
       const { container } = render(
-        <Modal isOpen={true} onClose={() => {}}>
+        <Modal isOpen={true} onClose={() => {}} title="Dialog Title">
           <ModalBody>Content</ModalBody>
         </Modal>
       )

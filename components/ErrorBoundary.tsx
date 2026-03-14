@@ -8,7 +8,7 @@ interface Props {
   children: ReactNode
   fallback?: ReactNode
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void
-  resetOnPropsChange?: any[]
+  resetOnPropsChange?: unknown[]
 }
 
 interface State {

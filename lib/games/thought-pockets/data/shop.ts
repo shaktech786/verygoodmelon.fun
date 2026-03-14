@@ -81,8 +81,8 @@ export function getShopCards(floor: number, seed: number): Card[] {
   const types = new Set(allSelected.map((c) => c.type))
 
   // Add cards to fill type gaps
-  const missingTypes = ['evidence', 'logic', 'framework'].filter(
-    (t) => !types.has(t as any)
+  const missingTypes = (['evidence', 'logic', 'framework'] as const).filter(
+    (t) => !types.has(t)
   )
 
   const additionalCards: Card[] = []

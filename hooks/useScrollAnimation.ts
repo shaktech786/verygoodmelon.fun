@@ -33,7 +33,7 @@ export function useScrollAnimation<T extends HTMLElement = HTMLDivElement>(
     // Check for reduced motion preference
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (prefersReducedMotion) {
-      setIsVisible(true)
+      queueMicrotask(() => setIsVisible(true))
       return
     }
 
@@ -83,7 +83,7 @@ export function useScrollProgress<T extends HTMLElement = HTMLDivElement>() {
     // Check for reduced motion preference
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (prefersReducedMotion) {
-      setProgress(1)
+      queueMicrotask(() => setProgress(1))
       return
     }
 

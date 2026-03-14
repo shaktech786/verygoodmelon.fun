@@ -42,7 +42,7 @@ const EVENTS: GameEvent[] = [
     icon: '💭',
     description:
       'You encounter a curious philosopher who presents you with a challenging thought experiment. "Consider this," they say, "Would you trade temporary pain for lasting insight?"',
-    getChoices: (heal, damage, addGold, spendGold, gold, coherence, maxCoherence) => [
+    getChoices: (heal, damage, addGold, _spendGold, _gold, _coherence, _maxCoherence) => [
       {
         text: 'Embrace the challenge',
         effect: () => {
@@ -64,7 +64,7 @@ const EVENTS: GameEvent[] = [
     icon: '📚',
     description:
       'You stumble upon a hidden library filled with dusty tomes. A librarian offers you a choice: pay for access or risk taking forbidden knowledge.',
-    getChoices: (heal, damage, addGold, spendGold, gold, coherence, maxCoherence) => [
+    getChoices: (heal, damage, addGold, spendGold, gold, _coherence, _maxCoherence) => [
       {
         text: 'Pay for proper access',
         effect: () => {
@@ -96,7 +96,7 @@ const EVENTS: GameEvent[] = [
     icon: '🧙',
     description:
       'An old sage sits by the roadside, offering wisdom to those who seek it. "I can teach you," they say, "but knowledge has its price."',
-    getChoices: (heal, damage, addGold, spendGold, gold, coherence, maxCoherence) => [
+    getChoices: (heal, damage, addGold, spendGold, gold, _coherence, _maxCoherence) => [
       {
         text: 'Accept their teaching',
         effect: () => {
@@ -130,7 +130,7 @@ const EVENTS: GameEvent[] = [
     icon: '🪞',
     description:
       'You find a strange mirror that shows not your reflection, but your cognitive biases. Gazing into it is enlightening, but disturbing.',
-    getChoices: (heal, damage, addGold, spendGold, gold, coherence, maxCoherence) => [
+    getChoices: (heal, damage, addGold, _spendGold, _gold, _coherence, _maxCoherence) => [
       {
         text: 'Gaze deeply',
         effect: () => {
@@ -160,7 +160,7 @@ const EVENTS: GameEvent[] = [
     icon: '🌊',
     description:
       'A shimmering pool reflects impossible geometries. Drinking from it could grant clarity... or confusion.',
-    getChoices: (heal, damage, addGold, spendGold, gold, coherence, maxCoherence) => [
+    getChoices: (heal, damage, _addGold, _spendGold, _gold, _coherence, _maxCoherence) => [
       {
         text: 'Drink deeply',
         effect: () => {
@@ -193,7 +193,7 @@ const EVENTS: GameEvent[] = [
     icon: '🎲',
     description:
       'A traveling merchant offers you a peculiar wager. "Double or nothing," they grin. "What say you?"',
-    getChoices: (heal, damage, addGold, spendGold, gold, coherence, maxCoherence) => [
+    getChoices: (_heal, _damage, addGold, spendGold, gold, _coherence, _maxCoherence) => [
       {
         text: 'Accept the gamble',
         effect: () => {
@@ -225,7 +225,7 @@ const EVENTS: GameEvent[] = [
     icon: '⛩️',
     description:
       'A peaceful shrine emanates a calming aura. You feel your worries lifting as you approach.',
-    getChoices: (heal, damage, addGold, spendGold, gold, coherence, maxCoherence) => [
+    getChoices: (heal, _damage, _addGold, spendGold, gold, coherence, maxCoherence) => [
       {
         text: 'Meditate fully',
         effect: () => {
@@ -258,7 +258,7 @@ const EVENTS: GameEvent[] = [
     icon: '😈',
     description:
       'A figure challenges every statement you make, forcing you to defend your beliefs. Annoying, but potentially valuable.',
-    getChoices: (heal, damage, addGold, spendGold, gold, coherence, maxCoherence) => [
+    getChoices: (_heal, damage, addGold, _spendGold, _gold, _coherence, _maxCoherence) => [
       {
         text: 'Engage in debate',
         effect: () => {

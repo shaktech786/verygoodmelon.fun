@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { vi } from 'vitest'
 
 // Component that throws an error
 const ThrowError = ({ shouldThrow }: { shouldThrow: boolean }) => {
@@ -13,7 +14,7 @@ describe('ErrorBoundary', () => {
   // Suppress console.error for these tests
   const originalError = console.error
   beforeAll(() => {
-    console.error = jest.fn()
+    console.error = vi.fn()
   })
   afterAll(() => {
     console.error = originalError
@@ -65,7 +66,7 @@ describe('ErrorBoundary', () => {
   })
 
   it('calls onError callback when error occurs', () => {
-    const onError = jest.fn()
+    const onError = vi.fn()
 
     render(
       <ErrorBoundary onError={onError}>

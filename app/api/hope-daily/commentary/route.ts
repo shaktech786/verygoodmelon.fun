@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-// Validate API key on initialization
-const apiKey = process.env.OPENAI_API_KEY
-if (!apiKey) {
-  throw new Error('OPENAI_API_KEY environment variable is not configured')
+function getOpenAI() {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY environment variable is not configured')
+  }
+  return new OpenAI({ apiKey })
 }
-
-const openai = new OpenAI({
-  apiKey
-})
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,7 +51,7 @@ Examples for different guesses:
 - User guesses "UNITY": "Together we're stronger! That's the spirit ✊"
 - Correct guess "CURES": "Healing the world, one cure at a time! 🎉"`
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },

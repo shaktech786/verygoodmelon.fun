@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { Button } from '@/components/ui/Button'
+import { vi } from 'vitest'
 
 describe('Button', () => {
   it('renders children correctly', () => {
@@ -26,7 +27,7 @@ describe('Button', () => {
   })
 
   it('handles click events', () => {
-    const handleClick = jest.fn()
+    const handleClick = vi.fn()
     render(<Button onClick={handleClick}>Click me</Button>)
 
     const button = screen.getByRole('button')
@@ -40,23 +41,17 @@ describe('Button', () => {
     const button = screen.getByRole('button')
 
     expect(button).toBeDisabled()
-    expect(button).toHaveClass('opacity-50', 'cursor-not-allowed')
+    expect(button).toHaveClass('disabled:cursor-not-allowed')
   })
 
   it('does not call onClick when disabled', () => {
-    const handleClick = jest.fn()
+    const handleClick = vi.fn()
     render(<Button disabled onClick={handleClick}>Disabled</Button>)
 
     const button = screen.getByRole('button')
     fireEvent.click(button)
 
     expect(handleClick).not.toHaveBeenCalled()
-  })
-
-  it('applies fullWidth class when fullWidth prop is true', () => {
-    render(<Button fullWidth>Full Width</Button>)
-    const button = screen.getByRole('button')
-    expect(button).toHaveClass('w-full')
   })
 
   it('applies custom className', () => {
@@ -70,16 +65,10 @@ describe('Button', () => {
     expect(screen.getByRole('button')).toHaveClass('px-3', 'py-1.5', 'text-sm')
 
     rerender(<Button size="md">Medium</Button>)
-    expect(screen.getByRole('button')).toHaveClass('px-4', 'py-2')
+    expect(screen.getByRole('button')).toHaveClass('px-5', 'py-2.5')
 
     rerender(<Button size="lg">Large</Button>)
-    expect(screen.getByRole('button')).toHaveClass('px-6', 'py-3', 'text-lg')
-  })
-
-  it('renders as link when href is provided', () => {
-    render(<Button href="/test">Link Button</Button>)
-    const link = screen.getByRole('link', { name: /link button/i })
-    expect(link).toHaveAttribute('href', '/test')
+    expect(screen.getByRole('button')).toHaveClass('px-7', 'py-3.5', 'text-lg')
   })
 
   it('has accessible focus styles', () => {

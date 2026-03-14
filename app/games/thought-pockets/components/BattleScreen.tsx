@@ -25,11 +25,25 @@ export function BattleScreen() {
   const canPlayCard = useBattleStore((state) => state.canPlayCard)
   const startBattle = useBattleStore((state) => state.startBattle)
   const getCurrentNode = useGameStore((state) => state.getCurrentNode)
+  const getEnemyIntent = useBattleStore((state) => state.getEnemyIntent)
 
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null)
   const [showDamageNumber, setShowDamageNumber] = useState(false)
   const [lastDamage, setLastDamage] = useState(0)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
+
+  // Inject damage-pop animation keyframes
+  useEffect(() => {
+    const id = 'thought-pockets-damage-pop'
+    if (document.getElementById(id)) return
+    const style = document.createElement('style')
+    style.id = id
+    style.textContent = damagePopKeyframes
+    document.head.appendChild(style)
+    return () => {
+      style.remove()
+    }
+  }, [])
 
   // Initialize battle when screen loads
   useEffect(() => {
@@ -78,6 +92,10 @@ export function BattleScreen() {
   }
 
   // Keyboard shortcuts
+  // handleCardClick, handleEndTurn, and undoLastAction are intentionally omitted from deps:
+  // they are inline functions whose identities change every render. Including them would cause
+  // the event listener to be re-attached on every render with no behavioral benefit. The deps
+  // that actually govern keyboard behavior (phase, hand length, canUndo) are included.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && battleState.phase === 'player') {
@@ -95,13 +113,12 @@ export function BattleScreen() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battleState.phase, battleState.hand.length, battleState.canUndo])
 
   if (!battleState.enemy) {
     return <div className="text-center p-8 text-xl">Loading battle...</div>
   }
-
-  const isBoss = 'phases' in battleState.enemy
 
   return (
     <div className="relative flex flex-col h-full min-h-screen bg-[#2D2A26] text-[#F7F3EB]">
@@ -138,7 +155,7 @@ export function BattleScreen() {
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         <EnemyDisplay
           enemy={battleState.enemy}
-          intent={useBattleStore.getState().getEnemyIntent()}
+          intent={getEnemyIntent()}
           showDamageNumber={showDamageNumber}
           damageAmount={lastDamage}
         />
@@ -474,7 +491,7 @@ function getIntentIcon(intent: string): string {
   return '❓'
 }
 
-// Add CSS animation
+// CSS animation keyframes injected via useEffect to avoid impure module-level side effects
 const damagePopKeyframes = `
   @keyframes damage-pop {
     0% {
@@ -491,10 +508,3 @@ const damagePopKeyframes = `
     }
   }
 `
-
-// Inject animation styles
-if (typeof document !== 'undefined') {
-  const style = document.createElement('style')
-  style.textContent = damagePopKeyframes
-  document.head.appendChild(style)
-}

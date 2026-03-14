@@ -20,12 +20,12 @@ export function PageTransition({ children, className }: PageTransitionProps) {
 
   useEffect(() => {
     // Start transition
-    setIsTransitioning(true)
+    queueMicrotask(() => setIsTransitioning(true))
 
     // Short delay before updating content (fade out duration)
     const timer = setTimeout(() => {
-      setDisplayChildren(children)
-      setIsTransitioning(false)
+      queueMicrotask(() => setDisplayChildren(children))
+      queueMicrotask(() => setIsTransitioning(false))
     }, 150)
 
     return () => clearTimeout(timer)
@@ -67,9 +67,9 @@ export function SlideTransition({
 
   useEffect(() => {
     if (isVisible) {
-      setShouldRender(true)
+      queueMicrotask(() => setShouldRender(true))
     } else {
-      const timer = setTimeout(() => setShouldRender(false), duration)
+      const timer = setTimeout(() => queueMicrotask(() => setShouldRender(false)), duration)
       return () => clearTimeout(timer)
     }
   }, [isVisible, duration])
@@ -119,9 +119,9 @@ export function ScaleTransition({
 
   useEffect(() => {
     if (isVisible) {
-      setShouldRender(true)
+      queueMicrotask(() => setShouldRender(true))
     } else {
-      const timer = setTimeout(() => setShouldRender(false), duration)
+      const timer = setTimeout(() => queueMicrotask(() => setShouldRender(false)), duration)
       return () => clearTimeout(timer)
     }
   }, [isVisible, duration])

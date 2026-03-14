@@ -205,7 +205,6 @@ export default function TimelessMinds() {
       emotion: 'happy' as AvatarEmotion
     }
     setMessages([openingMessage])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Cleanup on unmount

@@ -12,7 +12,6 @@ import {
   School,
   Card,
   Relic,
-  GameMap,
   MapNode,
 } from '@/types/thought-pockets'
 import { getStarterDeck } from '../data/cards'

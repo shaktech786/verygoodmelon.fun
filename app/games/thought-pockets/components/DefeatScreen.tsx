@@ -66,7 +66,7 @@ export function DefeatScreen() {
             every philosopher has faced defeat before achieving clarity.
           </p>
           <p className="text-lg text-amber-400 italic font-serif">
-            "{currentQuote.quote}"
+            &quot;{currentQuote.quote}&quot;
           </p>
           <p className="text-sm text-[#8A847A] mt-2">- {currentQuote.author}</p>
         </div>
@@ -94,7 +94,7 @@ export function DefeatScreen() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-amber-400">•</span>
-              <span>Rest sites are valuable - don't skip healing opportunities</span>
+              <span>Rest sites are valuable - don&apos;t skip healing opportunities</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-amber-400">•</span>

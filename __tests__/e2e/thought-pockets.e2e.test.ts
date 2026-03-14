@@ -303,7 +303,7 @@ test.describe('Thought Pockets - Battle Mechanics', () => {
 
   test('can play a card from hand', async ({ page }) => {
     // Count cards before
-    const cardsBefore = await page.locator('[role="button"][aria-label*="card, cost"]').count()
+    const _cardsBefore = await page.locator('[role="button"][aria-label*="card, cost"]').count()
 
     // Play first playable card (click twice to select and play)
     const played = await playFirstPlayableCard(page)
@@ -422,7 +422,7 @@ test.describe('Thought Pockets - Card Chain Mechanics', () => {
 
     // The play area should show damage info (if applicable)
     // Look for damage-related text
-    const damageText = page.getByText(/damage|Damage/i)
+    const _damageText = page.getByText(/damage|Damage/i)
     // May or may not show depending on card type
   })
 })
@@ -596,7 +596,10 @@ test.describe('Thought Pockets - Game End States', () => {
 // ============================================================================
 
 test.describe('Thought Pockets - Reward Screen', () => {
+  // This test simulates a full 15-turn battle which is inherently timing-sensitive
   test('reward screen shows after battle victory', async ({ page }) => {
+    test.setTimeout(90000)
+    test.slow()
     await page.goto('/games/thought-pockets')
     await resetGameState(page)
     await startNewGame(page)

@@ -22,13 +22,11 @@ export function useFeatureFlag(
   userId?: string,
   userGroups?: string[]
 ): boolean {
-  const [isEnabled, setIsEnabled] = useState(() =>
-    isFeatureEnabledWithOverride(featureKey, userId, userGroups)
-  )
+  const [isEnabled, setIsEnabled] = useState(false)
 
   useEffect(() => {
     const enabled = isFeatureEnabledWithOverride(featureKey, userId, userGroups)
-    setIsEnabled(enabled)
+    queueMicrotask(() => setIsEnabled(enabled))
 
     // Track feature flag check
     trackFeatureFlagCheck(featureKey, enabled, userId)
@@ -37,7 +35,7 @@ export function useFeatureFlag(
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'feature_overrides') {
         const newEnabled = isFeatureEnabledWithOverride(featureKey, userId, userGroups)
-        setIsEnabled(newEnabled)
+        queueMicrotask(() => setIsEnabled(newEnabled))
       }
     }
 
@@ -59,12 +57,10 @@ export function useEnabledFeatures(
   userId?: string,
   userGroups?: string[]
 ): string[] {
-  const [features, setFeatures] = useState(() =>
-    getEnabledFeatures(userId, userGroups)
-  )
+  const [features, setFeatures] = useState<string[]>([])
 
   useEffect(() => {
-    setFeatures(getEnabledFeatures(userId, userGroups))
+    queueMicrotask(() => setFeatures(getEnabledFeatures(userId, userGroups)))
   }, [userId, userGroups])
 
   return features
@@ -84,13 +80,7 @@ export function useFeatureFlags(
   userId?: string,
   userGroups?: string[]
 ): Record<string, boolean> {
-  const [flags, setFlags] = useState(() => {
-    const initial: Record<string, boolean> = {}
-    featureKeys.forEach(key => {
-      initial[key] = isFeatureEnabledWithOverride(key, userId, userGroups)
-    })
-    return initial
-  })
+  const [flags, setFlags] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     const newFlags: Record<string, boolean> = {}
@@ -98,7 +88,7 @@ export function useFeatureFlags(
       newFlags[key] = isFeatureEnabledWithOverride(key, userId, userGroups)
       trackFeatureFlagCheck(key, newFlags[key], userId)
     })
-    setFlags(newFlags)
+    queueMicrotask(() => setFlags(newFlags))
   }, [featureKeys, userId, userGroups])
 
   return flags

@@ -5,9 +5,11 @@
 
 export type AnalyticsProvider = 'vercel' | 'google' | 'custom'
 
+export type AnalyticsProperties = { [key: string]: unknown }
+
 export interface AnalyticsEvent {
   name: string
-  properties?: Record<string, any>
+  properties?: AnalyticsProperties
   timestamp?: number
 }
 
@@ -17,11 +19,11 @@ export interface PageViewEvent {
   referrer?: string
 }
 
-export interface UserProperties {
+export type UserProperties = {
   userId?: string
   email?: string
   name?: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /**
@@ -95,12 +97,13 @@ const analyticsQueue = new AnalyticsQueue()
 /**
  * Track a custom event
  */
-export function trackEvent(name: string, properties?: Record<string, any>) {
+export function trackEvent(name: string, properties?: AnalyticsProperties) {
   analyticsQueue.add({ name, properties })
 
   // Also track with Vercel Analytics if available
-  if (typeof window !== 'undefined' && (window as any).va) {
-    ;(window as any).va('event', name, properties)
+  const win = window as Window & { va?: (type: string, ...args: unknown[]) => void }
+  if (typeof window !== 'undefined' && win.va) {
+    win.va('event', name, properties)
   }
 }
 
@@ -110,12 +113,13 @@ export function trackEvent(name: string, properties?: Record<string, any>) {
 export function trackPageView(event: PageViewEvent) {
   analyticsQueue.add({
     name: 'page_view',
-    properties: event
+    properties: { ...event }
   })
 
   // Track with Vercel Analytics
-  if (typeof window !== 'undefined' && (window as any).va) {
-    ;(window as any).va('pageview', {
+  const win = window as Window & { va?: (type: string, ...args: unknown[]) => void }
+  if (typeof window !== 'undefined' && win.va) {
+    win.va('pageview', {
       path: event.path,
       title: event.title
     })
@@ -147,7 +151,7 @@ export function trackAction(action: string, category: string, label?: string, va
 /**
  * Track error
  */
-export function trackError(error: Error, context?: Record<string, any>) {
+export function trackError(error: Error, context?: AnalyticsProperties) {
   trackEvent('error', {
     message: error.message,
     stack: error.stack,
@@ -266,7 +270,7 @@ export const ecommerceAnalytics = {
   /**
    * Track purchase
    */
-  purchase(orderId: string, total: number, currency: string, items: any[]) {
+  purchase(orderId: string, total: number, currency: string, items: AnalyticsProperties[]) {
     trackEvent('purchase', {
       orderId,
       total,

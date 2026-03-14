@@ -19,7 +19,7 @@ export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setMounted(true)
+    queueMicrotask(() => setMounted(true))
   }, [])
 
   // Subtle parallax on mouse move

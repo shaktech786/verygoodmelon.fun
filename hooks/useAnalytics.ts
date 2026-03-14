@@ -39,11 +39,15 @@ export function useEventTracking() {
  * Hook to track time spent on page
  */
 export function useTimeTracking(pageName: string) {
-  const startTimeRef = useRef(Date.now())
+  const startTimeRef = useRef<number>(null)
+
+  useEffect(() => {
+    startTimeRef.current = Date.now()
+  }, [])
 
   useEffect(() => {
     return () => {
-      const timeSpent = Date.now() - startTimeRef.current
+      const timeSpent = Date.now() - (startTimeRef.current ?? Date.now())
       trackEvent('time_on_page', {
         page: pageName,
         duration: timeSpent
@@ -56,7 +60,7 @@ export function useTimeTracking(pageName: string) {
  * Hook to track clicks on specific elements
  */
 export function useClickTracking(elementName: string) {
-  const handleClick = (additionalData?: Record<string, any>) => {
+  const handleClick = (additionalData?: { [key: string]: unknown }) => {
     trackEvent('element_click', {
       element: elementName,
       ...additionalData
@@ -176,12 +180,16 @@ export function useErrorTracking() {
  * Hook to track visibility changes (tab focus)
  */
 export function useVisibilityTracking(pageName: string) {
-  const visibilityStartRef = useRef(Date.now())
+  const visibilityStartRef = useRef<number>(null)
+
+  useEffect(() => {
+    visibilityStartRef.current = Date.now()
+  }, [])
 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        const visibleDuration = Date.now() - visibilityStartRef.current
+        const visibleDuration = Date.now() - (visibilityStartRef.current ?? Date.now())
         trackEvent('page_hidden', {
           page: pageName,
           duration: visibleDuration

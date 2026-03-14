@@ -23,6 +23,7 @@ export function AmbientParticles() {
   const starsRef = useRef<Star[]>([])
   const mouseRef = useRef({ x: -1000, y: -1000 })
   const animationRef = useRef<number | null>(null)
+  const animateFnRef = useRef<((time: number) => void) | null>(null)
   const [reducedMotion, setReducedMotion] = useState(false)
   const [isDark, setIsDark] = useState(true)
 
@@ -146,13 +147,18 @@ export function AmbientParticles() {
       ctx.fill()
     })
 
-    animationRef.current = requestAnimationFrame(animate)
+    animationRef.current = requestAnimationFrame((t) => animateFnRef.current?.(t))
   }, [isDark])
+
+  // Keep the ref in sync so the recursive requestAnimationFrame always calls the latest version
+  useEffect(() => {
+    animateFnRef.current = animate
+  }, [animate])
 
   useEffect(() => {
     // Check reduced motion
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReducedMotion(motionQuery.matches)
+    queueMicrotask(() => setReducedMotion(motionQuery.matches))
     const motionHandler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
     motionQuery.addEventListener('change', motionHandler)
 
@@ -204,7 +210,7 @@ export function AmbientParticles() {
     window.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseleave', handleMouseLeave)
 
-    animationRef.current = requestAnimationFrame(animate)
+    animationRef.current = requestAnimationFrame((t) => animateFnRef.current?.(t))
 
     return () => {
       window.removeEventListener('resize', resize)

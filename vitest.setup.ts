@@ -12,22 +12,25 @@ afterEach(() => {
 
 // Mock IntersectionObserver
 global.IntersectionObserver = class IntersectionObserver {
-  constructor() {}
+  readonly root: Element | null = null
+  readonly rootMargin: string = ''
+  readonly thresholds: ReadonlyArray<number> = []
+  constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) {}
   disconnect() {}
   observe() {}
-  takeRecords() {
+  takeRecords(): IntersectionObserverEntry[] {
     return []
   }
   unobserve() {}
-} as any
+}
 
 // Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {
-  constructor() {}
+  constructor(_callback: ResizeObserverCallback) {}
   disconnect() {}
   observe() {}
   unobserve() {}
-} as any
+}
 
 // Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -86,10 +89,14 @@ Object.defineProperty(window, 'navigator', {
 
 // Mock PerformanceObserver
 global.PerformanceObserver = class PerformanceObserver {
-  constructor(callback: PerformanceObserverCallback) {}
+  static readonly supportedEntryTypes: ReadonlyArray<string> = []
+  constructor(_callback: PerformanceObserverCallback) {}
   observe() {}
   disconnect() {}
-} as any
+  takeRecords(): PerformanceEntryList {
+    return []
+  }
+}
 
 // Mock getEntriesByType
 global.performance.getEntriesByType = vi.fn(() => [])

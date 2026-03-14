@@ -31,7 +31,7 @@ const StaticAvatar = forwardRef<AvatarHandle, AvatarComponentProps>(
 
     // Reset image error when avatarId changes
     useEffect(() => {
-      setImageError(false)
+      queueMicrotask(() => setImageError(false))
     }, [avatarId])
 
     const handleSpeakingChange = useCallback((speaking: boolean) => {

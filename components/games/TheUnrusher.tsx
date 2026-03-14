@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Button } from '@/components/ui/Button'
 
 interface Task {
@@ -92,7 +92,6 @@ export default function TheUnrusher() {
   const [isActive, setIsActive] = useState(false)
   const [completed, setCompleted] = useState<string[]>([])
   const [showReward, setShowReward] = useState(false)
-  const [floatingSeeds, setFloatingSeeds] = useState<Array<{ id: number; x: number; delay: number }>>([])
   const [breathPhase, setBreathPhase] = useState<'inhale' | 'hold' | 'exhale' | 'pause'>('inhale')
   const [guidanceIndex, setGuidanceIndex] = useState(0)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -100,17 +99,18 @@ export default function TheUnrusher() {
   const guidanceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Generate floating seeds for "Watch the Seeds" task
-  useEffect(() => {
-    if (currentTask?.id === 'watch') {
-      const seeds = Array.from({ length: 8 }, (_, i) => ({
-        id: i,
-        x: Math.random() * 80 + 10, // 10-90% of width
-        delay: Math.random() * 2
-      }))
-      setFloatingSeeds(seeds)
-    } else {
-      setFloatingSeeds([])
+  // Deterministic pseudo-random based on seed index for pure render
+  const floatingSeeds = useMemo(() => {
+    if (currentTask?.id !== 'watch') return []
+    const seededRandom = (seed: number) => {
+      const x = Math.sin(seed * 9301 + 49297) * 233280
+      return x - Math.floor(x)
     }
+    return Array.from({ length: 8 }, (_, i) => ({
+      id: i,
+      x: seededRandom(i * 2) * 80 + 10, // 10-90% of width
+      delay: seededRandom(i * 2 + 1) * 2
+    }))
   }, [currentTask?.id])
 
   // Breathing cycle (4-7-8 pattern: 4s inhale, 7s hold, 8s exhale)
@@ -140,7 +140,7 @@ export default function TheUnrusher() {
   // Rotate guidance text
   useEffect(() => {
     if (currentTask?.guidance && isActive) {
-      setGuidanceIndex(0)
+      queueMicrotask(() => setGuidanceIndex(0))
       const interval = Math.floor((currentTask.duration * 1000) / currentTask.guidance.length)
       guidanceTimerRef.current = setInterval(() => {
         setGuidanceIndex(prev => (prev + 1) % (currentTask.guidance?.length || 1))

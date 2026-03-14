@@ -3,14 +3,13 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import { detectEmotion } from '@/lib/games/timeless-minds/emotion-detector'
 
-// Validate API key on initialization
-const apiKey = process.env.GOOGLE_GEMINI_API_KEY
-if (!apiKey) {
-  throw new Error('GOOGLE_GEMINI_API_KEY environment variable is not configured')
+function getGenAI() {
+  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
+  if (!apiKey) {
+    throw new Error('GOOGLE_GEMINI_API_KEY environment variable is not configured')
+  }
+  return new GoogleGenerativeAI(apiKey)
 }
-
-// Initialize Google Gemini (primary - best for deep, empathetic conversations)
-const genAI = new GoogleGenerativeAI(apiKey)
 
 // Gemini 2.0 Flash - fast and capable for conversations
 const GEMINI_MODEL = 'gemini-2.0-flash'
@@ -98,7 +97,7 @@ CONVERSATION GUIDELINES:
 REMEMBER: This is a live video call. Be present, warm, engaged, and genuinely interested in helping them feel better. Every response should move them toward less anxiety and more clarity through HONEST wisdom, not superficial agreement.`
 
     // Initialize Gemini model with enhanced configuration for therapeutic conversations
-    const model = genAI.getGenerativeModel({
+    const model = getGenAI().getGenerativeModel({
       model: GEMINI_MODEL,
       generationConfig: {
         temperature: 0.8,
