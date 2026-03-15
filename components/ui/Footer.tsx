@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 export function Footer() {
@@ -46,6 +47,12 @@ export function Footer() {
           )}
           <p className="text-primary-light">Made with purpose. Every pixel has meaning.</p>
           <p className="text-primary-light">© {new Date().getFullYear()} VeryGoodMelon.Fun</p>
+          <Link
+            href="/privacy"
+            className="text-xs text-foreground/40 hover:text-foreground/60 transition-colors"
+          >
+            Privacy
+          </Link>
         </div>
       </div>
     </footer>

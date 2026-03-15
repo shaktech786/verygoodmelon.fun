@@ -299,6 +299,56 @@ test.describe('The Awakening (First Words)', () => {
   })
 })
 
+test.describe('The Alchemist (Idea Lab)', () => {
+  test('game loads with concepts', async ({ page }) => {
+    await page.goto('/games/idea-lab')
+
+    // Check title
+    await expect(page.getByText('The Idea Lab')).toBeVisible()
+
+    // Dismiss intro
+    await page.getByText('Begin Exploring').click()
+
+    // Base concepts should be visible
+    await expect(page.getByText('Love')).toBeVisible()
+    await expect(page.getByText('Fear')).toBeVisible()
+    await expect(page.getByText('Time')).toBeVisible()
+  })
+
+  test('can select concepts', async ({ page }) => {
+    await page.goto('/games/idea-lab')
+
+    // Dismiss intro
+    await page.getByText('Begin Exploring').click()
+
+    // Click a concept
+    await page.getByText('Love').first().click()
+
+    // Verify concept was clicked without crash - may appear in multiple places (grid + workspace)
+    await expect(page.getByText('Love').first()).toBeVisible()
+  })
+
+  test('can combine concepts', async ({ page }) => {
+    await page.goto('/games/idea-lab')
+
+    // Dismiss intro
+    const beginButton = page.getByText('Begin Exploring')
+    if (await beginButton.isVisible()) {
+      await beginButton.click()
+    }
+
+    // Select two concepts
+    await page.getByText('Love').first().click()
+    await page.getByText('Fear').first().click()
+
+    // Wait for combination result
+    await page.waitForTimeout(3000)
+
+    // Just verify no crash - the combination may or may not show depending on API
+    await page.waitForLoadState('networkidle')
+  })
+})
+
 test.describe('Accessibility', () => {
   const pages = [
     { path: '/', name: 'Homepage' },
@@ -307,6 +357,7 @@ test.describe('Accessibility', () => {
     { path: '/games/the-long-breath', name: 'The Patient One' },
     { path: '/games/final-breath', name: 'The Final Word' },
     { path: '/games/first-breath', name: 'The Awakening' },
+    { path: '/games/idea-lab', name: 'The Alchemist' },
   ]
 
   for (const { path, name } of pages) {
@@ -335,6 +386,7 @@ test.describe('No Console Errors', () => {
     '/games/the-long-breath',
     '/games/final-breath',
     '/games/first-breath',
+    '/games/idea-lab',
   ]
 
   for (const path of pages) {

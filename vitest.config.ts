@@ -10,7 +10,7 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     include: ['**/*.{test,spec}.{js,ts,tsx}'],
     css: true,
-    exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/__tests__/e2e/**', '**/__tests__/visual/**', '**/tests/integration/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -22,10 +22,10 @@ export default defineConfig({
         '**/*.d.ts',
       ],
       thresholds: {
-        lines: 70,
-        functions: 70,
-        branches: 70,
-        statements: 70,
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
       },
     },
   },

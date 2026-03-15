@@ -1,0 +1,17 @@
+{
+  "name": "VeryGoodMelon.Fun",
+  "short_name": "VeryGoodMelon",
+  "description": "Thoughtful games to reduce anxiety",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#e63946",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

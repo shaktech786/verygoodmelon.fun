@@ -51,10 +51,11 @@ export class ErrorBoundary extends Component<Props, State> {
       console.error('Error Boundary caught:', error, errorInfo)
     }
 
-    // In production, send to analytics
+    // In production, send to Sentry
     if (process.env.NODE_ENV === 'production') {
-      // TODO: Send to error tracking service
-      console.error('Production error:', error, errorInfo)
+      import('@sentry/nextjs').then(Sentry => {
+        Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } })
+      })
     }
   }
 

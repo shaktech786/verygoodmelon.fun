@@ -9,6 +9,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FeedbackButton } from "@/components/FeedbackButton";
 import { AmbientParticles } from "@/components/ui/AmbientParticles";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
@@ -18,6 +19,7 @@ const quicksand = Quicksand({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://verygoodmelon.fun"),
   title: "VeryGoodMelon.Fun - Thoughtful Games to Reduce Anxiety",
   description: "Creative, accessible, AI-powered games designed to help you relax. No ads, no accounts, no stress - just thoughtful experiences.",
   keywords: ["games", "relaxation", "anxiety relief", "accessible games", "creative games", "watermelon"],
@@ -39,11 +41,13 @@ export const metadata: Metadata = {
     title: "VeryGoodMelon.Fun - Thoughtful Games to Reduce Anxiety",
     description: "Creative, accessible games designed to help you relax. No ads, no accounts, no stress.",
     siteName: "VeryGoodMelon.Fun",
+    images: [{ url: '/logo.png', width: 512, height: 512, alt: 'VeryGoodMelon.Fun' }],
   },
   twitter: {
     card: "summary_large_image",
     title: "VeryGoodMelon.Fun - Thoughtful Games to Reduce Anxiety",
     description: "Creative, accessible games designed to help you relax.",
+    images: ['/logo.png'],
   },
 };
 
@@ -74,6 +78,11 @@ export default function RootLayout({
             }),
           }}
         />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="VeryGoodMelon" />
+        <link rel="apple-touch-icon" href="/logo.png" />
       </head>
       <body className={`${quicksand.variable} antialiased`} suppressHydrationWarning>
         <AmbientParticles />
@@ -91,6 +100,7 @@ export default function RootLayout({
         <FeedbackButton />
         <ToastContainer />
         <SpeedInsights />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );

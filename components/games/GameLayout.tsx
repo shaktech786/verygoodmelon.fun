@@ -7,6 +7,7 @@
 
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { ShareButtonWrapper } from './ShareButtonWrapper'
 
 interface GameLayoutProps {
   /**
@@ -52,6 +53,22 @@ interface GameLayoutProps {
    * Additional CSS classes for container
    */
   className?: string
+
+  /**
+   * Whether to show the share button next to the title
+   * @default false
+   */
+  shareEnabled?: boolean
+
+  /**
+   * Custom share title (defaults to game title)
+   */
+  shareTitle?: string
+
+  /**
+   * Custom share description (defaults to game description)
+   */
+  shareDescription?: string
 }
 
 export function GameLayout({
@@ -63,6 +80,9 @@ export function GameLayout({
   backLinkHref = '/',
   backLinkText = '← Back to Games',
   className = '',
+  shareEnabled = false,
+  shareTitle,
+  shareDescription,
 }: GameLayoutProps) {
   // Map maxWidth to complete Tailwind classes for JIT compilation
   const maxWidthClasses = {
@@ -84,9 +104,17 @@ export function GameLayout({
       <div className="animate-fade">
         {/* Header Section */}
         <header className="text-center mb-4 sm:mb-6">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-2 text-foreground">
-            {title}
-          </h1>
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-2 text-foreground">
+              {title}
+            </h1>
+            {shareEnabled && (
+              <ShareButtonWrapper
+                title={shareTitle ?? title}
+                text={shareDescription ?? description}
+              />
+            )}
+          </div>
           <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl mx-auto">
             {description}
           </p>
