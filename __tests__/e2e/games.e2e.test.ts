@@ -92,6 +92,8 @@ test.describe('The Sage (Timeless Minds)', () => {
   })
 
   test('can send a message', async ({ page }) => {
+    test.skip(!process.env.GOOGLE_GEMINI_API_KEY, 'Requires Gemini API key')
+
     await page.goto('/games/ancient-voices')
 
     // Wait for chat to be ready
