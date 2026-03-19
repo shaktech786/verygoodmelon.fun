@@ -278,20 +278,20 @@ test.describe('Thought Pockets - Battle Mechanics', () => {
   })
 
   test('displays battle UI elements', async ({ page }) => {
-    // Wait for dynamic import to load battle screen
-    await expect(page.getByRole('button', { name: /End Turn/i })).toBeVisible({ timeout: 10000 })
+    // TP indicator should be visible (shows thought points) - use locator for specific element
+    await expect(page.locator('text=Thought Points').first()).toBeVisible()
 
-    // TP indicator should be visible (shows thought points)
-    await expect(page.locator('text=Thought Points').first()).toBeVisible({ timeout: 5000 })
-
-    // Coherence bar should be visible
-    await expect(page.getByText(/❤️ Coherence/i).first()).toBeVisible({ timeout: 5000 })
+    // Coherence bar should be visible (use .first() since card descriptions may also contain "Coherence")
+    await expect(page.getByText(/❤️ Coherence/i).first()).toBeVisible()
 
     // Turn indicator should show "Your Turn"
-    await expect(page.getByText(/Your Turn/i)).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText(/Your Turn/i)).toBeVisible()
+
+    // End Turn button
+    await expect(page.getByRole('button', { name: /End Turn/i })).toBeVisible()
 
     // Undo button should exist (but may be disabled)
-    await expect(page.getByRole('button', { name: /Undo/i })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('button', { name: /Undo/i })).toBeVisible()
   })
 
   test('can view cards in hand', async ({ page }) => {
