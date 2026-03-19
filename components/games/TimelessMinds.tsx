@@ -220,10 +220,12 @@ export default function TimelessMinds() {
     if (messagesContainerRef.current) {
       const container = messagesContainerRef.current
       requestAnimationFrame(() => {
-        container.scrollTo({
-          top: container.scrollHeight,
-          behavior: 'smooth'
-        })
+        if (typeof container.scrollTo === 'function') {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+          })
+        }
       })
     }
   }, [messages])
