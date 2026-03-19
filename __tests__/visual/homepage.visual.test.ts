@@ -9,9 +9,10 @@ test.describe('Homepage Visual Tests', () => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
 
-    // Take full page screenshot
+    // Small threshold for constellation background animation
     await expect(page).toHaveScreenshot('homepage-desktop.png', {
       fullPage: true,
+      maxDiffPixelRatio: 0.02,
     })
   })
 

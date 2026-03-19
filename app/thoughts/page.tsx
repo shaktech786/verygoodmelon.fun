@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { THOUGHTS } from '@/lib/thoughts/thoughts-data'
 import { ThoughtsList } from './ThoughtsList'
+import { SubmitThought } from './SubmitThought'
 
 export const metadata: Metadata = {
   title: 'Thoughts - VeryGoodMelon.Fun',
@@ -36,6 +37,9 @@ export default function ThoughtsPage() {
 
         {/* Thought cards — client component handles staggered animation */}
         <ThoughtsList thoughts={sortedThoughts} />
+
+        {/* User submission form */}
+        <SubmitThought />
 
         {/* Back link */}
         <div className="mt-16 pt-8 border-t border-card-border">

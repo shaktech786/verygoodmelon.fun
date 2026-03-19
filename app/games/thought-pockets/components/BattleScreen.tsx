@@ -117,14 +117,19 @@ export function BattleScreen() {
   }, [battleState.phase, battleState.hand.length, battleState.canUndo])
 
   if (!battleState.enemy) {
-    return <div className="text-center p-8 text-xl">Loading battle...</div>
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#2D2A26] text-[#F7F3EB] p-8" role="status">
+        <div className="w-8 h-8 border-3 border-[#D4C9B5]/30 border-t-amber-500 rounded-full animate-spin mb-4" />
+        <p className="text-xl font-serif">Preparing battle...</p>
+      </div>
+    )
   }
 
   return (
     <div className="relative flex flex-col h-full min-h-screen bg-[#2D2A26] text-[#F7F3EB]">
       {/* Action Message Toast */}
       {actionMessage && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce" role="status" aria-live="polite">
           <div className="bg-amber-500 text-[#2D2A26] px-6 py-3 rounded-lg shadow-xl font-serif font-bold text-xl">
             {actionMessage}
           </div>
@@ -132,9 +137,9 @@ export function BattleScreen() {
       )}
 
       {/* Turn Indicator */}
-      <div className="absolute top-20 right-4 z-40">
+      <div className="absolute top-20 right-2 sm:right-4 z-40">
         <div className={cn(
-          'px-4 py-2 rounded-lg font-serif font-bold text-lg',
+          'px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-serif font-bold text-sm sm:text-lg',
           battleState.phase === 'player'
             ? 'bg-emerald-600 text-white'
             : 'bg-red-600 text-white animate-pulse'
@@ -170,8 +175,8 @@ export function BattleScreen() {
       </div>
 
       {/* Hand Zone */}
-      <div className="border-t-2 border-[#D4C9B5]/30 bg-[#1a1917] p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="border-t-2 border-[#D4C9B5]/30 bg-[#1a1917] p-3 sm:p-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
           {/* Thought Points */}
           <TPIndicator
             current={battleState.thoughtPoints}
@@ -179,12 +184,12 @@ export function BattleScreen() {
           />
 
           {/* Action Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <button
               onClick={undoLastAction}
               disabled={!battleState.canUndo}
               className={cn(
-                'px-6 py-3 rounded-lg border-2 font-serif text-lg transition-all',
+                'px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 font-serif text-sm sm:text-lg transition-all',
                 battleState.canUndo
                   ? 'border-[#D4C9B5] text-[#F7F3EB] hover:bg-[#D4C9B5]/20 hover:scale-105'
                   : 'border-[#5A5550] text-[#5A5550] cursor-not-allowed'
@@ -196,7 +201,7 @@ export function BattleScreen() {
               onClick={handleEndTurn}
               disabled={battleState.phase !== 'player'}
               className={cn(
-                'px-8 py-3 rounded-lg border-2 font-serif font-bold text-lg transition-all',
+                'px-4 sm:px-8 py-2 sm:py-3 rounded-lg border-2 font-serif font-bold text-sm sm:text-lg transition-all',
                 battleState.phase === 'player'
                   ? 'bg-amber-600 border-amber-700 text-[#2D2A26] hover:bg-amber-500 hover:scale-105 shadow-lg'
                   : 'bg-[#5A5550] border-[#5A5550] text-[#8A847A] cursor-not-allowed'
@@ -216,8 +221,8 @@ export function BattleScreen() {
         />
 
         {/* Instructions */}
-        <p className="text-center text-[#8A847A] text-base mt-4">
-          Click a card to select, click again to play. Press 1-{battleState.hand.length} for quick select.
+        <p className="text-center text-[#8A847A] text-xs sm:text-base mt-3 sm:mt-4">
+          Tap a card to select, tap again to play. Press 1-{battleState.hand.length} for quick select.
         </p>
       </div>
     </div>
@@ -241,16 +246,16 @@ function TopBar({ coherence, maxCoherence, deckSize, discardSize }: TopBarProps)
   const isWarning = coherencePercent < 50
 
   return (
-    <div className="flex items-center justify-between p-5 bg-[#1a1917] border-b-2 border-[#D4C9B5]/30">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 sm:p-5 bg-[#1a1917] border-b-2 border-[#D4C9B5]/30">
       {/* Coherence Bar */}
-      <div className="flex-1 max-w-md">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="text-lg font-serif font-bold">❤️ Coherence</span>
-          <span className="font-mono text-xl font-bold">
+      <div className="flex-1 w-full sm:max-w-md">
+        <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+          <span className="text-sm sm:text-lg font-serif font-bold">❤️ Coherence</span>
+          <span className="font-mono text-base sm:text-xl font-bold">
             {coherence}/{maxCoherence}
           </span>
         </div>
-        <div className="h-6 bg-[#D4C9B5]/30 rounded-full overflow-hidden border-2 border-[#D4C9B5]/50">
+        <div className="h-4 sm:h-6 bg-[#D4C9B5]/30 rounded-full overflow-hidden border-2 border-[#D4C9B5]/50">
           <div
             className={cn(
               'h-full transition-all duration-300 rounded-full',
@@ -264,14 +269,14 @@ function TopBar({ coherence, maxCoherence, deckSize, discardSize }: TopBarProps)
       </div>
 
       {/* Deck Info */}
-      <div className="flex gap-6 text-base">
-        <div className="flex items-center gap-2 bg-[#2D2A26] px-4 py-2 rounded-lg">
-          <span className="text-[#8A847A]">📚 Draw:</span>
-          <span className="font-mono font-bold text-lg">{deckSize}</span>
+      <div className="flex gap-3 sm:gap-6 text-sm sm:text-base">
+        <div className="flex items-center gap-1.5 sm:gap-2 bg-[#2D2A26] px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg">
+          <span className="text-[#8A847A]">📚</span>
+          <span className="font-mono font-bold text-base sm:text-lg">{deckSize}</span>
         </div>
-        <div className="flex items-center gap-2 bg-[#2D2A26] px-4 py-2 rounded-lg">
-          <span className="text-[#8A847A]">🗑️ Discard:</span>
-          <span className="font-mono font-bold text-lg">{discardSize}</span>
+        <div className="flex items-center gap-1.5 sm:gap-2 bg-[#2D2A26] px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg">
+          <span className="text-[#8A847A]">🗑️</span>
+          <span className="font-mono font-bold text-base sm:text-lg">{discardSize}</span>
         </div>
       </div>
     </div>
@@ -295,9 +300,9 @@ function EnemyDisplay({ enemy, intent, showDamageNumber, damageAmount }: EnemyDi
 
   return (
     <div className={cn(
-      'relative flex flex-col items-center gap-5 p-8 rounded-2xl border-3',
+      'relative flex flex-col items-center gap-3 sm:gap-5 p-4 sm:p-8 rounded-2xl border-3',
       'bg-[#EDE6D6] text-[#2D2A26] shadow-2xl',
-      isBoss ? 'border-[#2D2A26] min-w-[400px] border-4' : 'border-[#9A8D7F] min-w-[350px] border-2'
+      isBoss ? 'border-[#2D2A26] w-full max-w-[400px] border-4' : 'border-[#9A8D7F] w-full max-w-[350px] border-2'
     )}>
       {/* Damage number animation */}
       {showDamageNumber && damageAmount > 0 && (
@@ -315,9 +320,9 @@ function EnemyDisplay({ enemy, intent, showDamageNumber, damageAmount }: EnemyDi
       {/* Portrait */}
       <div className={cn(
         'rounded-xl border-3 border-[#9A8D7F] bg-[#F7F3EB] flex items-center justify-center shadow-lg',
-        isBoss ? 'w-48 h-48' : 'w-40 h-40'
+        isBoss ? 'w-32 h-32 sm:w-48 sm:h-48' : 'w-28 h-28 sm:w-40 sm:h-40'
       )}>
-        <span className={cn('opacity-70', isBoss ? 'text-8xl' : 'text-7xl')}>{getEnemyIcon(enemy.id)}</span>
+        <span className={cn('opacity-70', isBoss ? 'text-6xl sm:text-8xl' : 'text-5xl sm:text-7xl')}>{getEnemyIcon(enemy.id)}</span>
       </div>
 
       {/* Name */}
@@ -398,17 +403,17 @@ function PlayArea({ cards, damagePreview }: PlayAreaProps) {
 
           {/* Damage preview */}
           {damagePreview && (
-            <div className="flex items-center gap-6 text-base bg-[#2D2A26] px-6 py-3 rounded-xl">
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-6 text-sm sm:text-base bg-[#2D2A26] px-4 sm:px-6 py-2 sm:py-3 rounded-xl">
               <div className="flex items-center gap-2">
-                <span className="text-[#8A847A]">🔗 Chain:</span>
-                <span className="font-mono text-amber-400 font-bold text-lg">
+                <span className="text-[#8A847A]">🔗</span>
+                <span className="font-mono text-amber-400 font-bold text-sm sm:text-lg">
                   {cards.length} cards ({Math.round((damagePreview.chainBonus - 1) * 100)}% bonus)
                 </span>
               </div>
-              <div className="w-px h-8 bg-[#5A5550]" />
+              <div className="hidden sm:block w-px h-8 bg-[#5A5550]" />
               <div className="flex items-center gap-2">
-                <span className="text-[#8A847A]">⚔️ Total Damage:</span>
-                <span className="font-mono text-4xl text-amber-400 font-bold">
+                <span className="text-[#8A847A]">⚔️</span>
+                <span className="font-mono text-2xl sm:text-4xl text-amber-400 font-bold">
                   {damagePreview.finalDamage}
                 </span>
               </div>
@@ -431,14 +436,14 @@ interface TPIndicatorProps {
 
 function TPIndicator({ current, max }: TPIndicatorProps) {
   return (
-    <div className="flex items-center gap-4 bg-[#2D2A26] px-5 py-3 rounded-xl">
-      <span className="text-base text-[#8A847A] font-serif">💭 Thought Points:</span>
-      <div className="flex gap-2">
+    <div className="flex items-center gap-2 sm:gap-4 bg-[#2D2A26] px-3 sm:px-5 py-2 sm:py-3 rounded-xl">
+      <span className="text-xs sm:text-base text-[#8A847A] font-serif">💭 TP:</span>
+      <div className="flex gap-1.5 sm:gap-2">
         {Array.from({ length: max }).map((_, i) => (
           <div
             key={i}
             className={cn(
-              'w-7 h-7 rounded-full border-3 transition-all shadow-md',
+              'w-5 h-5 sm:w-7 sm:h-7 rounded-full border-2 sm:border-3 transition-all shadow-md',
               i < current
                 ? 'bg-amber-500 border-amber-600 shadow-amber-500/30'
                 : 'bg-transparent border-[#5A5550]'
@@ -446,7 +451,7 @@ function TPIndicator({ current, max }: TPIndicatorProps) {
           />
         ))}
       </div>
-      <span className="font-mono text-xl font-bold">{current}/{max}</span>
+      <span className="font-mono text-base sm:text-xl font-bold">{current}/{max}</span>
     </div>
   )
 }

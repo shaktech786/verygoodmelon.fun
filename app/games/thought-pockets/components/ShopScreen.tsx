@@ -113,23 +113,23 @@ export function ShopScreen() {
   return (
     <div className="flex flex-col h-full min-h-screen bg-[#2D2A26] text-[#F7F3EB]">
       {/* Header */}
-      <header className="flex items-center justify-between p-4 bg-[#1a1917] border-b border-[#D4C9B5]/20">
+      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 sm:p-4 bg-[#1a1917] border-b border-[#D4C9B5]/20">
         <div>
-          <h1 className="font-serif text-2xl">📚 The Library</h1>
-          <p className="text-sm text-[#8A847A]">
+          <h1 className="font-serif text-xl sm:text-2xl">📚 The Library</h1>
+          <p className="text-xs sm:text-sm text-[#8A847A]">
             Acquire new knowledge and refine your arguments
           </p>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
           <div className="flex items-center gap-2">
             <span className="text-[#8A847A]">Gold:</span>
-            <span className="font-mono text-2xl text-amber-400">
+            <span className="font-mono text-xl sm:text-2xl text-amber-400">
               {gameState.gold}
             </span>
           </div>
           <button
             onClick={handleLeave}
-            className="px-6 py-2 bg-[#5A5550] hover:bg-[#6A6560] rounded-lg font-serif
+            className="px-4 sm:px-6 py-2 bg-[#5A5550] hover:bg-[#6A6560] rounded-lg font-serif text-sm sm:text-base
                      transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400"
           >
             Leave Shop
@@ -164,7 +164,7 @@ export function ShopScreen() {
             {shopInventory.length === 0 ? (
               <p className="text-[#8A847A]">No cards available</p>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                 {shopInventory.map((card) => {
                   const price = cardPrices[card.id]
                   const canAfford = gameState.gold >= price
@@ -243,13 +243,13 @@ export function ShopScreen() {
             <h2 className="font-serif text-xl mb-4">Services</h2>
 
             {/* Heal */}
-            <div className="flex items-center justify-between p-4 rounded-lg border-2 border-[#D4C9B5]/30 bg-[#1a1917]">
-              <div className="flex items-center gap-4">
-                <span className="text-4xl">💚</span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-lg border-2 border-[#D4C9B5]/30 bg-[#1a1917]">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <span className="text-3xl sm:text-4xl">💚</span>
                 <div>
-                  <h3 className="font-serif font-bold">Meditation Session</h3>
-                  <p className="text-sm text-[#8A847A]">
-                    Restore 10 Coherence (Current: {gameState.coherence}/{gameState.maxCoherence})
+                  <h3 className="font-serif font-bold text-sm sm:text-base">Meditation Session</h3>
+                  <p className="text-xs sm:text-sm text-[#8A847A]">
+                    Restore 10 Coherence ({gameState.coherence}/{gameState.maxCoherence})
                   </p>
                 </div>
               </div>
@@ -270,12 +270,12 @@ export function ShopScreen() {
 
             {/* Remove Card */}
             <div className="p-4 rounded-lg border-2 border-[#D4C9B5]/30 bg-[#1a1917]">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <span className="text-4xl">🗑️</span>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <span className="text-3xl sm:text-4xl">🗑️</span>
                   <div>
-                    <h3 className="font-serif font-bold">Purge a Card</h3>
-                    <p className="text-sm text-[#8A847A]">
+                    <h3 className="font-serif font-bold text-sm sm:text-base">Purge a Card</h3>
+                    <p className="text-xs sm:text-sm text-[#8A847A]">
                       Remove one card from your deck permanently
                     </p>
                   </div>
@@ -313,7 +313,7 @@ export function ShopScreen() {
                   <p className="text-sm text-amber-400 mb-4">
                     Select a card to remove:
                   </p>
-                  <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-2">
                     {gameState.deck.map((card, index) => (
                       <div
                         key={`${card.id}-${index}`}

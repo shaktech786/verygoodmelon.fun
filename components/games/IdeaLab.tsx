@@ -253,7 +253,7 @@ export default function IdeaLab() {
 
   if (showIntro) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+      <div className="min-h-[60vh] bg-background flex items-center justify-center px-6">
         <div className="max-w-lg text-center animate-fade">
           <div className="text-6xl mb-6">🧠</div>
           <h1 className="text-4xl font-semibold mb-4">The Idea Lab</h1>
@@ -308,11 +308,11 @@ export default function IdeaLab() {
             className="bg-card-bg border border-card-border rounded-xl p-6 sm:p-8 mb-6 min-h-[200px]"
           >
             {/* Selected concepts */}
-            <div className="flex items-center justify-center gap-4 sm:gap-6 mb-6">
+            <div className="flex items-center justify-center gap-2 sm:gap-6 mb-6 flex-wrap">
               {/* First slot */}
               <div
                 className={`
-                  w-24 h-24 sm:w-32 sm:h-32 rounded-xl border-2 border-dashed
+                  w-20 h-20 sm:w-32 sm:h-32 rounded-xl border-2 border-dashed
                   flex flex-col items-center justify-center transition-all
                   ${selectedConcepts[0]
                     ? 'border-accent bg-accent/5'
@@ -333,12 +333,12 @@ export default function IdeaLab() {
               </div>
 
               {/* Plus sign */}
-              <div className="text-2xl sm:text-3xl text-foreground/30 font-light">+</div>
+              <div className="text-xl sm:text-3xl text-foreground/30 font-light">+</div>
 
               {/* Second slot */}
               <div
                 className={`
-                  w-24 h-24 sm:w-32 sm:h-32 rounded-xl border-2 border-dashed
+                  w-20 h-20 sm:w-32 sm:h-32 rounded-xl border-2 border-dashed
                   flex flex-col items-center justify-center transition-all
                   ${selectedConcepts[1]
                     ? 'border-accent bg-accent/5'
@@ -359,12 +359,12 @@ export default function IdeaLab() {
               </div>
 
               {/* Equals sign */}
-              <div className="text-2xl sm:text-3xl text-foreground/30 font-light">=</div>
+              <div className="text-xl sm:text-3xl text-foreground/30 font-light">=</div>
 
               {/* Result slot */}
               <div
                 className={`
-                  w-24 h-24 sm:w-32 sm:h-32 rounded-xl border-2
+                  w-20 h-20 sm:w-32 sm:h-32 rounded-xl border-2
                   flex flex-col items-center justify-center transition-all
                   ${isCombining
                     ? 'border-accent animate-pulse bg-accent/10'

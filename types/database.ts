@@ -632,6 +632,36 @@ export type Database = {
           },
         ]
       }
+      user_thoughts: {
+        Row: {
+          id: string
+          body: string
+          theme: string
+          author_name: string | null
+          status: string
+          created_at: string | null
+          approved_at: string | null
+        }
+        Insert: {
+          id?: string
+          body: string
+          theme: string
+          author_name?: string | null
+          status?: string
+          created_at?: string | null
+          approved_at?: string | null
+        }
+        Update: {
+          id?: string
+          body?: string
+          theme?: string
+          author_name?: string | null
+          status?: string
+          created_at?: string | null
+          approved_at?: string | null
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_id: string

@@ -158,6 +158,102 @@ There is courage in being quiet. It means you are willing to sit with not knowin
     theme: 'connection',
     createdAt: '2026-03-08T00:00:00Z',
   },
+  {
+    id: 'the-comfort-of-routine',
+    slug: 'the-comfort-of-routine',
+    title: 'The Comfort of Routine',
+    body: `There is a particular guilt that comes with enjoying routine. You worry it means you have stopped growing, that you are coasting, that the best parts of your life are behind you. People talk about routines like cages — things to escape from.
+
+But a good routine is not a cage. It is a foundation. It is the steady ground that lets you look up instead of down. The morning coffee, the familiar walk, the way you always check the sky before leaving the house — these are not signs of stagnation. They are the rituals that hold the rest of your life together.
+
+The fear of stagnation is useful in small doses. But most of the time, what feels like standing still is actually standing firm. And there is a difference.`,
+    theme: 'patience',
+    createdAt: '2026-03-10T00:00:00Z',
+  },
+  {
+    id: 'what-boredom-is-asking',
+    slug: 'what-boredom-is-asking',
+    title: 'What Boredom Is Asking',
+    body: `Boredom gets treated like a malfunction — something to fix with another scroll, another episode, another notification. But boredom is not emptiness. It is a signal. Your brain is telling you that the thing you are doing is not the thing you actually want to be doing.
+
+That restless, itchy feeling is not a flaw. It is your mind asking for something real — something that requires enough of your attention that the rest of the noise quiets down. Not necessarily something hard. Just something honest.
+
+The next time you are bored, try sitting with it for two minutes instead of reaching for your phone. Listen to what it is actually asking for. You might be surprised how specific the answer is.`,
+    theme: 'wonder',
+    createdAt: '2026-03-11T00:00:00Z',
+  },
+  {
+    id: 'finishing-versus-starting',
+    slug: 'finishing-versus-starting',
+    title: 'Finishing Versus Starting',
+    body: `Starting something fills you with energy. Everything is possible, nothing is ruined yet, and the gap between what you imagine and what exists feels exciting rather than discouraging. Starting is hope in motion.
+
+Finishing is different. Finishing is quieter. There is no fanfare, just a strange mixture of pride and loss. The thing you made is now separate from you — fixed, finite, done. It will never again be the thing you are working on. It is now the thing you worked on. Past tense.
+
+Most people think they struggle with starting. But if you look honestly at the pile of half-finished projects in your life, you might realize that starting was never the problem. The hard part was always staying long enough to see it through — and then letting it go.`,
+    theme: 'creativity',
+    createdAt: '2026-03-12T00:00:00Z',
+  },
+  {
+    id: 'admitting-you-dont-know',
+    slug: 'admitting-you-dont-know',
+    title: 'The Strange Relief of Not Knowing',
+    body: `There is a moment — usually after you have been pretending to understand something for too long — when you finally say, out loud, "I have no idea." And instead of the embarrassment you expected, what arrives is relief. A surprising, physical lightness.
+
+Pretending to know is heavy. It takes constant maintenance. You have to monitor every conversation for the moment someone might ask a follow-up question that exposes the gap. You avoid entire topics, entire people, entire parts of yourself.
+
+Admitting you do not know is not weakness. It is the door to the room where learning actually happens. And the people worth being around are the ones who hear "I don't know" and lean in rather than pull away.`,
+    theme: 'perspective',
+    createdAt: '2026-03-13T00:00:00Z',
+  },
+  {
+    id: 'how-listening-changes-you',
+    slug: 'how-listening-changes-you',
+    title: 'How Listening Changes the Listener',
+    body: `We talk about listening as though it is something you do for the other person — a gift you give, a courtesy you extend. And it is. But the part no one mentions is what listening does to you.
+
+When you truly listen — not preparing your response, not filtering for relevance, just taking in what someone is saying — you become a slightly different person by the end of the conversation. Their experience rearranges something small inside you. A border shifts. A certainty softens. You walk away carrying a piece of someone else's world, and your own world is wider for it.
+
+This is why the best listeners are rarely the same person twice. Every real conversation changes them. And they let it.`,
+    theme: 'connection',
+    createdAt: '2026-03-14T00:00:00Z',
+  },
+  {
+    id: 'the-weight-of-simplicity',
+    slug: 'the-weight-of-simplicity',
+    title: 'The Weight of Keeping Things Simple',
+    body: `Simple is hard. Anyone who has tried to explain a complex idea in one sentence, or design a room with less furniture, or say what they actually mean without hedging — they know this. Simplicity is not the absence of effort. It is the result of so much effort that the effort itself disappears.
+
+The temptation is always to add more. More features, more words, more options, more decoration. Adding feels productive. But the real work — the work that nobody sees — is the removing. Figuring out what does not belong and having the discipline to let it go.
+
+There is a weight to keeping things simple. It requires you to make decisions instead of deferring them. To commit to this and not that. But the lightness it creates for everyone else — the clarity, the ease, the feeling of something being exactly right — that is worth the weight.`,
+    theme: 'creativity',
+    createdAt: '2026-03-15T00:00:00Z',
+  },
+  {
+    id: 'why-smells-stay',
+    slug: 'why-smells-stay',
+    title: 'Why We Remember Smells More Than Facts',
+    body: `You can forget the year something happened, the name of the street, what you were wearing. But the smell of your grandmother's kitchen, the chlorine of a public pool from childhood, the particular rain-on-asphalt scent of a city you visited once — these remain sharp for decades.
+
+Smells bypass the parts of your brain that organize and label. They go straight to the place where feelings live, unedited and unfiltered. A smell does not remind you of a memory. It puts you back inside it. For a half-second, you are not remembering — you are there.
+
+This is why certain moments feel more real than others. Not because they were more important, but because they came with a scent that your brain decided to keep forever, filed under "this mattered," with no further explanation.`,
+    theme: 'wonder',
+    createdAt: '2026-03-16T00:00:00Z',
+  },
+  {
+    id: 'small-repeated-actions',
+    slug: 'small-repeated-actions',
+    title: 'How Small Repeated Actions Build Identity',
+    body: `You are not defined by your revelations. You are defined by your repetitions. The things you do every day — without thinking, without deciding — are quietly building the person you are becoming. Not the grand gestures, not the turning points. The Tuesday mornings.
+
+The person who reads for ten minutes before bed is becoming a reader. The person who takes a walk after lunch is becoming someone who notices the world. The person who writes one sentence a day is becoming a writer. None of these people decided to transform. They just kept showing up to something small.
+
+Identity is not a decision. It is an accumulation. And the beautiful part is that it works in both directions. You can start a new small thing today, and if you keep doing it, it will eventually stop being something you do and start being something you are.`,
+    theme: 'patience',
+    createdAt: '2026-03-17T00:00:00Z',
+  },
 ]
 
 /**

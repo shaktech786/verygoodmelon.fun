@@ -274,7 +274,7 @@ export default function TheUnrusher() {
               )}
 
               {/* Timer - smaller, less prominent */}
-              <div className="text-4xl sm:text-5xl font-light mb-6 text-foreground/40 tabular-nums" aria-live="polite" aria-atomic="true">
+              <div className="text-4xl sm:text-5xl font-light mb-6 text-foreground/40 tabular-nums" role="timer" aria-live="off" aria-label={`${Math.floor(timeRemaining / 60)} minutes ${timeRemaining % 60} seconds remaining`}>
                 {Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, '0')}
               </div>
 

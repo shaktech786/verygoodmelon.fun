@@ -42,6 +42,7 @@ export default function LastWords() {
   const [reflectionLoading, setReflectionLoading] = useState(false)
   const [reflectionVisible, setReflectionVisible] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const supabase = createClient()
 
   // Rotate prompts every 5 seconds
@@ -145,6 +146,7 @@ export default function LastWords() {
     }
 
     setLoading(true)
+    setSubmitError(null)
 
     try {
       const { error } = await supabase
@@ -158,7 +160,7 @@ export default function LastWords() {
       fetchReflection(input.trim())
     } catch (error) {
       console.error('Error submitting last words:', error)
-      alert('Failed to submit. Please try again.')
+      setSubmitError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -222,14 +224,14 @@ export default function LastWords() {
           </h3>
 
           {wordCloud.length > 0 ? (
-            <div className="min-h-[400px] w-full flex items-center justify-center">
+            <div className="min-h-[300px] sm:min-h-[400px] w-full flex items-center justify-center overflow-hidden">
               <WordCloud
                 words={wordCloud.map(({ word, count }) => ({
                   text: word,
                   value: count
                 }))}
-                width={800}
-                height={400}
+                width={typeof window !== 'undefined' ? Math.min(window.innerWidth - 80, 800) : 800}
+                height={typeof window !== 'undefined' ? (window.innerWidth < 640 ? 300 : 400) : 400}
               />
             </div>
           ) : (
@@ -319,6 +321,12 @@ export default function LastWords() {
               <span>{input.length}/500 characters</span>
             </div>
           </div>
+
+          {submitError && (
+            <div className="p-3 bg-accent/10 border border-accent/20 rounded-lg text-sm text-accent" role="alert">
+              {submitError}
+            </div>
+          )}
 
           <Button
             type="submit"

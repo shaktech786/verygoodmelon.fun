@@ -235,7 +235,7 @@ export function CardHand({
   return (
     <div
       className={cn(
-        'flex justify-center items-end gap-0 py-6',
+        'flex justify-center items-end gap-0 py-4 sm:py-6 overflow-x-auto px-2',
         className
       )}
       role="group"

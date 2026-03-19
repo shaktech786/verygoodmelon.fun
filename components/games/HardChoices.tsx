@@ -344,7 +344,7 @@ export default function HardChoices() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-6 py-12 max-w-3xl">
+      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 max-w-3xl">
         <div className="animate-fade">
           {/* Header */}
           <div className="mb-8">
@@ -382,7 +382,7 @@ export default function HardChoices() {
           )}
 
           {/* Dilemma card */}
-          <div className="bg-card-bg border border-card-border rounded-lg p-8 mb-6">
+          <div className="bg-card-bg border border-card-border rounded-lg p-4 sm:p-8 mb-6">
             {currentDilemma.context && (
               <p className="text-foreground/60 mb-4 text-sm uppercase tracking-wide">
                 {currentDilemma.context}
@@ -400,7 +400,7 @@ export default function HardChoices() {
                 onKeyDown={(e) => handleKeyDown(e, 'A')}
                 disabled={hasVoted || loading}
                 className={`
-                  w-full text-left p-6 rounded-lg border-2 transition-all
+                  w-full text-left p-4 sm:p-6 rounded-lg border-2 transition-all
                   ${hasVoted
                     ? 'cursor-default'
                     : 'hover:border-accent hover:bg-accent/5 focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer'
@@ -458,7 +458,7 @@ export default function HardChoices() {
                 onKeyDown={(e) => handleKeyDown(e, 'B')}
                 disabled={hasVoted || loading}
                 className={`
-                  w-full text-left p-6 rounded-lg border-2 transition-all
+                  w-full text-left p-4 sm:p-6 rounded-lg border-2 transition-all
                   ${hasVoted
                     ? 'cursor-default'
                     : 'hover:border-accent hover:bg-accent/5 focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer'

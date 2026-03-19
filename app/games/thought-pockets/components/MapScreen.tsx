@@ -135,25 +135,25 @@ export function MapScreen() {
   return (
     <div className="flex flex-col h-full min-h-screen bg-[#2D2A26] text-[#F7F3EB]">
       {/* Header */}
-      <header className="flex items-center justify-between p-4 bg-[#1a1917] border-b border-[#D4C9B5]/20">
+      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 sm:p-4 bg-[#1a1917] border-b border-[#D4C9B5]/20">
         <div>
-          <h1 className="font-serif text-2xl">
+          <h1 className="font-serif text-lg sm:text-2xl">
             Floor {gameState.currentFloor}: {getFloorName(gameState.currentFloor)}
           </h1>
-          <p className="text-sm text-[#8A847A]">
+          <p className="text-xs sm:text-sm text-[#8A847A]">
             Select a path through the cognitive landscape
           </p>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="text-[#8A847A]">Coherence:</span>
-            <span className="font-mono text-lg">
+        <div className="flex items-center gap-4 sm:gap-6 text-sm sm:text-base">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="text-[#8A847A]">HP:</span>
+            <span className="font-mono">
               {gameState.coherence}/{gameState.maxCoherence}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <span className="text-[#8A847A]">Gold:</span>
-            <span className="font-mono text-lg text-amber-400">
+            <span className="font-mono text-amber-400">
               {gameState.gold}
             </span>
           </div>

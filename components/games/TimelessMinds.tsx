@@ -435,8 +435,8 @@ export default function TimelessMinds() {
 
   if (!thinker) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="animate-spin" size={48} />
+      <div className="flex items-center justify-center min-h-screen" role="status" aria-label="Loading conversation">
+        <Loader2 className="animate-spin text-foreground/50" size={48} />
       </div>
     )
   }
@@ -524,7 +524,7 @@ export default function TimelessMinds() {
                         setShowTopicSuggestions(false)
                         inputRef.current?.focus()
                       }}
-                      className="text-xs px-2 py-1 bg-accent/10 hover:bg-accent/20 text-accent rounded-full transition-colors"
+                      className="text-xs px-3 py-1.5 min-h-[36px] bg-accent/10 hover:bg-accent/20 text-accent rounded-full transition-colors"
                     >
                       {topic}
                     </button>

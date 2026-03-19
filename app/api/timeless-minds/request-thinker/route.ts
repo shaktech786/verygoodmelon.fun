@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendEmail } from '@/lib/email/send-email'
+import {
+  confirmationEmailSubject,
+  confirmationEmailHtml,
+  adminNotificationSubject,
+  adminNotificationHtml,
+} from '@/lib/email/templates'
 
 // Initialize Supabase client with runtime check
 function getSupabaseClient() {
@@ -147,6 +154,35 @@ export async function POST(request: NextRequest) {
         payment_amount: 0,
         is_active: true
       })
+
+    // Fire-and-forget: send confirmation + admin notification emails
+    // Errors are logged internally — never block the response
+    sendEmail({
+      to: requesterEmail,
+      subject: confirmationEmailSubject(),
+      html: confirmationEmailHtml({
+        requesterName: requesterName || undefined,
+        requestedName,
+      }),
+    }).catch(() => {}) // swallow unhandled rejection
+
+    const adminEmail = process.env.ADMIN_EMAIL
+    if (adminEmail) {
+      sendEmail({
+        to: adminEmail,
+        subject: adminNotificationSubject(requestedName),
+        html: adminNotificationHtml({
+          requesterName: requesterName || undefined,
+          requesterEmail,
+          requestedName,
+          requestedEra: requestedEra || undefined,
+          requestedField: requestedField || undefined,
+          reasonForRequest,
+          personalConnection: personalConnection || undefined,
+          requestId: data.id,
+        }),
+      }).catch(() => {}) // swallow unhandled rejection
+    }
 
     return NextResponse.json({
       success: true,

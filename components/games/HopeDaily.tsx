@@ -333,8 +333,9 @@ export default function HopeDaily() {
 
   if (!metadata) {
     return (
-      <div className="text-center text-foreground/70 py-12">
-        Loading today&apos;s word...
+      <div className="text-center text-foreground/70 py-12" role="status" aria-live="polite">
+        <div className="inline-block w-6 h-6 border-2 border-foreground/20 border-t-foreground/60 rounded-full animate-spin mb-3" />
+        <p>Loading today&apos;s word...</p>
       </div>
     )
   }
@@ -488,8 +489,8 @@ export default function HopeDaily() {
                   onClick={() => handleKeyPress(key === 'BACK' ? 'Backspace' : key === 'ENTER' ? 'Enter' : key)}
                   disabled={gameState !== 'playing'}
                   className={`
-                    ${isSpecialKey ? 'px-1.5 sm:px-2 text-[10px] sm:text-xs' : 'w-6 sm:w-8 md:w-9'}
-                    h-8 sm:h-10 md:h-12 rounded font-bold text-[10px] sm:text-xs md:text-sm
+                    ${isSpecialKey ? 'px-2 sm:px-3 text-[10px] sm:text-xs' : 'w-7 sm:w-8 md:w-9'}
+                    h-10 sm:h-10 md:h-12 rounded font-bold text-[10px] sm:text-xs md:text-sm
                     transition-all duration-200
                     ${keyState === 'correct' ? 'bg-[#74c69d] text-white border-[#74c69d]' : ''}
                     ${keyState === 'present' ? 'bg-[#f59e0b] text-white border-[#f59e0b]' : ''}
