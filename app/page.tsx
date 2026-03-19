@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { GameCardShowcase } from '@/components/games/GameCardShowcase'
+import { PersonalizedSuggestions } from '@/components/home/PersonalizedSuggestions'
 import { SHOWCASE_GAMES } from '@/lib/games/config'
 import { usePresence } from '@/lib/hooks/usePresence'
 import { useDailyWisdom } from '@/lib/hooks/useDailyWisdom'
@@ -127,6 +128,9 @@ export default function Home() {
           })}
         </div>
       </div>
+
+      {/* Personalized suggestions based on play history */}
+      <PersonalizedSuggestions />
 
       {/* Subtle prompt - only appears after cards */}
       <div

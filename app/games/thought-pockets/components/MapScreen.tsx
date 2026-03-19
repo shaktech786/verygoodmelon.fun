@@ -225,11 +225,11 @@ export function MapScreen() {
         })}
 
         {/* Legend */}
-        <div className="absolute bottom-4 left-4 bg-[#1a1917]/90 rounded-lg p-4 border border-[#D4C9B5]/20">
-          <h3 className="text-sm font-serif mb-2">Legend</h3>
-          <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="absolute bottom-4 left-4 bg-[#1a1917]/90 rounded-lg p-3 sm:p-4 border border-[#D4C9B5]/20 max-w-[180px] sm:max-w-none">
+          <h3 className="text-xs sm:text-sm font-serif mb-1 sm:mb-2">Legend</h3>
+          <div className="grid grid-cols-2 gap-1 sm:gap-2 text-[10px] sm:text-xs">
             {Object.entries(NODE_ICONS).map(([type, icon]) => (
-              <div key={type} className="flex items-center gap-2">
+              <div key={type} className="flex items-center gap-1 sm:gap-2">
                 <span>{icon}</span>
                 <span className="text-[#8A847A]">{NODE_NAMES[type as NodeType]}</span>
               </div>
@@ -238,7 +238,7 @@ export function MapScreen() {
         </div>
 
         {/* Instructions */}
-        <div className="absolute bottom-4 right-4 text-sm text-[#8A847A]">
+        <div className="absolute bottom-4 right-4 text-xs sm:text-sm text-[#8A847A] text-right hidden sm:block">
           <p>Click a glowing node to proceed</p>
           <p>Arrow keys + Enter for keyboard navigation</p>
         </div>

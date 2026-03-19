@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { ErrorState } from '@/components/ui/ErrorState'
+import { useRealtimeVotes, mergeVotes } from '@/lib/hooks/useRealtimeVotes'
 
 interface Choice {
   id: string
@@ -225,6 +226,8 @@ const DILEMMAS: Dilemma[] = [
   }
 ]
 
+const DILEMMA_IDS = DILEMMAS.map((d) => d.id)
+
 export default function HardChoices() {
   const [currentDilemmaIndex, setCurrentDilemmaIndex] = useState(0)
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null)
@@ -233,8 +236,52 @@ export default function HardChoices() {
   const [hasVoted, setHasVoted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  const [pulseChoice, setPulseChoice] = useState<'A' | 'B' | null>(null)
+  const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const currentDilemma = DILEMMAS[currentDilemmaIndex]
+
+  // Realtime votes subscription
+  const {
+    votes: realtimeVotes,
+    isConnected: isRealtimeConnected,
+    recentlyUpdated,
+    clearUpdated,
+    seedVotes,
+  } = useRealtimeVotes(DILEMMA_IDS)
+
+  // Trigger pulse animation when a realtime update arrives for the current dilemma
+  useEffect(() => {
+    const update = recentlyUpdated[currentDilemma.id]
+    if (update && showResults) {
+      setPulseChoice(update)
+      if (pulseTimeoutRef.current) clearTimeout(pulseTimeoutRef.current)
+      pulseTimeoutRef.current = setTimeout(() => {
+        setPulseChoice(null)
+      }, 600)
+      clearUpdated(currentDilemma.id)
+    }
+  }, [recentlyUpdated, currentDilemma.id, showResults, clearUpdated])
+
+  // Cleanup pulse timeout
+  useEffect(() => {
+    return () => {
+      if (pulseTimeoutRef.current) clearTimeout(pulseTimeoutRef.current)
+    }
+  }, [])
+
+  // Compute merged vote results: REST data + realtime overlay
+  const displayResults = (() => {
+    const rtVotes = realtimeVotes[currentDilemma.id]
+    if (rtVotes) {
+      return mergeVotes(
+        voteResults?.choiceA ?? 0,
+        voteResults?.choiceB ?? 0,
+        rtVotes
+      )
+    }
+    return voteResults ? { choiceA: voteResults.choiceA, choiceB: voteResults.choiceB } : null
+  })()
 
   useEffect(() => {
     const checkVoteStatus = async () => {
@@ -264,6 +311,7 @@ export default function HardChoices() {
         const data = await response.json()
         setVoteResults(data)
         setShowResults(true)
+        seedVotes(currentDilemma.id, data.choiceA, data.choiceB)
       } else {
         throw new Error(`Failed to load results: ${response.statusText}`)
       }
@@ -297,6 +345,7 @@ export default function HardChoices() {
         setVoteResults(data.results)
         setShowResults(true)
         setHasVoted(true)
+        seedVotes(currentDilemma.id, data.results.choiceA, data.results.choiceB)
 
         // Save to local storage
         const votedDilemmas = JSON.parse(localStorage.getItem('hardChoicesVotes') || '{}')
@@ -335,10 +384,10 @@ export default function HardChoices() {
   }
 
   const getPercentage = (choice: 'A' | 'B') => {
-    if (!voteResults) return 0
-    const total = voteResults.choiceA + voteResults.choiceB
+    if (!displayResults) return 0
+    const total = displayResults.choiceA + displayResults.choiceB
     if (total === 0) return 50
-    const count = choice === 'A' ? voteResults.choiceA : voteResults.choiceB
+    const count = choice === 'A' ? displayResults.choiceA : displayResults.choiceB
     return Math.round((count / total) * 100)
   }
 
@@ -348,8 +397,8 @@ export default function HardChoices() {
         <div className="animate-fade">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-4xl font-semibold mb-3">The Dilemma</h1>
-            <p className="text-foreground/60 text-lg">
+            <h1 className="text-3xl sm:text-4xl font-semibold mb-3">The Dilemma</h1>
+            <p className="text-foreground/60 text-base sm:text-lg">
               Life&apos;s deepest questions have no easy answers. But thinking through them makes us wiser.
             </p>
           </div>
@@ -357,7 +406,15 @@ export default function HardChoices() {
           {/* Progress indicator */}
           <div className="mb-8">
             <div className="flex items-center justify-between text-sm text-foreground/60 mb-2">
-              <span>Dilemma {currentDilemmaIndex + 1} of {DILEMMAS.length}</span>
+              <div className="flex items-center gap-2">
+                <span>Dilemma {currentDilemmaIndex + 1} of {DILEMMAS.length}</span>
+                {isRealtimeConnected && (
+                  <span className="inline-flex items-center gap-1 text-xs text-success/60" aria-label="Live updates active">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-success/60 animate-pulse" aria-hidden="true" />
+                    Live
+                  </span>
+                )}
+              </div>
               <span className="text-xs uppercase tracking-wide">{currentDilemma.category}</span>
             </div>
             <div className="h-1 bg-foreground/10 rounded-full overflow-hidden">
@@ -388,7 +445,7 @@ export default function HardChoices() {
                 {currentDilemma.context}
               </p>
             )}
-            <h2 className="text-2xl font-medium mb-8">
+            <h2 className="text-xl sm:text-2xl font-medium mb-6 sm:mb-8">
               {currentDilemma.scenario}
             </h2>
 
@@ -436,13 +493,19 @@ export default function HardChoices() {
                           <span className="text-foreground/60">
                             {getPercentage('A')}% chose this
                           </span>
-                          <span className="text-foreground/40">
-                            {voteResults?.choiceA || 0} votes
+                          <span
+                            className={`text-foreground/40 transition-all duration-300 ${
+                              pulseChoice === 'A' ? 'text-accent scale-110 font-medium' : ''
+                            }`}
+                          >
+                            {displayResults?.choiceA || 0} votes
                           </span>
                         </div>
                         <div className="h-2 bg-foreground/5 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-accent transition-all duration-500"
+                            className={`h-full bg-accent transition-all duration-300 ${
+                              pulseChoice === 'A' ? 'shadow-[0_0_8px_rgba(230,57,70,0.4)]' : ''
+                            }`}
                             style={{ width: `${getPercentage('A')}%` }}
                           />
                         </div>
@@ -494,13 +557,19 @@ export default function HardChoices() {
                           <span className="text-foreground/60">
                             {getPercentage('B')}% chose this
                           </span>
-                          <span className="text-foreground/40">
-                            {voteResults?.choiceB || 0} votes
+                          <span
+                            className={`text-foreground/40 transition-all duration-300 ${
+                              pulseChoice === 'B' ? 'text-success scale-110 font-medium' : ''
+                            }`}
+                          >
+                            {displayResults?.choiceB || 0} votes
                           </span>
                         </div>
                         <div className="h-2 bg-foreground/5 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-success transition-all duration-500"
+                            className={`h-full bg-success transition-all duration-300 ${
+                              pulseChoice === 'B' ? 'shadow-[0_0_8px_rgba(116,198,157,0.4)]' : ''
+                            }`}
                             style={{ width: `${getPercentage('B')}%` }}
                           />
                         </div>

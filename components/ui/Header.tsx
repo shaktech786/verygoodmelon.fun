@@ -1,15 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, LogOut, User } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { useAuthContext } from '@/components/auth/AuthProvider'
 
 export function Header() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { user, isAuthenticated, isLoading, openAuthModal, signOut } = useAuthContext()
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close user dropdown on outside click
+  useEffect(() => {
+    if (!userMenuOpen) return
+    const handleClick = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [userMenuOpen])
+
+  const userInitial = user?.email?.[0]?.toUpperCase() ?? '?'
+  const userDisplayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'
 
   const navLinks = [
     { href: '/', label: 'Home' },
@@ -77,6 +96,63 @@ export function Header() {
             >
               GitHub
             </a>
+
+            {/* Auth: Sign in / User menu */}
+            {!isLoading && (
+              isAuthenticated ? (
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    className="flex items-center gap-1.5 text-sm text-primary-light hover:text-foreground transition-colors"
+                    aria-expanded={userMenuOpen}
+                    aria-haspopup="true"
+                    aria-label={`Account menu for ${userDisplayName}`}
+                  >
+                    {user?.user_metadata?.avatar_url ? (
+                      <Image
+                        src={user.user_metadata.avatar_url}
+                        alt=""
+                        width={24}
+                        height={24}
+                        className="rounded-full"
+                      />
+                    ) : (
+                      <span className="w-6 h-6 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xs font-semibold">
+                        {userInitial}
+                      </span>
+                    )}
+                  </button>
+                  {userMenuOpen && (
+                    <div
+                      className="absolute right-0 mt-2 w-48 bg-card-bg border border-card-border rounded-lg shadow-lg py-1 z-50 animate-fade"
+                      role="menu"
+                    >
+                      <div className="px-3 py-2 border-b border-card-border">
+                        <p className="text-xs text-primary-light truncate">{user?.email}</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          setUserMenuOpen(false)
+                          await signOut()
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary-light hover:text-foreground hover:bg-hover-bg transition-colors"
+                        role="menuitem"
+                      >
+                        <LogOut size={14} aria-hidden="true" />
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={openAuthModal}
+                  className="text-sm text-primary-light hover:text-foreground transition-colors"
+                >
+                  Sign in
+                </button>
+              )
+            )}
           </div>
 
           {/* Mobile hamburger menu button */}
@@ -124,6 +200,51 @@ export function Header() {
               >
                 GitHub
               </a>
+
+              {/* Mobile auth */}
+              {!isLoading && (
+                isAuthenticated ? (
+                  <div className="border-t border-card-border pt-3 mt-1">
+                    <div className="flex items-center gap-2 px-3 py-1 mb-1">
+                      {user?.user_metadata?.avatar_url ? (
+                        <Image
+                          src={user.user_metadata.avatar_url}
+                          alt=""
+                          width={20}
+                          height={20}
+                          className="rounded-full"
+                        />
+                      ) : (
+                        <span className="w-5 h-5 rounded-full bg-accent/10 text-accent flex items-center justify-center text-[10px] font-semibold">
+                          {userInitial}
+                        </span>
+                      )}
+                      <span className="text-xs text-primary-light truncate">{user?.email}</span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        setMobileMenuOpen(false)
+                        await signOut()
+                      }}
+                      className="flex items-center gap-2 text-base text-primary-light hover:text-foreground transition-colors py-2 px-3 rounded-lg hover:bg-hover-bg w-full"
+                    >
+                      <LogOut size={16} aria-hidden="true" />
+                      Sign out
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false)
+                      openAuthModal()
+                    }}
+                    className="flex items-center gap-2 text-base text-primary-light hover:text-foreground transition-colors py-2 px-3 rounded-lg hover:bg-hover-bg border-t border-card-border pt-3 mt-1 w-full"
+                  >
+                    <User size={16} aria-hidden="true" />
+                    Sign in
+                  </button>
+                )
+              )}
             </div>
           </div>
         )}

@@ -25,7 +25,10 @@ export function createClient(): SupabaseClient<Database> {
       auth: {
         getUser: () => Promise.resolve({ data: { user: null }, error: null }),
         signInWithPassword: () => Promise.resolve({ data: null, error: null }),
+        signInWithOtp: () => Promise.resolve({ data: null, error: null }),
+        signInWithOAuth: () => Promise.resolve({ data: { url: null, provider: 'github' as const }, error: null }),
         signOut: () => Promise.resolve({ error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
       }
     } as unknown as SupabaseClient<Database>
   }

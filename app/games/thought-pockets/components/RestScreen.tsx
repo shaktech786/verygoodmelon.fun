@@ -144,7 +144,7 @@ export function RestScreen() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-4 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 mb-6">
                   {upgradableCards.map((card) => (
                     <div
                       key={card.id}
@@ -163,15 +163,15 @@ export function RestScreen() {
                 {selectedCard && upgradedPreview && (
                   <div className="bg-[#1a1917] rounded-xl p-6 border border-[#D4C9B5]/20">
                     <h3 className="font-serif text-lg mb-4 text-center">Upgrade Preview</h3>
-                    <div className="flex items-center justify-center gap-8">
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
                       <div className="text-center">
                         <p className="text-sm text-[#8A847A] mb-2">Current</p>
-                        <CardComponent card={selectedCard} size="md" />
+                        <CardComponent card={selectedCard} size="sm" />
                       </div>
-                      <div className="text-4xl text-amber-400">→</div>
+                      <div className="text-3xl sm:text-4xl text-amber-400">→</div>
                       <div className="text-center">
                         <p className="text-sm text-amber-400 mb-2">Upgraded</p>
-                        <CardComponent card={upgradedPreview} size="md" />
+                        <CardComponent card={upgradedPreview} size="sm" />
                       </div>
                     </div>
                     <button

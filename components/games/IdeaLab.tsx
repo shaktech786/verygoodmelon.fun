@@ -51,6 +51,7 @@ export default function IdeaLab() {
   const [discoveryCount, setDiscoveryCount] = useState(0)
   const [combinations, setCombinations] = useState<Record<string, string>>({})
   const [showIntro, setShowIntro] = useState(true)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
   const workspaceRef = useRef<HTMLDivElement>(null)
 
   // Load saved discoveries from localStorage
@@ -229,15 +230,18 @@ export default function IdeaLab() {
 
   // Reset all discoveries
   const handleReset = () => {
-    if (confirm('This will erase all your discoveries. Are you sure?')) {
-      localStorage.removeItem(STORAGE_KEY)
-      localStorage.removeItem(COMBINATIONS_KEY)
-      setConcepts(BASE_CONCEPTS)
-      setCombinations({})
-      setDiscoveryCount(0)
-      setSelectedConcepts([])
-      setLastResult(null)
-    }
+    setShowResetConfirm(true)
+  }
+
+  const confirmReset = () => {
+    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(COMBINATIONS_KEY)
+    setConcepts(BASE_CONCEPTS)
+    setCombinations({})
+    setDiscoveryCount(0)
+    setSelectedConcepts([])
+    setLastResult(null)
+    setShowResetConfirm(false)
   }
 
   // Clear workspace
@@ -492,6 +496,32 @@ export default function IdeaLab() {
           </div>
         </div>
       </div>
+
+      {/* Reset Confirmation Dialog */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-card-bg rounded-xl p-6 max-w-sm w-full shadow-2xl border border-card-border">
+            <h3 className="text-lg font-semibold mb-2 text-foreground">Reset all discoveries?</h3>
+            <p className="text-sm text-foreground/70 mb-4">
+              This will erase all your discovered concepts. Your base concepts will remain.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 px-4 py-2 border border-foreground/20 rounded-lg hover:bg-foreground/5 transition-colors text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmReset}
+                className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors text-sm"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
