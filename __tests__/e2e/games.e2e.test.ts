@@ -25,7 +25,7 @@ test.describe('Homepage', () => {
 
     // Check game cards are rendered
     const gameCards = page.locator('a[href^="/games/"]')
-    await expect(gameCards).toHaveCount(8)
+    await expect(gameCards).toHaveCount(9)
   })
 
   test('constellation background renders', async ({ page }) => {
