@@ -33,6 +33,10 @@ function StatCard({ label, value, icon }: StatCardProps) {
 }
 
 async function getAnalytics() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { total: 0, today: 0, thisWeek: 0, thisMonth: 0 }
+  }
+
   try {
     const supabase = await createClient()
 

@@ -2,7 +2,15 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import type { TablesInsert } from '@/types/database'
 
+function isSupabaseConfigured(): boolean {
+  return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+}
+
 export async function GET() {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ count: 0 })
+  }
+
   try {
     const supabase = await createClient()
 
@@ -29,6 +37,10 @@ export async function GET() {
 }
 
 export async function POST() {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ count: 0 })
+  }
+
   try {
     const supabase = await createClient()
 

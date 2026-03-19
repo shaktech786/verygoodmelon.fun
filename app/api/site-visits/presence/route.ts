@@ -6,6 +6,10 @@ import { createClient } from '@/lib/supabase/server'
  * Used for the "X people exploring right now" indicator on the homepage.
  */
 export async function GET() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return NextResponse.json({ count: 0 })
+  }
+
   try {
     const supabase = await createClient()
 
