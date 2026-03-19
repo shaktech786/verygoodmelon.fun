@@ -18,6 +18,8 @@ import { GET, POST } from '@/app/api/site-visits/route'
 describe('/api/site-visits', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key'
 
     // Default: mockFrom returns select/insert chains
     mockSelect.mockReturnValue({ count: 42, error: null })
