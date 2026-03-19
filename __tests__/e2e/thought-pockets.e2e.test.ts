@@ -278,11 +278,8 @@ test.describe('Thought Pockets - Battle Mechanics', () => {
   })
 
   test('displays battle UI elements', async ({ page }) => {
-    // Wait for battle to fully render (may take time in CI)
-    await page.waitForTimeout(1000)
-
-    // TP indicator should be visible (shows thought points)
-    await expect(page.locator('text=Thought Points').first()).toBeVisible({ timeout: 10000 })
+    // TP indicator should be visible (shows "💭 TP:")
+    await expect(page.locator('text=TP:').first()).toBeVisible({ timeout: 10000 })
 
     // End Turn button
     await expect(page.getByRole('button', { name: /End Turn/i })).toBeVisible({ timeout: 5000 })
