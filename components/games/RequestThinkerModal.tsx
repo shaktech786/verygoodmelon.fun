@@ -78,12 +78,11 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
             <CheckCircle2 className="w-16 h-16 text-success mx-auto mb-4" />
             <h3 className="text-2xl font-semibold mb-3 text-foreground">Request Submitted!</h3>
             <p className="text-foreground/70 mb-4">
-              Thank you for your contribution. Your $5 has been donated to Direct Relief,
-              and we&apos;ll research your requested thinker.
+              Thank you for your request. We&apos;ll research your suggested thinker
+              and work on bringing them to life.
             </p>
             <p className="text-sm text-foreground/60">
-              You&apos;ll receive an email when they&apos;re ready to chat. Plus, you now
-              have access to the Phone Book to select specific thinkers!
+              You now have access to the Phone Book to select specific thinkers!
             </p>
           </div>
           </div>
@@ -101,7 +100,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
           <div>
             <h2 className="text-2xl font-semibold text-foreground mb-2">Request a Thinker</h2>
             <p className="text-sm text-foreground/70">
-              $5 donation • Unlock Phone Book access • Support Direct Relief
+              Suggest a mind you&apos;d like to talk to
             </p>
           </div>
           <button
@@ -123,9 +122,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
                 <li>Request any positive historical figure who is <strong>no longer living</strong></li>
                 <li>Speak with minds you can no longer reach in real life</li>
                 <li>We research their speaking style, beliefs, and wisdom</li>
-                <li>Your $5 goes directly to Direct Relief (disaster relief charity)</li>
-                <li>Get instant access to the Phone Book (select specific thinkers)</li>
-                <li>We&apos;ll email you when your requested thinker is ready</li>
+                <li>Get access to the Phone Book (select specific thinkers)</li>
               </ul>
             </div>
           </div>
@@ -278,12 +275,12 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
               {isSubmitting ? (
                 <>
                   <Loader2 className="animate-spin" size={18} />
-                  Processing...
+                  Submitting...
                 </>
               ) : (
                 <>
                   <Heart size={18} />
-                  Donate $5 & Request
+                  Submit Request
                 </>
               )}
             </Button>
@@ -302,8 +299,8 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
           </div>
 
           <p className="text-xs text-foreground/50 text-center mb-3">
-            By submitting, you agree that: (1) Your $5 donation is non-refundable and goes directly to Direct Relief,
-            (2) You understand this is AI entertainment/education only, (3) You will not misrepresent AI responses as real communications.
+            By submitting, you agree that: (1) You understand this is AI entertainment/education only,
+            (2) You will not misrepresent AI responses as real communications.
             Requirements: Must be deceased, positive influence, not billionaires/politicians/criminals.
           </p>
 

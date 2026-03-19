@@ -13,8 +13,33 @@ function getSupabaseClient() {
   return createClient(url, key)
 }
 
+// Simple in-memory rate limiter
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+const RATE_LIMIT = 5 // requests per window
+const RATE_WINDOW = 60 * 1000 // 1 minute
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW })
+    return false
+  }
+  entry.count++
+  return entry.count > RATE_LIMIT
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit by IP (skip for requests without identifiable IP)
+    const ip = request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip')
+    if (ip && isRateLimited(ip)) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a moment before trying again.' },
+        { status: 429 }
+      )
+    }
+
     const supabase = getSupabaseClient()
 
     if (!supabase) {
@@ -73,21 +98,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // TODO: Integrate Stripe payment
-    // For now, we'll just create the request without payment
-    const paymentIntentId = 'test_' + Date.now()
-    const paymentStatus = 'completed' // TODO: Update after Stripe integration
-
     // If Supabase is not configured, just return success
     if (!supabase) {
       return NextResponse.json({
         success: true,
-        requestId: 'mock_' + Date.now(),
-        message: 'Request received! (Development mode)'
+        requestId: `req_${Date.now()}`,
+        message: 'Request received!'
       })
     }
 
-    // Insert request into database
+    // Insert request into database (free — no payment required)
     const { data, error } = await supabase
       .from('thinker_requests')
       .insert({
@@ -98,10 +118,10 @@ export async function POST(request: NextRequest) {
         requested_field: requestedField || null,
         reason_for_request: reasonForRequest,
         personal_connection: personalConnection || null,
-        payment_amount: 500, // $5.00 in cents
-        payment_intent_id: paymentIntentId,
-        payment_status: paymentStatus,
-        charity_name: 'Direct Relief',
+        payment_amount: 0,
+        payment_intent_id: null,
+        payment_status: 'free',
+        charity_name: null,
         status: 'pending'
       })
       .select()
@@ -116,27 +136,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Grant phone book access
-    if (paymentStatus === 'completed') {
-      await supabase
-        .from('thinker_phone_book_access')
-        .insert({
-          user_email: requesterEmail,
-          user_name: requesterName,
-          access_type: 'custom_request',
-          request_id: data.id,
-          payment_intent_id: paymentIntentId,
-          payment_amount: 500,
-          is_active: true
-        })
-    }
-
-    // TODO: Send confirmation email
-    // TODO: Send notification to admin for review
+    await supabase
+      .from('thinker_phone_book_access')
+      .insert({
+        user_email: requesterEmail,
+        user_name: requesterName,
+        access_type: 'custom_request',
+        request_id: data.id,
+        payment_intent_id: null,
+        payment_amount: 0,
+        is_active: true
+      })
 
     return NextResponse.json({
       success: true,
       requestId: data.id,
-      message: 'Request submitted successfully! You now have access to the Phone Book.'
+      message: 'Request submitted! You now have access to the Phone Book.'
     })
 
   } catch (error) {

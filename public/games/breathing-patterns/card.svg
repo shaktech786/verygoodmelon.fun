@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1792" viewBox="0 0 1024 1792" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background - warm parchment -->
+  <rect width="1024" height="1792" fill="#f5e6d3" rx="64"/>
+
+  <!-- Inner card area - soft teal for calm -->
+  <rect x="64" y="64" width="896" height="1664" fill="#14b8a6" rx="48"/>
+
+  <!-- Decorative border corners (pixelated) -->
+  <rect x="96" y="96" width="32" height="32" fill="#0d7a6e"/>
+  <rect x="96" y="1664" width="32" height="32" fill="#0d7a6e"/>
+  <rect x="896" y="96" width="32" height="32" fill="#0d7a6e"/>
+  <rect x="896" y="1664" width="32" height="32" fill="#0d7a6e"/>
+
+  <!-- Title banner -->
+  <rect x="128" y="160" width="768" height="160" fill="#ffffff" rx="16"/>
+  <text x="512" y="260"
+    font-family="system-ui, -apple-system, sans-serif"
+    font-size="60"
+    font-weight="800"
+    fill="#1a1a1a"
+    text-anchor="middle"
+    letter-spacing="-2">THE HARMONIST</text>
+
+  <!-- Central breathing visualization -->
+  <g transform="translate(512, 896)">
+    <!-- Outer breath ring -->
+    <circle cx="0" cy="0" r="200" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.3"/>
+    <circle cx="0" cy="0" r="160" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.2"/>
+    <circle cx="0" cy="0" r="120" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.15"/>
+
+    <!-- Central breathing circle -->
+    <circle cx="0" cy="0" r="80" fill="#ffffff" opacity="0.9"/>
+    <circle cx="0" cy="0" r="60" fill="#0d7a6e" opacity="0.8"/>
+    <circle cx="0" cy="0" r="40" fill="#ffffff" opacity="0.7"/>
+    <circle cx="0" cy="0" r="20" fill="#0d7a6e" opacity="0.6"/>
+
+    <!-- Breath flow lines -->
+    <line x1="-200" y1="0" x2="-90" y2="0" stroke="#ffffff" stroke-width="2" opacity="0.4"/>
+    <line x1="90" y1="0" x2="200" y2="0" stroke="#ffffff" stroke-width="2" opacity="0.4"/>
+    <line x1="0" y1="-200" x2="0" y2="-90" stroke="#ffffff" stroke-width="2" opacity="0.4"/>
+    <line x1="0" y1="90" x2="0" y2="200" stroke="#ffffff" stroke-width="2" opacity="0.4"/>
+
+    <!-- Diagonal flow markers -->
+    <circle cx="-140" cy="-140" r="6" fill="#ffffff" opacity="0.3"/>
+    <circle cx="140" cy="-140" r="6" fill="#ffffff" opacity="0.3"/>
+    <circle cx="-140" cy="140" r="6" fill="#ffffff" opacity="0.3"/>
+    <circle cx="140" cy="140" r="6" fill="#ffffff" opacity="0.3"/>
+
+    <!-- Watermelon seed accents -->
+    <ellipse cx="-50" cy="-170" rx="8" ry="12" fill="#1a4d2e" opacity="0.5" transform="rotate(-30 -50 -170)"/>
+    <ellipse cx="60" cy="175" rx="8" ry="12" fill="#1a4d2e" opacity="0.5" transform="rotate(15 60 175)"/>
+    <ellipse cx="170" cy="-60" rx="8" ry="12" fill="#1a4d2e" opacity="0.5" transform="rotate(60 170 -60)"/>
+  </g>
+
+  <!-- Bottom banner -->
+  <rect x="256" y="1440" width="512" height="96" fill="#ffffff" rx="16"/>
+  <text x="512" y="1500"
+    font-family="system-ui, -apple-system, sans-serif"
+    font-size="36"
+    font-weight="600"
+    fill="#0d7a6e"
+    text-anchor="middle">BREATHE</text>
+
+  <!-- Top-left card corner symbol -->
+  <text x="128" y="420"
+    font-family="system-ui, -apple-system, sans-serif"
+    font-size="96"
+    font-weight="700"
+    fill="#ffffff"
+    opacity="0.8">H</text>
+
+  <!-- Bottom-right card corner symbol (inverted) -->
+  <text x="896" y="1420"
+    font-family="system-ui, -apple-system, sans-serif"
+    font-size="96"
+    font-weight="700"
+    fill="#ffffff"
+    opacity="0.8"
+    text-anchor="end"
+    transform="rotate(180, 896, 1380)">H</text>
+</svg>

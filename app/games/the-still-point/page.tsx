@@ -1,28 +1,29 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import TheUnrusher from '@/components/games/TheUnrusher'
+import BreathingPatterns from '@/components/games/BreathingPatterns'
 import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 
 export const metadata: Metadata = {
-  title: 'The Unrusher | VeryGoodMelon.Fun',
-  description: 'An anti-game about slowing down. Choose tasks that reward patience and presence. No rush, just calm.'
+  title: 'The Harmonist | VeryGoodMelon.Fun',
+  description:
+    'Guided breathing patterns to calm your nervous system. Box breathing, 4-7-8, coherent breathing, physiological sigh, and free breathing with ambient visuals.',
 }
 
-export default function TheUnrusherPage() {
+export default function TheStillPointPage() {
   return (
-    <GamePageWrapper gameId="the-unrusher">
+    <GamePageWrapper gameId="breathing-patterns">
       <div className="container mx-auto px-4 py-4 sm:py-6 max-w-4xl">
         <div className="animate-fade">
           <div className="text-center mb-4 sm:mb-6">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-2 text-foreground">
-              The Unrusher
+              The Harmonist
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl mx-auto">
-              The fastest way to reduce anxiety is to stop rushing.
+              Breathe with intention. Leave calmer than you arrived.
             </p>
           </div>
 
-          <TheUnrusher />
+          <BreathingPatterns />
 
           <div className="mt-6 text-center">
             <Link

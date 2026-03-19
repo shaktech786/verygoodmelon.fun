@@ -134,6 +134,20 @@ export const ALL_GAMES: readonly GameConfig[] = [
     tags: ['deckbuilder', 'roguelike', 'philosophy', 'strategy'],
     order: 7,
   },
+  {
+    id: 'breathing-patterns',
+    slug: 'the-still-point', // Enigmatic: T.S. Eliot - "at the still point of the turning world"
+    title: 'The Harmonist',
+    description: 'Sync your breath with living geometry',
+    cardImage: '/games/breathing-patterns/card.svg',
+    cardAlt: 'The Harmonist - Breathing Patterns Joker Card',
+    difficulty: 'easy',
+    category: 'Thought',
+    accentColor: 'success',
+    isShowcase: true,
+    tags: ['meditation', 'breathing', 'calm', 'mindfulness', 'anxiety-relief'],
+    order: 8,
+  },
 ] as const
 
 /**

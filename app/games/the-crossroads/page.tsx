@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import HardChoices from '@/components/games/HardChoices'
+import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 
 export const metadata: Metadata = {
   title: 'Hard Choices - VeryGoodMelon.Fun',
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 }
 
 export default function HardChoicesPage() {
-  return <HardChoices />
+  return (
+    <GamePageWrapper gameId="hard-choices">
+      <HardChoices />
+    </GamePageWrapper>
+  )
 }

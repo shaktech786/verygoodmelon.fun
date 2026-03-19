@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import IdeaLab from '@/components/games/IdeaLab'
+import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 
 export const metadata: Metadata = {
   title: 'The Idea Lab - VeryGoodMelon.Fun',
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 }
 
 export default function IdeaLabPage() {
-  return <IdeaLab />
+  return (
+    <GamePageWrapper gameId="idea-lab">
+      <IdeaLab />
+    </GamePageWrapper>
+  )
 }

@@ -3,6 +3,7 @@
  *
  * Balatro-style joker card display for game showcase
  * Unified hover effects, animations, and accessibility
+ * Now with hover descriptions and daily featured indicator
  */
 
 import Image from 'next/image'
@@ -12,9 +13,10 @@ import type { GameConfig } from '@/lib/games/config'
 interface GameCardShowcaseProps {
   game: GameConfig
   priority?: boolean
+  isFeatured?: boolean
 }
 
-export function GameCardShowcase({ game, priority = false }: GameCardShowcaseProps) {
+export function GameCardShowcase({ game, priority = false, isFeatured = false }: GameCardShowcaseProps) {
   // Map accent colors to Tailwind shadow classes
   const shadowColorClass = {
     accent: 'hover:shadow-accent/20',
@@ -45,6 +47,21 @@ export function GameCardShowcase({ game, priority = false }: GameCardShowcasePro
       className="block relative group"
       aria-label={`Play ${game.title}: ${game.description}`}
     >
+      {/* Daily featured badge */}
+      {isFeatured && (
+        <div
+          className="
+            absolute -top-2 -right-2 z-10
+            bg-warm text-white text-[10px] font-semibold
+            px-2 py-0.5 rounded-full shadow-md
+            animate-bounce-in
+          "
+          aria-label="Today's featured game"
+        >
+          Today
+        </div>
+      )}
+
       {/* Card container with hover effects */}
       <div
         className={`
@@ -92,6 +109,22 @@ export function GameCardShowcase({ game, priority = false }: GameCardShowcasePro
         />
       </div>
 
+      {/* Description tooltip on hover - appears below card */}
+      <div
+        className="
+          mt-2 text-center
+          opacity-0 group-hover:opacity-100
+          transform translate-y-1 group-hover:translate-y-0
+          transition-all duration-300 ease-out
+          pointer-events-none
+        "
+        aria-hidden="true"
+      >
+        <p className="text-primary-light/70 text-xs leading-snug">
+          {game.description}
+        </p>
+      </div>
+
       {/* Play indicator that appears on hover */}
       <div
         className={`
@@ -112,7 +145,7 @@ export function GameCardShowcase({ game, priority = false }: GameCardShowcasePro
 }
 
 /**
- * Placeholder card for Hard Choices when card.png doesn't exist
+ * Placeholder card for games when card image doesn't exist
  * Fallback to gradient design with icon
  */
 interface GameCardPlaceholderProps {

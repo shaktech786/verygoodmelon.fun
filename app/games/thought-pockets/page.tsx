@@ -8,6 +8,7 @@
 import { useEffect } from 'react'
 import { useGameStore } from '@/lib/games/thought-pockets/store/gameStore'
 import { useBattleStore } from '@/lib/games/thought-pockets/store/battleStore'
+import { SoundToggle } from '@/components/ui/SoundToggle'
 import { MenuScreen } from './components/MenuScreen'
 import { MapScreen } from './components/MapScreen'
 import { BattleScreen } from './components/BattleScreen'
@@ -43,35 +44,35 @@ export default function MindArchitectPage() {
   const isTreasure = node?.type === 'treasure'
 
   // Render appropriate screen
-  switch (screen) {
-    case 'menu':
-      return <MenuScreen />
-
-    case 'map':
-      return <MapScreen />
-
-    case 'battle':
-      return <BattleScreen />
-
-    case 'shop':
-      return <ShopScreen />
-
-    case 'rest':
-      return <RestScreen />
-
-    case 'reward':
-      return <RewardScreen isTreasure={isTreasure} isElite={isElite} isBoss={isBoss} />
-
-    case 'event':
-      return <EventScreen />
-
-    case 'victory':
-      return <VictoryScreen />
-
-    case 'defeat':
-      return <DefeatScreen />
-
-    default:
-      return <MenuScreen />
+  function renderScreen() {
+    switch (screen) {
+      case 'menu':
+        return <MenuScreen />
+      case 'map':
+        return <MapScreen />
+      case 'battle':
+        return <BattleScreen />
+      case 'shop':
+        return <ShopScreen />
+      case 'rest':
+        return <RestScreen />
+      case 'reward':
+        return <RewardScreen isTreasure={isTreasure} isElite={isElite} isBoss={isBoss} />
+      case 'event':
+        return <EventScreen />
+      case 'victory':
+        return <VictoryScreen />
+      case 'defeat':
+        return <DefeatScreen />
+      default:
+        return <MenuScreen />
+    }
   }
+
+  return (
+    <>
+      {renderScreen()}
+      <SoundToggle gameId="thought-pockets" />
+    </>
+  )
 }

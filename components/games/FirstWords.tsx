@@ -38,6 +38,10 @@ export default function FirstWords() {
   const [wordCloud, setWordCloud] = useState<WordFrequency[]>([])
   const [totalSubmissions, setTotalSubmissions] = useState(0)
   const [currentPromptIndex, setCurrentPromptIndex] = useState(0)
+  const [reflection, setReflection] = useState<string | null>(null)
+  const [reflectionLoading, setReflectionLoading] = useState(false)
+  const [reflectionVisible, setReflectionVisible] = useState(false)
+  const [copied, setCopied] = useState(false)
   const supabase = createClient()
 
   // Rotate prompts slowly for ethereal feel
@@ -100,6 +104,39 @@ export default function FirstWords() {
     }
   }
 
+  const fetchReflection = async (message: string) => {
+    setReflectionLoading(true)
+    try {
+      const res = await fetch('/api/first-words/reflect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.reflection) {
+          setReflection(data.reflection)
+          setTimeout(() => setReflectionVisible(true), 100)
+        }
+      }
+    } catch {
+      // Graceful degradation - show nothing on failure
+    } finally {
+      setReflectionLoading(false)
+    }
+  }
+
+  const handleCopyReflection = async () => {
+    if (!reflection) return
+    try {
+      await navigator.clipboard.writeText(reflection)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard unavailable - silent fail
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -118,6 +155,7 @@ export default function FirstWords() {
       if (error) throw error
 
       setSubmitted(true)
+      fetchReflection(input.trim())
     } catch (error) {
       console.error('Error submitting first words:', error)
       alert('Failed to submit. Please try again.')
@@ -143,6 +181,44 @@ export default function FirstWords() {
             </p>
           </div>
         </div>
+
+        {/* AI Reflection */}
+        {reflectionLoading && (
+          <div className="text-center py-4">
+            <span className="text-purple-300/60 text-sm animate-pulse">
+              Contemplating your words...
+            </span>
+          </div>
+        )}
+        {reflection && (
+          <div
+            className={`
+              bg-gradient-to-b from-purple-950/20 to-card-bg border border-purple-500/15 rounded-lg p-6
+              transition-opacity duration-700 ease-out
+              ${reflectionVisible ? 'opacity-100' : 'opacity-0'}
+            `}
+            style={{ transitionProperty: 'opacity' }}
+          >
+            <p className="text-purple-200/80 text-center italic leading-relaxed">
+              {reflection}
+            </p>
+            <div className="mt-3 flex justify-center">
+              <button
+                onClick={handleCopyReflection}
+                aria-label={copied ? 'Copied to clipboard' : 'Copy reflection to clipboard'}
+                className="
+                  text-xs text-purple-400/50 hover:text-purple-300/80
+                  transition-colors duration-75
+                  px-3 py-1 rounded
+                  hover:bg-purple-500/10
+                  focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-2
+                "
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Word Cloud */}
         <div className="bg-gradient-to-b from-card-bg to-purple-950/10 border border-purple-500/10 rounded-lg p-8">
@@ -182,6 +258,10 @@ export default function FirstWords() {
               setSubmitted(false)
               setInput('')
               setCurrentPromptIndex(0)
+              setReflection(null)
+              setReflectionVisible(false)
+              setReflectionLoading(false)
+              setCopied(false)
             }}
             className="px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors border border-purple-500/30"
           >

@@ -160,7 +160,7 @@ describe('/api/timeless-minds/request-thinker', () => {
 
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
-      expect(data.requestId).toContain('mock_')
+      expect(data.requestId).toContain('req_')
     })
   })
 

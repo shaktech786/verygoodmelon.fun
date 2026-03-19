@@ -38,6 +38,10 @@ export default function LastWords() {
   const [wordCloud, setWordCloud] = useState<WordFrequency[]>([])
   const [totalSubmissions, setTotalSubmissions] = useState(0)
   const [currentPromptIndex, setCurrentPromptIndex] = useState(0)
+  const [reflection, setReflection] = useState<string | null>(null)
+  const [reflectionLoading, setReflectionLoading] = useState(false)
+  const [reflectionVisible, setReflectionVisible] = useState(false)
+  const [copied, setCopied] = useState(false)
   const supabase = createClient()
 
   // Rotate prompts every 5 seconds
@@ -99,6 +103,40 @@ export default function LastWords() {
     }
   }
 
+  const fetchReflection = async (message: string) => {
+    setReflectionLoading(true)
+    try {
+      const res = await fetch('/api/last-words/reflect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.reflection) {
+          setReflection(data.reflection)
+          // Delay visibility for fade-in effect
+          setTimeout(() => setReflectionVisible(true), 100)
+        }
+      }
+    } catch {
+      // Graceful degradation - show nothing on failure
+    } finally {
+      setReflectionLoading(false)
+    }
+  }
+
+  const handleCopyReflection = async () => {
+    if (!reflection) return
+    try {
+      await navigator.clipboard.writeText(reflection)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard unavailable - silent fail
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -116,6 +154,8 @@ export default function LastWords() {
       if (error) throw error
 
       setSubmitted(true)
+      // Fire reflection fetch in background (non-blocking)
+      fetchReflection(input.trim())
     } catch (error) {
       console.error('Error submitting last words:', error)
       alert('Failed to submit. Please try again.')
@@ -136,6 +176,44 @@ export default function LastWords() {
             Your words have been added to {totalSubmissions.toLocaleString()} other voices
           </p>
         </div>
+
+        {/* AI Reflection */}
+        {reflectionLoading && (
+          <div className="text-center py-4">
+            <span className="text-primary-light text-sm animate-pulse">
+              Reflecting on your words...
+            </span>
+          </div>
+        )}
+        {reflection && (
+          <div
+            className={`
+              bg-card-bg border border-card-border rounded-lg p-6
+              transition-opacity duration-700 ease-out
+              ${reflectionVisible ? 'opacity-100' : 'opacity-0'}
+            `}
+            style={{ transitionProperty: 'opacity' }}
+          >
+            <p className="text-foreground/80 text-center italic leading-relaxed">
+              {reflection}
+            </p>
+            <div className="mt-3 flex justify-center">
+              <button
+                onClick={handleCopyReflection}
+                aria-label={copied ? 'Copied to clipboard' : 'Copy reflection to clipboard'}
+                className="
+                  text-xs text-primary-light/60 hover:text-primary-light
+                  transition-colors duration-75
+                  px-3 py-1 rounded
+                  hover:bg-foreground/5
+                  focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2
+                "
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Word Cloud */}
         <div className="bg-card-bg border border-card-border rounded-lg p-8">
@@ -174,6 +252,10 @@ export default function LastWords() {
             onClick={() => {
               setSubmitted(false)
               setInput('')
+              setReflection(null)
+              setReflectionVisible(false)
+              setReflectionLoading(false)
+              setCopied(false)
             }}
             className="px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
           >
