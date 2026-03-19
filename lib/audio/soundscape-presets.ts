@@ -97,6 +97,16 @@ export const SOUNDSCAPE_PRESETS: Record<string, SoundscapePreset> = {
     ],
   },
 
+  // The Gardener — nature, growth
+  'calm-garden': {
+    label: 'The Gardener',
+    layers: [
+      { type: 'wind', volume: 0.12, params: { speed: 0.2 } },
+      { type: 'chimes', volume: 0.08, params: { interval: [5000, 10000] } },
+      { type: 'drone', volume: 0.06, params: { baseFreq: 140 } },
+    ],
+  },
+
   // The Philosopher — deep thought
   'thought-pockets': {
     label: 'The Philosopher',

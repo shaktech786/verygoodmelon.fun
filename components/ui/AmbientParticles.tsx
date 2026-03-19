@@ -25,6 +25,7 @@ export function AmbientParticles() {
   const animationRef = useRef<number | null>(null)
   const animateFnRef = useRef<((time: number) => void) | null>(null)
   const [reducedMotion, setReducedMotion] = useState(false)
+  const [isSavingPower, setIsSavingPower] = useState(false)
   const [isDark, setIsDark] = useState(true)
 
   // Initialize stars (reduced for subtlety)
@@ -162,6 +163,21 @@ export function AmbientParticles() {
     const motionHandler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
     motionQuery.addEventListener('change', motionHandler)
 
+    // Check battery status — disable on low battery or power saver
+    if ('getBattery' in navigator) {
+      (navigator as Navigator & { getBattery: () => Promise<{ level: number; charging: boolean; addEventListener: (e: string, fn: () => void) => void }> })
+        .getBattery()
+        .then((battery) => {
+          const checkBattery = () => {
+            setIsSavingPower(battery.level < 0.2 && !battery.charging)
+          }
+          checkBattery()
+          battery.addEventListener('levelchange', checkBattery)
+          battery.addEventListener('chargingchange', checkBattery)
+        })
+        .catch(() => { /* Battery API not available */ })
+    }
+
     // Check theme
     const checkTheme = () => {
       const theme = document.documentElement.getAttribute('data-theme')
@@ -186,7 +202,7 @@ export function AmbientParticles() {
   }, [])
 
   useEffect(() => {
-    if (reducedMotion) return
+    if (reducedMotion || isSavingPower) return
 
     const canvas = canvasRef.current
     if (!canvas) return
@@ -220,9 +236,9 @@ export function AmbientParticles() {
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [reducedMotion, animate, initStars])
+  }, [reducedMotion, isSavingPower, animate, initStars])
 
-  if (reducedMotion) return null
+  if (reducedMotion || isSavingPower) return null
 
   return (
     <canvas

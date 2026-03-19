@@ -1,7 +1,11 @@
 import type { Metadata } from 'next'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import TimelessMinds from '@/components/games/TimelessMinds'
 import { GamePageWrapper } from '@/components/games/GamePageWrapper'
+
+const TimelessMinds = dynamic(() => import('@/components/games/TimelessMinds'), {
+  loading: () => <div className="min-h-[400px] flex items-center justify-center text-primary-light/50">Loading...</div>,
+})
 
 export const metadata: Metadata = {
   title: 'Timeless Minds | VeryGoodMelon.Fun',

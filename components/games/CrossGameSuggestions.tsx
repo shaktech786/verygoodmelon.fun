@@ -17,7 +17,8 @@ const RELATED_GAMES: Record<string, string[]> = {
   'hope-daily': ['idea-lab', 'the-unrusher'],
   'idea-lab': ['timeless-minds', 'thought-pockets'],
   'thought-pockets': ['hard-choices', 'idea-lab'],
-  'breathing-patterns': ['the-unrusher', 'hope-daily'],
+  'breathing-patterns': ['the-unrusher', 'calm-garden'],
+  'calm-garden': ['breathing-patterns', 'the-unrusher'],
 }
 
 /** Emoji hints per game for compact cards */
@@ -31,6 +32,7 @@ const GAME_EMOJI: Record<string, string> = {
   'idea-lab': '🔮',
   'thought-pockets': '🃏',
   'breathing-patterns': '🫁',
+  'calm-garden': '🌱',
 }
 
 interface CrossGameSuggestionsProps {

@@ -148,6 +148,20 @@ export const ALL_GAMES: readonly GameConfig[] = [
     tags: ['meditation', 'breathing', 'calm', 'mindfulness', 'anxiety-relief'],
     order: 8,
   },
+  {
+    id: 'calm-garden',
+    slug: 'quiet-grove', // Enigmatic: a peaceful, hidden place to grow
+    title: 'The Gardener',
+    description: 'Grow a garden that knows what you need',
+    cardImage: '/games/calm-garden/card.svg',
+    cardAlt: 'The Gardener - Calm Garden Joker Card',
+    difficulty: 'easy',
+    category: 'Creative',
+    accentColor: 'success',
+    isShowcase: true,
+    tags: ['creative', 'meditation', 'ai', 'open-ended', 'calm'],
+    order: 9,
+  },
 ] as const
 
 /**

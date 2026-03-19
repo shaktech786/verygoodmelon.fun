@@ -3,21 +3,25 @@
 /**
  * Thought Pockets - Main Game Page
  * Orchestrates all game screens based on current state
+ * Uses dynamic imports for code splitting — only the active screen is loaded
  */
 
+import dynamic from 'next/dynamic'
 import { useEffect } from 'react'
 import { useGameStore } from '@/lib/games/thought-pockets/store/gameStore'
 import { useBattleStore } from '@/lib/games/thought-pockets/store/battleStore'
 import { SoundToggle } from '@/components/ui/SoundToggle'
-import { MenuScreen } from './components/MenuScreen'
-import { MapScreen } from './components/MapScreen'
-import { BattleScreen } from './components/BattleScreen'
-import { ShopScreen } from './components/ShopScreen'
-import { RestScreen } from './components/RestScreen'
-import { RewardScreen } from './components/RewardScreen'
-import { EventScreen } from './components/EventScreen'
-import { VictoryScreen } from './components/VictoryScreen'
-import { DefeatScreen } from './components/DefeatScreen'
+
+// Dynamic imports — each screen loads only when needed
+const MenuScreen = dynamic(() => import('./components/MenuScreen').then(m => ({ default: m.MenuScreen })))
+const MapScreen = dynamic(() => import('./components/MapScreen').then(m => ({ default: m.MapScreen })))
+const BattleScreen = dynamic(() => import('./components/BattleScreen').then(m => ({ default: m.BattleScreen })))
+const ShopScreen = dynamic(() => import('./components/ShopScreen').then(m => ({ default: m.ShopScreen })))
+const RestScreen = dynamic(() => import('./components/RestScreen').then(m => ({ default: m.RestScreen })))
+const RewardScreen = dynamic(() => import('./components/RewardScreen').then(m => ({ default: m.RewardScreen })))
+const EventScreen = dynamic(() => import('./components/EventScreen').then(m => ({ default: m.EventScreen })))
+const VictoryScreen = dynamic(() => import('./components/VictoryScreen').then(m => ({ default: m.VictoryScreen })))
+const DefeatScreen = dynamic(() => import('./components/DefeatScreen').then(m => ({ default: m.DefeatScreen })))
 
 export default function MindArchitectPage() {
   const screen = useGameStore((state) => state.gameState.screen)
