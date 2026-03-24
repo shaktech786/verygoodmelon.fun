@@ -162,6 +162,20 @@ export const ALL_GAMES: readonly GameConfig[] = [
     tags: ['creative', 'meditation', 'ai', 'open-ended', 'calm'],
     order: 9,
   },
+  {
+    id: 'cascade',
+    slug: 'the-mutation',
+    title: 'The Shapeshifter',
+    description: 'A self-building arcade game that evolves as you play',
+    cardImage: '/games/cascade/card.svg',
+    cardAlt: 'The Shapeshifter - Cascade Joker Card',
+    difficulty: 'medium',
+    category: 'Action',
+    accentColor: 'purple',
+    isShowcase: true,
+    tags: ['ai', 'arcade', 'unique', 'creative', 'retro'],
+    order: 11,
+  },
 ] as const
 
 /**
