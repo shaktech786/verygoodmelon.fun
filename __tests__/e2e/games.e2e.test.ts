@@ -23,9 +23,10 @@ test.describe('Homepage', () => {
     await expect(page.getByText('Think deeply')).toBeVisible()
     await expect(page.getByText('lighter')).toBeVisible()
 
-    // Check game cards are rendered
+    // Check game cards are rendered (at least 10 games, grows as new games are added)
     const gameCards = page.locator('a[href^="/games/"]')
-    await expect(gameCards).toHaveCount(10)
+    const count = await gameCards.count()
+    expect(count).toBeGreaterThanOrEqual(10)
   })
 
   test('constellation background renders', async ({ page }) => {

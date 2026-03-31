@@ -1,9 +1,9 @@
 /**
  * GameCardShowcase Component
  *
- * Balatro-style joker card display for game showcase
- * Unified hover effects, animations, and accessibility
- * Now with hover descriptions and daily featured indicator
+ * Redesigned: horizontal card layout with always-visible game info.
+ * Card image as visual accent, title + category + description + hook all visible at a glance.
+ * Maintains hover polish, accessibility, and the calm aesthetic.
  */
 
 import Image from 'next/image'
@@ -16,44 +16,54 @@ interface GameCardShowcaseProps {
   isFeatured?: boolean
 }
 
+/** Map category to color classes for the pill */
+const CATEGORY_STYLES: Record<GameConfig['category'], { bg: string; text: string }> = {
+  Action: { bg: 'bg-accent/10 dark:bg-accent/20', text: 'text-accent' },
+  Puzzle: { bg: 'bg-success/10 dark:bg-success/20', text: 'text-success' },
+  Wisdom: { bg: 'bg-warm/10 dark:bg-warm/20', text: 'text-warm' },
+  Thought: { bg: 'bg-[var(--melon-purple)]/10', text: 'text-[var(--melon-purple)]' },
+  Creative: { bg: 'bg-warm/10 dark:bg-warm/20', text: 'text-warm' },
+}
+
 export function GameCardShowcase({ game, priority = false, isFeatured = false }: GameCardShowcaseProps) {
-  // Map accent colors to Tailwind shadow classes
+  const categoryStyle = CATEGORY_STYLES[game.category]
+
+  // Map accent colors to border-hover classes
+  const borderHoverClass = {
+    accent: 'hover:border-accent/30',
+    success: 'hover:border-success/30',
+    warning: 'hover:border-warm/30',
+    purple: 'hover:border-[var(--melon-purple)]/30',
+  }[game.accentColor]
+
+  // Map accent colors to shadow classes
   const shadowColorClass = {
-    accent: 'hover:shadow-accent/20',
-    success: 'hover:shadow-success/20',
-    warning: 'hover:shadow-warning/20',
-    purple: 'hover:shadow-purple-600/20',
-  }[game.accentColor]
-
-  // Map accent colors to glow gradient classes
-  const glowColorClass = {
-    accent: 'from-accent/10',
-    success: 'from-success/10',
-    warning: 'from-warning/10',
-    purple: 'from-purple-600/10',
-  }[game.accentColor]
-
-  // Map accent colors to play button classes
-  const playButtonClass = {
-    accent: 'bg-accent',
-    success: 'bg-success',
-    warning: 'bg-warning',
-    purple: 'bg-purple-600',
+    accent: 'hover:shadow-accent/8',
+    success: 'hover:shadow-success/8',
+    warning: 'hover:shadow-warm/8',
+    purple: 'hover:shadow-[var(--melon-purple)]/8',
   }[game.accentColor]
 
   return (
     <Link
       href={`/games/${game.slug}`}
-      className="block relative group"
-      aria-label={`Play ${game.title}: ${game.description}`}
+      className={`
+        block relative group rounded-2xl
+        bg-card-bg border border-card-border
+        ${borderHoverClass} ${shadowColorClass}
+        hover:shadow-lg
+        transition-all duration-200 ease-out
+        focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background
+      `}
+      aria-label={`Play ${game.title}: ${game.description}. ${game.hook}`}
     >
       {/* Daily featured badge */}
       {isFeatured && (
         <div
           className="
-            absolute -top-2 -right-2 z-10
+            absolute -top-2.5 -right-2.5 z-10
             bg-warm text-white text-[10px] font-semibold
-            px-2 py-0.5 rounded-full shadow-md
+            px-2.5 py-0.5 rounded-full shadow-md
             animate-bounce-in
           "
           aria-label="Today's featured game"
@@ -62,83 +72,94 @@ export function GameCardShowcase({ game, priority = false, isFeatured = false }:
         </div>
       )}
 
-      {/* Card container with hover effects */}
-      <div
-        className={`
-          relative card-organic card-hover-organic
-          hover:shadow-2xl ${shadowColorClass}
-          transform-gpu will-change-transform
-        `}
-      >
-        {/* Game card image */}
-        <Image
-          src={game.cardImage}
-          alt={game.cardAlt}
-          width={1024}
-          height={1792}
-          className="
-            w-full h-auto object-contain
-            rounded-[18px]
-            group-hover:brightness-110
-          "
-          style={{ borderRadius: 'inherit' }}
-          priority={priority}
-        />
+      <div className="flex gap-4 p-4 sm:p-5">
+        {/* Card image -- smaller visual accent */}
+        <div className="relative flex-shrink-0 w-16 h-24 sm:w-20 sm:h-[120px] overflow-hidden rounded-xl">
+          <Image
+            src={game.cardImage}
+            alt=""
+            width={80}
+            height={120}
+            className="
+              w-full h-full object-cover
+              group-hover:scale-105
+              transition-transform duration-300 ease-out
+            "
+            priority={priority}
+            aria-hidden="true"
+          />
+          {/* Subtle shine on hover */}
+          <div
+            className="
+              absolute inset-0 opacity-0 group-hover:opacity-100
+              transition-opacity duration-300 ease-out
+              bg-gradient-to-br from-white/0 via-white/15 to-white/0
+              pointer-events-none
+            "
+            aria-hidden="true"
+          />
+        </div>
 
-        {/* Subtle glow overlay on hover */}
+        {/* Game info -- always visible */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+          {/* Top row: category pill */}
+          <div className="flex items-center gap-2">
+            <span
+              className={`
+                inline-block text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider
+                px-2 py-0.5 rounded-full
+                ${categoryStyle.bg} ${categoryStyle.text}
+              `}
+            >
+              {game.category}
+            </span>
+            {game.difficulty !== 'easy' && (
+              <span className="text-[10px] text-primary-light/40 uppercase tracking-wider">
+                {game.difficulty}
+              </span>
+            )}
+          </div>
+
+          {/* Title */}
+          <h3 className="text-base sm:text-lg font-semibold text-foreground leading-tight truncate">
+            {game.title}
+          </h3>
+
+          {/* Description */}
+          <p className="text-xs sm:text-sm text-primary-light/70 leading-snug line-clamp-1">
+            {game.description}
+          </p>
+
+          {/* Hook -- what you'll actually do */}
+          <p className="text-[11px] sm:text-xs text-primary-light/50 leading-snug line-clamp-2">
+            {game.hook}
+          </p>
+        </div>
+
+        {/* Play arrow -- visible on hover */}
         <div
-          className={`
-            absolute inset-0 opacity-0 group-hover:opacity-100
-            transition-opacity duration-300 ease-out
-            bg-gradient-to-t ${glowColorClass} via-transparent to-transparent
-            pointer-events-none
-          `}
-          aria-hidden="true"
-        />
-
-        {/* Shine effect on hover */}
-        <div
           className="
-            absolute inset-0 opacity-0 group-hover:opacity-100
-            transition-all duration-500 ease-out
-            bg-gradient-to-br from-white/0 via-white/20 to-white/0
-            translate-x-[-100%] group-hover:translate-x-[100%]
-            pointer-events-none
+            hidden sm:flex items-center justify-center
+            flex-shrink-0 w-8
+            opacity-0 group-hover:opacity-100
+            translate-x-0 group-hover:translate-x-0.5
+            transition-all duration-200 ease-out
           "
           aria-hidden="true"
-        />
-      </div>
-
-      {/* Description tooltip on hover - appears below card */}
-      <div
-        className="
-          mt-2 text-center
-          opacity-0 group-hover:opacity-100
-          transform translate-y-1 group-hover:translate-y-0
-          transition-all duration-300 ease-out
-          pointer-events-none
-        "
-        aria-hidden="true"
-      >
-        <p className="text-primary-light/70 text-xs leading-snug">
-          {game.description}
-        </p>
-      </div>
-
-      {/* Play indicator that appears on hover */}
-      <div
-        className={`
-          absolute bottom-3 left-1/2 -translate-x-1/2
-          opacity-0 group-hover:opacity-100
-          transform translate-y-2 group-hover:translate-y-0
-          transition-all duration-300 ease-out
-          ${playButtonClass} text-white px-4 py-2 rounded-full
-          font-semibold text-xs shadow-lg
-          pointer-events-none
-        `}
-        aria-hidden="true"
-      >
-        Play →
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            className="text-primary-light/40"
+          >
+            <path
+              d="M7 4l8 6-8 6V4z"
+              fill="currentColor"
+            />
+          </svg>
+        </div>
       </div>
     </Link>
   )
@@ -153,87 +174,65 @@ interface GameCardPlaceholderProps {
 }
 
 export function GameCardPlaceholder({ game }: GameCardPlaceholderProps) {
+  const categoryStyle = CATEGORY_STYLES[game.category]
+
   const gradientClass = {
     accent: 'from-accent to-accent/80',
     success: 'from-success to-success/80',
-    warning: 'from-warning to-warning/80',
-    purple: 'from-purple-600 to-purple-800',
-  }[game.accentColor]
-
-  const shadowColorClass = {
-    accent: 'hover:shadow-accent/20',
-    success: 'hover:shadow-success/20',
-    warning: 'hover:shadow-warning/20',
-    purple: 'hover:shadow-purple-600/20',
-  }[game.accentColor]
-
-  const playButtonClass = {
-    accent: 'bg-accent',
-    success: 'bg-success',
-    warning: 'bg-warning',
-    purple: 'bg-purple-600',
+    warning: 'from-warm to-warm/80',
+    purple: 'from-[var(--melon-purple)] to-[var(--melon-purple)]/80',
   }[game.accentColor]
 
   return (
     <Link
       href={`/games/${game.slug}`}
-      className="block relative group"
-      aria-label={`Play ${game.title}: ${game.description}`}
+      className="
+        block relative group rounded-2xl
+        bg-card-bg border border-card-border
+        hover:border-foreground/20 hover:shadow-lg
+        transition-all duration-200 ease-out
+        focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background
+      "
+      aria-label={`Play ${game.title}: ${game.description}. ${game.hook}`}
     >
-      <div
-        className={`
-          relative card-organic card-hover-organic
-          hover:shadow-2xl ${shadowColorClass}
-          transform-gpu will-change-transform
-          bg-gradient-to-br ${gradientClass}
-          aspect-[1024/1792]
-          flex flex-col items-center justify-center p-6 text-white
-        `}
-      >
-        <div className="text-6xl mb-4" aria-hidden="true">
-          {game.slug === 'hard-choices' ? '⚖️' : '🎮'}
+      <div className="flex gap-4 p-4 sm:p-5">
+        {/* Gradient placeholder for missing image */}
+        <div
+          className={`
+            relative flex-shrink-0 w-16 h-24 sm:w-20 sm:h-[120px]
+            overflow-hidden rounded-xl
+            bg-gradient-to-br ${gradientClass}
+            flex items-center justify-center
+          `}
+        >
+          <span className="text-2xl text-white" aria-hidden="true">
+            {game.slug === 'hard-choices' ? '⚖️' : '🎮'}
+          </span>
         </div>
-        <h3 className="text-xl font-bold text-center mb-2">{game.title}</h3>
-        <p className="text-sm text-center text-white/80">{game.description}</p>
 
-        {/* Subtle glow overlay on hover */}
-        <div
-          className="
-            absolute inset-0 opacity-0 group-hover:opacity-100
-            transition-opacity duration-300 ease-out
-            bg-gradient-to-t from-white/10 via-transparent to-transparent
-            pointer-events-none
-          "
-          aria-hidden="true"
-        />
-
-        {/* Shine effect on hover */}
-        <div
-          className="
-            absolute inset-0 opacity-0 group-hover:opacity-100
-            transition-all duration-500 ease-out
-            bg-gradient-to-br from-white/0 via-white/20 to-white/0
-            translate-x-[-100%] group-hover:translate-x-[100%]
-            pointer-events-none
-          "
-          aria-hidden="true"
-        />
-      </div>
-
-      {/* Play indicator */}
-      <div
-        className={`
-          absolute bottom-3 left-1/2 -translate-x-1/2
-          opacity-0 group-hover:opacity-100
-          transform translate-y-2 group-hover:translate-y-0
-          transition-all duration-300 ease-out
-          ${playButtonClass} text-white px-4 py-2 rounded-full
-          font-semibold text-xs shadow-lg
-          pointer-events-none
-        `}
-        aria-hidden="true"
-      >
-        Play →
+        {/* Game info */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+          <div className="flex items-center gap-2">
+            <span
+              className={`
+                inline-block text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider
+                px-2 py-0.5 rounded-full
+                ${categoryStyle.bg} ${categoryStyle.text}
+              `}
+            >
+              {game.category}
+            </span>
+          </div>
+          <h3 className="text-base sm:text-lg font-semibold text-foreground leading-tight">
+            {game.title}
+          </h3>
+          <p className="text-xs sm:text-sm text-primary-light/70 leading-snug">
+            {game.description}
+          </p>
+          <p className="text-[11px] sm:text-xs text-primary-light/50 leading-snug">
+            {game.hook}
+          </p>
+        </div>
       </div>
     </Link>
   )

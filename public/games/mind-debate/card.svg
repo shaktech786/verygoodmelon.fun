@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1792" viewBox="0 0 1024 1792" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="1792" fill="#f5e6d3" rx="64"/>
+
+  <!-- Inner card area (watermelon red) -->
+  <rect x="64" y="64" width="896" height="1664" fill="#e63946" rx="48"/>
+
+  <!-- Decorative border corners (pixelated) -->
+  <rect x="96" y="96" width="32" height="32" fill="#ffd700"/>
+  <rect x="96" y="1664" width="32" height="32" fill="#ffd700"/>
+  <rect x="896" y="96" width="32" height="32" fill="#ffd700"/>
+  <rect x="896" y="1664" width="32" height="32" fill="#ffd700"/>
+
+  <!-- Title banner -->
+  <rect x="128" y="160" width="768" height="160" fill="#ffffff" rx="16"/>
+  <text x="512" y="260"
+    font-family="system-ui, -apple-system, sans-serif"
+    font-size="72"
+    font-weight="800"
+    fill="#1a1a1a"
+    text-anchor="middle"
+    letter-spacing="-2">THE ARENA</text>
+
+  <!-- Icon area - VS / Debate motif -->
+  <g transform="translate(512, 920)">
+
+    <!-- Left podium / person silhouette -->
+    <g transform="translate(-200, 0)">
+      <!-- Podium -->
+      <rect x="-80" y="60" width="160" height="120" fill="#1a4d2e" rx="8"/>
+      <rect x="-60" y="40" width="120" height="30" fill="#1a4d2e" rx="4"/>
+      <!-- Head -->
+      <circle cx="0" cy="-40" r="48" fill="#fafafa"/>
+      <!-- Body hint -->
+      <rect x="-36" y="4" width="72" height="40" fill="#fafafa" rx="8"/>
+      <!-- Speech lines -->
+      <rect x="60" y="-60" width="40" height="6" fill="#ffd700" rx="3"/>
+      <rect x="70" y="-44" width="30" height="6" fill="#ffd700" rx="3"/>
+      <rect x="60" y="-28" width="36" height="6" fill="#ffd700" rx="3"/>
+    </g>
+
+    <!-- Right podium / person silhouette -->
+    <g transform="translate(200, 0)">
+      <!-- Podium -->
+      <rect x="-80" y="60" width="160" height="120" fill="#1a4d2e" rx="8"/>
+      <rect x="-60" y="40" width="120" height="30" fill="#1a4d2e" rx="4"/>
+      <!-- Head -->
+      <circle cx="0" cy="-40" r="48" fill="#fafafa"/>
+      <!-- Body hint -->
+      <rect x="-36" y="4" width="72" height="40" fill="#fafafa" rx="8"/>
+      <!-- Speech lines -->
+      <rect x="-100" y="-60" width="40" height="6" fill="#ffd700" rx="3"/>
+      <rect x="-100" y="-44" width="30" height="6" fill="#ffd700" rx="3"/>
+      <rect x="-96" y="-28" width="36" height="6" fill="#ffd700" rx="3"/>
+    </g>
+
+    <!-- VS badge in center -->
+    <circle cx="0" cy="-10" r="56" fill="#1a4d2e" stroke="#ffd700" stroke-width="6"/>
+    <text x="0" y="8"
+      font-family="system-ui, -apple-system, sans-serif"
+      font-size="48"
+      font-weight="900"
+      fill="#ffd700"
+      text-anchor="middle"
+      letter-spacing="-1">VS</text>
+
+    <!-- Lightning bolts flanking VS -->
+    <g transform="translate(-80, -80)">
+      <path d="M10,0 L0,20 L8,20 L-2,44 L12,18 L4,18 Z" fill="#ffd700"/>
+    </g>
+    <g transform="translate(70, -80)">
+      <path d="M10,0 L0,20 L8,20 L-2,44 L12,18 L4,18 Z" fill="#ffd700"/>
+    </g>
+
+    <!-- Arena floor line -->
+    <rect x="-320" y="190" width="640" height="8" fill="#1a4d2e" rx="4"/>
+    <rect x="-280" y="210" width="560" height="4" fill="#1a4d2e" rx="2" opacity="0.5"/>
+
+  </g>
+
+  <!-- Bottom accent -->
+  <rect x="196" y="1536" width="632" height="96" fill="#1a4d2e" rx="48"/>
+</svg>

@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { GameCardShowcase } from '@/components/games/GameCardShowcase'
 import { PersonalizedSuggestions } from '@/components/home/PersonalizedSuggestions'
 import { SHOWCASE_GAMES } from '@/lib/games/config'
+import type { GameConfig } from '@/lib/games/config'
 import { usePresence } from '@/lib/hooks/usePresence'
 import { useDailyWisdom } from '@/lib/hooks/useDailyWisdom'
 
@@ -18,14 +19,32 @@ function getDailyFeaturedIndex(): number {
   return dayOfYear % SHOWCASE_GAMES.length
 }
 
+/** Category display order */
+const CATEGORY_ORDER: GameConfig['category'][] = [
+  'Thought',
+  'Wisdom',
+  'Creative',
+  'Puzzle',
+  'Action',
+]
+
+/** Category descriptions -- one line each */
+const CATEGORY_DESCRIPTIONS: Record<GameConfig['category'], string> = {
+  Thought: 'Explore big questions and see things differently',
+  Wisdom: 'Learn from the greatest minds in history',
+  Creative: 'Make, combine, and grow something new',
+  Puzzle: 'Playful challenges with a positive twist',
+  Action: 'Fast-paced games that keep surprising you',
+}
+
 /**
- * Homepage - Lively yet Minimal
+ * Homepage - Clear, Inviting, Informative
  *
  * Design principles:
- * - Breathing space: cards float gently
- * - Staggered entrance: personality on load
- * - Cursor interaction: subtle parallax delight
- * - Minimal text: let the cards speak
+ * - Every game is immediately understandable
+ * - Title, description, and hook always visible
+ * - Category grouping gives structure without clutter
+ * - Breathing space and subtle parallax delight
  * - Warm presence: you're not alone here
  */
 export default function Home() {
@@ -35,9 +54,30 @@ export default function Home() {
   const { count: presenceCount, isLoaded: presenceLoaded } = usePresence()
   const { wisdom, isLoaded: wisdomLoaded } = useDailyWisdom()
   const dailyFeaturedIndex = getDailyFeaturedIndex()
+  const featuredGameId = SHOWCASE_GAMES[dailyFeaturedIndex]?.id
 
   useEffect(() => {
     queueMicrotask(() => setMounted(true))
+  }, [])
+
+  // Group games by category with pre-computed global indices for staggered animation
+  const { gamesByCategory, gameIndices } = useMemo(() => {
+    const groups = new Map<GameConfig['category'], GameConfig[]>()
+    const indices = new Map<string, number>()
+    let idx = 0
+
+    // First pass: group by category in display order
+    for (const cat of CATEGORY_ORDER) {
+      const catGames = SHOWCASE_GAMES.filter((g) => g.category === cat)
+      if (catGames.length > 0) {
+        groups.set(cat, catGames)
+        for (const game of catGames) {
+          indices.set(game.id, idx++)
+        }
+      }
+    }
+
+    return { gamesByCategory: groups, gameIndices: indices }
   }, [])
 
   // Subtle parallax on mouse move
@@ -53,12 +93,12 @@ export default function Home() {
     <div
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className="min-h-[80vh] flex flex-col items-center justify-center px-4 sm:px-6 py-12"
+      className="min-h-[80vh] flex flex-col items-center px-4 sm:px-6 py-12"
     >
       {/* Minimal tagline - sets the tone */}
       <div
         className={`
-          text-center mb-8 sm:mb-12
+          text-center mb-6 sm:mb-10
           transition-all duration-700 ease-out
           ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
         `}
@@ -75,7 +115,7 @@ export default function Home() {
       {presenceLoaded && presenceCount > 0 && (
         <div
           className={`
-            mb-10 sm:mb-14 text-center
+            mb-8 sm:mb-12 text-center
             transition-all duration-700 ease-out
             ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}
           `}
@@ -95,56 +135,80 @@ export default function Home() {
         </div>
       )}
 
-      {/* Cards grid - larger, fewer columns, breathing */}
-      <div className="w-full max-w-5xl">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 md:gap-10">
-          {SHOWCASE_GAMES.map((game, index) => {
-            // Very subtle parallax offset per card
-            const offsetX = (mousePosition.x - 0.5) * (index % 2 === 0 ? 2 : -2)
-            const offsetY = (mousePosition.y - 0.5) * (index % 3 === 0 ? 1.5 : -1.5)
-            const isFeatured = index === dailyFeaturedIndex
+      {/* Games by category */}
+      <div className="w-full max-w-3xl space-y-10 sm:space-y-14">
+        {CATEGORY_ORDER.map((category) => {
+          const games = gamesByCategory.get(category)
+          if (!games || games.length === 0) return null
 
-            return (
+          // Use first game's index for category header delay
+          const firstGameIdx = gameIndices.get(games[0].id) ?? 0
+
+          return (
+            <section
+              key={category}
+              aria-labelledby={`category-${category.toLowerCase()}`}
+            >
+              {/* Category header */}
               <div
-                key={game.id}
                 className={`
+                  mb-4 sm:mb-5
                   transition-all duration-700 ease-out
-                  ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}
+                  ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
                 `}
-                style={{
-                  transitionDelay: mounted ? `${150 + index * 100}ms` : '0ms',
-                  transform: mounted ? `translate(${offsetX}px, ${offsetY}px)` : undefined,
-                }}
+                style={{ transitionDelay: mounted ? `${150 + firstGameIdx * 80}ms` : '0ms' }}
               >
-                <div className="animate-float" style={{ animationDelay: `${index * 0.5}s` }}>
-                  <GameCardShowcase
-                    game={game}
-                    priority={index < 2}
-                    isFeatured={isFeatured}
-                  />
-                </div>
+                <h2
+                  id={`category-${category.toLowerCase()}`}
+                  className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-primary-light/60"
+                >
+                  {category}
+                </h2>
+                <p className="text-xs text-primary-light/40 mt-0.5">
+                  {CATEGORY_DESCRIPTIONS[category]}
+                </p>
               </div>
-            )
-          })}
-        </div>
+
+              {/* Game cards in this category */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                {games.map((game) => {
+                  const currentIndex = gameIndices.get(game.id) ?? 0
+                  const isFeatured = game.id === featuredGameId
+
+                  // Very subtle parallax offset per card
+                  const offsetX = (mousePosition.x - 0.5) * (currentIndex % 2 === 0 ? 1.5 : -1.5)
+                  const offsetY = (mousePosition.y - 0.5) * (currentIndex % 3 === 0 ? 1 : -1)
+
+                  return (
+                    <div
+                      key={game.id}
+                      className={`
+                        transition-all duration-700 ease-out
+                        ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}
+                      `}
+                      style={{
+                        transitionDelay: mounted ? `${200 + currentIndex * 80}ms` : '0ms',
+                        transform: mounted ? `translate(${offsetX}px, ${offsetY}px)` : undefined,
+                      }}
+                    >
+                      <div className="animate-float" style={{ animationDelay: `${currentIndex * 0.4}s` }}>
+                        <GameCardShowcase
+                          game={game}
+                          priority={currentIndex < 3}
+                          isFeatured={isFeatured}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )
+        })}
       </div>
 
       {/* Personalized suggestions based on play history */}
       <PersonalizedSuggestions />
-
-      {/* Subtle prompt - only appears after cards */}
-      <div
-        className={`
-          mt-12 sm:mt-16 text-center
-          transition-all duration-700 ease-out
-          ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
-        `}
-        style={{ transitionDelay: mounted ? '800ms' : '0ms' }}
-      >
-        <p className="text-primary-light/60 text-xs sm:text-sm">
-          Pick a card, any card
-        </p>
-      </div>
 
       {/* Daily wisdom - ambient, quiet, appears last */}
       {wisdomLoaded && wisdom && (

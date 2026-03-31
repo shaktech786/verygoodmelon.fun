@@ -17,6 +17,8 @@ const GAME_EMOJI: Record<string, string> = {
   'thought-pockets': '🃏',
   'breathing-patterns': '🫁',
   'calm-garden': '🌱',
+  'cascade': '🎮',
+  'mind-debate': '🎭',
 }
 
 function GameLink({ game }: { game: GameConfig }) {
