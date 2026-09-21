@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1792" viewBox="0 0 1024 1792" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="1792" fill="#f5e6d3" rx="64"/>
+
+  <!-- Inner card area (arcade purple) -->
+  <rect x="64" y="64" width="896" height="1664" fill="#7b2cbf" rx="48"/>
+
+  <!-- Decorative border corners (pixelated) -->
+  <rect x="96" y="96" width="32" height="32" fill="#ffd700"/>
+  <rect x="96" y="1664" width="32" height="32" fill="#ffd700"/>
+  <rect x="896" y="96" width="32" height="32" fill="#ffd700"/>
+  <rect x="896" y="1664" width="32" height="32" fill="#ffd700"/>
+
+  <!-- Title banner -->
+  <rect x="128" y="160" width="768" height="160" fill="#ffffff" rx="16"/>
+  <text x="512" y="258"
+    font-family="system-ui, -apple-system, sans-serif"
+    font-size="56"
+    font-weight="800"
+    fill="#1a1a1a"
+    text-anchor="middle"
+    letter-spacing="-2">THE SHAPESHIFTER</text>
+
+  <!-- Icon area - one form mutating into the next -->
+  <g transform="translate(512, 900)">
+
+    <!-- Morph sequence: square -> diamond -> circle -->
+    <g transform="translate(-240, -260)">
+      <rect x="-64" y="-64" width="128" height="128" fill="#fafafa"/>
+    </g>
+    <g transform="translate(0, -260)">
+      <rect x="-60" y="-60" width="120" height="120" fill="#74c69d" transform="rotate(45)"/>
+    </g>
+    <g transform="translate(240, -260)">
+      <circle cx="0" cy="0" r="70" fill="#ffd700"/>
+    </g>
+
+    <!-- Arrows between forms -->
+    <path d="M-150,-260 L-108,-260 M-108,-260 L-124,-272 M-108,-260 L-124,-248" stroke="#fafafa" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <path d="M108,-260 L150,-260 M150,-260 L134,-272 M150,-260 L134,-248" stroke="#fafafa" stroke-width="8" stroke-linecap="round" fill="none"/>
+
+    <!-- Cascading pixel blocks -->
+    <rect x="-272" y="-120" width="48" height="48" fill="#fafafa"/>
+    <rect x="-208" y="-56" width="48" height="48" fill="#fafafa" opacity="0.8"/>
+    <rect x="-272" y="8" width="48" height="48" fill="#fafafa" opacity="0.6"/>
+
+    <rect x="-24" y="-120" width="48" height="48" fill="#74c69d"/>
+    <rect x="-24" y="-40" width="48" height="48" fill="#74c69d" opacity="0.8"/>
+    <rect x="40" y="24" width="48" height="48" fill="#74c69d" opacity="0.6"/>
+    <rect x="-88" y="40" width="48" height="48" fill="#74c69d" opacity="0.5"/>
+
+    <rect x="216" y="-120" width="48" height="48" fill="#ffd700"/>
+    <rect x="152" y="-56" width="48" height="48" fill="#ffd700" opacity="0.8"/>
+    <rect x="216" y="8" width="48" height="48" fill="#ffd700" opacity="0.6"/>
+
+    <!-- Player: half block, half curve (caught mid-change) -->
+    <g transform="translate(0, 240)">
+      <path d="M-96,-64 L0,-64 A64,64 0 0 1 0,64 L-96,64 Z" fill="#e63946" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="round"/>
+      <rect x="-64" y="-24" width="24" height="24" fill="#1a1a1a"/>
+      <rect x="-8" y="-24" width="24" height="24" fill="#1a1a1a"/>
+    </g>
+
+    <!-- Ground line -->
+    <rect x="-320" y="340" width="640" height="8" fill="#1a1a1a" rx="4"/>
+    <rect x="-280" y="360" width="560" height="4" fill="#1a1a1a" rx="2" opacity="0.5"/>
+
+  </g>
+
+  <!-- Bottom accent -->
+  <rect x="196" y="1536" width="632" height="96" fill="#1a1a1a" rx="48"/>
+</svg>

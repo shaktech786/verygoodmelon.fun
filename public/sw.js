@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vgm-v2'
+const CACHE_NAME = 'vgm-v3'
 const OFFLINE_URL = '/offline'
 
 // Pages and assets to pre-cache for offline use
