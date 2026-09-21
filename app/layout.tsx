@@ -5,7 +5,7 @@ import { Header } from "@/components/ui/Header";
 import { Footer } from "@/components/ui/Footer";
 import { AccessibilityControls } from "@/components/accessibility/AccessibilityControls";
 import { ToastContainer } from "@/components/ui/Toast";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SiteAnalytics } from "@/components/SiteAnalytics";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FeedbackButton } from "@/components/FeedbackButton";
 import { AmbientParticles } from "@/components/ui/AmbientParticles";
@@ -22,7 +22,7 @@ const quicksand = Quicksand({
 export const metadata: Metadata = {
   metadataBase: new URL("https://verygoodmelon.fun"),
   title: "VeryGoodMelon.Fun - Thoughtful Games to Reduce Anxiety",
-  description: "Creative, accessible, AI-powered games designed to help you relax. No ads, no accounts, no stress - just thoughtful experiences.",
+  description: "Creative, accessible, AI-powered games designed to help you relax. No ads, no sign-up, no stress - just thoughtful experiences.",
   keywords: ["games", "relaxation", "anxiety relief", "accessible games", "creative games", "watermelon"],
   authors: [{ name: "VeryGoodMelon.Fun" }],
   creator: "VeryGoodMelon.Fun",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://verygoodmelon.fun",
     title: "VeryGoodMelon.Fun - Thoughtful Games to Reduce Anxiety",
-    description: "Creative, accessible games designed to help you relax. No ads, no accounts, no stress.",
+    description: "Creative, accessible games designed to help you relax. No ads, no sign-up, no stress.",
     siteName: "VeryGoodMelon.Fun",
     images: [{ url: '/logo.png', width: 512, height: 512, alt: 'VeryGoodMelon.Fun' }],
   },
@@ -85,7 +85,6 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="VeryGoodMelon" />
-        <link rel="apple-touch-icon" href="/logo.png" />
       </head>
       <body className={`${quicksand.variable} antialiased`} suppressHydrationWarning>
         <Providers>
@@ -103,7 +102,7 @@ export default function RootLayout({
           <AccessibilityControls />
           <FeedbackButton />
           <ToastContainer />
-          <SpeedInsights />
+          <SiteAnalytics />
           <ServiceWorkerRegistration />
         </Providers>
       </body>

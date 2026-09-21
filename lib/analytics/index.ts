@@ -1,295 +1,40 @@
 /**
- * Analytics Integration Utilities
- * Type-safe analytics tracking with support for multiple providers
+ * Anonymous usage analytics.
+ *
+ * Two sources, both cookieless and free of visitor identifiers:
+ * - Vercel Web Analytics (page views, referrers, device type) — see <SiteAnalytics />
+ * - First-party game events in Supabase (which game, how long) — see /api/game-events
+ *
+ * Anything added here must stay describable by /privacy. Never send free text,
+ * emails, user IDs, or anything else that could identify a person.
  */
 
-export type AnalyticsProvider = 'vercel' | 'google' | 'custom'
-
-export type AnalyticsProperties = { [key: string]: unknown }
-
-export interface AnalyticsEvent {
-  name: string
-  properties?: AnalyticsProperties
-  timestamp?: number
-}
-
-export interface PageViewEvent {
-  path: string
-  title?: string
-  referrer?: string
-}
-
-export type UserProperties = {
-  userId?: string
-  email?: string
-  name?: string
-  [key: string]: unknown
-}
+export type GameEvent =
+  | { event: 'open'; gameId: string }
+  | { event: 'close'; gameId: string; durationSeconds: number }
 
 /**
- * Analytics queue for batching events
+ * Visitors who signal Do Not Track or Global Privacy Control are not measured at all.
  */
-class AnalyticsQueue {
-  private queue: AnalyticsEvent[] = []
-  private flushInterval: number = 5000 // 5 seconds
-  private maxQueueSize: number = 10
-  private flushTimer?: NodeJS.Timeout
+export function isTrackingAllowed(): boolean {
+  if (typeof navigator === 'undefined') return false
 
-  constructor() {
-    this.startFlushTimer()
+  const { doNotTrack, globalPrivacyControl } = navigator as Navigator & {
+    globalPrivacyControl?: boolean
   }
-
-  add(event: AnalyticsEvent) {
-    this.queue.push({
-      ...event,
-      timestamp: event.timestamp || Date.now()
-    })
-
-    if (this.queue.length >= this.maxQueueSize) {
-      this.flush()
-    }
-  }
-
-  flush() {
-    if (this.queue.length === 0) return
-
-    const events = [...this.queue]
-    this.queue = []
-
-    // Send to analytics providers
-    this.sendToProviders(events)
-  }
-
-  private sendToProviders(events: AnalyticsEvent[]) {
-    // In production, send to your analytics service
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Analytics] Events:', events)
-    }
-
-    // Example: Send to custom endpoint
-    // fetch('/api/analytics', {
-    //   method: 'POST',
-    //   body: JSON.stringify(events)
-    // })
-  }
-
-  private startFlushTimer() {
-    this.flushTimer = setInterval(() => {
-      this.flush()
-    }, this.flushInterval)
-
-    // Flush on page unload
-    if (typeof window !== 'undefined') {
-      window.addEventListener('beforeunload', () => this.flush())
-    }
-  }
-
-  stop() {
-    if (this.flushTimer) {
-      clearInterval(this.flushTimer)
-    }
-    this.flush()
-  }
+  return doNotTrack !== '1' && globalPrivacyControl !== true
 }
 
-const analyticsQueue = new AnalyticsQueue()
+export function recordGameEvent(event: GameEvent): void {
+  if (!isTrackingAllowed()) return
 
-/**
- * Track a custom event
- */
-export function trackEvent(name: string, properties?: AnalyticsProperties) {
-  analyticsQueue.add({ name, properties })
-
-  // Also track with Vercel Analytics if available
-  const win = window as Window & { va?: (type: string, ...args: unknown[]) => void }
-  if (typeof window !== 'undefined' && win.va) {
-    win.va('event', name, properties)
-  }
-}
-
-/**
- * Track a page view
- */
-export function trackPageView(event: PageViewEvent) {
-  analyticsQueue.add({
-    name: 'page_view',
-    properties: { ...event }
+  // keepalive lets the request finish while the page is being closed
+  fetch('/api/game-events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(event),
+    keepalive: true,
+  }).catch(() => {
+    // Analytics must never surface an error to someone who came here to relax
   })
-
-  // Track with Vercel Analytics
-  const win = window as Window & { va?: (type: string, ...args: unknown[]) => void }
-  if (typeof window !== 'undefined' && win.va) {
-    win.va('pageview', {
-      path: event.path,
-      title: event.title
-    })
-  }
-}
-
-/**
- * Set user properties
- */
-export function setUserProperties(properties: UserProperties) {
-  analyticsQueue.add({
-    name: 'user_properties',
-    properties
-  })
-}
-
-/**
- * Track user action
- */
-export function trackAction(action: string, category: string, label?: string, value?: number) {
-  trackEvent('user_action', {
-    action,
-    category,
-    label,
-    value
-  })
-}
-
-/**
- * Track error
- */
-export function trackError(error: Error, context?: AnalyticsProperties) {
-  trackEvent('error', {
-    message: error.message,
-    stack: error.stack,
-    name: error.name,
-    ...context
-  })
-}
-
-/**
- * Track timing (performance)
- */
-export function trackTiming(category: string, variable: string, time: number, label?: string) {
-  trackEvent('timing', {
-    category,
-    variable,
-    time,
-    label
-  })
-}
-
-/**
- * Track conversion
- */
-export function trackConversion(conversionId: string, value?: number, currency?: string) {
-  trackEvent('conversion', {
-    conversionId,
-    value,
-    currency
-  })
-}
-
-/**
- * Game-specific analytics
- */
-export const gameAnalytics = {
-  /**
-   * Track game start
-   */
-  gameStart(gameId: string, difficulty?: string) {
-    trackEvent('game_start', {
-      gameId,
-      difficulty
-    })
-  },
-
-  /**
-   * Track game complete
-   */
-  gameComplete(gameId: string, score?: number, duration?: number) {
-    trackEvent('game_complete', {
-      gameId,
-      score,
-      duration
-    })
-  },
-
-  /**
-   * Track game quit
-   */
-  gameQuit(gameId: string, progress?: number) {
-    trackEvent('game_quit', {
-      gameId,
-      progress
-    })
-  },
-
-  /**
-   * Track level progress
-   */
-  levelProgress(gameId: string, level: number, score?: number) {
-    trackEvent('level_progress', {
-      gameId,
-      level,
-      score
-    })
-  },
-
-  /**
-   * Track achievement unlock
-   */
-  achievementUnlock(achievementId: string, gameId?: string) {
-    trackEvent('achievement_unlock', {
-      achievementId,
-      gameId
-    })
-  }
-}
-
-/**
- * E-commerce analytics (for future paid features)
- */
-export const ecommerceAnalytics = {
-  /**
-   * Track product view
-   */
-  productView(productId: string, productName: string, price?: number) {
-    trackEvent('product_view', {
-      productId,
-      productName,
-      price
-    })
-  },
-
-  /**
-   * Track add to cart
-   */
-  addToCart(productId: string, quantity: number, price: number) {
-    trackEvent('add_to_cart', {
-      productId,
-      quantity,
-      price,
-      value: quantity * price
-    })
-  },
-
-  /**
-   * Track purchase
-   */
-  purchase(orderId: string, total: number, currency: string, items: AnalyticsProperties[]) {
-    trackEvent('purchase', {
-      orderId,
-      total,
-      currency,
-      items
-    })
-  }
-}
-
-/**
- * Flush analytics queue (useful on page navigation)
- */
-export function flushAnalytics() {
-  analyticsQueue.flush()
-}
-
-/**
- * Stop analytics (cleanup)
- */
-export function stopAnalytics() {
-  analyticsQueue.stop()
 }

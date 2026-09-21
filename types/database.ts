@@ -72,6 +72,30 @@ export type Database = {
         }
         Relationships: []
       }
+      game_events: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          event: string
+          game_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          event: string
+          game_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          event?: string
+          game_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       games: {
         Row: {
           average_score: number | null
@@ -703,6 +727,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      game_usage_summary: {
+        Args: { since: string }
+        Returns: {
+          game_id: string
+          median_seconds: number | null
+          opens: number
+        }[]
+      }
       upsert_pixel: {
         Args: { p_color: string; p_x: number; p_y: number }
         Returns: undefined
