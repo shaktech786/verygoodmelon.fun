@@ -21,7 +21,8 @@ export interface SpeechRecognitionOptions {
 }
 
 /**
- * Browser speech recognition types
+ * lib.dom ships the SpeechRecognition event/result types but not the
+ * recognizer itself (still vendor-prefixed in Chrome and Safari).
  */
 declare global {
   interface Window {
@@ -40,34 +41,6 @@ declare global {
     onerror: (event: SpeechRecognitionErrorEvent) => void
     onend: () => void
     onstart: () => void
-  }
-
-  interface SpeechRecognitionEvent {
-    results: SpeechRecognitionResultList
-    resultIndex: number
-  }
-
-  interface SpeechRecognitionResultList {
-    readonly length: number
-    item(index: number): SpeechRecognitionResult
-    [index: number]: SpeechRecognitionResult
-  }
-
-  interface SpeechRecognitionResult {
-    readonly length: number
-    item(index: number): SpeechRecognitionAlternative
-    [index: number]: SpeechRecognitionAlternative
-    readonly isFinal: boolean
-  }
-
-  interface SpeechRecognitionAlternative {
-    readonly transcript: string
-    readonly confidence: number
-  }
-
-  interface SpeechRecognitionErrorEvent {
-    error: string
-    message: string
   }
 }
 

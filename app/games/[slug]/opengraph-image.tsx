@@ -1,8 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { ALL_GAMES } from '@/lib/games/config'
 
-export const runtime = 'edge'
-
 export const alt = 'VeryGoodMelon.Fun Game'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'

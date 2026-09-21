@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-const GEMINI_MODEL = 'gemini-2.0-flash'
-
-function getGenAI() {
-  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
-  if (!apiKey) throw new Error('GOOGLE_GEMINI_API_KEY not configured')
-  return new GoogleGenerativeAI(apiKey)
-}
+import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 
 interface DebateHistoryEntry {
   speaker: string
@@ -54,17 +46,17 @@ Respond ONLY in this JSON format (no markdown, no code blocks):
   "summary": "A 2-3 sentence verdict explaining who won and why. Be specific about which arguments were strongest. If it's a draw, explain why neither clearly won."
 }`
 
-    const model = getGenAI().getGenerativeModel({
+    const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
-      generationConfig: {
+      contents: prompt,
+      config: {
         temperature: 0.7,
         topP: 0.9,
         maxOutputTokens: 300,
+        ...MINIMAL_THINKING,
       },
     })
-
-    const result = await model.generateContent(prompt)
-    const text = result.response.text()
+    const text = result.text ?? ''
 
     // Parse JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/)

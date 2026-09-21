@@ -4,9 +4,6 @@ const envSchema = z.object({
   // Required
   GOOGLE_GEMINI_API_KEY: z.string().min(1, 'GOOGLE_GEMINI_API_KEY is required'),
 
-  // Optional with defaults
-  GOOGLE_GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
-
   // Optional
   NEXT_PUBLIC_SUPABASE_URL: z.string().optional(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),

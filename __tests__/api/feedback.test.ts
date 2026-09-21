@@ -1,20 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// Mock Gemini - feedback route instantiates GoogleGenerativeAI at module level
-vi.mock('@google/generative-ai', () => ({
-  GoogleGenerativeAI: class MockGemini {
-    getGenerativeModel() {
-      return {
-        generateContent: vi.fn().mockResolvedValue({
-          response: {
-            text: () => JSON.stringify({
-              title: 'Bug: Button not working',
-              body: '## Summary\nUser reports button issue\n\n## Original User Feedback\n> The submit button does not work',
-              labels: ['bug', 'ui/ux'],
-            }),
-          },
+// Mock Gemini - feedback route calls getGemini() inside analyzeFeedbackWithAI
+vi.mock('@google/genai', () => ({
+  ThinkingLevel: { MINIMAL: 'MINIMAL' },
+  GoogleGenAI: class MockGemini {
+    models = {
+      generateContent: vi.fn().mockResolvedValue({
+        text: JSON.stringify({
+          title: 'Bug: Button not working',
+          body: '## Summary\nUser reports button issue\n\n## Original User Feedback\n> The submit button does not work',
+          labels: ['bug', 'ui/ux'],
         }),
-      }
+      }),
     }
   },
 }))

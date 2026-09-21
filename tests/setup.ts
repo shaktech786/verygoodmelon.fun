@@ -10,7 +10,7 @@ import path from 'path'
 config({ path: path.resolve(process.cwd(), '.env.local') })
 
 // Ensure required environment variables are present for integration tests
-const requiredEnvVars = ['GOOGLE_GEMINI_API_KEY', 'GOOGLE_GEMINI_MODEL']
+const requiredEnvVars = ['GOOGLE_GEMINI_API_KEY']
 
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {

@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 import { z } from 'zod'
-
-const GEMINI_MODEL = 'gemini-2.0-flash'
-
-function getGenAI() {
-  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
-  if (!apiKey) {
-    throw new Error('GOOGLE_GEMINI_API_KEY environment variable is not configured')
-  }
-  return new GoogleGenerativeAI(apiKey)
-}
 
 // ---------------------------------------------------------------------------
 // Rate limiting (in-memory, per IP)
@@ -165,17 +155,17 @@ Respond with ONLY valid JSON in this exact format:
 
 The type must be one of the valid types listed above. x must be 0.05-0.95, y must be 0.3-0.95. Keep the reason under 15 words.`
 
-    const model = getGenAI().getGenerativeModel({
+    const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
-      generationConfig: {
+      contents: prompt,
+      config: {
         temperature: 0.8,
         topP: 0.9,
         maxOutputTokens: 100,
+        ...MINIMAL_THINKING,
       },
     })
-
-    const result = await model.generateContent(prompt)
-    const text = result.response.text().trim()
+    const text = (result.text ?? '').trim()
 
     // Parse the JSON response
     const jsonMatch = text.match(/\{[^}]+\}/)

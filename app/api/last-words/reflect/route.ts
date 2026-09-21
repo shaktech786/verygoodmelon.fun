@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 import { z } from 'zod'
-
-const GEMINI_MODEL = 'gemini-2.0-flash'
-
-function getGenAI() {
-  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
-  if (!apiKey) {
-    throw new Error('GOOGLE_GEMINI_API_KEY environment variable is not configured')
-  }
-  return new GoogleGenerativeAI(apiKey)
-}
 
 // Simple in-memory rate limiter
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
@@ -74,15 +64,6 @@ export async function POST(request: NextRequest) {
 
     const { message } = parsed.data
 
-    const model = getGenAI().getGenerativeModel({
-      model: GEMINI_MODEL,
-      generationConfig: {
-        temperature: 0.85,
-        topP: 0.9,
-        maxOutputTokens: 150,
-      },
-    })
-
     const prompt = `You are a gentle, wise observer. Someone has shared what they would say as their final words to the world:
 
 "${message}"
@@ -91,8 +72,17 @@ Offer a brief, warm reflection (2-3 sentences) on the beauty or meaning in their
 
 Return ONLY the reflection text, no quotes, no labels, no formatting.`
 
-    const result = await model.generateContent(prompt)
-    const reflection = result.response.text().trim()
+    const result = await getGemini().models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: {
+        temperature: 0.85,
+        topP: 0.9,
+        maxOutputTokens: 150,
+        ...MINIMAL_THINKING,
+      },
+    })
+    const reflection = (result.text ?? '').trim()
 
     if (!reflection) {
       throw new Error('Empty AI response')

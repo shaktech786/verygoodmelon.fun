@@ -1,15 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-const GEMINI_MODEL = 'gemini-2.0-flash'
-
-function getGenAI() {
-  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
-  if (!apiKey) {
-    throw new Error('GOOGLE_GEMINI_API_KEY environment variable is not configured')
-  }
-  return new GoogleGenerativeAI(apiKey)
-}
+import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 
 // Known combinations for consistency and instant responses
 const KNOWN_COMBINATIONS: Record<string, { name: string; emoji: string; description: string }> = {
@@ -114,15 +104,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Use AI for unknown combinations
-    const model = getGenAI().getGenerativeModel({
-      model: GEMINI_MODEL,
-      generationConfig: {
-        temperature: 0.8,
-        topP: 0.9,
-        maxOutputTokens: 256,
-      },
-    })
-
     const prompt = `You are a philosophical concept generator for a game called "The Idea Lab" where players combine abstract concepts to discover new ideas.
 
 Given two philosophical concepts, create a meaningful new concept that represents their combination.
@@ -145,8 +126,17 @@ Respond in this exact JSON format:
 
 Only return the JSON, no other text.`
 
-    const result = await model.generateContent(prompt)
-    const text = result.response.text()
+    const result = await getGemini().models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: {
+        temperature: 0.8,
+        topP: 0.9,
+        maxOutputTokens: 256,
+        ...MINIMAL_THINKING,
+      },
+    })
+    const text = result.text ?? ''
 
     // Parse JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/)

@@ -5,42 +5,60 @@
  * Never expose "AI" or "Powered by..." labels in the UI.
  */
 
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai'
+import { GoogleGenAI, ThinkingLevel } from '@google/genai'
 
-// Configuration
-const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY || ''
-const GEMINI_MODEL = process.env.GOOGLE_GEMINI_MODEL || 'gemini-2.0-flash-exp'
+/**
+ * Single source of truth for the Gemini model. Google retires model IDs on a
+ * schedule (https://ai.google.dev/gemini-api/docs/deprecations); when that
+ * happens, change it here and deploy.
+ *
+ * Deliberately not overridable by env var: a forgotten GOOGLE_GEMINI_MODEL
+ * pinned to a retired model once took every AI feature down and would have
+ * silently shadowed the fix.
+ */
+export const GEMINI_MODEL = 'gemini-3.6-flash'
 
-// Initialize the AI client
-let genAI: GoogleGenerativeAI | null = null
-let model: GenerativeModel | null = null
+/**
+ * Gemini 3 models think before answering, and thinking tokens are billed
+ * against maxOutputTokens. Our limits are tiny (100-300 tokens), so without
+ * this the visible reply gets truncated or comes back empty.
+ */
+export const MINIMAL_THINKING = {
+  thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+} as const
+
+/**
+ * Client for API routes. Throws when the key is missing so the route's own
+ * catch block can serve its deterministic fallback.
+ */
+export function getGemini(): GoogleGenAI {
+  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
+  if (!apiKey) {
+    throw new Error('GOOGLE_GEMINI_API_KEY environment variable is not configured')
+  }
+  return new GoogleGenAI({ apiKey })
+}
+
+let genAI: GoogleGenAI | null = null
 
 /**
  * Initialize the Gemini client
  * Call this once at app startup
  */
 export function initializeGemini(): void {
-  if (!GEMINI_API_KEY) {
+  if (!process.env.GOOGLE_GEMINI_API_KEY) {
     console.warn('GOOGLE_GEMINI_API_KEY not found. AI features will use fallback behavior.')
     return
   }
 
-  try {
-    genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-    model = genAI.getGenerativeModel({ model: GEMINI_MODEL })
-    console.log('✨ Gemini AI initialized successfully')
-  } catch (error) {
-    console.error('Failed to initialize Gemini:', error)
-    genAI = null
-    model = null
-  }
+  genAI = getGemini()
 }
 
 /**
  * Check if AI is available
  */
 export function isAIAvailable(): boolean {
-  return model !== null
+  return genAI !== null
 }
 
 /**
@@ -58,26 +76,24 @@ export async function generateText(
     systemInstruction?: string
   }
 ): Promise<string | null> {
-  if (!model) {
+  if (!genAI) {
     console.warn('AI not available, returning null')
     return null
   }
 
   try {
-    const generationConfig = {
-      temperature: options?.temperature ?? 0.9,
-      maxOutputTokens: options?.maxTokens ?? 1024,
-    }
-
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig,
+    const result = await genAI.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: {
+        temperature: options?.temperature ?? 0.9,
+        maxOutputTokens: options?.maxTokens ?? 1024,
+        systemInstruction: options?.systemInstruction,
+        ...MINIMAL_THINKING,
+      },
     })
 
-    const response = result.response
-    const text = response.text()
-
-    return text
+    return result.text ?? null
   } catch (error) {
     console.error('Error generating text:', error)
     return null
@@ -100,26 +116,26 @@ export async function generateTextStream(
     maxTokens?: number
   }
 ): Promise<string | null> {
-  if (!model) {
+  if (!genAI) {
     console.warn('AI not available, returning null')
     return null
   }
 
   try {
-    const generationConfig = {
-      temperature: options?.temperature ?? 0.9,
-      maxOutputTokens: options?.maxTokens ?? 2048,
-    }
-
-    const result = await model.generateContentStream({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig,
+    const stream = await genAI.models.generateContentStream({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: {
+        temperature: options?.temperature ?? 0.9,
+        maxOutputTokens: options?.maxTokens ?? 2048,
+        ...MINIMAL_THINKING,
+      },
     })
 
     let fullText = ''
 
-    for await (const chunk of result.stream) {
-      const chunkText = chunk.text()
+    for await (const chunk of stream) {
+      const chunkText = chunk.text ?? ''
       fullText += chunkText
       onChunk(chunkText)
     }
@@ -137,17 +153,12 @@ export async function generateTextStream(
  */
 export class GeminiConversation {
   private history: Array<{ role: 'user' | 'model'; text: string }> = []
-  private model: GenerativeModel | null
-
-  constructor() {
-    this.model = model
-  }
 
   /**
    * Send a message and get a response
    */
   async sendMessage(message: string): Promise<string | null> {
-    if (!this.model) {
+    if (!genAI) {
       return null
     }
 
@@ -161,8 +172,12 @@ export class GeminiConversation {
         parts: [{ text: msg.text }],
       }))
 
-      const result = await this.model.generateContent({ contents })
-      const response = result.response.text()
+      const result = await genAI.models.generateContent({
+        model: GEMINI_MODEL,
+        contents,
+        config: MINIMAL_THINKING,
+      })
+      const response = result.text ?? ''
 
       // Add model response to history
       this.history.push({ role: 'model', text: response })

@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-const GEMINI_MODEL = 'gemini-2.0-flash'
-
-function getGenAI() {
-  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
-  if (!apiKey) throw new Error('GOOGLE_GEMINI_API_KEY not configured')
-  return new GoogleGenerativeAI(apiKey)
-}
+import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 
 const MECHANIC_DESCRIPTIONS: Record<string, string> = {
   arrow_keys: 'Classic 4/8-directional movement with arrow keys or WASD. Responsive, with slight momentum.',
@@ -64,11 +56,6 @@ async function handleMutation(body: {
   }
 
   try {
-    const model = getGenAI().getGenerativeModel({
-      model: GEMINI_MODEL,
-      generationConfig: { temperature: 0.9, maxOutputTokens: 300 },
-    })
-
     const optionsList = options.map(id =>
       `"${id}": ${MECHANIC_DESCRIPTIONS[id] || 'A game mechanic.'}`
     ).join('\n')
@@ -103,8 +90,12 @@ Respond ONLY in JSON:
   "flavorText": "A fun one-liner about the player or game state"
 }`
 
-    const result = await model.generateContent(prompt)
-    const text = result.response.text()
+    const result = await getGemini().models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: { temperature: 0.9, maxOutputTokens: 300, ...MINIMAL_THINKING },
+    })
+    const text = result.text ?? ''
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) throw new Error('Invalid AI response')
 
@@ -141,11 +132,6 @@ async function generateFlavorText(
   mutations: Array<{ id: string; title: string }>,
 ) {
   try {
-    const model = getGenAI().getGenerativeModel({
-      model: GEMINI_MODEL,
-      generationConfig: { temperature: 1.0, maxOutputTokens: 200 },
-    })
-
     const prompt = `You are the Game Master of CASCADE. Generate a fun announcement for the "${mechanicId}" mechanic (${category}).
 ${MECHANIC_DESCRIPTIONS[mechanicId]}
 Active mechanics: ${activeMechanics.join(', ')}
@@ -159,8 +145,12 @@ Respond ONLY in JSON:
   "flavorText": "Fun one-liner observation"
 }`
 
-    const result = await model.generateContent(prompt)
-    const text = result.response.text()
+    const result = await getGemini().models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: { temperature: 1.0, maxOutputTokens: 200, ...MINIMAL_THINKING },
+    })
+    const text = result.text ?? ''
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) throw new Error('Parse error')
 
@@ -189,11 +179,6 @@ async function handleNaming(body: {
   const { mutations, score, profile } = body
 
   try {
-    const model = getGenAI().getGenerativeModel({
-      model: GEMINI_MODEL,
-      generationConfig: { temperature: 1.0, maxOutputTokens: 150 },
-    })
-
     const mutationList = mutations.map((m, i) => `${i + 1}. ${m.title} (${m.id})`).join('\n')
 
     const prompt = `CASCADE, a self-building arcade game, just completed. Name this unique game.
@@ -212,8 +197,12 @@ Respond ONLY in JSON:
   "tagline": "Blast through waves in this high-octane shooter-collector."
 }`
 
-    const result = await model.generateContent(prompt)
-    const text = result.response.text()
+    const result = await getGemini().models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: { temperature: 1.0, maxOutputTokens: 150, ...MINIMAL_THINKING },
+    })
+    const text = result.text ?? ''
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) throw new Error('Parse error')
 

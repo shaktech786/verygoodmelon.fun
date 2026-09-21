@@ -14,6 +14,7 @@ afterEach(() => {
 global.IntersectionObserver = class IntersectionObserver {
   readonly root: Element | null = null
   readonly rootMargin: string = ''
+  readonly scrollMargin: string = ''
   readonly thresholds: ReadonlyArray<number> = []
   constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) {}
   disconnect() {}

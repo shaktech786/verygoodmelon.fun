@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '')
+import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 
 interface GitHubIssue {
   title: string
@@ -10,13 +8,6 @@ interface GitHubIssue {
 }
 
 async function analyzeFeedbackWithAI(feedback: string): Promise<GitHubIssue> {
-  const model = genAI.getGenerativeModel({
-    model: process.env.GOOGLE_GEMINI_MODEL || 'gemini-1.5-flash',
-    generationConfig: {
-      temperature: 0.2
-    }
-  })
-
   const prompt = `Analyze this user feedback and create a structured GitHub issue.
 
 USER FEEDBACK: "${feedback}"
@@ -68,8 +59,15 @@ NOW: Return your response as valid JSON with this EXACT structure (no markdown, 
 {"title": "your title", "body": "your full markdown body", "labels": ["label1", "label2"]}`
 
   try {
-    const result = await model.generateContent(prompt)
-    const response = result.response.text()
+    const result = await getGemini().models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: {
+        temperature: 0.2,
+        ...MINIMAL_THINKING,
+      },
+    })
+    const response = result.text ?? ''
 
     console.log('AI Response:', response) // Debug log
 

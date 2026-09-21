@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 import { getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import { detectEmotion } from '@/lib/games/timeless-minds/emotion-detector'
-
-function getGenAI() {
-  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
-  if (!apiKey) {
-    throw new Error('GOOGLE_GEMINI_API_KEY environment variable is not configured')
-  }
-  return new GoogleGenerativeAI(apiKey)
-}
-
-// Gemini 2.0 Flash - fast and capable for conversations
-const GEMINI_MODEL = 'gemini-2.0-flash'
 
 export async function POST(request: NextRequest) {
   try {
@@ -96,41 +85,27 @@ CONVERSATION GUIDELINES:
 
 REMEMBER: This is a live video call. Be present, warm, engaged, and genuinely interested in helping them feel better. Every response should move them toward less anxiety and more clarity through HONEST wisdom, not superficial agreement.`
 
-    // Initialize Gemini model with enhanced configuration for therapeutic conversations
-    const model = getGenAI().getGenerativeModel({
-      model: GEMINI_MODEL,
-      generationConfig: {
-        temperature: 0.8,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 256,
-      },
-    })
-
     // Format conversation history for Gemini
     const history = conversationHistory?.map((msg: { role: string; content: string }) => ({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }]
     })) || []
 
-    // Start chat with system prompt as first message
-    const chat = model.startChat({
-      history: [
-        {
-          role: 'user',
-          parts: [{ text: 'Please embody your character for this therapeutic conversation.' }]
-        },
-        {
-          role: 'model',
-          parts: [{ text: systemPrompt }]
-        },
-        ...history
-      ]
+    const chat = getGemini().chats.create({
+      model: GEMINI_MODEL,
+      history,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 0.8,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 256,
+        ...MINIMAL_THINKING,
+      },
     })
 
-    // Send message and get streaming response
-    const result = await chat.sendMessage(message)
-    const response = result.response.text()
+    const result = await chat.sendMessage({ message })
+    const response = result.text ?? ''
 
     // Detect emotion from the response for avatar expression
     const emotionResult = await detectEmotion(response)

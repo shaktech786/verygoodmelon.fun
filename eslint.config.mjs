@@ -16,6 +16,13 @@ const eslintConfig = [
   {
     rules: {
       "react-hooks/exhaustive-deps": "warn",
+      // React Compiler readiness rules (new in eslint-plugin-react-hooks 6+).
+      // The compiler is not enabled here and the flagged game code predates
+      // these rules, so surface them without blocking commits.
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/refs": "warn",
+      "react-hooks/immutability": "warn",
+      "react-hooks/purity": "warn",
     },
   },
   {

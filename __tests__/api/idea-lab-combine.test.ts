@@ -1,20 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock Gemini - the route uses getGenAI() which checks env var
-vi.mock('@google/generative-ai', () => ({
-  GoogleGenerativeAI: class MockGemini {
-    getGenerativeModel() {
-      return {
-        generateContent: vi.fn().mockResolvedValue({
-          response: {
-            text: () => JSON.stringify({
-              name: 'Temporal Love',
-              emoji: '???',
-              description: 'Love that transcends the boundaries of time.',
-            }),
-          },
+// Mock Gemini - the route uses getGemini() which checks env var
+vi.mock('@google/genai', () => ({
+  ThinkingLevel: { MINIMAL: 'MINIMAL' },
+  GoogleGenAI: class MockGemini {
+    models = {
+      generateContent: vi.fn().mockResolvedValue({
+        text: JSON.stringify({
+          name: 'Temporal Love',
+          emoji: '???',
+          description: 'Love that transcends the boundaries of time.',
         }),
-      }
+      }),
     }
   },
 }))
@@ -113,7 +110,7 @@ describe('POST /api/idea-lab/combine', () => {
   })
 
   it('returns fallback on AI error', async () => {
-    // Remove env var so getGenAI() throws
+    // Remove env var so getGemini() throws
     delete process.env.GOOGLE_GEMINI_API_KEY
 
     const request = new Request('http://localhost/api/idea-lab/combine', {

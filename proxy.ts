@@ -55,10 +55,10 @@ function getClientIp(request: NextRequest): string {
 }
 
 // ---------------------------------------------------------------------------
-// Middleware
+// Proxy
 // ---------------------------------------------------------------------------
 
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
   // Periodic cleanup (non-blocking, runs inline)
   cleanupStaleEntries()
 

@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-const GEMINI_MODEL = 'gemini-2.0-flash'
-
-function getGenAI() {
-  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
-  if (!apiKey) throw new Error('GOOGLE_GEMINI_API_KEY not configured')
-  return new GoogleGenerativeAI(apiKey)
-}
+import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 
 interface DebateHistoryEntry {
   speaker: string
@@ -79,18 +71,18 @@ RULES:
 
 Respond with ONLY the argument text. No labels, no formatting, no speaker name prefix.`
 
-    const model = getGenAI().getGenerativeModel({
+    const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
-      generationConfig: {
+      contents: systemPrompt,
+      config: {
         temperature: 0.9,
         topP: 0.95,
         topK: 40,
         maxOutputTokens: 256,
+        ...MINIMAL_THINKING,
       },
     })
-
-    const result = await model.generateContent(systemPrompt)
-    const argument = result.response.text().trim()
+    const argument = (result.text ?? '').trim()
 
     return NextResponse.json({
       speaker: currentSpeaker,
