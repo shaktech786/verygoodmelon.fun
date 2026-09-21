@@ -2,7 +2,7 @@
 
 ## Core
 **Goal:** Users feel LESS ANXIOUS after visiting
-**Tech:** Next.js 15, TS strict, Tailwind v4, Gemini AI (invisible)
+**Tech:** Next.js 16, TS strict, Tailwind v4, Gemini AI (invisible)
 **Deploy:** Vercel, auto from `main`
 
 ## Quality Checklist

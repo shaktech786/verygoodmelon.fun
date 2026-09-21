@@ -65,13 +65,13 @@ It contains:
 
 ## Tech Stack
 
-- **Framework**: Next.js 15.5.4 (App Router + Turbopack)
+- **Framework**: Next.js 16 (App Router + Turbopack)
 - **Language**: TypeScript (strict mode)
 - **Styling**: Tailwind CSS v4 with custom CSS variables
-- **AI**: Google Gemini 2.0 Flash (primary), OpenAI (fallback)
+- **AI**: Google Gemini via `@google/genai` (primary; model ID lives only in `GEMINI_MODEL`, `lib/ai/gemini.ts`), OpenAI (fallback)
 - **Database**: Supabase (PostgreSQL) - for future game data
 - **Deployment**: Vercel (auto-deploy from `main` branch)
-- **Analytics**: Vercel Speed Insights
+- **Analytics**: Vercel Web Analytics + Speed Insights (cookieless) and first-party anonymous game events (`/api/game-events`). Must stay consistent with `/privacy`; honors DNT/GPC
 
 ---
 
@@ -150,7 +150,7 @@ Before shipping any feature:
 - Where deterministic behavior is clearer
 
 ### AI Best Practices
-- **Google Gemini 2.0 Flash**: Primary (fast, creative, invisible)
+- **Google Gemini** (`GEMINI_MODEL` in `lib/ai/gemini.ts`): Primary (fast, creative, invisible). Google retires model IDs, so never hardcode one in a route
 - **OpenAI**: Fallback/alternative
 - Always have deterministic fallback (seamlessly)
 - Cache responses when possible

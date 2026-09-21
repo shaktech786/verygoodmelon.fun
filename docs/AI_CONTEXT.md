@@ -47,7 +47,7 @@
 
 ## Tech Stack
 
-- **Framework:** Next.js 15.5.4 (App Router + Turbopack)
+- **Framework:** Next.js 16 (App Router + Turbopack)
 - **Language:** TypeScript (strict mode)
 - **Styling:** Tailwind CSS v4
 - **AI:** Google Gemini 2.0 Flash (invisible to users)

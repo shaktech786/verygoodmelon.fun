@@ -49,10 +49,10 @@ If any answer is "no" or "maybe" → Don't build it.
 
 ## Tech Stack
 
-- **Framework:** Next.js 15.5.4 (App Router + Turbopack)
+- **Framework:** Next.js 16 (App Router + Turbopack)
 - **Language:** TypeScript (strict mode)
 - **Styling:** Tailwind CSS v4
-- **AI:** Google Gemini 2.0 Flash (invisible to users)
+- **AI:** Google Gemini via `@google/genai`, model ID only in `lib/ai/gemini.ts` (invisible to users)
 - **Testing:** Vitest (real API tests, NO MOCKS)
 
 ---
