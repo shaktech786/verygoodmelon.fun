@@ -124,7 +124,11 @@ export function FeedbackButton() {
                       required
                       disabled={isSubmitting}
                       autoFocus
+                      aria-describedby="feedback-public-note"
                     />
+                    <p id="feedback-public-note" className="text-xs text-foreground/70 mt-2">
+                      Feedback is posted publicly, so please leave out anything personal.
+                    </p>
                     <p className="text-xs text-foreground/50 mt-2 hidden sm:block">
                       Tip: Press Cmd+Enter (Mac) or Ctrl+Enter (Windows) to submit
                     </p>

@@ -56,6 +56,13 @@ export function Footer() {
             </Link>
             <span className="text-foreground/20" aria-hidden="true">|</span>
             <Link
+              href="/terms"
+              className="text-xs text-foreground/40 hover:text-foreground/60 transition-colors"
+            >
+              Terms
+            </Link>
+            <span className="text-foreground/20" aria-hidden="true">|</span>
+            <Link
               href="/analytics"
               className="text-xs text-foreground/40 hover:text-foreground/60 transition-colors"
             >
