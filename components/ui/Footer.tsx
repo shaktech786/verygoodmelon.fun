@@ -46,7 +46,12 @@ export function Footer() {
             </p>
           )}
           <p className="text-primary-light">Made with purpose. Every pixel has meaning.</p>
-          <p className="text-primary-light">© {new Date().getFullYear()} VeryGoodMelon.Fun</p>
+          <p className="text-primary-light">
+            © {new Date().getFullYear()} VeryGoodMelon.Fun · Built by{' '}
+            <a href="https://shak-tech.com" target="_blank" rel="noopener" className="underline hover:text-foreground transition-colors">
+              ShakTech Labs
+            </a>
+          </p>
           <div className="flex items-center gap-3">
             <Link
               href="/privacy"
