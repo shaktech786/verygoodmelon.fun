@@ -1,20 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { vi } from 'vitest'
 
-// Mock Supabase
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    from: () => ({
-      select: () => ({
-        order: () => ({
-          limit: () => Promise.resolve({ data: [], error: null }),
-        }),
-      }),
-      insert: () => Promise.resolve({ data: null, error: null }),
-    }),
-  }),
-}))
-
 // Mock dynamic import of WordCloud
 vi.mock('@isoterik/react-word-cloud', () => ({
   default: ({ words }: { words: Array<{ text: string; value: number }> }) => (
@@ -36,7 +22,7 @@ describe('LastWords', () => {
 
   it('renders submit button', () => {
     render(<LastWords />)
-    expect(screen.getByRole('button', { name: /Leave Your Mark/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Leave these words/i })).toBeInTheDocument()
   })
 
   it('shows character count', () => {
@@ -51,16 +37,16 @@ describe('LastWords', () => {
     expect(screen.getByText(/11\/500/)).toBeInTheDocument()
   })
 
-  it('shows reflection prompt', () => {
+  it('changes the question only when asked', () => {
     render(<LastWords />)
-    // Should have the prompt section
-    const prompts = screen.getAllByText(/What would you/i)
-    expect(prompts.length).toBeGreaterThan(0)
+    expect(screen.getByText('What do you want the people you love to know?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Another question' }))
+    expect(screen.getByText('What took you too long to learn?')).toBeInTheDocument()
   })
 
   it('disables submit when textarea is empty', () => {
     render(<LastWords />)
-    const button = screen.getByRole('button', { name: /Leave Your Mark/i })
+    const button = screen.getByRole('button', { name: /Leave these words/i })
     expect(button).toBeDisabled()
   })
 
@@ -68,7 +54,7 @@ describe('LastWords', () => {
     render(<LastWords />)
     const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'My final words' } })
-    const button = screen.getByRole('button', { name: /Leave Your Mark/i })
+    const button = screen.getByRole('button', { name: /Leave these words/i })
     expect(button).not.toBeDisabled()
   })
 })

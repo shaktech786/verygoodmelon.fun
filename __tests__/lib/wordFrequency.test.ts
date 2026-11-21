@@ -27,6 +27,14 @@ describe('countWords', () => {
     expect(countWords(['We’re fine, 2024 forever']).map((w) => w.word)).toEqual(['fine', 'forever', 'we\'re'])
   })
 
+  it('counts how many people wrote a word, so repeating it does not make it bigger', () => {
+    expect(countWords(['love love love love', 'love you'])).toEqual([{ word: 'love', count: 2 }])
+  })
+
+  it('never draws swearing or abuse', () => {
+    expect(countWords(['Fuck cancer', 'sh1t happens', 'faggots']).map((w) => w.word)).toEqual(['cancer', 'happens'])
+  })
+
   it('returns at most 50 words', () => {
     const many = Array.from({ length: 80 }, (_, i) => `word${String.fromCharCode(97 + (i % 26))}${i}`)
     expect(countWords(many)).toHaveLength(50)

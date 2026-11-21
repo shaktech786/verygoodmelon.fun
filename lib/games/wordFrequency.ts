@@ -1,3 +1,5 @@
+import { isCloudSafeWord } from '@/lib/games/community-words/moderation'
+
 export interface WordFrequency {
   word: string
   count: number
@@ -17,7 +19,8 @@ const STOP_WORDS = new Set([
 ])
 
 /**
- * Counts the most common meaningful words across submissions, in any script.
+ * Counts how many submissions use each meaningful word, in any script. A word
+ * repeated within one submission counts once, so no one can make it bigger.
  */
 export function countWords(submissions: string[]): WordFrequency[] {
   const counts = new Map<string, number>()
@@ -32,8 +35,9 @@ export function countWords(submissions: string[]): WordFrequency[] {
       .split(/\s+/)
       .map((word) => word.replace(/^'+|'+$/g, ''))
 
-    for (const word of words) {
+    for (const word of new Set(words)) {
       if (word.length < MIN_WORD_LENGTH || STOP_WORDS.has(word) || /^\p{N}+$/u.test(word)) continue
+      if (!isCloudSafeWord(word)) continue
       counts.set(word, (counts.get(word) ?? 0) + 1)
     }
   }

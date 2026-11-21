@@ -1,20 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { vi } from 'vitest'
 
-// Mock Supabase
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    from: () => ({
-      select: () => ({
-        order: () => ({
-          limit: () => Promise.resolve({ data: [], error: null }),
-        }),
-      }),
-      insert: () => Promise.resolve({ data: null, error: null }),
-    }),
-  }),
-}))
-
 vi.mock('@isoterik/react-word-cloud', () => ({
   default: ({ words }: { words: Array<{ text: string; value: number }> }) => (
     <div data-testid="word-cloud">{words?.map(w => w.text).join(', ')}</div>
@@ -33,15 +19,16 @@ describe('FirstWords', () => {
     expect(screen.getByRole('textbox')).toBeInTheDocument()
   })
 
-  it('renders Share Your Vision button', () => {
+  it('renders the Speak button', () => {
     render(<FirstWords />)
-    expect(screen.getByRole('button', { name: /Share Your Vision/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Speak$/i })).toBeInTheDocument()
   })
 
-  it('shows ethereal prompt text', () => {
+  it('changes the question only when asked', () => {
     render(<FirstWords />)
-    // Should show one of the contemplative prompts
-    expect(screen.getByRole('textbox')).toBeInTheDocument()
+    expect(screen.getByText('Who do you hope is there?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Another question' }))
+    expect(screen.getByText('What do you notice first?')).toBeInTheDocument()
   })
 
   it('shows character count starting at 0', () => {
@@ -58,7 +45,7 @@ describe('FirstWords', () => {
 
   it('disables submit when empty', () => {
     render(<FirstWords />)
-    const button = screen.getByRole('button', { name: /Share Your Vision/i })
+    const button = screen.getByRole('button', { name: /^Speak$/i })
     expect(button).toBeDisabled()
   })
 
@@ -66,7 +53,7 @@ describe('FirstWords', () => {
     render(<FirstWords />)
     const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'I see light' } })
-    const button = screen.getByRole('button', { name: /Share Your Vision/i })
+    const button = screen.getByRole('button', { name: /^Speak$/i })
     expect(button).not.toBeDisabled()
   })
 })

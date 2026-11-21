@@ -1,347 +1,187 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
-import { CommunityWordCloud } from '@/components/games/CommunityWordCloud'
-import { countWords, type WordFrequency } from '@/lib/games/wordFrequency'
+import { CarePanel, CloudSection, CopyWordsButton, WritingForm } from '@/components/games/community-words/WritingParts'
+import { useCommunityWords } from '@/lib/games/community-words/useCommunityWords'
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
-// Rotating prompts to inspire deeper reflection
-const REFLECTION_PROMPTS = [
-  "What would you want your children to remember?",
-  "What truth took you too long to learn?",
-  "What would you tell your younger self?",
-  "What do you hope people say about you?",
-  "What was your greatest act of courage?",
-  "What love do you want to be remembered?",
-  "What would you do differently?",
-  "What made your life worth living?",
+const PROMPTS = [
+  'What do you want the people you love to know?',
+  'What took you too long to learn?',
+  'What would you tell your younger self?',
+  'What are you most grateful for?',
+  'What made it worth it?',
+  'What would you want no one to worry about?',
+  'What small thing did you love most?',
+  'Who would you thank?',
+] as const
+
+const FLICKER: Keyframe[] = [
+  { transform: 'scale(1, 1) rotate(-1.5deg)' },
+  { transform: 'scale(0.96, 1.06) rotate(1deg)' },
+  { transform: 'scale(1.02, 0.97) rotate(-0.5deg)' },
 ]
 
-type CloudState =
-  | { status: 'loading' }
-  | { status: 'unavailable' }
-  | { status: 'ready'; words: WordFrequency[]; total: number }
+/** A small candle that burns while the player writes and goes out when they let it. */
+function Candle({ lit }: { lit: boolean }) {
+  const flame = useRef<HTMLDivElement>(null)
+  const reduceMotion = useReducedMotion()
+
+  useEffect(() => {
+    if (!lit || reduceMotion || !flame.current?.animate) return
+    const flicker = flame.current.animate(FLICKER, {
+      duration: 2600,
+      iterations: Infinity,
+      direction: 'alternate',
+      easing: 'ease-in-out',
+    })
+    return () => flicker.cancel()
+  }, [lit, reduceMotion])
+
+  return (
+    <div className="relative mx-auto h-24 w-16" aria-hidden="true">
+      <div
+        className={`absolute left-1/2 top-0 h-16 w-16 -translate-x-1/2 rounded-full transition-opacity duration-1000 ${lit ? 'opacity-60' : 'opacity-0'}`}
+        style={{ background: 'radial-gradient(circle, color-mix(in srgb, var(--warm) 55%, transparent), transparent 65%)' }}
+      />
+      <div
+        ref={flame}
+        className={`absolute left-1/2 top-4 -ml-2 h-7 w-4 origin-bottom transition-opacity duration-1000 ${lit ? 'opacity-100' : 'opacity-0'}`}
+        style={{
+          borderRadius: '50% 50% 45% 45% / 65% 65% 35% 35%',
+          background: 'radial-gradient(circle at 50% 75%, var(--melon-yellow), var(--warm) 55%, var(--melon-orange))',
+        }}
+      />
+      <div className="absolute left-1/2 top-[2.6rem] h-2 w-0.5 -translate-x-1/2 bg-foreground/60" />
+      <div className="absolute bottom-0 left-1/2 h-12 w-8 -translate-x-1/2 rounded-t-sm border border-card-border bg-accent-soft" />
+    </div>
+  )
+}
 
 export default function LastWords() {
-  const [input, setInput] = useState('')
-  const [submittedWords, setSubmittedWords] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [cloud, setCloud] = useState<CloudState>({ status: 'loading' })
-  const [currentPromptIndex, setCurrentPromptIndex] = useState(0)
-  const [reflection, setReflection] = useState<string | null>(null)
-  const [reflectionLoading, setReflectionLoading] = useState(false)
-  const [reflectionVisible, setReflectionVisible] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const reflectionRequest = useRef(0)
-  const thanksRef = useRef<HTMLHeadingElement>(null)
+  const { submitted, stored, cloud, reflection, care, submit, reset } = useCommunityWords('last-words')
+  const [candleOut, setCandleOut] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const thanksRef = useRef<HTMLHeadingElement>(null)
+  const goodnightRef = useRef<HTMLParagraphElement>(null)
   const returningToWrite = useRef(false)
-  const supabase = createClient()
 
-  // Prompts drift while the page is idle, and hold still once the player is writing
-  const isWriting = input.length > 0
+  // Keep keyboard and screen-reader users oriented when the view changes
   useEffect(() => {
-    if (isWriting) return
-    const interval = setInterval(() => {
-      setCurrentPromptIndex(prev => (prev + 1) % REFLECTION_PROMPTS.length)
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [isWriting])
-
-  // Keep keyboard and screen-reader users oriented when the view swaps
-  useEffect(() => {
-    if (submittedWords !== null) {
+    if (submitted !== null) {
       thanksRef.current?.focus()
     } else if (returningToWrite.current) {
       returningToWrite.current = false
       textareaRef.current?.focus()
     }
-  }, [submittedWords])
+  }, [submitted])
 
-  const loadWordCloud = async () => {
-    setCloud({ status: 'loading' })
-    try {
-      const { data, error } = await supabase
-        .from('last_words')
-        .select('words')
-        .order('created_at', { ascending: false })
-        .limit(1000)
+  useEffect(() => {
+    if (candleOut) goodnightRef.current?.focus()
+  }, [candleOut])
 
-      if (error || !data) throw error
-
-      setCloud({
-        status: 'ready',
-        words: countWords(data.map((submission: { words: string }) => submission.words)),
-        total: data.length,
-      })
-    } catch {
-      setCloud({ status: 'unavailable' })
-    }
-  }
-
-  const fetchReflection = async (message: string) => {
-    const request = ++reflectionRequest.current
-    setReflectionLoading(true)
-    try {
-      const res = await fetch('/api/last-words/reflect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
-      })
-      if (res.ok && request === reflectionRequest.current) {
-        const data = await res.json()
-        if (data.reflection) {
-          setReflection(data.reflection)
-          // Delay visibility for fade-in effect
-          setTimeout(() => setReflectionVisible(true), 100)
-        }
-      }
-    } catch {
-      // Graceful degradation - show nothing on failure
-    } finally {
-      if (request === reflectionRequest.current) setReflectionLoading(false)
-    }
-  }
-
-  const handleCopyReflection = async () => {
-    if (!reflection) return
-    try {
-      await navigator.clipboard.writeText(reflection)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Clipboard unavailable - silent fail
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    const words = input.trim()
-    if (!words || input.length > 500 || loading) {
-      return
-    }
-
-    setLoading(true)
-
-    // The reflection never depends on the words being stored: if they can't
-    // be saved, the player still gets their moment, without the shared cloud.
-    let stored = false
-    try {
-      const { error } = await supabase
-        .from('last_words')
-        .insert([{ words }])
-      stored = !error
-    } catch {
-      stored = false
-    }
-
-    setSaved(stored)
-    setSubmittedWords(words)
-    setLoading(false)
-    fetchReflection(words)
-    // A failed save means the store is unreachable; reading it would only keep
-    // a loading card on screen through several retries before it disappears.
-    if (stored) {
-      loadWordCloud()
-    } else {
-      setCloud({ status: 'unavailable' })
-    }
-  }
-
-  const handleReflectAgain = () => {
-    reflectionRequest.current++
+  const writeAnother = () => {
     returningToWrite.current = true
-    setSubmittedWords(null)
-    setInput('')
-    setReflection(null)
-    setReflectionVisible(false)
-    setReflectionLoading(false)
-    setCopied(false)
+    setCandleOut(false)
+    reset()
   }
 
-  if (submittedWords !== null) {
-    const otherVoices = cloud.status === 'ready' && saved ? cloud.total - 1 : null
-
-    return (
-      <div className="space-y-6">
-        {/* Thank you message */}
-        <div className="bg-card-bg border border-card-border rounded-lg p-6 text-center">
-          <h2
-            ref={thanksRef}
-            tabIndex={-1}
-            className="text-2xl font-semibold mb-2 text-foreground focus:outline-none"
-          >
-            Thank you for sharing
-          </h2>
-          <p className="text-primary-light">
-            {otherVoices === null
-              ? 'Take a moment with what you wrote.'
-              : otherVoices > 0
-                ? `Your words have joined ${otherVoices.toLocaleString()} other ${otherVoices === 1 ? 'voice' : 'voices'}`
-                : 'Yours are the first words here.'}
-          </p>
-          <blockquote className="mt-4 text-foreground text-base sm:text-lg whitespace-pre-wrap break-words">
-            &ldquo;{submittedWords}&rdquo;
-          </blockquote>
-        </div>
-
-        {/* Reflection */}
-        <div aria-live="polite">
-          {reflectionLoading && (
-            <div className="text-center py-4">
-              <span className="text-primary-light text-sm animate-pulse">
-                Reflecting on your words...
-              </span>
-            </div>
-          )}
-          {reflection && (
-            <div
-              className={`
-                bg-card-bg border border-card-border rounded-lg p-6
-                transition-opacity duration-700 ease-out
-                ${reflectionVisible ? 'opacity-100' : 'opacity-0'}
-              `}
-              style={{ transitionProperty: 'opacity' }}
-            >
-              <p className="text-foreground/80 text-center italic leading-relaxed">
-                {reflection}
-              </p>
-              <div className="mt-3 flex justify-center">
-                <button
-                  onClick={handleCopyReflection}
-                  aria-label={copied ? 'Copied to clipboard' : 'Copy reflection to clipboard'}
-                  className="
-                    text-xs text-primary-light hover:text-foreground
-                    transition-colors duration-75
-                    px-3 py-1 rounded
-                    hover:bg-foreground/5
-                    focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2
-                  "
-                >
-                  {copied ? 'Copied' : 'Copy'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Word Cloud */}
-        {cloud.status !== 'unavailable' && (
-          <div className="bg-card-bg border border-card-border rounded-lg p-4 sm:p-8">
-            <h3 className="text-xl font-semibold mb-6 text-center text-foreground">
-              What Matters Most to Humanity
-            </h3>
-
-            {cloud.status === 'loading' && (
-              <div className="text-center text-primary-light py-12">
-                Gathering words...
-              </div>
-            )}
-
-            {cloud.status === 'ready' && cloud.words.length === 0 && (
-              <div className="text-center text-primary-light py-12">
-                The first words are still being gathered. Come back soon.
-              </div>
-            )}
-
-            {cloud.status === 'ready' && cloud.words.length > 0 && (
-              <>
-                <CommunityWordCloud words={cloud.words} label="Most common last words" />
-                <div className="mt-6 text-center text-sm text-primary-light">
-                  <p>The more often a word is shared, the larger it appears</p>
-                  <p className="mt-1">
-                    From {cloud.total.toLocaleString()} {cloud.total === 1 ? 'submission' : 'submissions'}
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Share another */}
-        <div className="text-center">
-          <button
-            onClick={handleReflectAgain}
-            className="px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
-          >
-            Reflect Again
-          </button>
-        </div>
-      </div>
-    )
-  }
+  const others = cloud.status === 'ready' && stored ? cloud.total - 1 : null
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-gradient-to-b from-card-bg to-card-bg/80 border border-card-border rounded-lg p-6 sm:p-8 relative overflow-hidden">
-        {/* Subtle decorative element */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-foreground/10 to-transparent" />
+    <div className="max-w-2xl mx-auto space-y-5">
+      <div className="bg-card-bg border border-card-border rounded-lg p-5 sm:p-8">
+        <Candle lit={!candleOut} />
 
-        <div className="mb-6 text-center">
-          <div className="text-4xl mb-4" aria-hidden="true">🕯️</div>
-          <h2 className="text-xl sm:text-2xl font-semibold mb-3 text-foreground">
-            If you could leave one final message...
-          </h2>
-          <p className="text-primary-light text-sm sm:text-base">
-            What would you want the world to know?
-          </p>
-        </div>
-
-        {/* Rotating reflection prompt */}
-        <div className="mb-4 p-3 bg-accent/5 border border-accent/10 rounded-lg text-center">
-          <p className="text-sm text-primary-light italic" key={currentPromptIndex}>
-            <span aria-hidden="true">💭 </span>{REFLECTION_PROMPTS[currentPromptIndex]}
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                  handleSubmit(e)
-                }
-              }}
-              placeholder="Your final words to the world..."
-              className="
-                w-full min-h-[150px] px-4 py-3
-                border border-card-border rounded-lg
-                bg-card-bg/50 text-foreground
-                focus:outline-none focus:ring-2 focus:ring-accent/50
-                resize-vertical
-                text-base sm:text-lg
-                placeholder:text-foreground/50
-              "
-              maxLength={500}
-              disabled={loading}
-              aria-label="Enter your last words"
+        {submitted === null ? (
+          <div className="mt-4">
+            <WritingForm
+              prompts={PROMPTS}
+              label="Your final words"
+              placeholder="Write it the way you would say it…"
+              submitLabel="Leave these words"
+              onSubmit={submit}
+              textareaRef={textareaRef}
             />
-            <div className="mt-2 flex justify-between items-center text-sm text-primary-light">
-              <span className="text-xs hidden sm:inline">Cmd/Ctrl + Enter to submit</span>
-              <span className="ml-auto">{input.length}/500 characters</span>
-            </div>
+            <p className="mt-4 text-center text-sm text-primary-light">
+              Anonymous. Nothing is asked of you but a few honest words.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 text-center">
+            <h2 ref={thanksRef} tabIndex={-1} className="text-xl sm:text-2xl font-semibold text-foreground focus:outline-none">
+              Thank you for writing this
+            </h2>
+            <p className="mt-1 text-primary-light">
+              {others === null
+                ? 'Take a moment with what you wrote.'
+                : others > 0
+                  ? `It joins what ${others.toLocaleString()} ${others === 1 ? 'other person' : 'others'} would say.`
+                  : 'Yours are the first words here.'}
+            </p>
+            <blockquote className="mt-5 text-lg sm:text-xl text-foreground whitespace-pre-wrap break-words leading-relaxed">
+              &ldquo;{submitted}&rdquo;
+            </blockquote>
+          </div>
+        )}
+      </div>
+
+      {submitted !== null && (
+        <>
+          {care && <CarePanel />}
+
+          <div aria-live="polite">
+            {reflection.pending && (
+              <p className="text-center text-sm text-primary-light py-2">Sitting with your words…</p>
+            )}
+            {reflection.text && (
+              <p className="animate-fade px-2 sm:px-6 text-center text-foreground/85 italic leading-relaxed text-base sm:text-lg">
+                {reflection.text}
+              </p>
+            )}
           </div>
 
-          <Button
-            type="submit"
-            disabled={loading || !input.trim() || input.length > 500}
-            variant="primary"
-            className="w-full px-6 py-3 font-medium text-lg"
-          >
-            {loading ? 'Submitting...' : 'Leave Your Mark'}
-          </Button>
-        </form>
+          <CloudSection
+            cloud={cloud}
+            heading="What others would say at the end"
+            label="Most common last words"
+            source={(total) => `From ${total.toLocaleString()} ${total === 1 ? 'person' : 'people'}.`}
+          />
 
-        <div className="mt-6 text-center text-sm text-primary-light">
-          <p>Anonymous. Eternal. Part of something bigger.</p>
-        </div>
-      </div>
+          {!care && (
+            <section aria-labelledby="final-word-now" className="bg-card-bg border border-card-border rounded-lg p-5 sm:p-6 text-center">
+              <h3 id="final-word-now" className="text-lg font-semibold text-foreground">These don&apos;t have to wait</h3>
+              <p className="mt-2 text-foreground/80 leading-relaxed">
+                Most last words are things we could say today. Is there someone who would like to hear yours now?
+              </p>
+              <div className="mt-4 flex justify-center">
+                <CopyWordsButton words={submitted} />
+              </div>
+            </section>
+          )}
+
+          <div className="text-center space-y-4">
+            {candleOut ? (
+              <p ref={goodnightRef} tabIndex={-1} className="text-foreground/85 leading-relaxed focus:outline-none">
+                The candle is out. What you wrote is still yours to carry, or to say.
+              </p>
+            ) : (
+              // Putting out a flame is the wrong picture to offer someone who may be in danger
+              !care && (
+                <Button variant="primary" onClick={() => setCandleOut(true)}>
+                  Blow out the candle
+                </Button>
+              )
+            )}
+            <div>
+              <Button variant="ghost" onClick={writeAnother}>
+                Write another
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

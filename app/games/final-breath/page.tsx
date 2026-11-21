@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'The Final Word | VeryGoodMelon.Fun',
-  description: 'What would your last words be? Share your final message and see what others have said in a beautiful word cloud.'
+  description: 'If you had one last thing to say to the world, what would it be? Write it, hear it back, and see what others would say.'
 }
 
 export default function LastWordsPage() {
@@ -20,7 +20,7 @@ export default function LastWordsPage() {
               The Final Word
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl mx-auto">
-              What would your final words be? Share your message and discover what matters most to humanity.
+              If you had one last thing to say to the world, what would it be?
             </p>
           </div>
 

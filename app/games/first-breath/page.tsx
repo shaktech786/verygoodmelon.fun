@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'The Awakening | VeryGoodMelon.Fun',
-  description: 'What would your first words be after crossing over? Share your awakening and see what others would say in a beautiful word cloud.'
+  description: 'Imagine the moment after your life ends. Say your first words, hear a quiet welcome, and come back to today a little lighter.'
 }
 
 export default function FirstBreathPage() {
@@ -20,7 +20,7 @@ export default function FirstBreathPage() {
               The Awakening
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl mx-auto">
-              You&apos;ve just crossed over. What are your first words?
+              Imagine the moment after your life ends. What are the first words you say?
             </p>
           </div>
 
