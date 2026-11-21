@@ -15,8 +15,7 @@ export interface GameConfig {
   hook: string
   cardImage: string
   cardAlt: string
-  difficulty: 'easy' | 'medium' | 'hard'
-  category: 'Action' | 'Puzzle' | 'Wisdom' | 'Thought' | 'Creative'
+  category: 'Calm' | 'Reflect' | 'Play'
   accentColor: 'accent' | 'success' | 'warning' | 'purple'
   isShowcase: boolean
   tags: string[]
@@ -32,8 +31,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     hook: 'Guess the word, discover something good about the world',
     cardImage: '/games/hope-daily/card.svg',
     cardAlt: 'The Optimist - Hope Daily Joker Card',
-    difficulty: 'easy',
-    category: 'Puzzle',
+    category: 'Play',
     accentColor: 'success',
     isShowcase: true,
     tags: ['daily', 'word-game', 'uplifting'],
@@ -47,8 +45,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     hook: 'Ask life questions to history\'s greatest thinkers',
     cardImage: '/games/timeless-minds/card.svg',
     cardAlt: 'The Sage - Timeless Minds Joker Card',
-    difficulty: 'easy',
-    category: 'Wisdom',
+    category: 'Reflect',
     accentColor: 'accent',
     isShowcase: true,
     tags: ['ai', 'therapeutic', 'conversation'],
@@ -62,8 +59,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     hook: 'Vote on impossible dilemmas and see how others chose',
     cardImage: '/games/hard-choices/card.svg',
     cardAlt: 'The Dilemma - Hard Choices Joker Card',
-    difficulty: 'medium',
-    category: 'Thought',
+    category: 'Reflect',
     accentColor: 'purple',
     isShowcase: true,
     tags: ['voting', 'ethics', 'community'],
@@ -77,8 +73,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     hook: 'Write what you\'d say at the end and read others\' words',
     cardImage: '/games/last-words/card.svg',
     cardAlt: 'The Final Word - Last Words Joker Card',
-    difficulty: 'easy',
-    category: 'Thought',
+    category: 'Reflect',
     accentColor: 'accent',
     isShowcase: true,
     tags: ['reflection', 'community', 'philosophical'],
@@ -92,8 +87,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     hook: 'A game that rewards you for not rushing',
     cardImage: '/games/the-unrusher/card.svg',
     cardAlt: 'The Patient One - The Unrusher Joker Card',
-    difficulty: 'easy',
-    category: 'Thought',
+    category: 'Calm',
     accentColor: 'success',
     isShowcase: true,
     tags: ['meditation', 'calm', 'mindfulness'],
@@ -107,8 +101,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     hook: 'Imagine waking up in the afterlife and speak first',
     cardImage: '/games/first-words/card.svg',
     cardAlt: 'The Awakening - First Words Joker Card',
-    difficulty: 'easy',
-    category: 'Thought',
+    category: 'Reflect',
     accentColor: 'purple',
     isShowcase: true,
     tags: ['reflection', 'community', 'philosophical', 'afterlife'],
@@ -122,8 +115,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     hook: 'Mix two ideas together and see what emerges',
     cardImage: '/games/idea-lab/card.svg',
     cardAlt: 'The Alchemist - Idea Lab Joker Card',
-    difficulty: 'easy',
-    category: 'Creative',
+    category: 'Play',
     accentColor: 'warning',
     isShowcase: true,
     tags: ['ai', 'creative', 'philosophical', 'exploration'],
@@ -137,8 +129,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     hook: 'Collect thought cards and battle logical fallacies',
     cardImage: '/games/thought-pockets/card.svg',
     cardAlt: 'The Philosopher - Thought Pockets Joker Card',
-    difficulty: 'medium',
-    category: 'Thought',
+    category: 'Play',
     accentColor: 'purple',
     isShowcase: true,
     tags: ['deckbuilder', 'roguelike', 'philosophy', 'strategy'],
@@ -152,8 +143,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     hook: 'Breathe along with animated patterns that calm you down',
     cardImage: '/games/breathing-patterns/card.svg',
     cardAlt: 'The Harmonist - Breathing Patterns Joker Card',
-    difficulty: 'easy',
-    category: 'Thought',
+    category: 'Calm',
     accentColor: 'success',
     isShowcase: true,
     tags: ['meditation', 'breathing', 'calm', 'mindfulness', 'anxiety-relief'],
@@ -167,8 +157,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     hook: 'Plant seeds of thought and watch your garden respond',
     cardImage: '/games/calm-garden/card.svg',
     cardAlt: 'The Gardener - Calm Garden Joker Card',
-    difficulty: 'easy',
-    category: 'Creative',
+    category: 'Calm',
     accentColor: 'success',
     isShowcase: true,
     tags: ['creative', 'meditation', 'ai', 'open-ended', 'calm'],
@@ -182,8 +171,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     hook: 'Play an arcade game that rewrites its own rules',
     cardImage: '/games/cascade/card.svg',
     cardAlt: 'The Shapeshifter - Cascade Joker Card',
-    difficulty: 'medium',
-    category: 'Action',
+    category: 'Play',
     accentColor: 'purple',
     isShowcase: true,
     tags: ['ai', 'arcade', 'unique', 'creative', 'retro'],
@@ -197,8 +185,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     hook: 'Pick two people and a topic, then watch them argue it out',
     cardImage: '/games/mind-debate/card.svg',
     cardAlt: 'The Arena - Mind Debate Joker Card',
-    difficulty: 'easy',
-    category: 'Thought',
+    category: 'Reflect',
     accentColor: 'accent',
     isShowcase: true,
     tags: ['ai', 'debate', 'philosophical', 'creative'],
@@ -221,16 +208,3 @@ export function getGameBySlug(slug: string): GameConfig | undefined {
   return ALL_GAMES.find((game) => game.slug === slug)
 }
 
-/**
- * Get games by category
- */
-export function getGamesByCategory(category: GameConfig['category']): GameConfig[] {
-  return ALL_GAMES.filter((game) => game.category === category)
-}
-
-/**
- * Get games by tag
- */
-export function getGamesByTag(tag: string): GameConfig[] {
-  return ALL_GAMES.filter((game) => game.tags.includes(tag))
-}

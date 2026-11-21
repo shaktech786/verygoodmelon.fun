@@ -7,6 +7,7 @@ import { SHOWCASE_GAMES } from '@/lib/games/config'
 import type { GameConfig } from '@/lib/games/config'
 import { usePresence } from '@/lib/hooks/usePresence'
 import { useDailyWisdom } from '@/lib/hooks/useDailyWisdom'
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
 /**
  * Get today's featured game index (rotates daily, deterministic)
@@ -19,22 +20,12 @@ function getDailyFeaturedIndex(): number {
   return dayOfYear % SHOWCASE_GAMES.length
 }
 
-/** Category display order */
-const CATEGORY_ORDER: GameConfig['category'][] = [
-  'Thought',
-  'Wisdom',
-  'Creative',
-  'Puzzle',
-  'Action',
-]
+const CATEGORY_ORDER: GameConfig['category'][] = ['Calm', 'Reflect', 'Play']
 
-/** Category descriptions -- one line each */
-const CATEGORY_DESCRIPTIONS: Record<GameConfig['category'], string> = {
-  Thought: 'Explore big questions and see things differently',
-  Wisdom: 'Learn from the greatest minds in history',
-  Creative: 'Make, combine, and grow something new',
-  Puzzle: 'Playful challenges with a positive twist',
-  Action: 'Fast-paced games that keep surprising you',
+const CATEGORY_HEADINGS: Record<GameConfig['category'], { title: string; description: string }> = {
+  Calm: { title: 'Slow down', description: 'Quiet games for when your mind is busy' },
+  Reflect: { title: 'Reflect', description: 'Big questions, held gently' },
+  Play: { title: 'Play', description: 'Thoughtful fun to get lost in' },
 }
 
 /**
@@ -51,6 +42,7 @@ export default function Home() {
   const [mounted, setMounted] = useState(false)
   const [mousePosition, setMousePosition] = useState({ x: 0.5, y: 0.5 })
   const containerRef = useRef<HTMLDivElement>(null)
+  const reduceMotion = useReducedMotion()
   const { count: presenceCount, isLoaded: presenceLoaded } = usePresence()
   const { wisdom, isLoaded: wisdomLoaded } = useDailyWisdom()
   const dailyFeaturedIndex = getDailyFeaturedIndex()
@@ -82,7 +74,7 @@ export default function Home() {
 
   // Subtle parallax on mouse move
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!containerRef.current) return
+    if (reduceMotion || !containerRef.current) return
     const rect = containerRef.current.getBoundingClientRect()
     const x = (e.clientX - rect.left) / rect.width
     const y = (e.clientY - rect.top) / rect.height
@@ -122,7 +114,7 @@ export default function Home() {
           style={{ transitionDelay: mounted ? '400ms' : '0ms' }}
           aria-live="polite"
         >
-          <p className="text-primary-light/50 text-xs sm:text-sm flex items-center justify-center gap-2">
+          <p className="text-primary-light text-xs sm:text-sm flex items-center justify-center gap-2">
             <span
               className="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse-slow"
               aria-hidden="true"
@@ -160,12 +152,12 @@ export default function Home() {
               >
                 <h2
                   id={`category-${category.toLowerCase()}`}
-                  className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-primary-light/60"
+                  className="text-sm font-semibold uppercase tracking-wider text-foreground"
                 >
-                  {category}
+                  {CATEGORY_HEADINGS[category].title}
                 </h2>
-                <p className="text-xs text-primary-light/40 mt-0.5">
-                  {CATEGORY_DESCRIPTIONS[category]}
+                <p className="text-sm text-primary-light mt-0.5">
+                  {CATEGORY_HEADINGS[category].description}
                 </p>
               </div>
 
@@ -183,7 +175,7 @@ export default function Home() {
                     <div
                       key={game.id}
                       className={`
-                        transition-all duration-700 ease-out
+                        h-full transition-all duration-700 ease-out
                         ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}
                       `}
                       style={{
@@ -191,11 +183,12 @@ export default function Home() {
                         transform: mounted ? `translate(${offsetX}px, ${offsetY}px)` : undefined,
                       }}
                     >
-                      <div className="animate-float" style={{ animationDelay: `${currentIndex * 0.4}s` }}>
+                      <div className="animate-float h-full" style={{ animationDelay: `${currentIndex * 0.4}s` }}>
                         <GameCardShowcase
                           game={game}
                           priority={currentIndex < 3}
                           isFeatured={isFeatured}
+                          showCategory={false}
                         />
                       </div>
                     </div>
@@ -221,7 +214,7 @@ export default function Home() {
           style={{ transitionDelay: mounted ? '1200ms' : '0ms' }}
         >
           <div className="border-t border-card-border pt-6">
-            <p className="text-primary-light/50 text-xs sm:text-sm italic leading-relaxed">
+            <p className="text-primary-light text-sm italic leading-relaxed">
               {wisdom}
             </p>
           </div>

@@ -22,7 +22,7 @@ export default function GamesPage() {
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {SHOWCASE_GAMES.map((game, index) => (
           <li key={game.id}>
-            <GameCardShowcase game={game} priority={index < 4} />
+            <GameCardShowcase game={game} priority={index < 4} headingLevel="h2" />
           </li>
         ))}
       </ul>
