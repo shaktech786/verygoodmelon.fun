@@ -5,33 +5,45 @@ import { RoundReport } from '@/types/thought-pockets'
 import { playTones } from '@/components/games/gentleCues'
 import { TYPE_COLORS } from './CardFace'
 
-const STEP_MS = 340
-const CONCLUSION_MS = 640
-const TOTAL_MS = 560
-const ADJUST_MS = 560
-const LAND_MS = 700
+const STEP_MS = 260
+const CONCLUSION_MS = 520
+const MULT_BASE_MS = 160
+const MULT_STEP_MS = 120
+const MULT_STEPS_SHOWN = 4
+const TOTAL_MS = 520
+const ADJUST_MS = 480
+const LAND_MS = 480
 const BIG_HIT = 20
 const HUGE_HIT = 40
-const AFTER_MS = 600
-const SHIFT_MS = 1100
+const BIG_EXTRA_MS = 200
+const HUGE_EXTRA_MS = 350
+const AFTER_MS = 500
+const SHIFT_MS = 1000
 const LOUDNESS = 0.05
+/** The pitch of the Multiplier's tone: a gentle rise, a little under an octave from ×1 to ×4. */
+const MULT_TONE = { hz: 330, rise: 0.4, maxHz: 640 }
 
-type Beat = 'step' | 'total' | 'adjust' | 'land' | 'unsettle' | 'act' | 'shift'
+export type Beat = 'step' | 'mult' | 'total' | 'adjust' | 'land' | 'unsettle' | 'act' | 'shift'
 
 export function format(n: number): string {
   return Number.isInteger(n) ? `${n}` : n.toFixed(2).replace(/0$/, '')
 }
 
-function hasAdjustments(report: RoundReport): boolean {
-  return report.chain.length > 0
+/** The Multiplier as it grows: from ×1 (and any lasting bonus), one card at a time, to the round's Multiplier. */
+export function multiplierSteps(report: RoundReport): number[] {
+  const values = [1 + report.lastingMultiplier]
+  for (const step of report.steps) if (step.multiplier > 0) values.push(values[values.length - 1] + step.multiplier)
+  if (values[values.length - 1] !== report.multiplier) values.push(report.multiplier)
+  return values
 }
 
-/** The beats of one round in the order they happened: each card, the sum, what changed it, the hit, then the bias's turn. */
+/** The beats of one round in the order they happened: each card's Weight, the Multiplier, the total, what changed it, the hit, then the bias's turn. */
 export function roundBeats(report: RoundReport): Beat[] {
   const beats: Beat[] = report.steps.map(() => 'step')
   if (report.steps.length > 0) {
+    if (report.multiplier !== 1) beats.push('mult')
     beats.push('total')
-    if (hasAdjustments(report)) beats.push('adjust')
+    if (report.chain.length > 0) beats.push('adjust')
     beats.push('land')
   }
   if (report.unsettleLoss > 0) beats.push('unsettle')
@@ -40,16 +52,19 @@ export function roundBeats(report: RoundReport): Beat[] {
   return beats
 }
 
-function beatLength(beat: Beat, index: number, report: RoundReport): number {
+export function beatLength(beat: Beat, index: number, report: RoundReport): number {
+  const extra = (report.damage >= BIG_HIT ? BIG_EXTRA_MS : 0) + (report.damage >= HUGE_HIT ? HUGE_EXTRA_MS : 0)
   switch (beat) {
     case 'step':
       return report.steps[index]?.conclusion ? CONCLUSION_MS : STEP_MS
+    case 'mult':
+      return MULT_BASE_MS + MULT_STEP_MS * Math.min(MULT_STEPS_SHOWN, multiplierSteps(report).length - 1)
     case 'total':
-      return TOTAL_MS
+      return TOTAL_MS + extra
     case 'adjust':
       return ADJUST_MS
     case 'land':
-      return LAND_MS + (report.damage >= BIG_HIT ? 300 : 0) + (report.damage >= HUGE_HIT ? 400 : 0)
+      return LAND_MS
     case 'shift':
       return SHIFT_MS
     default:
@@ -57,16 +72,33 @@ function beatLength(beat: Beat, index: number, report: RoundReport): number {
   }
 }
 
+/** How long the whole replay of a round takes. */
+export function showLength(report: RoundReport): number {
+  return roundBeats(report).reduce((sum, beat, i) => sum + beatLength(beat, i, report), 0)
+}
+
+function multHz(multiplier: number): number {
+  return Math.min(MULT_TONE.maxHz, MULT_TONE.hz * multiplier ** MULT_TONE.rise)
+}
+
 function soundFor(beat: Beat, index: number, report: RoundReport) {
   if (beat === 'step') {
     const conclusion = report.steps[index]?.conclusion
-    playTones(conclusion ? [{ hz: 392, seconds: 0.18 }, { hz: 523, at: 0.12, seconds: 0.3 }] : [{ hz: 330 * 1.12 ** index, seconds: 0.16 }], LOUDNESS)
+    playTones(conclusion ? [{ hz: 392, seconds: 0.18 }, { hz: 523, at: 0.12, seconds: 0.3 }] : [{ hz: 294 * 1.06 ** index, seconds: 0.14 }], LOUDNESS)
   }
+  if (beat === 'mult') {
+    const values = multiplierSteps(report).slice(1, MULT_STEPS_SHOWN + 1)
+    playTones(values.map((m, i) => ({ hz: multHz(m), at: (i * MULT_STEP_MS) / 1000, seconds: 0.16 })), LOUDNESS * 0.8)
+  }
+  if (beat === 'total' && report.product > 0) playTones([{ hz: multHz(report.multiplier), toHz: multHz(report.multiplier) * 1.2, seconds: 0.4 }], LOUDNESS)
   if (beat === 'land' && report.damage > 0) {
     const weight = report.damage >= HUGE_HIT ? 1.6 : report.damage >= BIG_HIT ? 1.3 : 1
     playTones([{ hz: 196, toHz: 131, seconds: 0.45 }], LOUDNESS * weight)
   }
-  if (beat === 'shift') playTones([{ hz: 262, toHz: 220, seconds: 0.6 }], LOUDNESS)
+  if (beat === 'shift') {
+    playTones([{ hz: 262, toHz: 220, seconds: 0.6 }], LOUDNESS)
+    if (report.released > 0) playTones([{ hz: 330, at: 0.35, seconds: 0.5 }, { hz: 415, at: 0.45, seconds: 0.5 }], LOUDNESS * 0.8)
+  }
 }
 
 export interface RoundShowState {
@@ -104,12 +136,35 @@ export function useRoundShow(id: string | null, report: RoundReport | null, redu
   return { stage: current.stage, beats, done, skip }
 }
 
-/** Where the show is: which step is lit, and whether the hit has landed. */
+/** Where the show is: which step is lit, which beat is playing now, and whether the hit has landed. */
 export function showProgress(show: RoundShowState) {
   const reached = (beat: Beat) => show.done || show.beats.slice(0, show.stage + 1).includes(beat)
   const lit = show.done ? Infinity : show.beats.slice(0, show.stage + 1).filter((b) => b === 'step').length
-  const landing = !show.done && show.beats[show.stage] === 'land'
-  return { reached, lit, landing }
+  const now: Beat | null = show.done ? null : show.beats[show.stage] ?? null
+  return { reached, lit, now, landing: now === 'land' }
+}
+
+const easeOut = (t: number) => 1 - (1 - t) ** 3
+
+/** A number that runs from `from` to `to` over `ms` while `running`; otherwise it simply shows `to`. */
+function Counting({ from, to, ms, running, steps }: { from: number; to: number; ms: number; running: boolean; steps?: number[] }) {
+  const [t, setT] = useState(running ? 0 : 1)
+  useEffect(() => {
+    if (!running) return
+    let frame = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      // A frame's timestamp can be earlier than the moment the effect started.
+      const progress = Math.min(1, Math.max(0, (now - start) / ms))
+      setT(progress)
+      if (progress < 1) frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [running, ms])
+  if (!running) return <>{format(to)}</>
+  if (steps) return <>{format(steps[Math.min(steps.length - 1, Math.floor(t * steps.length))])}</>
+  return <>{Math.round(from + (to - from) * easeOut(t))}</>
 }
 
 interface RoundShowProps {
@@ -122,13 +177,21 @@ interface RoundShowProps {
   testId?: string
 }
 
+const tallyBox = 'inline-flex items-baseline gap-1 rounded-sm border-2 px-1.5 py-0.5'
+
 /** One round, told in order. With reduced motion the same beats appear in place, without movement. */
 export function RoundShow({ report, show, reduced, aftermath, title, testId = 'last-round' }: RoundShowProps) {
-  const { reached, lit, landing } = showProgress(show)
+  const { reached, lit, now, landing } = showProgress(show)
   const before = report.carriedWeight + report.doubtWeight
   const running = report.steps.map((_, i) => before + report.steps.slice(0, i + 1).reduce((sum, s) => sum + s.weight, 0))
+  const shownWeight = lit === Infinity || lit >= report.steps.length ? report.weight : lit === 0 ? before : running[lit - 1]
+  const previousWeight = lit >= 2 && lit !== Infinity ? running[lit - 2] : before
+  const mults = multiplierSteps(report)
+  const multShown = reached('mult') ? report.multiplier : mults[0]
   const big = report.damage >= HUGE_HIT ? 'text-3xl' : report.damage >= BIG_HIT ? 'text-2xl' : 'text-xl'
   const appear = reduced ? '' : 'tp-appear'
+  const pop = (beat: Beat) => (now === beat && !reduced ? 'tp-pop' : '')
+  const stepIndex = lit === Infinity ? -1 : lit - 1
   return (
     <div
       className="mt-1.5 text-sm text-[var(--tp-text)]"
@@ -161,12 +224,15 @@ export function RoundShow({ report, show, reduced, aftermath, title, testId = 'l
             )}
             {report.steps.map((step, i) => {
               const on = i < lit
-              const now = !show.done && i === lit - 1
+              const current = !show.done && now === 'step' && i === stepIndex
+              const counted = !show.done && now === 'mult' && step.multiplier > 0
               const times = step.times
               return (
                 <li
                   key={step.uid}
-                  className={`rounded-sm border-l-4 bg-[var(--tp-paper)] px-2 py-1 text-xs text-[var(--tp-paper-ink)] ${on ? '' : 'opacity-40'} ${now ? 'outline-2 outline-[var(--tp-accent)]' : ''} ${now && !reduced ? 'tp-lift' : ''}`}
+                  className={`rounded-sm border-l-4 bg-[var(--tp-paper)] px-2 py-1 text-xs text-[var(--tp-paper-ink)] ${on ? '' : 'invisible'} ${
+                    current || counted ? 'outline-2 outline-[var(--tp-accent)]' : ''
+                  } ${current && !reduced ? 'tp-deal' : ''}`}
                   style={{ borderLeftColor: TYPE_COLORS[step.type] }}
                 >
                   <span className="font-semibold">{step.name}</span>
@@ -175,21 +241,40 @@ export function RoundShow({ report, show, reduced, aftermath, title, testId = 'l
                   {step.guard > 0 && <span> {step.guard} Guard</span>}
                   {step.unsettle > 0 && <span> Unsettle {step.unsettle}</span>}
                   {on && times > 1 && (
-                    <strong className={`ml-1 rounded-sm bg-[var(--tp-accent)] px-1 text-[var(--tp-on-accent)] ${now && !reduced ? 'tp-pop' : ''}`} data-testid="conclusion-count">
+                    <strong className={`ml-1 rounded-sm bg-[var(--tp-accent)] px-1 text-[var(--tp-on-accent)] ${current && !reduced ? 'tp-pop' : ''}`} data-testid="conclusion-count">
                       Conclusion ×{times} → {step.weight > 0 ? `${step.weight} Weight` : `${format(step.multiplier)} Mult`}
                     </strong>
                   )}
-                  {on && step.weight > 0 && <span className="text-[var(--tp-paper-muted)]"> (Weight so far {running[i]})</span>}
                 </li>
               )
             })}
           </ol>
-          {reached('total') && (
-            <p className={`mt-1.5 ${appear}`}>
-              Weight {report.weight} × Multiplier {format(report.multiplier)}
-              {report.modifiers.length > 0 && ` (${report.modifiers.join('; ')})`} = <strong>{report.product}</strong>
-            </p>
-          )}
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-serif" data-testid="tally">
+            <span className={`${tallyBox} border-[var(--tp-evidence)]`}>
+              Weight{' '}
+              <strong className="text-base" key={`w${lit}`}>
+                <Counting from={previousWeight} to={shownWeight} ms={STEP_MS} running={now === 'step'} />
+              </strong>
+            </span>{' '}
+            ×{' '}
+            <span className={`${tallyBox} border-[var(--tp-logic)] ${pop('mult')}`}>
+              Multiplier{' '}
+              <strong className="text-base" key={`m${now === 'mult'}`}>
+                <Counting from={0} to={multShown} ms={beatLength('mult', 0, report)} running={now === 'mult'} steps={mults} />
+              </strong>
+            </span>
+            {report.modifiers.length > 0 && reached('mult') && <span className="text-xs">({report.modifiers.join('; ')})</span>}
+            {reached('total') && (
+              <>
+                {' '}={' '}
+                <span className={`${tallyBox} border-[var(--tp-accent)] ${appear}`}>
+                  <strong className="text-lg">
+                    <Counting from={0} to={report.product} ms={beatLength('total', 0, report)} running={now === 'total'} />
+                  </strong>
+                </span>
+              </>
+            )}
+          </p>
           {reached('adjust') && report.chain.length > 0 && (
             <ol className={`mt-1 space-y-0.5 ${appear}`} aria-label="Then, in order" data-testid="show-chain">
               {report.chain.map((step) => (
@@ -214,11 +299,18 @@ export function RoundShow({ report, show, reduced, aftermath, title, testId = 'l
         </>
       )}
       {reached('unsettle') && report.unsettleLoss > 0 && <p className={`mt-1 ${appear}`}>Unsettled, it lost {report.unsettleLoss} before it could act.</p>}
-      {reached('act') && aftermath.map((line) => (
-        <p key={line} className={`mt-1 ${appear}`}>
-          {line}
+      {reached('act') &&
+        aftermath.map((line) => (
+          <p key={line} className={`mt-1 ${appear}`}>
+            {line}
+          </p>
+        ))}
+      {reached('shift') && report.released > 0 && (
+        <p className={`mt-1 font-semibold ${appear}`} data-testid="release">
+          <strong className={`inline-block rounded-sm border-2 border-[var(--tp-good)] px-1.5 text-[var(--tp-good)] ${pop('shift')}`}>Shaken {report.released} → Unsettle −{report.released}</strong>{' '}
+          As it changed, everything that shook it landed at once.
         </p>
-      ))}
+      )}
     </div>
   )
 }

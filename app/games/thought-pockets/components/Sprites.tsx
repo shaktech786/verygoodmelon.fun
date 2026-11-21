@@ -381,12 +381,35 @@ const FRAME: Record<EnemyTier, { outer: string; inner: string }> = {
   boss: { outer: 'var(--melon-green)', inner: 'var(--melon-green-light)' },
 }
 
-/** The emblem in a pixel frame: a plain frame for a bias, red corners for a stubborn one, a melon rind for a problem. */
-export function BiasPortrait({ enemyId, tier, className }: { enemyId: string; tier: EnemyTier; className?: string }) {
-  const frame = FRAME[tier]
-  const pixels = runs(EMBLEMS[enemyId] ?? [])
+/**
+ * How a bias holds up: idle; shaken (doubled a pixel to each side, as if trembling); or giving way
+ * (sunk two pixels, with a sigh rising from it). Every state is a still frame, so reduced motion keeps it.
+ */
+export type Mood = 'idle' | 'shaken' | 'gives'
+
+const SINK = 2
+const SIGH = [
+  [15, 1],
+  [17, 0],
+  [13, 0],
+]
+
+function Pixels({ rows, x, y, opacity }: { rows: string[]; x: number; y: number; opacity?: number }) {
   return (
-    <svg viewBox="0 0 22 22" className={className ?? 'h-16 w-16'} shapeRendering="crispEdges" aria-hidden="true" focusable="false">
+    <g transform={`translate(${x} ${y})`} opacity={opacity}>
+      {runs(rows).map((p) => (
+        <rect key={`${p.x}-${p.y}`} x={p.x} y={p.y} width={p.w} height="1" fill={p.fill} />
+      ))}
+    </g>
+  )
+}
+
+/** The emblem in a pixel frame: a plain frame for a bias, red corners for a stubborn one, a melon rind for a problem. */
+export function BiasPortrait({ enemyId, tier, className, mood = 'idle' }: { enemyId: string; tier: EnemyTier; className?: string; mood?: Mood }) {
+  const frame = FRAME[tier]
+  const rows = EMBLEMS[enemyId] ?? []
+  return (
+    <svg viewBox="0 0 22 22" className={className ?? 'h-16 w-16'} shapeRendering="crispEdges" aria-hidden="true" focusable="false" data-mood={mood}>
       <rect x="0" y="0" width="22" height="22" fill="var(--tp-paper)" />
       <rect x="0.5" y="0.5" width="21" height="21" fill="none" stroke={frame.outer} strokeWidth="1" />
       <rect x="1.5" y="1.5" width="19" height="19" fill="none" stroke={frame.inner} strokeWidth="1" />
@@ -397,11 +420,24 @@ export function BiasPortrait({ enemyId, tier, className }: { enemyId: string; ti
           [0, 19],
           [19, 19],
         ].map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width="3" height="3" fill="var(--melon-red)" />)}
-      <g transform="translate(3 3)">
-        {pixels.map((p) => (
-          <rect key={`${p.x}-${p.y}`} x={p.x} y={p.y} width={p.w} height="1" fill={p.fill} />
-        ))}
-      </g>
+      {mood === 'idle' && <Pixels rows={rows} x={3} y={3} />}
+      {mood === 'shaken' && (
+        <>
+          <Pixels rows={rows} x={2} y={3} opacity={0.35} />
+          <Pixels rows={rows} x={4} y={3} opacity={0.35} />
+          <Pixels rows={rows} x={3} y={3} />
+        </>
+      )}
+      {mood === 'gives' && (
+        <>
+          <Pixels rows={rows.slice(0, rows.length - SINK)} x={3} y={3 + SINK} opacity={0.8} />
+          <g transform="translate(3 3)">
+            {SIGH.map(([x, y]) => (
+              <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="var(--tp-muted)" />
+            ))}
+          </g>
+        </>
+      )}
     </svg>
   )
 }

@@ -1,11 +1,13 @@
 import { readFileSync } from 'fs'
 import path from 'path'
 import { test, expect, Page } from '@playwright/test'
-import { RUN_VERSION, START_RESOLVE, availableNodes, chooseNode, newRun } from '@/lib/games/thought-pockets/engine/run'
+import { RULE_BENDING_CHOICES, RUN_VERSION, START_RESOLVE, availableNodes, chooseNode, newRun } from '@/lib/games/thought-pockets/engine/run'
 import { COMPOSURE_GUARD, KNOWN_UNSETTLE, endTurn, incomingDamage, playCard } from '@/lib/games/thought-pockets/engine/battle'
+import { TEA_HEAL, TEA_PRICE, shopPrice } from '@/lib/games/thought-pockets/engine/economy'
 import { CONCLUSION_TIMES, EMPIRICIST_EVIDENCE_TIMES, timesWord } from '@/lib/games/thought-pockets/data/conclusion'
 import { MAX_RIGOR, TIRING } from '@/lib/games/thought-pockets/data/pace'
-import { ARROW_MIN, BURIDAN_GUARD, OVERFLOW_TEXT, SORITES_CAP, TUTORIAL_ENEMY, getEnemyDef, ruleTextAt } from '@/lib/games/thought-pockets/data/enemies'
+import { walkArgumentText } from '@/lib/games/thought-pockets/data/walkArgument'
+import { ARROW_MIN, BURIDAN_GUARD, OVERFLOW_TEXT, SORITES_CAP, TUTORIAL_ENEMY, fullRuleText, getEnemyDef, ruleTextAt } from '@/lib/games/thought-pockets/data/enemies'
 import { SCHOOLS } from '@/lib/games/thought-pockets/data/schools'
 import { BattleState, CardInstance, MapNode, RunState, School } from '@/types/thought-pockets'
 import { playRun, planning } from '../lib/thought-pockets/bots'
@@ -91,7 +93,7 @@ test.describe('The Philosopher', () => {
     const before = Number(await page.getByTestId('enemy-resolve').innerText())
 
     await page.getByTestId('end-turn').click()
-    await expect(page.getByTestId('enemy-resolve')).toHaveText(String(before - preview))
+    await expect(page.getByTestId('enemy-resolve')).toHaveText(String(before - preview), { timeout: 10_000 })
     await expect(page.getByTestId('last-round')).toContainText(`${preview} damage`)
   })
 
@@ -828,6 +830,225 @@ test.describe('The Philosopher', () => {
     await page.getByTestId('end-turn').click()
     await expect(page.getByTestId('last-round')).toBeVisible()
   })
+
+  test('the low-Resolve warning names only what the next step offers: no rest that is not there, and tea only at its real price when affordable', async ({ page }) => {
+    const base = newRun('empiricist', 160)
+    const start = base.map.find((n) => n.row === 0) as MapNode
+    const types: MapNode['type'][] = ['battle', 'event', 'shop']
+    const rows = base.map.filter((n) => n.row === 1)
+    const map = base.map.map((n) => (n.row === 1 ? { ...n, type: types[n.lane], enemyId: types[n.lane] === 'battle' ? 'sunk_cost' : undefined } : n.id === start.id ? { ...n, next: rows.map((r) => r.id) } : n))
+    const facing = { ...base, map, position: start.id, visited: [start.id], resolve: 8 }
+    await fresh(page, 160, true)
+    await load(page, { ...facing, gold: 5 })
+    await expect(page.getByTestId('fight-warning')).toBeVisible()
+    await expect(page.getByTestId('recovery')).not.toContainText('rest restores')
+    await expect(page.getByTestId('recovery')).not.toContainText('tea')
+    await expect(page.getByTestId('recovery')).toContainText('Nothing on your next step restores Resolve')
+    const price = shopPrice(TEA_PRICE, 1, [])
+    await load(page, { ...facing, gold: price })
+    await expect(page.getByTestId('recovery')).toHaveText(`On your next step, the shop’s tea (${price} gold) restores ${TEA_HEAL}.`)
+  })
+
+  test('with no cards played after a round, the coming Unsettle is still forecast in the intent and on End turn', async ({ page }) => {
+    const run = inFirstBattle(161, (b) => ({ ...b, turn: 2, enemy: { ...b.enemy, unsettle: 4 }, hand: cards(['caveat']), focus: 3 }))
+    await fresh(page, 161, true)
+    await load(page, run)
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByTestId('last-round')).toBeVisible()
+    const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).state.run as RunState, RUN_KEY)
+    const tick = (saved.battle as BattleState).enemy.unsettle
+    expect(tick).toBeGreaterThan(0)
+    await expect(page.getByTestId('before-it-acts')).toHaveText(`Before it acts, Unsettle takes ${tick} of its Resolve.`)
+    await expect(page.getByTestId('end-turn')).toContainText(`· Unsettle ${tick}`)
+  })
+
+  test('from Rigorous 6 the map lists every rule each bias plays by', async ({ page }) => {
+    const six = newRun('empiricist', 162, 'rigorous', [], 6)
+    await fresh(page, 162, true, [], 5)
+    await load(page, six)
+    const elite = six.map.find((n) => n.type === 'elite') as MapNode
+    const def = getEnemyDef(elite.enemyId as string)
+    await expect(page.getByTestId('floor-biases')).toContainText(fullRuleText(def, 6))
+    await expect(page.getByTestId('floor-biases')).toContainText(def.secondRule?.ruleText as string)
+  })
+
+  test('the equation says its total once, and a Guard card as Conclusion is a quiet note, not an alarm', async ({ page }) => {
+    const run = inFirstBattle(163, (b) => ({ ...b, hand: cards(['caveat', 'caveat']), focus: 3 }))
+    await fresh(page, 163, true)
+    await load(page, run)
+    await hand(page).first().click()
+    const spoken = await page.getByTestId('equation').evaluate((el) => {
+      const parts: string[] = []
+      const walk = (node: Node) => {
+        if (node instanceof HTMLElement && node.getAttribute('aria-hidden') === 'true') return
+        if (node.nodeType === Node.TEXT_NODE) parts.push(node.textContent ?? '')
+        node.childNodes.forEach(walk)
+      }
+      walk(el)
+      return parts.join('').replace(/\s+/g, ' ')
+    })
+    expect(spoken).toContain('= 0 damage')
+    expect(spoken.match(/damage/g)).toHaveLength(1)
+    const chip = page.getByTestId('empty-conclusion').locator('..')
+    await expect(chip).toBeVisible()
+    const accent = await page.getByTestId('end-turn').evaluate((el) => getComputedStyle(el).backgroundColor)
+    expect(await chip.evaluate((el) => getComputedStyle(el).borderTopColor)).not.toBe(accent)
+    await expect(chip).not.toHaveClass(/tp-warn/)
+  })
+
+  test('a problem stopped at a line banks Shaken in a meter, and when it changes the replay shows it landing at once', async ({ page }) => {
+    const def = getEnemyDef('problem_of_induction')
+    const half = Math.floor(def.health / 2)
+    const run = inFirstBattle(164, (b) => ({
+      ...b,
+      enemy: { ...b.enemy, id: def.id, health: half + 6, maxHealth: def.health, shaken: 5, phase: 1 as const, moveIndex: 1 },
+      hand: cards(['smoking_gun']),
+      focus: 3,
+    }))
+    await fresh(page, 164, true)
+    await load(page, run)
+    await expect(page.getByTestId('shaken')).toContainText('Shaken 5')
+    await hand(page).first().click()
+    await expect(page.getByTestId('before-it-acts')).toContainText('its Shaken')
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByTestId('release')).toBeVisible({ timeout: 8000 })
+    await expect(page.getByRole('region', { name: 'Opponent' }).locator('svg[data-mood="gives"]')).toBeVisible()
+    const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).state.run as RunState, RUN_KEY)
+    const report = (saved.battle as BattleState).lastRound as NonNullable<BattleState['lastRound']>
+    expect(report.released).toBeGreaterThan(5)
+    await expect(page.getByTestId('release')).toContainText(`Shaken ${report.released} → Unsettle −${report.released}`)
+    await expect(page.getByTestId('enemy-resolve')).toHaveText(String(half - report.released))
+  })
+
+  test('the replay counts Weight up card by card, then steps the Multiplier, then counts the total', async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    const run = inFirstBattle(165, (b) => ({ ...b, hand: cards(['therefore', 'observation', 'observation']), focus: 3 }))
+    await fresh(page, 165, true)
+    await load(page, run)
+    for (let i = 0; i < 3; i++) await hand(page).first().click()
+    await page.getByTestId('end-turn').click()
+    const tally = page.getByTestId('last-round').getByTestId('tally')
+    await expect(tally).toBeVisible()
+    await expect(tally).not.toContainText('=')
+    await expect(tally).toContainText('=', { timeout: 3000 })
+    await expect(page.getByTestId('last-round')).toHaveAttribute('data-show', 'done', { timeout: 5000 })
+    await expect(tally).toHaveText(/Weight \d+ × Multiplier [\d.]+ = \d+/)
+    expect(errors).toEqual([])
+  })
+
+  test('at a floor’s end you choose which problem to face, each shown with its rule, and a Short walk’s problem says it holds nothing back', async ({ page }) => {
+    const run = newRun('empiricist', 166, 'gentle', [], undefined, 'short')
+    const { run: ready } = standingBefore(run, 'boss')
+    await fresh(page, 166, true)
+    await load(page, ready)
+    const choice = page.getByTestId('boss-choice')
+    await expect(choice).toBeVisible()
+    for (const id of ['problem_of_induction', 'zenos_arrow']) {
+      await expect(choice).toContainText(ruleTextAt(getEnemyDef(id), 0))
+      await expect(choice.getByTestId(`face-${id}`)).toBeVisible()
+    }
+    await expect(choice).toContainText('holds nothing back')
+    await choice.getByTestId('face-zenos_arrow').click()
+    await expect(page.getByTestId('enemy-name')).toHaveText("Zeno's Arrow")
+    await expect(page.getByTestId('holds-nothing-back')).toBeAttached()
+  })
+
+  test('on a phone, at a problem’s first turn, the whole hand and End turn are in view, and the rule folds to one line with More', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    const run = newRun('empiricist', 701, 'gentle', [], undefined, 'short')
+    const { run: ready } = standingBefore(run, 'boss')
+    await fresh(page, 701, true)
+    await load(page, ready)
+    await page.getByTestId('face-zenos_arrow').click()
+    await expect(page.getByTestId('enemy-name')).toHaveText("Zeno's Arrow")
+    for (const card of await hand(page).all()) await expect(card).toBeInViewport({ ratio: 1 })
+    await expect(page.getByTestId('end-turn')).toBeInViewport({ ratio: 1 })
+    const more = page.getByTestId('rule-more')
+    await expect(more).toHaveAttribute('aria-expanded', 'false')
+    const folded = (await page.getByTestId('rule-block').boundingBox())?.height ?? 0
+    await more.click()
+    await expect(more).toHaveAttribute('aria-expanded', 'true')
+    expect((await page.getByTestId('rule-block').boundingBox())?.height ?? 0).toBeGreaterThan(folded)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  })
+
+  test('a problem’s reward offers rule-bending relics, and offered cards say what they fit in your deck', async ({ page }) => {
+    const run = newRun('pragmatist', 167)
+    const { run: ready, node } = standingBefore(run, 'boss')
+    const started = chooseNode({ ...ready, deck: [...ready.deck, ...cards(['cash_value'], 800)] }, node.id)
+    const battle = started.battle as BattleState
+    await fresh(page, 167, true)
+    await load(page, { ...started, battle: { ...battle, enemy: { ...battle.enemy, health: 1, phase: 2 as const }, hand: cards(['observation']), focus: 3 } })
+    await hand(page).first().click()
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByTestId('rule-bending-note')).toBeVisible()
+    await expect(page.getByText('Relic · bends a rule')).toHaveCount(RULE_BENDING_CHOICES)
+    const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).state.run as RunState, RUN_KEY)
+    await load(page, { ...saved, reward: { ...(saved.reward as NonNullable<RunState['reward']>), cardChoices: ['burden_of_proof', 'statistic', 'smoking_gun'], cardTaken: false } })
+    await expect(page.getByTestId('card-choices').getByTestId('card-fits')).toHaveText(['Fits your Cash Value'])
+    await expect(page.getByRole('button', { name: /Take Burden of Proof\. Fits your Cash Value/ })).toBeVisible()
+  })
+
+  test('the Short walk’s last reward names the problem, and the walk ends with its best argument, copied as text only on request', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    const run = newRun('empiricist', 168, 'gentle', [], undefined, 'short')
+    const { run: ready, node } = standingBefore(run, 'boss')
+    const started = chooseNode(ready, node.id, 'zenos_arrow')
+    const battle = started.battle as BattleState
+    await fresh(page, 168, true)
+    await load(page, { ...started, battle: { ...battle, enemy: { ...battle.enemy, health: 1, phase: 2 as const }, hand: cards(['therefore', 'observation']), focus: 3 } })
+    await hand(page).first().click()
+    await hand(page).first().click()
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByRole('heading', { name: "Zeno's Arrow lets you go, for now" })).toBeVisible()
+    await page.getByTestId('continue').click()
+    const card = page.getByTestId('walk-argument')
+    await expect(card).toBeVisible()
+    await expect(card).toContainText("Against Zeno's Arrow")
+    await page.getByTestId('copy-argument').click()
+    await expect(page.getByTestId('copy-status')).toContainText('Copied')
+    const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).state.run as RunState, RUN_KEY)
+    const copied = await page.evaluate(() => navigator.clipboard.readText())
+    expect(copied.replace(/\r\n/g, '\n')).toBe(walkArgumentText(saved))
+  })
+
+  test('a run saved by version 7 loads mid-battle and plays on', async ({ page }) => {
+    const saved = JSON.parse(readFileSync(path.join(process.cwd(), '__tests__/lib/thought-pockets/fixtures/run-v7.json'), 'utf8'))
+    await fresh(page, 169, true)
+    await load(page, saved.state.run, saved.version)
+    await expect(page.getByTestId('screen-battle')).toBeVisible()
+    await expect(page.getByTestId('argument').locator('li')).toHaveCount(saved.state.run.battle.played.length)
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByTestId('last-round')).toBeVisible()
+  })
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`the boss choice, a problem's reward and the argument of the walk have no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme })
+      const run = newRun('pragmatist', 170)
+      const { run: ready, node } = standingBefore(run, 'boss')
+      await fresh(page, 170, true)
+      await load(page, ready)
+      await expect(page.getByTestId('boss-choice')).toBeVisible()
+      expect(await axeViolations(page)).toEqual([])
+      const started = chooseNode(ready, node.id)
+      const battle = started.battle as BattleState
+      await load(page, { ...started, battle: { ...battle, enemy: { ...battle.enemy, health: 1, phase: 2 as const, shaken: 4 }, hand: cards(['observation']), focus: 3 } })
+      expect(await axeViolations(page)).toEqual([])
+      await hand(page).first().click()
+      await page.getByTestId('end-turn').click()
+      await expect(page.getByTestId('rule-bending-note')).toBeVisible()
+      const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).state.run as RunState, RUN_KEY)
+      await load(page, { ...saved, reward: { ...(saved.reward as NonNullable<RunState['reward']>), cardChoices: ['burden_of_proof', 'statistic', 'smoking_gun'], cardTaken: false } })
+      expect(await axeViolations(page)).toEqual([])
+      const last = { source: 'boss' as const, gold: 0, cardChoices: [], cardTaken: true, relicChoices: [], relicTaken: true, finalRound: null }
+      await load(page, { ...saved, floor: 3, length: 'long', screen: 'reward', reward: last })
+      await page.getByTestId('continue').click()
+      await expect(page.getByTestId('walk-argument')).toBeVisible()
+      expect(await axeViolations(page)).toEqual([])
+    })
+  }
 
   for (const colorScheme of ['light', 'dark'] as const) {
     test(`the length choice and both victory screens have no accessibility violations in ${colorScheme} mode`, async ({ page }) => {

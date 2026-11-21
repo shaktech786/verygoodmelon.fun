@@ -20,8 +20,10 @@ import {
   ARROW_MIN,
   BURIDAN_CHARGE,
   BURIDAN_GUARD,
+  DISMISS_CARDS,
   INDUCTION_BONUS,
   MEANING_ANSWER,
+  MOTIVATED_CARDS,
   STOP_LINES,
   SORITES_CAP,
   STATUS_QUO_MAX_GUARD,
@@ -30,7 +32,7 @@ import {
   overflowUnsettle,
   ruleTextAt,
 } from '../data/enemies'
-import { RIGOR, RIGOROUS_ATTACK, RIGOROUS_HEALTH, TIRING } from '../data/pace'
+import { RIGOR, RIGOROUS_ATTACK, RIGOROUS_HEALTH, SHORT_WALK_BOSS, TIRING } from '../data/pace'
 import { roll, rollInt, shuffle } from './rng'
 
 export const FOCUS_PER_TURN = 3
@@ -40,7 +42,6 @@ export const MAX_HAND = 10
 export const DOUBT_WEIGHT = 4
 const OVERCONFIDENT_BONUS = 4
 const SKEPTIC_BONUS = 2
-const MOTIVATED_CARDS = 3
 const BANDWAGON_GROWTH = 1
 export const COMPOSURE_GUARD = 2
 export const WORRY_STONE_GUARD = 3
@@ -53,6 +54,9 @@ export const STOIC_CAP = 12
 export const SEED_UNSETTLE = 4
 export const FOOTNOTES_CARDS = 4
 export const KNOWN_UNSETTLE = 4
+export const SUNDIAL_FOCUS = 1
+export const BOOKENDS_DRAW = 1
+export const STILL_WATER_GUARD = 6
 
 export interface BattleSetup {
   enemyId: string
@@ -66,6 +70,8 @@ export interface BattleSetup {
   rigor: number
   /** You have beaten this bias in an earlier run. */
   known: boolean
+  /** The problem that ends a Short walk, which holds nothing back. */
+  lastOfShortWalk?: boolean
 }
 
 export interface Incoming {
@@ -193,7 +199,7 @@ function startTurn(core: BattleCore): BattleCore {
   let next: BattleCore = {
     ...core,
     turn,
-    focus: FOCUS_PER_TURN + core.carriedFocus + hourglass,
+    focus: FOCUS_PER_TURN + core.carriedFocus + hourglass + (has(core, 'sundial') ? (currentMove(core).attack ? SUNDIAL_FOCUS : -SUNDIAL_FOCUS) : 0),
     carriedFocus: 0,
     firstLogicDiscountUsed: false,
     played: [],
@@ -205,7 +211,7 @@ function startTurn(core: BattleCore): BattleCore {
     const r = roll(next.rng)
     next = { ...next, rng: r.rng, enemy: { ...next.enemy, gambleHit: r.value < gamble.chance } }
   }
-  return drawCards(next, HAND_SIZE + quiet)
+  return drawCards(next, HAND_SIZE + quiet - (has(core, 'bookends') ? BOOKENDS_DRAW : 0))
 }
 
 /** The first fight opens with one Evidence, one Logic and one Guard in hand, so every basic idea is there to try. */
@@ -222,15 +228,17 @@ export function createBattle(setup: BattleSetup): BattleState {
   const def = getEnemyDef(setup.enemyId)
   const shuffled = shuffle(setup.deck, setup.rng)
   if (setup.enemyId === TUTORIAL_ENEMY) shuffled.items = teachingOrder(shuffled.items)
-  const health = setup.rigor >= RIGOR.tougher ? Math.round(def.health * RIGOROUS_HEALTH) : def.health
+  const health = Math.round(def.health * (setup.rigor >= RIGOR.tougher ? RIGOROUS_HEALTH : 1) * (setup.lastOfShortWalk ? SHORT_WALK_BOSS.health : 1))
   const strength =
-    (setup.rigor >= RIGOR.harder ? RIGOROUS_ATTACK : 0) + (setup.rigor >= RIGOR.bossesHarder && def.tier !== 'normal' ? RIGOROUS_ATTACK : 0)
+    (setup.rigor >= RIGOR.harder ? RIGOROUS_ATTACK : 0) +
+    (setup.rigor >= RIGOR.bossesHarder && def.tier !== 'normal' ? RIGOROUS_ATTACK : 0) +
+    (setup.lastOfShortWalk ? SHORT_WALK_BOSS.attack : 0)
   const core: BattleCore = {
     enemy: {
       id: def.id,
       health,
       maxHealth: health,
-      guard: 0,
+      guard: setup.relics.includes('still_water') ? STILL_WATER_GUARD : 0,
       strength,
       unsettle: (setup.relics.includes('seed_of_doubt') ? SEED_UNSETTLE : 0) + (setup.known ? KNOWN_UNSETTLE : 0),
       moveIndex: 0,
@@ -239,6 +247,7 @@ export function createBattle(setup: BattleSetup): BattleState {
       gambleHit: false,
       misses: 0,
       secondRule: setup.rigor >= RIGOR.secondRule && def.secondRule !== undefined,
+      shaken: 0,
     },
     player: { resolve: setup.resolve, maxResolve: setup.maxResolve, guard: 0 },
     relics: setup.relics,
@@ -323,6 +332,12 @@ function conclusionIndex(core: BattleCore): number {
   return hasRule(core, 'anchoring') ? 0 : core.played.length - 1
 }
 
+/** With Bookends, the card at the other end of an argument of two or more cards is a Conclusion too. */
+function bookendIndex(core: BattleCore): number {
+  if (!has(core, 'bookends') || core.played.length < 2) return -1
+  return conclusionIndex(core) === 0 ? core.played.length - 1 : 0
+}
+
 /** How many times a Conclusion of this type counts for this school, before cards and relics change it. */
 export function conclusionTimes(school: School, type: CardType): number {
   return school === 'empiricist' && type === 'evidence' ? EMPIRICIST_EVIDENCE_TIMES : CONCLUSION_TIMES
@@ -371,6 +386,7 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   const defs = core.played.map(resolveCard)
   const evidenceCount = defs.filter((d) => d.type === 'evidence').length
   const logicCount = defs.filter((d) => d.type === 'logic').length
+  const guardCards = defs.filter((d) => d.type === 'guard').length
   const doubts = core.hand.filter(isDoubt).length
   const unsettleCards = defs.map((d) => cardUnsettle(d, defs.length, core.school))
   const ctx: Context = {
@@ -383,6 +399,7 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
     cardGuard: defs.reduce((sum, d) => sum + cardGuard(d, evidenceCount, doubts), 0),
   }
   const conclusion = conclusionIndex(core)
+  const bookend = bookendIndex(core)
   const conclusionBonus = defs.reduce((sum, d) => sum + (d.conclusionBonus ?? 0), 0)
 
   let haloIndex = -1
@@ -415,7 +432,8 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
       (def.multiplierPerEvidence ?? 0) * evidenceCount +
       (def.multiplierPerOtherLogic ?? 0) * (logicCount - 1) +
       (def.multiplierPerEarlierCard ?? 0) * i +
-      (def.multiplierPerDoubtInHand ?? 0) * doubts
+      (def.multiplierPerDoubtInHand ?? 0) * doubts +
+      (def.multiplierPerGuardCard ?? 0) * guardCards
     const guard = cardGuard(def, evidenceCount, doubts)
 
     if (hasRule(core, 'confirmation') && isEvidence && core.enemy.seen.includes(core.played[i].cardId)) {
@@ -434,21 +452,22 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
       seenNames.add(def.id)
     }
 
-    const isConclusion = i === conclusion
+    const isConclusion = i === conclusion || i === bookend
     let times = 1
     if (isConclusion) {
+      const label = i === conclusion ? 'Conclusion' : 'Bookend Conclusion'
       let count = def.conclusionTimes ?? conclusionTimes(core.school, def.type)
       if (has(core, 'footnotes') && defs.length >= FOOTNOTES_CARDS) count = Math.max(count, FOOTNOTES_TIMES)
       count += conclusionBonus
-      conclusionCount = count
+      if (i === conclusion) conclusionCount = count
       if (weight === 0 && multiplier === 0) {
-        conclusionEmpty = true
-        notes.push(`Conclusion: nothing to count ${timesWord(count)}`)
+        if (i === conclusion) conclusionEmpty = true
+        notes.push(`${label}: nothing to count ${timesWord(count)}`)
       } else {
         times = count
         weight *= times
         multiplier *= times
-        notes.push(`Conclusion: counts ${timesWord(times)}`)
+        notes.push(`${label}: counts ${timesWord(times)}`)
       }
     }
     return { uid: core.played[i].uid, name: def.name, type: def.type, weight, multiplier, guard, unsettle: unsettleCards[i], conclusion: isConclusion, times, notes }
@@ -497,7 +516,7 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   if (hasRule(core, 'sorites') && value > SORITES_CAP) {
     grains = overflowUnsettle(value - SORITES_CAP)
     value = SORITES_CAP
-    chain.push({ kind: 'cap', text: `Capped at ${SORITES_CAP}${grains > 0 ? `: the rest becomes Unsettle ${grains}` : ''}`, short: `cap ${SORITES_CAP}`, after: value })
+    chain.push({ kind: 'cap', text: `Capped at ${SORITES_CAP}${grains > 0 ? `: the rest shakes it, Shaken +${grains}` : ''}`, short: `cap ${SORITES_CAP}`, after: value })
   }
   const line = stopLine(core)
   const room = line !== null ? core.enemy.health - line : null
@@ -506,19 +525,21 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
     const extra = value - room
     spill = overflowUnsettle(extra, grains)
     value = room
-    const shakes = `Your extra ${extra} shakes it${spill > 0 ? `: Unsettle +${spill}` : ''}`
+    const shakes = `Your extra ${extra} shakes it${spill > 0 ? `: Shaken +${spill}` : ''}`
     if (line === phaseThreshold(core)) chain.push({ kind: 'half', text: `It stops at ${line} and changes. ${shakes}`, short: 'stops at half', after: value })
     else chain.push({ kind: 'line', text: `It stops at ${line}, three quarters of its Resolve. ${shakes}`, short: 'stops at 3/4', after: value })
   }
   const damage = value
-  const healedBack = hasRule(core, 'motivated') && defs.length < MOTIVATED_CARDS ? Math.floor(damage / 2) : 0
+  const explained = (hasRule(core, 'motivated') && defs.length < MOTIVATED_CARDS) || (hasRule(core, 'dismisses') && defs.length < DISMISS_CARDS)
+  const healedBack = explained ? Math.floor(damage / 2) : 0
   const selfLoss = hasRule(core, 'backfire') && damage > 0 ? defs.length : 0
 
   const focusCarried = longViewCarry(core)
   const heldFocus = core.focus - focusCarried
   const composure = heldFocus * COMPOSURE_GUARD + (heldFocus > 0 && has(core, 'worry_stone') ? WORRY_STONE_GUARD : 0)
   const guard = steps.reduce((sum, s) => sum + s.guard, 0) + composure
-  const unsettle = steps.reduce((sum, s) => sum + s.unsettle, 0) + grains
+  const unsettle = steps.reduce((sum, s) => sum + s.unsettle, 0)
+  const shaken = grains + spill
   const postpone = defs.some((d) => d.postpone)
 
   const healthAfterArgument = Math.max(0, core.enemy.health - damage + healedBack)
@@ -526,6 +547,9 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   const unsettleRoom = line !== null ? Math.max(0, healthAfterArgument - line) : healthAfterArgument
   const unsettleTick = argumentFinishes ? 0 : Math.min(core.enemy.unsettle + unsettle, unsettleRoom)
   const enemyFalls = argumentFinishes ? 'argument' : healthAfterArgument - unsettleTick <= 0 ? 'unsettle' : null
+  const threshold = phaseThreshold(core)
+  const changes = enemyFalls === null && threshold !== null && healthAfterArgument - unsettleTick <= threshold
+  const released = changes ? core.enemy.shaken + shaken : 0
   const acts = !postpone && enemyFalls === null
   const healthWhenActing = healthAfterArgument - unsettleTick
   const strength = core.enemy.strength + growth + chargeBonus(core)
@@ -575,7 +599,8 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
     enemyFalls,
     conclusionEmpty,
     conclusionCount,
-    spill,
+    shaken,
+    released,
     ruleGuard,
     ruleGuardNote,
     lastingMultiplier: core.lastingMultiplier,
@@ -640,7 +665,8 @@ export function endTurn(battle: BattleState): BattleState {
     phaseChanged: false,
     gamble: null,
     restored: 0,
-    spill: preview.spill,
+    shaken: preview.shaken,
+    released: 0,
     ruleGuard: preview.ruleGuard,
     ruleGuardNote: preview.ruleGuardNote,
   }
@@ -651,7 +677,8 @@ export function endTurn(battle: BattleState): BattleState {
     guard: core.enemy.guard - preview.blocked,
     health: Math.max(0, core.enemy.health - preview.damage + preview.healedBack) - preview.unsettleTick,
     strength: core.enemy.strength + preview.growth,
-    unsettle: (preview.enemyFalls === 'argument' || core.unsettleLasts ? unsettle : Math.floor(unsettle / 2)) + preview.spill,
+    unsettle: preview.enemyFalls === 'argument' || core.unsettleLasts || has(core, 'still_water') ? unsettle : Math.floor(unsettle / 2),
+    shaken: core.enemy.shaken + preview.shaken,
     seen: [...new Set([...core.enemy.seen, ...playedDefs.filter((d) => d.type === 'evidence').map((d) => d.id)])],
   }
   const player = { ...core.player, resolve: Math.max(0, core.player.resolve - preview.selfLoss), guard: preview.guard }
@@ -721,11 +748,14 @@ export function endTurn(battle: BattleState): BattleState {
   if (next.school === 'pragmatist') next = { ...next, carriedWeight: next.player.guard }
 
   if (def.phase2 && next.enemy.phase === 1 && next.enemy.health * 2 <= next.enemy.maxHealth) {
-    next = { ...next, enemy: { ...next.enemy, phase: 2, moveIndex: 0 } }
+    report.released = next.enemy.shaken
+    const { shaken } = next.enemy
+    next = { ...next, enemy: { ...next.enemy, phase: 2, moveIndex: 0, health: Math.max(0, next.enemy.health - shaken), unsettle: next.enemy.unsettle + Math.floor(shaken / 2), shaken: 0 } }
     report.phaseChanged = true
   }
 
   if (next.player.resolve <= 0) return { ...next, outcome: 'lost', lastRound: report, undo: [] }
+  if (next.enemy.health <= 0) return won(next)
 
   return { ...startTurn({ ...next, lastRound: report }), undo: [] }
 }

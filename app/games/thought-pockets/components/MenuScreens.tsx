@@ -16,6 +16,7 @@ import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { primaryButton, quietButton } from './NodeScreens'
 import { BiasPortrait } from './Sprites'
 import { FLOOR_NAMES } from './MapScreen'
+import { WalkArgument } from './WalkArgument'
 
 const GENTLE_TEXT = `Recommended. A rest waits before every philosophical problem, rests heal ${REST_HEAL_PERCENT.gentle}%, you recover fully between floors, and once per run you may reconsider a lost argument with at least half your Resolve.`
 const FIRST_PROBLEMS = enemiesFor(1, 'boss').map((e) => e.name).join(' or ')
@@ -23,7 +24,7 @@ const LENGTHS: { id: RunLength; name: string; text: string }[] = [
   {
     id: 'short',
     name: 'Short walk',
-    text: `${FLOOR_NAMES[1]} only: ${FLOOR_ROWS} steps, ending at ${FIRST_PROBLEMS}. One sitting.`,
+    text: `${FLOOR_NAMES[1]} only: ${FLOOR_ROWS} steps, ending at ${FIRST_PROBLEMS}, your choice, which holds nothing back since nothing comes after it. One sitting.`,
   },
   {
     id: 'long',
@@ -382,6 +383,7 @@ export function EndScreen({ run, onMenu }: { run: RunState; onMenu: () => void }
         </div>
       </div>
       {won && <Celebration run={run} />}
+      {won && <WalkArgument run={run} />}
       {nextLevel && (
         <p className="rounded-md border border-[var(--tp-accent)] p-2 text-sm" data-testid="level-open">
           Rigorous level {nextLevel} is now open: {RIGOR_LEVELS[nextLevel - 1].text}

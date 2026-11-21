@@ -302,15 +302,18 @@ describe('enemy rules are real', () => {
     expect(previewArgument(varied).damage).toBe(24)
   })
 
-  it(`The Sorites Paradox caps one argument and turns every ${OVERFLOW.rate} beyond the cap into 1 Unsettle`, () => {
+  it(`The Sorites Paradox caps one argument and banks every ${OVERFLOW.rate} beyond the cap as 1 Shaken`, () => {
     const start = battleWith({ enemyId: 'sorites', hand: ['smoking_gun', 'therefore'] })
     const battle = playAll({ ...start, focus: 4, enemy: { ...start.enemy, health: 400, maxHealth: 400 } }, [101, 100])
     const preview = previewArgument(battle)
     expect(preview.raw).toBe(36)
     expect(preview.damage).toBe(SORITES_CAP)
-    expect(preview.unsettle).toBe(overflowUnsettle(36 - SORITES_CAP))
-    expect(preview.unsettle).toBe(OVERFLOW.max)
-    expect(endTurn(battle).lastRound?.unsettleLoss).toBe(preview.unsettle)
+    expect(preview.shaken).toBe(overflowUnsettle(36 - SORITES_CAP))
+    expect(preview.shaken).toBe(OVERFLOW.max)
+    expect(preview.unsettle).toBe(0)
+    const after = endTurn(battle)
+    expect(after.lastRound?.unsettleLoss).toBe(0)
+    expect(after.enemy.shaken).toBe(OVERFLOW.max)
   })
 
   it("Status Quo Bias keeps its Guard between rounds, up to its limit", () => {

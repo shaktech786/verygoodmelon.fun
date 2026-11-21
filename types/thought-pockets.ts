@@ -62,6 +62,7 @@ export interface CardEffects {
   /** Weight for each point of Resolve you are missing, rounded down. */
   weightPerMissingResolve?: number
   guardPerDoubtInHand?: number
+  multiplierPerGuardCard?: number
 }
 
 export interface CardDef extends CardEffects {
@@ -95,12 +96,17 @@ export type RelicId =
   | 'tea_flask'
   | 'second_opinion'
   | 'long_view'
+  | 'sundial'
+  | 'bookends'
+  | 'still_water'
 
 export interface RelicDef {
   id: RelicId
   name: string
   text: string
   flavor: string
+  /** Bends a rule of the game; offered only by a philosophical problem. */
+  ruleBending?: boolean
 }
 
 export type EnemyTier = 'normal' | 'elite' | 'boss'
@@ -125,6 +131,7 @@ export type EnemyRule =
   | 'buridan_charge'
   | 'newcomb'
   | 'newcomb_caution'
+  | 'dismisses'
 
 export type Ask = 'evidence' | 'logic' | 'guard'
 
@@ -184,6 +191,8 @@ export interface EnemyState {
   misses: number
   /** Plays by its second rule as well as its first. */
   secondRule: boolean
+  /** Damage its rules stopped, banked until a philosophical problem changes, when it all becomes Unsettle at once. */
+  shaken: number
 }
 
 export interface PlayerState {
@@ -249,8 +258,10 @@ export interface ArgumentPreview {
   conclusionEmpty: boolean
   /** How many times the Conclusion counts, or would have counted had it brought anything. */
   conclusionCount: number
-  /** Unsettle the bias takes on from damage past its half-Resolve line, felt next round. */
-  spill: number
+  /** Shaken this argument banks from damage a rule stopped. */
+  shaken: number
+  /** Shaken that becomes Unsettle this round because the problem changes. */
+  released: number
   /** Guard the bias will raise when it acts because of its rule and what you did. */
   ruleGuard: number
   ruleGuardNote: string | null
@@ -293,7 +304,8 @@ export interface RoundReport {
   gamble: 'hit' | 'miss' | null
   /** Resolve restored at the end of the round by a lasting effect. */
   restored: number
-  spill: number
+  shaken: number
+  released: number
   ruleGuard: number
   ruleGuardNote: string | null
 }
@@ -406,7 +418,7 @@ export interface RunStats {
 }
 
 export interface RunState {
-  version: 7
+  version: 8
   seed: number
   rng: number
   school: School
@@ -440,4 +452,6 @@ export interface RunState {
   defeatRound: RoundReport | null
   beaten: string[]
   stats: RunStats
+  /** The round with the most damage this run, and whom it was against, for the end of the walk. */
+  bestArgument: { round: RoundReport; enemyId: string } | null
 }

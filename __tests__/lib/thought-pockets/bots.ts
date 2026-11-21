@@ -53,7 +53,8 @@ function score(before: BattleState, after: BattleState, w: Weights): number {
   return (
     enemyLoss -
     playerLoss * w.defence +
-    (after.enemy.unsettle - before.enemy.unsettle) * w.unsettle -
+    (after.enemy.unsettle - before.enemy.unsettle) * w.unsettle +
+    (after.enemy.shaken - before.enemy.shaken) -
     growth * 3 * w.defence +
     after.carriedWeight * 0.7 -
     (after.enemy.guard - before.enemy.guard) * 0.3
@@ -407,6 +408,8 @@ export interface RunRecord {
   offered: string[]
   /** Turns across every fight, the measure of how long a run takes. */
   turns: number
+  /** Resolve left when the run ended. */
+  resolveLeft: number
 }
 
 function chooseNextNode(run: RunState, options: MapNode[], habits: RunHabits): MapNode {
@@ -619,5 +622,6 @@ export function playRun(
     goldLeft: run.gold,
     offered,
     turns: fights.reduce((sum, f) => sum + f.turns, 0),
+    resolveLeft: run.resolve,
   }
 }

@@ -6,7 +6,10 @@ import { ArgumentPreview } from '@/types/thought-pockets'
  */
 export function argueLabel(preview: ArgumentPreview): string {
   const brings = preview.steps.length > 0 || preview.carriedWeight + preview.doubtWeight > 0
-  if (!brings) return preview.composure > 0 ? `Hold: ${preview.composure} Guard` : 'No argument'
+  if (!brings) {
+    const hold = preview.composure > 0 ? `Hold: ${preview.composure} Guard` : 'No argument'
+    return preview.unsettleTick > 0 ? `${hold} · Unsettle ${preview.unsettleTick}` : hold
+  }
   if (preview.damage === preview.raw) return `Argue for ${preview.damage}`
   let before = preview.product
   const reasons: string[] = []

@@ -5,6 +5,7 @@ import { TYPE_LABELS, canUpgrade, getCardDef, resolveCard } from '@/lib/games/th
 import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
 import { getEventDef } from '@/lib/games/thought-pockets/data/events'
 import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { fitsLabel } from '@/lib/games/thought-pockets/data/synergy'
 import {
   RUN_FLOORS,
   buyCard,
@@ -56,7 +57,7 @@ export function RelicTile({ relicId, children }: { relicId: RelicId; children?: 
   const relic = getRelicDef(relicId)
   return (
     <div className="flex w-full max-w-xs flex-col gap-1 rounded-md border-2 border-[var(--tp-logic)] bg-[var(--tp-paper)] p-3 text-[var(--tp-paper-ink)] shadow-[3px_3px_0_0_var(--tp-shadow)]">
-      <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-[var(--tp-paper-muted)]">Relic</p>
+      <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-[var(--tp-paper-muted)]">{relic.ruleBending ? 'Relic · bends a rule' : 'Relic'}</p>
       <p className="font-serif text-base font-semibold">{relic.name}</p>
       <p className="text-sm leading-snug">{relic.text}</p>
       <p className="text-xs italic text-[var(--tp-paper-muted)]">{relic.flavor}</p>
@@ -129,9 +130,10 @@ export function RewardScreen({ run }: { run: RunState }) {
   const reward = run.reward
   if (!reward) return null
   const last = reward.source === 'boss' && isLastFloor(run)
-  const title = last ? 'The last question, answered for now' : { battle: 'You made your point', elite: 'A hard argument, won', boss: 'Floor complete', treasure: 'Treasure' }[reward.source]
   const enemyId = reward.source === 'treasure' ? undefined : run.map.find((n) => n.id === run.position)?.enemyId
   const foe = enemyId ? getEnemyDef(enemyId) : null
+  const lastTitle = run.length === 'short' && foe ? `${foe.name} lets you go, for now` : 'The last question, answered for now'
+  const title = last ? lastTitle : { battle: 'You made your point', elite: 'A hard argument, won', boss: 'Floor complete', treasure: 'Treasure' }[reward.source]
   return (
     <section className={panel} aria-labelledby="reward-title">
       <h2 id="reward-title" className="font-serif text-2xl font-semibold">
@@ -140,7 +142,7 @@ export function RewardScreen({ run }: { run: RunState }) {
       <FinalArgument run={run} />
       {foe && (
         <div className="mt-2 flex items-center gap-3 rounded-md bg-[var(--tp-ink)] p-2" data-testid="insight">
-          <BiasPortrait enemyId={foe.id} tier={foe.tier} className="h-12 w-12 shrink-0" />
+          <BiasPortrait enemyId={foe.id} tier={foe.tier} mood="gives" className="h-12 w-12 shrink-0" />
           <p className="text-sm">
             <span className="font-semibold">What {foe.name} taught you:</span> {foe.insight}
           </p>
@@ -150,6 +152,11 @@ export function RewardScreen({ run }: { run: RunState }) {
       {reward.relicChoices.length > 0 && (
         <div className="mt-4">
           <h3 className="font-semibold">{reward.relicChoices.length > 1 ? 'Choose a relic' : 'A relic'}</h3>
+          {reward.source === 'boss' && reward.relicChoices.some((id) => getRelicDef(id).ruleBending) && (
+            <p className="text-sm text-[var(--tp-muted)]" data-testid="rule-bending-note">
+              A philosophical problem leaves something stranger behind: relics that bend a rule of the game, for better and for worse.
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap gap-3">
             {reward.relicChoices.map((relicId) => (
               <RelicTile key={relicId} relicId={relicId}>
@@ -179,6 +186,7 @@ export function RewardScreen({ run }: { run: RunState }) {
                 card={getCardDef(cardId)}
                 disabled={reward.cardTaken}
                 label={`Take ${getCardDef(cardId).name}`}
+                fits={fitsLabel(cardId, run)}
                 onActivate={() => act((r) => takeCard(r, cardId))}
               />
             ))}
@@ -224,6 +232,7 @@ export function ShopScreen({ run }: { run: RunState }) {
                 card={def}
                 disabled={item.sold || run.gold < item.price}
                 label={item.sold ? `${def.name}, sold` : `Buy ${def.name} for ${item.price} gold`}
+                fits={item.sold ? null : fitsLabel(item.cardId, run)}
                 onActivate={() => act((r) => buyCard(r, i))}
               />
               <span className="text-sm">{item.sold ? 'Sold' : `${item.price} gold`}</span>
@@ -335,6 +344,7 @@ export function EventScreen({ run }: { run: RunState }) {
                         key={cardId}
                         card={getCardDef(cardId)}
                         label={`${choice.label}: take ${getCardDef(cardId).name}`}
+                        fits={fitsLabel(cardId, run)}
                         disabled={!available}
                         onActivate={() => act((r) => chooseEvent(r, choice.id, cardId))}
                       />

@@ -89,6 +89,11 @@ describe('simulation', () => {
         `${key} | ${pct(runs.filter((r) => r.won).length, runs.length)} | ${pct(runs.filter((r) => r.won || r.floor > 1).length, runs.length)} | ${avg(fights.map((f) => f.turns))} | ${median(fights.map((f) => f.turns))} | ${median(runs.map((r) => r.turns))} | ${byTier('normal')}/${byTier('elite')}/${byTier('boss')} | ${median(fights.filter((f) => f.tier === 'boss' && f.won).map((f) => f.turns))} | ${pct(fights.filter((f) => f.fullHealth).length, fights.length)} | ${avg(runs.map((r) => r.goldLeft))} | ${top ? `${top[0]} (${top[1]})` : '-'}`,
       )
     }
+    for (const [key, runs] of results) {
+      if (!key.endsWith(' short')) continue
+      const left = runs.filter(won).map((r) => r.resolveLeft)
+      lines.push(`${key}: Resolve left when won median ${median(left)}, lowest ${Math.min(...left)}`)
+    }
     console.log(lines.join('\n'))
     const all = [...results.values()].flat()
     expect(Math.max(...all.map((r) => r.longestFight)), 'no fight drags on: a long one tires the bias out').toBeLessThanOrEqual(LONGEST_FIGHT)
@@ -228,7 +233,7 @@ describe('simulation', () => {
   it('reports how many turns each philosophical problem lasts', { timeout: SIM_TIMEOUT }, () => {
     const bosses = ENEMIES.filter((e) => e.tier === 'boss')
     const lines = ['policy | ' + bosses.map((b) => `${b.id} turns when won (share of its fights lost)`).join(' | ')]
-    for (const policy of ['first-timer', 'careful', 'planner', 'careful rigorous', `planner rigorous ${OLD_TOP}`, `planner rigorous ${MAX_RIGOR}`]) {
+    for (const policy of ['newcomer', 'first-timer', 'careful', 'planner', 'careful rigorous', `planner rigorous ${OLD_TOP}`, `planner rigorous ${MAX_RIGOR}`]) {
       const fights = SCHOOLS.flatMap((s) => results.get(`${s.id}/${policy}`) ?? []).flatMap((r) => r.fights)
       const cell = (id: string) => {
         const met = fights.filter((f) => f.enemyId === id)

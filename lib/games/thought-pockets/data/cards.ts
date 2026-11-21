@@ -30,6 +30,7 @@ export const CARDS: CardDef[] = [
   { id: 'first_premise', name: 'First Premise', type: 'logic', rarity: 'uncommon', cost: 2, lastingMultiplier: 0.5, exhaust: true, upgrade: { cost: 1 }, flavor: 'Settle one thing, and everything after stands on it.' },
   { id: 'chain_of_reasoning', name: 'Chain of Reasoning', type: 'logic', rarity: 'rare', school: 'rationalist', cost: 1, multiplierPerEarlierCard: 0.5, upgrade: { multiplierPerEarlierCard: 0.75 }, flavor: 'Each link holds because the last one did.' },
   { id: 'reductio', name: 'Reductio', type: 'logic', rarity: 'rare', school: 'rationalist', cost: 1, multiplierPerDoubtInHand: 1, addDoubt: 1, upgrade: { cost: 0 }, flavor: 'Follow it all the way, until it falls over.' },
+  { id: 'pragmatic_maxim', name: 'Pragmatic Maxim', type: 'logic', rarity: 'rare', school: 'pragmatist', cost: 1, multiplier: 0.5, multiplierPerGuardCard: 0.5, guard: 3, upgrade: { multiplierPerGuardCard: 1 }, flavor: 'An idea means what it lets you do.' },
   { id: 'qed', name: 'Q.E.D.', type: 'logic', rarity: 'rare', school: 'rationalist', cost: 2, multiplier: 1, conclusionTimes: 3, upgrade: { multiplier: 1.5 }, flavor: 'Which was to be shown.' },
 
   { id: 'caveat', name: 'Caveat', type: 'guard', rarity: 'starter', cost: 1, guard: 6, upgrade: { guard: 9 }, flavor: 'Admit what you do not know.' },
@@ -53,6 +54,7 @@ export const CARDS: CardDef[] = [
   { id: 'question_everything', name: 'Question Everything', type: 'rhetoric', rarity: 'rare', school: 'skeptic', cost: 2, unsettlePerCard: 1, upgrade: { cost: 1 }, flavor: 'Nothing gets a free pass.' },
   { id: 'meliorism', name: 'Meliorism', type: 'rhetoric', rarity: 'rare', school: 'pragmatist', cost: 1, lastingRestore: 3, exhaust: true, upgrade: { lastingRestore: 4 }, flavor: 'Things can be made better. Not perfect: better.' },
   { id: 'epoche', name: 'Epoché', type: 'rhetoric', rarity: 'rare', school: 'skeptic', cost: 1, unsettle: 3, unsettleLasts: true, exhaust: true, upgrade: { unsettle: 5 }, flavor: 'Suspend judgement, and let the question stay open.' },
+  { id: 'uphill_again', name: 'Uphill Again', type: 'rhetoric', rarity: 'rare', school: 'absurdist', cost: 1, draw: 1, addDoubt: 2, upgrade: { draw: 2 }, flavor: 'The stone rolls down. You walk back to it, lighter.' },
   { id: 'embrace_absurd', name: 'Embrace the Absurd', type: 'rhetoric', rarity: 'uncommon', school: 'absurdist', cost: 1, draw: 2, addDoubt: 1, upgrade: { draw: 3 }, flavor: 'One must imagine the boulder light.' },
 
   { id: 'doubt', name: 'Doubt', type: 'doubt', rarity: 'doubt', cost: 0, flavor: 'A nagging little voice.' },
@@ -122,6 +124,7 @@ export function describeCard(card: CardDef): string[] {
   if (card.multiplierPerOtherLogic) lines.push(`+${card.multiplierPerOtherLogic} Multiplier for each other Logic in this argument.`)
   if (card.multiplierPerEarlierCard) lines.push(`+${card.multiplierPerEarlierCard} Multiplier for each card played before it in this argument.`)
   if (card.multiplierPerDoubtInHand) lines.push(`+${card.multiplierPerDoubtInHand} Multiplier for each Doubt in your hand.`)
+  if (card.multiplierPerGuardCard) lines.push(`+${card.multiplierPerGuardCard} Multiplier for each Guard card in this argument.`)
   if (card.guard) lines.push(`${card.guard} Guard.`)
   if (card.guardPerEvidence) lines.push(`+${card.guardPerEvidence} Guard for each Evidence in this argument.`)
   if (card.guardPerDoubtInHand) lines.push(`+${card.guardPerDoubtInHand} Guard for each Doubt in your hand.`)
@@ -132,7 +135,7 @@ export function describeCard(card: CardDef): string[] {
   if (card.draw) lines.push(card.draw === 1 ? 'Draw 1 card.' : `Draw ${card.draw} cards.`)
   if (card.focus) lines.push(`Gain ${card.focus} Focus.`)
   if (card.restore) lines.push(`Restore ${card.restore} Resolve.`)
-  if (card.addDoubt) lines.push('Add a Doubt to your hand for this fight.')
+  if (card.addDoubt) lines.push(card.addDoubt === 1 ? 'Add a Doubt to your hand for this fight.' : `Add ${card.addDoubt} Doubts to your hand for this fight.`)
   if (card.lastingMultiplier) lines.push(`For the rest of this fight, every argument gets +${card.lastingMultiplier} Multiplier.`)
   if (card.lastingRestore) lines.push(`For the rest of this fight, restore ${card.lastingRestore} Resolve after each round in which you lose none.`)
   if (card.unsettleLasts) lines.push('For the rest of this fight, the enemy’s Unsettle no longer halves.')
@@ -162,6 +165,7 @@ export function summarizeCard(card: CardDef): string[] {
   if (card.multiplierPerOtherLogic) parts.push(`+${card.multiplierPerOtherLogic} Mult per other Logic`)
   if (card.multiplierPerEarlierCard) parts.push(`+${card.multiplierPerEarlierCard} Mult per earlier card`)
   if (card.multiplierPerDoubtInHand) parts.push(`+${card.multiplierPerDoubtInHand} Mult per Doubt`)
+  if (card.multiplierPerGuardCard) parts.push(`+${card.multiplierPerGuardCard} Mult per Guard card`)
   if (card.lastingMultiplier) parts.push(`+${card.lastingMultiplier} Mult all fight`)
   if (card.guard) parts.push(`${card.guard} Guard`)
   if (card.guardPerEvidence) parts.push(`+${card.guardPerEvidence} Guard per Evidence`)
@@ -176,7 +180,7 @@ export function summarizeCard(card: CardDef): string[] {
   if (card.focus) parts.push(`+${card.focus} Focus`)
   if (card.nextTurnFocus) parts.push(`+${card.nextTurnFocus} Focus next turn`)
   if (card.restore) parts.push(`Restore ${card.restore}`)
-  if (card.addDoubt) parts.push('+1 Doubt')
+  if (card.addDoubt) parts.push(`+${card.addDoubt} Doubt${card.addDoubt === 1 ? '' : 's'}`)
   if (card.conclusionTimes) parts.push(`Conclusion ×${card.conclusionTimes}`)
   if (card.conclusionBonus) parts.push(`Conclusion counts +${card.conclusionBonus}`)
   if (card.retain) parts.push('Keep')

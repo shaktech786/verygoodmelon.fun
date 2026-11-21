@@ -17,11 +17,11 @@ import {
   tiringUnsettle,
   undoPlay,
 } from '@/lib/games/thought-pockets/engine/battle'
-import { battleAction } from '@/lib/games/thought-pockets/engine/run'
+import { battleAction, holdsNothingBack } from '@/lib/games/thought-pockets/engine/run'
 import { tutorialHint } from '@/lib/games/thought-pockets/engine/tutorial'
 import { describeCard, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { timesWord } from '@/lib/games/thought-pockets/data/conclusion'
-import { OVERFLOW_TEXT, PROBLEM_LINES, PROBLEM_RULE, TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { OVERFLOW, OVERFLOW_TEXT, PROBLEM_LINES, PROBLEM_RULE, TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { argueLabel } from '@/lib/games/thought-pockets/data/turnText'
 import { TIRING } from '@/lib/games/thought-pockets/data/pace'
 import { keywordText } from '@/lib/games/thought-pockets/data/keywords'
@@ -29,9 +29,10 @@ import { useInsightStore, useRunStore } from '@/lib/games/thought-pockets/store/
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { wakeTones } from '@/components/games/gentleCues'
 import { CardFace, TYPE_COLORS, keywordsOnCard } from './CardFace'
-import { BiasPortrait } from './Sprites'
+import { BiasPortrait, Mood } from './Sprites'
 import { Term } from './Term'
 import { RoundShow, RoundShowState, format, showProgress, useRoundShow } from './RoundShow'
+import { SHORT_WALK_BOSS_TEXT } from './MapScreen'
 
 const TIER_LABELS = { normal: 'Bias', elite: 'Stubborn bias', boss: 'Philosophical problem' }
 const ASK_LABELS = { evidence: 'Evidence', logic: 'Logic', guard: 'Guard' }
@@ -46,6 +47,7 @@ export const SHOW_CSS = `
 @keyframes tp-flinch { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-3px) rotate(-2deg); } 65% { transform: translateX(2px); } }
 @keyframes tp-flinch-big { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px) rotate(-4deg); } 55% { transform: translateX(4px) rotate(2deg); } 80% { transform: translateX(-2px); } }
 @keyframes tp-rise { from { opacity: 0; transform: translateY(6px); } 25% { opacity: 1; } to { opacity: 0; transform: translateY(-22px); } }
+@keyframes tp-deal { from { opacity: 0; transform: translateY(8px) scale(0.96); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: no-preference) {
   html:not([data-reduce-motion="true"]) .tp-appear { animation: tp-appear 220ms ease-out both; }
   html:not([data-reduce-motion="true"]) .tp-lift { animation: tp-lift 300ms ease-out; }
@@ -53,6 +55,7 @@ export const SHOW_CSS = `
   html:not([data-reduce-motion="true"]) .tp-flinch { animation: tp-flinch 320ms ease-out; }
   html:not([data-reduce-motion="true"]) .tp-flinch-big { animation: tp-flinch-big 460ms ease-out; }
   html:not([data-reduce-motion="true"]) .tp-rise { animation: tp-rise 900ms ease-out both; }
+  html:not([data-reduce-motion="true"]) .tp-deal { animation: tp-deal 220ms ease-out both; }
 }
 `
 
@@ -135,8 +138,18 @@ function lethal(battle: BattleState, preview: ArgumentPreview): Lethal | null {
 function compactIntent(battle: BattleState, preview: ArgumentPreview): string {
   const next = `Next: ${intentText(currentMove(battle), battle).join(' · ')}`
   if (preview.enemyFalls || preview.postpone) return `${next}. It will not act.`
-  if (preview.incoming === 0) return `${next}.`
-  return `${next}. You lose ${preview.incomingAfterGuard} of ${preview.incoming}.`
+  const first = preview.unsettleTick > 0 ? ` Unsettle takes ${preview.unsettleTick} first.` : ''
+  if (preview.incoming === 0) return `${next}.${first}`
+  return `${next}.${first} You lose ${preview.incomingAfterGuard} of ${preview.incoming}.`
+}
+
+/** What happens to the bias before it acts, which is easy to miss when you play no cards. */
+function beforeItActs(preview: ArgumentPreview): string[] {
+  if (preview.enemyFalls) return []
+  const lines: string[] = []
+  if (preview.unsettleTick > 0) lines.push(`Before it acts, Unsettle takes ${preview.unsettleTick} of its Resolve.`)
+  if (preview.released > 0) lines.push(`It changes this round, and as it does its Shaken ${preview.released} becomes Unsettle that takes ${preview.released} at once.`)
+  return lines
 }
 
 function aftermathLines(report: RoundReport, shift: string | null): string[] {
@@ -150,11 +163,15 @@ function aftermathLines(report: RoundReport, shift: string | null): string[] {
   if (report.gamble === 'miss') lines.push('Its gamble did not come off. The odds next round are exactly the same.')
   const why = report.ruleGuardNote ? ` (${report.ruleGuardNote.charAt(0).toLowerCase()}${report.ruleGuardNote.slice(1)})` : ''
   if (report.enemyGuardGained > 0) lines.push(`It raised ${report.enemyGuardGained} Guard${why}.`)
-  if (report.spill > 0) lines.push(`What went past the line it stopped at shook it: Unsettle ${report.spill}, felt next round.`)
+  if (report.shaken > 0 && !report.phaseChanged) lines.push(`What it stopped shook it: Shaken +${report.shaken}. It all becomes Unsettle when it changes.`)
   if (report.doubtsAdded > 0) lines.push('A Doubt went into your draw pile.')
   if (report.restored > 0) lines.push(`You lost nothing this round, so you restored ${report.restored} Resolve.`)
   if (report.phaseChanged && shift) lines.push(shift)
   return lines
+}
+
+function releaseLine(report: RoundReport): string {
+  return report.released > 0 ? ` As it changed, everything that shook it landed at once: Shaken ${report.released} became Unsettle and took ${report.released} Resolve.` : ''
 }
 
 function roundSummary(report: RoundReport, battle: BattleState): string {
@@ -162,7 +179,7 @@ function roundSummary(report: RoundReport, battle: BattleState): string {
   const argument = report.steps.length === 0 ? 'You made no argument.' : `Your argument dealt ${report.damage} damage.`
   const unsettle = report.unsettleLoss > 0 ? ` Unsettled, it lost ${report.unsettleLoss}.` : ''
   const after = aftermathLines(report, def.phase2?.shift ?? null).join(' ')
-  return `${argument}${unsettle} ${after} It has ${battle.enemy.health} Resolve left, you have ${battle.player.resolve}. Next, it will: ${intentText(currentMove(battle), battle).join(', ')}.`
+  return `${argument}${unsettle} ${after}${releaseLine(report)} It has ${battle.enemy.health} Resolve left, you have ${battle.player.resolve}. Next, it will: ${intentText(currentMove(battle), battle).join(', ')}.`
 }
 
 function argumentSummary(battle: BattleState, preview: ArgumentPreview, added: string | null): string {
@@ -184,9 +201,10 @@ function Bar({ value, max, color, label }: { value: number; max: number; color: 
   )
 }
 
-function Chip({ children, tone = 'plain' }: { children: React.ReactNode; tone?: 'plain' | 'guard' | 'warn' | 'good' }) {
+function Chip({ children, tone = 'plain' }: { children: React.ReactNode; tone?: 'plain' | 'guard' | 'warn' | 'good' | 'note' }) {
   const tones = {
     plain: 'border-[var(--tp-line)] text-[var(--tp-text)]',
+    note: 'border-dashed border-[var(--tp-muted)] font-normal text-[var(--tp-text)]',
     guard: 'border-[var(--tp-guard)] text-[var(--tp-guard)]',
     warn: 'border-[var(--tp-warn)] text-[var(--tp-warn)]',
     good: 'border-[var(--tp-good)] text-[var(--tp-good)]',
@@ -201,13 +219,48 @@ function shownHealth(battle: BattleState, show: RoundShowState): number {
   const { reached } = showProgress(show)
   const unsettle = reached('unsettle') ? 0 : report.unsettleLoss
   const argument = reached('land') ? 0 : report.damage - report.healedBack
-  return Math.min(battle.enemy.maxHealth, battle.enemy.health + unsettle + argument)
+  const release = reached('shift') ? 0 : report.released
+  return Math.min(battle.enemy.maxHealth, battle.enemy.health + unsettle + argument + release)
 }
 
-/** Until the replay reaches the moment it changes, a problem still looks and reads as it did when the round began. */
+/**
+ * Until the replay reaches each moment, the bias looks as it did before it: Shaken fills when the argument is stopped,
+ * and a problem keeps its first rule, and its Shaken, until it changes.
+ */
 function shownBattle(battle: BattleState, show: RoundShowState): BattleState {
+  const report = battle.lastRound
+  if (!report || show.done) return battle
   const { reached } = showProgress(show)
-  return battle.lastRound?.phaseChanged && !reached('shift') ? { ...battle, enemy: { ...battle.enemy, phase: 1 } } : battle
+  const banked = report.phaseChanged ? report.released : battle.enemy.shaken
+  const shaken = reached('adjust') || reached('land') ? banked : banked - report.shaken
+  if (report.phaseChanged && !reached('shift')) return { ...battle, enemy: { ...battle.enemy, phase: 1, shaken } }
+  return { ...battle, enemy: { ...battle.enemy, shaken: report.phaseChanged ? 0 : shaken } }
+}
+
+/** Idle; shaken while it is hit or holds Shaken; giving way as a problem changes, and once it has. */
+function moodOf(battle: BattleState, show: RoundShowState, hit: number): Mood {
+  const { now } = showProgress(show)
+  if (now === 'shift' || (battle.enemy.phase === 2 && getEnemyDef(battle.enemy.id).phase2)) return 'gives'
+  if (hit > 0 || now === 'unsettle' || battle.enemy.shaken > 0) return 'shaken'
+  return 'idle'
+}
+
+function ShakenMeter({ battle }: { battle: BattleState }) {
+  const threshold = phaseThreshold(battle)
+  const shaken = battle.enemy.shaken
+  if (shaken === 0) return null
+  const cells = Math.max(OVERFLOW.max * 2, shaken)
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[var(--tp-text)]" data-testid="shaken">
+      <span className="font-semibold text-[var(--tp-good)]">Shaken {shaken}</span>
+      <span className="flex gap-px" aria-hidden="true">
+        {Array.from({ length: cells }, (_, i) => (
+          <span key={i} className={`h-2.5 w-1.5 border border-[var(--tp-good)] ${i < shaken ? 'bg-[var(--tp-good)]' : ''}`} />
+        ))}
+      </span>
+      <span className="text-[var(--tp-muted)]">{threshold !== null ? `becomes Unsettle when it changes at ${threshold}, taking ${shaken} at once` : 'becomes Unsettle when it changes'}</span>
+    </div>
+  )
 }
 
 function TiringNote({ battle }: { battle: BattleState }) {
@@ -226,21 +279,28 @@ function TiringNote({ battle }: { battle: BattleState }) {
   )
 }
 
-function ThreatPanel({ battle: live, preview, known, show }: { battle: BattleState; preview: ArgumentPreview; known: boolean; show: RoundShowState }) {
+function ThreatPanel({ battle: live, preview, known, show, lastOfWalk }: { battle: BattleState; preview: ArgumentPreview; known: boolean; show: RoundShowState; lastOfWalk: boolean }) {
   const battle = shownBattle(live, show)
   const def = getEnemyDef(battle.enemy.id)
   const move = currentMove(live)
   const warning = lethal(live, preview)
   const { landing } = showProgress(show)
+  const [more, setMore] = useState(false)
   const hit = landing && battle.lastRound ? battle.lastRound.damage : 0
   const health = shownHealth(battle, show)
   const gamble = def.gamble
   const threshold = phaseThreshold(battle)
+  const first = beforeItActs(preview)
   return (
     <section aria-label="Opponent" className="grid gap-2 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-2.5 sm:grid-cols-[1fr_15rem] sm:gap-3 sm:p-4">
       <div className="flex gap-3">
         <div className="relative shrink-0">
-          <BiasPortrait enemyId={def.id} tier={def.tier} className={`h-14 w-14 sm:h-24 sm:w-24 ${hit > 0 ? (hit >= BIG_FLINCH ? 'tp-flinch-big' : 'tp-flinch') : ''}`} />
+          <BiasPortrait
+            enemyId={def.id}
+            tier={def.tier}
+            mood={moodOf(battle, show, hit)}
+            className={`h-14 w-14 sm:h-24 sm:w-24 ${hit > 0 ? (hit >= BIG_FLINCH ? 'tp-flinch-big' : 'tp-flinch') : ''}`}
+          />
           {hit > 0 && (
             <span
               className="tp-rise pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded-sm bg-[var(--tp-ink)] px-1 font-serif text-lg font-bold text-[var(--tp-accent)]"
@@ -258,15 +318,32 @@ function ThreatPanel({ battle: live, preview, known, show }: { battle: BattleSta
           <h2 tabIndex={-1} data-focus-start className="font-serif text-lg font-semibold leading-tight text-[var(--tp-text)] outline-none sm:text-xl" data-testid="enemy-name">
             {def.name}
           </h2>
-          <p className="mt-0.5 text-[0.8rem] leading-snug text-[var(--tp-text)] sm:text-sm" data-testid="enemy-rule">
-            {enemyRuleText(battle)}
-          </p>
-          {def.phase2 && (
-            <p className="mt-0.5 text-xs leading-snug text-[var(--tp-muted)]" data-testid="phase-warning">
-              {threshold !== null && `At half Resolve (${threshold}) it changes: ${def.phase2.ruleText} `}
-              {enemyRuleText(battle).includes(OVERFLOW_TEXT) ? PROBLEM_LINES : PROBLEM_RULE}
+          <div id="enemy-rules" className={more ? '' : 'max-sm:line-clamp-1'} data-testid="rule-block">
+            <p className="mt-0.5 text-[0.8rem] leading-snug text-[var(--tp-text)] sm:text-sm" data-testid="enemy-rule">
+              {enemyRuleText(battle)}
             </p>
-          )}
+            {def.phase2 && (
+              <p className="mt-0.5 text-xs leading-snug text-[var(--tp-muted)]" data-testid="phase-warning">
+                {threshold !== null && `At half Resolve (${threshold}) it changes: ${def.phase2.ruleText} `}
+                {enemyRuleText(battle).includes(OVERFLOW_TEXT) ? PROBLEM_LINES : PROBLEM_RULE}
+              </p>
+            )}
+            {lastOfWalk && (
+              <p className="mt-0.5 text-xs leading-snug text-[var(--tp-text)]" data-testid="holds-nothing-back">
+                {SHORT_WALK_BOSS_TEXT}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            className="text-xs text-[var(--tp-muted)] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--tp-focus)] sm:hidden"
+            aria-expanded={more}
+            aria-controls="enemy-rules"
+            onClick={() => setMore((m) => !m)}
+            data-testid="rule-more"
+          >
+            {more ? 'Less' : 'More'}
+          </button>
           <TiringNote battle={live} />
           {gamble && battle.enemy.misses >= 2 && (
             <p className="mt-0.5 text-xs leading-snug text-[var(--tp-muted)]" data-testid="gamble-streak">
@@ -282,6 +359,7 @@ function ThreatPanel({ battle: live, preview, known, show }: { battle: BattleSta
           </span>
           <Bar value={health} max={battle.enemy.maxHealth} color="var(--tp-enemy-bar)" label={`${def.name} Resolve`} />
         </div>
+        <ShakenMeter battle={battle} />
         <div className="flex flex-wrap gap-1.5">
           {battle.enemy.guard > 0 && (
             <Chip tone="guard">
@@ -303,6 +381,11 @@ function ThreatPanel({ battle: live, preview, known, show }: { battle: BattleSta
       >
         <p className="text-[0.68rem] uppercase tracking-wider text-[var(--tp-muted)]">Next, it will</p>
         <p className="font-serif text-base font-semibold text-[var(--tp-text)] sm:text-lg">{intentText(move, live).join(' · ')}</p>
+        {first.map((line) => (
+          <p key={line} className="w-full text-sm text-[var(--tp-text)]" data-testid="before-it-acts">
+            {line}
+          </p>
+        ))}
         <p className="w-full text-sm text-[var(--tp-text)]" data-testid="incoming">
           {incomingLine(preview)}
         </p>
@@ -378,7 +461,13 @@ function ArgumentPanel({ battle, preview, show, reduced }: { battle: BattleState
   )
 }
 
+/** Weight × Multiplier = product, then each step the engine applies, the last number being the damage (said once). */
 function Equation({ preview }: { preview: ArgumentPreview }) {
+  const damage = (
+    <>
+      <strong data-testid="damage-preview">{preview.damage}</strong> damage
+    </>
+  )
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--tp-text)]" data-testid="equation">
       <span>
@@ -387,39 +476,33 @@ function Equation({ preview }: { preview: ArgumentPreview }) {
       {preview.modifiers.map((m) => (
         <Chip key={m}>{m}</Chip>
       ))}
-      <span>
-        = <strong>{preview.product}</strong>
-      </span>
-      {preview.chain.map((step) => (
+      <span className={preview.chain.length === 0 ? 'text-base' : ''}>= {preview.chain.length === 0 ? damage : <strong>{preview.product}</strong>}</span>
+      {preview.chain.map((step, i) => (
         <span key={step.kind} className="contents" data-testid="chain-step">
           <span aria-hidden="true">→</span>
           <Chip tone={step.kind === 'guard' ? 'guard' : 'plain'}>{step.text}</Chip>
-          <span>
-            = <strong>{step.after}</strong>
-          </span>
+          <span className={i === preview.chain.length - 1 ? 'text-base' : ''}>= {i === preview.chain.length - 1 ? damage : <strong>{step.after}</strong>}</span>
         </span>
       ))}
       {preview.steps.length > 0 && preview.weight === 0 && preview.multiplier > 1 && (
-        <Chip tone="warn">
+        <Chip tone="note">
           <span data-testid="no-weight">No Weight yet: a Multiplier has nothing to multiply</span>
         </Chip>
       )}
       {preview.conclusionEmpty && (
-        <Chip tone="warn">
+        <Chip tone="note">
           <span data-testid="empty-conclusion">
             Conclusion: nothing to count {timesWord(preview.conclusionCount)}. Finish on a card with Weight or Multiplier.
           </span>
         </Chip>
       )}
       {preview.pierce && <Chip tone="good">Pierce: ignores Guard</Chip>}
-      <span aria-hidden="true">→</span>
-      <span className="text-base">
-        <strong data-testid="damage-preview">{preview.damage}</strong> damage
-      </span>
       {preview.healedBack > 0 && <Chip tone="warn">It recovers {preview.healedBack}</Chip>}
       {preview.selfLoss > 0 && <Chip tone="warn">You lose {preview.selfLoss}</Chip>}
       {preview.growth > 0 && <Chip tone="warn">Its attacks +{preview.growth}</Chip>}
       {preview.unsettleTick > 0 && <Chip tone="good">Then Unsettle takes {preview.unsettleTick}</Chip>}
+      {preview.shaken > 0 && <Chip tone="good">Shaken +{preview.shaken}</Chip>}
+      {preview.released > 0 && <Chip tone="good">It changes: Shaken {preview.released} becomes Unsettle at once</Chip>}
       {preview.guard > 0 && (
         <Chip tone="guard">
           Your Guard {preview.guard}
@@ -523,7 +606,7 @@ export function BattleScreen({ run }: { run: RunState }) {
   return (
     <div className="flex flex-col gap-2 sm:gap-3">
       <style>{SHOW_CSS}</style>
-      <ThreatPanel battle={battle} preview={preview} known={run.known.includes(battle.enemy.id)} show={show} />
+      <ThreatPanel battle={battle} preview={preview} known={run.known.includes(battle.enemy.id)} show={show} lastOfWalk={holdsNothingBack(run, battle.enemy.id)} />
       <ArgumentPanel battle={battle} preview={preview} show={show} reduced={reduced} />
 
       {hint && (
@@ -532,98 +615,103 @@ export function BattleScreen({ run }: { run: RunState }) {
         </p>
       )}
 
-      <section aria-label="Your hand">
-        <h2 className="sr-only">Your hand</h2>
-        <div ref={handRef} className="grid grid-cols-3 justify-items-stretch gap-1.5 sm:flex sm:flex-wrap sm:justify-center sm:gap-2" data-testid="hand">
-          {battle.hand.map((card, i) => {
-            const def = resolveCard(card)
-            return (
-              <CardFace
-                key={card.uid}
-                card={def}
-                size="hand"
-                freeNote={cardCost(battle, card) < def.cost ? 'Free as first Logic' : undefined}
-                hotkey={i < 9 ? i + 1 : undefined}
-                disabled={!canPlay(battle, card.uid)}
-                onActivate={() => {
-                  refocus.current = i
-                  skipShow()
-                  act((r) => battleAction(r, (b) => playCard(b, card.uid)))
-                }}
-                onInspect={() => setInspected(card.uid)}
-              />
-            )
-          })}
-          {battle.hand.length === 0 && <p className="col-span-3 py-6 text-sm text-[var(--tp-muted)]">Your hand is empty.</p>}
-        </div>
-        <p className="mt-1.5 min-h-[1.25rem] text-center text-xs text-[var(--tp-muted)]">
-          {inspectedDef ? (
-            <>
-              <span className="sm:hidden">
-                <strong>{inspectedDef.name}:</strong> {describeCard(inspectedDef).join(' ')}{' '}
-              </span>
-              {keywordsOnCard(inspectedDef)
-                .map((word) => `${word}: ${keywordText(word, run.school)}`)
-                .join('  ')}
-            </>
-          ) : (
-            <>
-              <span className="hidden sm:inline">Keys: 1–9 play a card, U undoes, E ends the turn, S skips the replay.</span>
-              <span className="sm:hidden">Tap a card to play it. Hold a card to read all of it.</span>
-            </>
-          )}
-        </p>
-      </section>
+      <div
+        className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-1.5 border-t border-[var(--tp-line)] bg-[var(--tp-ink)] px-4 pt-2 sm:static sm:mx-0 sm:gap-3 sm:border-0 sm:bg-transparent sm:px-0 sm:pt-0"
+        data-testid="hand-dock"
+      >
+        <section aria-label="Your hand" className={show.done ? undefined : 'max-sm:hidden'}>
+          <h2 className="sr-only">Your hand</h2>
+          <div ref={handRef} className="grid grid-cols-3 justify-items-stretch gap-1.5 sm:flex sm:flex-wrap sm:justify-center sm:gap-2" data-testid="hand">
+            {battle.hand.map((card, i) => {
+              const def = resolveCard(card)
+              return (
+                <CardFace
+                  key={card.uid}
+                  card={def}
+                  size="hand"
+                  freeNote={cardCost(battle, card) < def.cost ? 'Free as first Logic' : undefined}
+                  hotkey={i < 9 ? i + 1 : undefined}
+                  disabled={!canPlay(battle, card.uid)}
+                  onActivate={() => {
+                    refocus.current = i
+                    skipShow()
+                    act((r) => battleAction(r, (b) => playCard(b, card.uid)))
+                  }}
+                  onInspect={() => setInspected(card.uid)}
+                />
+              )
+            })}
+            {battle.hand.length === 0 && <p className="col-span-3 py-6 text-sm text-[var(--tp-muted)]">Your hand is empty.</p>}
+          </div>
+          <p className="mt-1.5 min-h-[1.25rem] text-center text-xs text-[var(--tp-muted)] max-sm:line-clamp-3">
+            {inspectedDef ? (
+              <>
+                <span className="sm:hidden">
+                  <strong>{inspectedDef.name}:</strong> {describeCard(inspectedDef).join(' ')}{' '}
+                </span>
+                {keywordsOnCard(inspectedDef)
+                  .map((word) => `${word}: ${keywordText(word, run.school)}`)
+                  .join('  ')}
+              </>
+            ) : (
+              <>
+                <span className="hidden sm:inline">Keys: 1–9 play a card, U undoes, E ends the turn, S skips the replay.</span>
+                <span className="sm:hidden">Tap a card to play it. Hold a card to read all of it.</span>
+              </>
+            )}
+          </p>
+        </section>
 
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-[var(--tp-line)] bg-[var(--tp-ink)] py-2 pl-4 pr-20 sm:mx-0 sm:rounded-lg sm:border sm:py-3 sm:pr-4">
-        <p className="w-full text-xs leading-snug text-[var(--tp-text)] sm:hidden" data-testid="intent-compact">
-          {compactIntent(battle, preview)}
-        </p>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-[var(--tp-text)]" data-testid="focus">
-          <Term word="Focus" />
-          <span className="flex gap-1" aria-hidden="true">
-            {Array.from({ length: Math.max(battle.focus, 3) }, (_, i) => (
-              <span key={i} className={`h-3.5 w-3.5 border-2 border-[var(--tp-accent)] ${i < battle.focus ? 'bg-[var(--tp-accent)]' : ''}`} />
-            ))}
-          </span>
-          <span>{battle.focus} left</span>
-          <span className="text-xs text-[var(--tp-muted)]" data-testid="turn">
-            Turn {battle.turn}
-          </span>
-          <span className="hidden text-xs text-[var(--tp-muted)] sm:inline">
-            Draw pile {battle.drawPile.length} · Discard {battle.discardPile.length}
-            {battle.exhausted.length > 0 && ` · Gone this fight ${battle.exhausted.length}`}
-          </span>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => act((r) => battleAction(r, undoPlay))}
-            disabled={battle.undo.length === 0}
-            className="rounded-md border border-[var(--tp-line)] px-3 py-2 text-sm text-[var(--tp-text)] hover:bg-[var(--tp-ink-2)] disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] sm:px-4"
-          >
-            Undo <span className="hidden text-xs text-[var(--tp-muted)] sm:inline">(U)</span>
-          </button>
-          <button
-            ref={endRef}
-            type="button"
-            onClick={() => {
-              wakeTones()
-              act((r) => battleAction(r, endTurn))
-            }}
-            aria-label={`End turn: ${action}.${danger ? ` ${danger.line}` : ''}`}
-            className={`rounded-md px-3 py-1.5 text-sm font-semibold hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] sm:px-4 ${
-              danger ? 'border-2 border-[var(--tp-warn)] bg-[var(--tp-ink)] text-[var(--tp-warn)]' : 'bg-[var(--tp-accent)] text-[var(--tp-on-accent)]'
-            }`}
-            data-testid="end-turn"
-            data-danger={danger ? (danger.certain ? 'certain' : 'risk') : undefined}
-          >
-            End turn <span className="hidden text-xs sm:inline">(E)</span>
-            <span className="block text-xs font-normal">
-              {action}
-              {danger && <strong className="font-semibold"> · {danger.short}</strong>}
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 bg-[var(--tp-ink)] pb-2 pr-16 sm:sticky sm:bottom-0 sm:z-10 sm:rounded-lg sm:border sm:border-[var(--tp-line)] sm:py-3 sm:pl-4 sm:pr-4">
+          <p className="w-full text-xs leading-snug text-[var(--tp-text)] sm:hidden" data-testid="intent-compact">
+            {compactIntent(battle, preview)}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-[var(--tp-text)]" data-testid="focus">
+            <Term word="Focus" />
+            <span className="flex gap-1" aria-hidden="true">
+              {Array.from({ length: Math.max(battle.focus, 3) }, (_, i) => (
+                <span key={i} className={`h-3.5 w-3.5 border-2 border-[var(--tp-accent)] ${i < battle.focus ? 'bg-[var(--tp-accent)]' : ''}`} />
+              ))}
             </span>
-          </button>
+            <span>{battle.focus} left</span>
+            <span className="text-xs text-[var(--tp-muted)]" data-testid="turn">
+              Turn {battle.turn}
+            </span>
+            <span className="hidden text-xs text-[var(--tp-muted)] sm:inline">
+              Draw pile {battle.drawPile.length} · Discard {battle.discardPile.length}
+              {battle.exhausted.length > 0 && ` · Gone this fight ${battle.exhausted.length}`}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => act((r) => battleAction(r, undoPlay))}
+              disabled={battle.undo.length === 0}
+              className="rounded-md border border-[var(--tp-line)] px-3 py-2 text-sm text-[var(--tp-text)] hover:bg-[var(--tp-ink-2)] disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] sm:px-4"
+            >
+              Undo <span className="hidden text-xs text-[var(--tp-muted)] sm:inline">(U)</span>
+            </button>
+            <button
+              ref={endRef}
+              type="button"
+              onClick={() => {
+                wakeTones()
+                act((r) => battleAction(r, endTurn))
+              }}
+              aria-label={`End turn: ${action}.${danger ? ` ${danger.line}` : ''}`}
+              className={`rounded-md px-3 py-1.5 text-sm font-semibold hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] sm:px-4 ${
+                danger ? 'border-2 border-[var(--tp-warn)] bg-[var(--tp-ink)] text-[var(--tp-warn)]' : 'bg-[var(--tp-accent)] text-[var(--tp-on-accent)]'
+              }`}
+              data-testid="end-turn"
+              data-danger={danger ? (danger.certain ? 'certain' : 'risk') : undefined}
+            >
+              End turn <span className="hidden text-xs sm:inline">(E)</span>
+              <span className="block text-xs font-normal">
+                {action}
+                {danger && <strong className="font-semibold"> · {danger.short}</strong>}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
       <p className="sr-only" aria-live="polite" data-testid="announcer">

@@ -32,12 +32,14 @@ interface CardFaceProps {
   /** In the hand, a phone shows a few words per effect so five cards and the intent fit on one screen. */
   size?: 'hand' | 'full' | 'compact'
   label?: string
+  /** On an offered card: what it fits in the deck you have, "Fits your Cash Value". */
+  fits?: string | null
   onActivate?: () => void
   onInspect?: () => void
 }
 
 /** A card as a note card: type band with glyph and word, cost in Focus, the full rules text. */
-export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', label, onActivate, onInspect }: CardFaceProps) {
+export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', label, fits, onActivate, onInspect }: CardFaceProps) {
   const timer = useRef<number | null>(null)
   const longPressed = useRef(false)
   const lines = describeCard(card)
@@ -80,10 +82,10 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
       onFocus={onInspect}
       onMouseEnter={onInspect}
       aria-disabled={disabled || undefined}
-      aria-label={
+      aria-label={`${
         label ??
         `${card.name}. ${TYPE_LABELS[card.type]}${school ? `, ${school} card` : ''}${card.rarity === 'rare' ? ', rare' : ''}${unplayable ? '' : `, costs ${card.cost} Focus${freeNote ? `, ${freeNote.toLowerCase()}` : ''}`}. ${lines.join(' ')}`
-      }
+      }${fits ? `. ${fits}` : ''}`}
       className={`relative flex flex-col overflow-hidden rounded-md border-2 bg-[var(--tp-paper)] text-left text-[var(--tp-paper-ink)] shadow-[3px_3px_0_0_var(--tp-shadow)] motion-safe:transition-transform motion-safe:duration-75 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] ${
         hand
           ? 'w-full min-h-[5.75rem] sm:w-36 sm:min-h-[9.75rem]'
@@ -115,6 +117,15 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
       {!hand && (school || card.rarity === 'rare') && (
         <span className="px-1.5 text-[0.66rem] font-semibold uppercase tracking-wide text-[var(--tp-paper-muted)] sm:px-2" aria-hidden="true" data-testid="card-school">
           {[school, card.rarity === 'rare' ? 'Rare' : null].filter(Boolean).join(' · ')}
+        </span>
+      )}
+      {fits && (
+        <span
+          className="mx-1.5 mt-1 self-start rounded-sm border border-[var(--tp-good)] px-1 text-[0.66rem] font-semibold leading-tight text-[var(--tp-good)] sm:mx-2"
+          aria-hidden="true"
+          data-testid="card-fits"
+        >
+          {fits}
         </span>
       )}
       {freeNote && (

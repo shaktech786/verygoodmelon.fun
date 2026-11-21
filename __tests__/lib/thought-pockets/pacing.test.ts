@@ -72,17 +72,18 @@ describe("Gentle pace keeps a newcomer's fight moving", () => {
 })
 
 describe('damage a rule stops is never lost, at one stated rate', () => {
-  it(`past a problem's half line or Sorites' cap it becomes Unsettle, 1 for every ${OVERFLOW.rate}, at most ${OVERFLOW.max} a round`, () => {
+  it(`past a problem's half line or Sorites' cap it banks Shaken, 1 for every ${OVERFLOW.rate}, at most ${OVERFLOW.max} a round`, () => {
     const def = getEnemyDef('problem_of_induction')
     const half = Math.floor(def.health / 2)
     const huge = play({ ...at('problem_of_induction', 0, ['smoking_gun', 'syllogism', 'smoking_gun'], half + 1), focus: 9 }, 3)
     const p = previewArgument(huge)
     expect(p.raw - 1).toBeGreaterThan(OVERFLOW.rate * (OVERFLOW.max + 2))
-    expect(p.spill).toBe(OVERFLOW.max)
+    expect(p.shaken).toBe(OVERFLOW.max)
     const soritesHalf = Math.floor(getEnemyDef('sorites').health / 2)
     const sorites = play({ ...at('sorites', 0, ['smoking_gun', 'syllogism', 'smoking_gun'], soritesHalf + SORITES_CAP / 2), focus: 9 }, 3)
     const s = previewArgument(sorites)
-    expect(s.unsettle + s.spill).toBe(OVERFLOW.max)
+    expect(s.unsettle).toBe(0)
+    expect(s.shaken).toBe(OVERFLOW.max)
   })
 
   it('a philosophical problem gives ground slowly: no round takes it past three quarters, or past half, so even a huge deck needs three rounds', () => {
@@ -92,7 +93,7 @@ describe('damage a rule stops is never lost, at one stated rate', () => {
     const first = previewArgument(opening)
     expect(first.damage).toBe(def.health - lines[0])
     expect(first.chain.at(-1)).toMatchObject({ kind: 'line', short: 'stops at 3/4', after: def.health - lines[0] })
-    expect(first.spill).toBe(OVERFLOW.max)
+    expect(first.shaken).toBe(OVERFLOW.max)
     expect(endTurn(opening).enemy.health).toBe(lines[0])
     const changed = play({ ...at('problem_of_induction', 0, ['smoking_gun', 'syllogism', 'smoking_gun'], lines[1]), enemy: { ...at('problem_of_induction', 0, [], lines[1]).enemy, phase: 2 }, focus: 9 }, 3)
     expect(previewArgument(changed).enemyFalls).toBe('argument')
@@ -104,7 +105,9 @@ describe('damage a rule stops is never lost, at one stated rate', () => {
   })
 
   it('the rate is stated where each rule is stated, from the same constants', () => {
-    expect(OVERFLOW_TEXT).toBe(`Anything past it becomes Unsettle, 1 for every ${OVERFLOW.rate} (at most ${OVERFLOW.max} a round).`)
+    expect(OVERFLOW_TEXT).toBe(
+      `Anything past it shakes it: 1 Shaken for every ${OVERFLOW.rate} (at most ${OVERFLOW.max} a round). When it changes, all its Shaken becomes Unsettle and takes its toll at once, then halves as Unsettle does.`,
+    )
     expect(getEnemyDef('sorites').ruleText).toContain(OVERFLOW_TEXT)
     for (const text of [getEnemyDef('sorites').ruleText, OVERFLOW_TEXT]) {
       const rates = [...text.matchAll(/1 for every (\d+)/g)].map((m) => Number(m[1]))

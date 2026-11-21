@@ -1,4 +1,5 @@
 import { EnemyDef, EnemyTier } from '@/types/thought-pockets'
+import { RIGOR } from './pace'
 
 export const TUTORIAL_ENEMY = 'jumping_to_conclusions'
 
@@ -9,11 +10,12 @@ export const MEANING_ANSWER = 10
 export const INDUCTION_BONUS = 1.5
 export const SORITES_CAP = 20
 /**
- * Damage a rule stops (Sorites' cap, a problem's stop lines) is not lost: every `rate` of it becomes
- * 1 Unsettle, at most `max` in one round, so a huge argument shakes a problem without skipping its second half.
+ * Damage a rule stops (Sorites' cap, a problem's stop lines) is not lost: every `rate` of it banks 1 Shaken,
+ * at most `max` in one round, and the moment the problem changes it all becomes Unsettle that takes its toll
+ * at once, so a huge argument pays off without skipping the problem's second half.
  */
 export const OVERFLOW = { rate: 2, max: 5 } as const
-export const OVERFLOW_TEXT = `Anything past it becomes Unsettle, 1 for every ${OVERFLOW.rate} (at most ${OVERFLOW.max} a round).`
+export const OVERFLOW_TEXT = `Anything past it shakes it: 1 Shaken for every ${OVERFLOW.rate} (at most ${OVERFLOW.max} a round). When it changes, all its Shaken becomes Unsettle and takes its toll at once, then halves as Unsettle does.`
 /** No single round takes a philosophical problem past the next of these shares of its Resolve, so even a huge deck needs three rounds. Half is where it changes. */
 export const STOP_LINES = [0.75, 0.5] as const
 export const PROBLEM_LINES = 'A philosophical problem gives ground slowly: no single round takes it past three quarters of its Resolve, or past half, where it changes.'
@@ -28,6 +30,9 @@ export const BURIDAN_CHARGE = 1
 export const SUNK_COST_GROWTH = 2
 /** Confirmation Bias only grows by its second rule, on the higher Rigorous levels, where a smaller step is enough. */
 export const CONFIRMATION_GROWTH = 1
+/** Arguments with fewer cards than this are explained away by Motivated Reasoning; the Backfire Effect's milder second rule only waves off a single card. */
+export const MOTIVATED_CARDS = 3
+export const DISMISS_CARDS = 2
 
 function arrowRule(min: number): string {
   return `Motionless at every instant: an argument that would deal less than ${min} damage deals none. Unsettle still works.`
@@ -172,7 +177,7 @@ export const ENEMIES: EnemyDef[] = [
     health: 68,
     rule: 'backfire',
     ruleText: 'Correcting it stings: when your argument hurts it, you lose 1 Resolve for each card in that argument.',
-    secondRule: { rule: 'motivated', ruleText: 'It also explains away anything thin: it recovers half the damage from an argument of fewer than 3 cards.' },
+    secondRule: { rule: 'dismisses', ruleText: 'It also waves off a lone point: it recovers half the damage from a one-card argument.' },
     intro: 'Correct me and I will only believe it harder.',
     insight: 'Pushing harder can entrench a belief. Fewer, better points often land softer and go further.',
     moves: [{ attack: 12 }, { guard: 12 }, { attack: 7, hits: 2 }],
@@ -259,7 +264,7 @@ export const ENEMIES: EnemyDef[] = [
     floor: 3,
     health: 80,
     rule: 'motivated',
-    ruleText: 'It explains away anything thin: it recovers half the damage from an argument of fewer than 3 cards.',
+    ruleText: `It explains away anything thin: it recovers half the damage from an argument of fewer than ${MOTIVATED_CARDS} cards.`,
     secondRule: { rule: 'status_quo', ruleText: `And it will not budge: its Guard never wears off, though it holds no more than ${STATUS_QUO_MAX_GUARD}. Break through it or Pierce it.` },
     intro: 'I need this to be true, so it is.',
     insight: 'When we want a conclusion, we argue toward it. Ask what you would think if you wanted the opposite.',
@@ -323,6 +328,12 @@ export function getEnemyDef(enemyId: string): EnemyDef {
 /** The rule as it plays at this pace: some problems are milder in Gentle. */
 export function ruleTextAt(def: EnemyDef, rigor: number): string {
   return rigor === 0 && def.gentleRuleText ? def.gentleRuleText : def.ruleText
+}
+
+/** Every rule a bias plays by at this pace, its second rule included from the Rigorous level that adds it. */
+export function fullRuleText(def: EnemyDef, rigor: number): string {
+  const main = ruleTextAt(def, rigor)
+  return rigor >= RIGOR.secondRule && def.secondRule ? `${main} ${def.secondRule.ruleText}` : main
 }
 
 /** How much of the damage a rule stopped becomes Unsettle, when `already` has been made this round. */

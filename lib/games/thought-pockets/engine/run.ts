@@ -18,6 +18,8 @@ import { CARDS, canUpgrade, getCardDef, isDoubt, usesKeyword } from '../data/car
 import { getSchoolDef } from '../data/schools'
 import { RELICS } from '../data/relics'
 import { REST_HEAL_PERCENT, RIGOR, RIGOROUS_FLOOR_HEAL, TIRING } from '../data/pace'
+import { enemiesFor } from '../data/enemies'
+import { fitsLabel } from '../data/synergy'
 import {
   ARCHIVE_COST,
   ARGUE_COST,
@@ -56,7 +58,7 @@ import {
 import { generateFloor } from './map'
 import { pick, roll, rollInt, seedRng, shuffle } from './rng'
 
-export const RUN_VERSION = 7
+export const RUN_VERSION = 8
 export const START_RESOLVE = 60
 export const RUN_FLOORS: Record<RunLength, number> = { short: 1, long: 3 }
 /** Below this share of your Resolve, the map warns before any fight. */
@@ -64,6 +66,7 @@ const LOW_RESOLVE_SHARE = 0.25
 const DEFAULT_RIGOR = RIGOR.harder
 const CARD_CHOICES = 3
 const RELIC_CHOICES = 2
+export const RULE_BENDING_CHOICES = 2
 const SHOP_CARDS = 4
 const SHOP_RELICS = 2
 
@@ -114,6 +117,7 @@ export function newRun(school: School, seed: number, mode: Mode = 'gentle', know
     defeatRound: null,
     beaten: [],
     stats: { turns: 0, fights: 0, nodes: 0, best: 0 },
+    bestArgument: null,
   }
 }
 
@@ -153,9 +157,19 @@ function buildAroundRare(run: RunState, taken: string[], rng: number): { cardId:
   return { cardId: choice.item.id, rng: choice.rng }
 }
 
+/** How many of a problem's card offers come from your school, or fit what you already own. */
+export const BOSS_SCHOOL_SLOTS = 2
+
+/** Your school's cards, or another card that fits what you own. */
+export function inOrNearSchool(run: RunState, cardId: string): boolean {
+  const card = getCardDef(cardId)
+  return card.school === run.school || (card.school === undefined && fitsLabel(cardId, run) !== null)
+}
+
 /**
- * On the first floor the first offer leans toward your school so a build can start, and the first
- * problem always offers one of your school's rares you lack; after that every offer comes from everything.
+ * On the first floor the first offer leans toward your school so a build can start; a problem's first
+ * offers come from your school or fit your build, and the first problem always offers one of your school's
+ * rares you lack. Every other offer comes from everything.
  */
 function rollCards(run: RunState, count: number, source: RewardState['source'] | 'shop'): { cards: string[]; rng: number } {
   let state = run.rng
@@ -172,6 +186,11 @@ function rollCards(run: RunState, count: number, source: RewardState['source'] |
     let pool = cardPool(run, rarity.rarity).filter((c) => !cards.includes(c.id))
     const ownSchool = pool.filter((c) => c.school === run.school)
     if (i === 0 && run.floor === 1 && ownSchool.length > 0) pool = ownSchool
+    if (source === 'boss' && i >= count - BOSS_SCHOOL_SLOTS) {
+      const near = CARDS.filter((c) => c.rarity !== 'starter' && c.rarity !== 'doubt' && !cards.includes(c.id) && inOrNearSchool(run, c.id))
+      const sameRarity = near.filter((c) => c.rarity === rarity.rarity)
+      pool = sameRarity.length > 0 ? sameRarity : near.length > 0 ? near : pool
+    }
     if (pool.length === 0) pool = CARDS.filter((c) => c.rarity === 'common' && !cards.includes(c.id))
     const choice = pick(pool, state)
     state = choice.rng
@@ -180,10 +199,16 @@ function rollCards(run: RunState, count: number, source: RewardState['source'] |
   return { cards, rng: state }
 }
 
-function rollRelics(run: RunState, count: number): { relics: RelicId[]; rng: number } {
-  const unowned = RELICS.filter((r) => !run.relics.includes(r.id)).map((r) => r.id)
-  const shuffled = shuffle(unowned, run.rng)
-  return { relics: shuffled.items.slice(0, count), rng: shuffled.rng }
+/**
+ * Rule-bending relics come only from philosophical problems: a problem offers one familiar relic and
+ * `RULE_BENDING_CHOICES` that bend a rule. Every other relic offer comes from the familiar ones.
+ */
+function rollRelics(run: RunState, count: number, ruleBending = 0): { relics: RelicId[]; rng: number } {
+  const unowned = RELICS.filter((r) => !run.relics.includes(r.id))
+  const bending = shuffle(unowned.filter((r) => r.ruleBending).map((r) => r.id), run.rng)
+  const plain = shuffle(unowned.filter((r) => !r.ruleBending).map((r) => r.id), bending.rng)
+  const bent = bending.items.slice(0, ruleBending)
+  return { relics: [...plain.items.slice(0, count - bent.length), ...bent], rng: plain.rng }
 }
 
 function choiceCount(run: RunState): number {
@@ -215,7 +240,7 @@ function makeReward(run: RunState, source: RewardState['source'], finalRound: Ro
   }
   let relicChoices: RelicId[] = []
   if (source !== 'battle') {
-    const rolled = rollRelics(next, source === 'elite' ? 1 : RELIC_CHOICES)
+    const rolled = source === 'boss' ? rollRelics(next, 1 + RULE_BENDING_CHOICES, RULE_BENDING_CHOICES) : rollRelics(next, source === 'elite' ? 1 : RELIC_CHOICES)
     relicChoices = rolled.relics
     next = { ...next, rng: rolled.rng }
   }
@@ -272,7 +297,7 @@ function makeShop(run: RunState): RunState {
 }
 
 function relicsLeft(run: RunState): boolean {
-  return RELICS.some((r) => !run.relics.includes(r.id))
+  return RELICS.some((r) => !r.ruleBending && !run.relics.includes(r.id))
 }
 
 const RELIC_EVENTS: EventId[] = ['mirror', 'loud_certainty']
@@ -306,6 +331,11 @@ function makeEvent(run: RunState): RunState {
   return { ...next, event, screen: 'event' }
 }
 
+/** The Short walk ends at its problem, which holds nothing back. */
+export function holdsNothingBack(run: RunState, enemyId: string): boolean {
+  return run.length === 'short' && bossOptions(run).includes(enemyId)
+}
+
 function startFight(run: RunState, enemyId: string): RunState {
   const seed = rollInt(run.rng, 0, 2 ** 31)
   const battle = createBattle({
@@ -318,19 +348,28 @@ function startFight(run: RunState, enemyId: string): RunState {
     rng: seed.value,
     rigor: run.rigor,
     known: run.known.includes(enemyId),
+    lastOfShortWalk: holdsNothingBack(run, enemyId),
   })
   return { ...run, rng: seed.rng, battle, screen: 'battle', stats: { ...run.stats, fights: run.stats.fights + 1 } }
 }
 
-export function chooseNode(run: RunState, nodeId: string): RunState {
+/** The two philosophical problems that wait at the end of this floor; you choose one when you reach them. */
+export function bossOptions(run: RunState): string[] {
+  return enemiesFor(run.floor, 'boss').map((e) => e.id)
+}
+
+/** Steps to a node; at the boss, `enemyId` picks which of the floor's two problems to face (the map's suggestion otherwise). */
+export function chooseNode(run: RunState, nodeId: string, enemyId?: string): RunState {
   const node = availableNodes(run).find((n) => n.id === nodeId)
   if (!node) return run
-  const moved: RunState = { ...run, position: node.id, visited: [...run.visited, node.id], stats: { ...run.stats, nodes: run.stats.nodes + 1 } }
+  const foe = node.type === 'boss' && enemyId !== undefined && bossOptions(run).includes(enemyId) ? enemyId : node.enemyId
+  const map = foe === node.enemyId ? run.map : run.map.map((n) => (n.id === node.id ? { ...n, enemyId: foe } : n))
+  const moved: RunState = { ...run, map, position: node.id, visited: [...run.visited, node.id], stats: { ...run.stats, nodes: run.stats.nodes + 1 } }
   switch (node.type) {
     case 'battle':
     case 'elite':
     case 'boss':
-      return startFight(moved, node.enemyId as string)
+      return startFight(moved, foe as string)
     case 'rest':
       return { ...moved, screen: 'rest' }
     case 'shop':
@@ -365,8 +404,11 @@ export function battleAction(run: RunState, action: (battle: BattleState) => Bat
   if (run.screen !== 'battle' || !run.battle) return run
   const battle = action(run.battle)
   if (battle === run.battle) return run
-  const landed = battle.lastRound && battle.lastRound !== run.battle.lastRound ? battle.lastRound.damage : 0
-  const tracked = landed > run.stats.best ? { ...run, stats: { ...run.stats, best: landed } } : run
+  const round = battle.lastRound && battle.lastRound !== run.battle.lastRound ? battle.lastRound : null
+  const tracked =
+    round && round.damage > run.stats.best
+      ? { ...run, stats: { ...run.stats, best: round.damage }, bestArgument: { round, enemyId: battle.enemy.id } }
+      : run
   if (battle.outcome !== 'ongoing') return finishBattle(tracked, battle)
   return { ...tracked, battle }
 }
@@ -384,12 +426,29 @@ export function reconsider(run: RunState): RunState {
 }
 
 /** Whether to warn before a fight: you would enter it with no more Resolve than its opening attack, or with a quarter or less. */
-export function fightWarning(run: RunState, node: MapNode): { resolve: number; attack: number } | null {
-  if (!node.enemyId) return null
-  const battle = startFight(run, node.enemyId).battle as BattleState
+export function fightWarning(run: RunState, enemyId: string): { resolve: number; attack: number } | null {
+  const battle = startFight(run, enemyId).battle as BattleState
   const attack = incomingDamage(battle, 0).total
   if (run.resolve > attack && run.resolve > run.maxResolve * LOW_RESOLVE_SHARE) return null
   return { resolve: run.resolve, attack }
+}
+
+export interface Recovery {
+  kind: 'rest' | 'tea'
+  /** Resolve it would restore now. */
+  amount: number
+  price: number
+}
+
+/** The ways to recover that your next step actually offers: a rest only if rests heal at this level, the shop's tea only if you can afford it. */
+export function recoveryOptions(run: RunState): Recovery[] {
+  const open = availableNodes(run)
+  const missing = run.maxResolve - run.resolve
+  const options: Recovery[] = []
+  if (open.some((n) => n.type === 'rest') && restAmount(run) > 0) options.push({ kind: 'rest', amount: Math.min(restAmount(run), missing), price: 0 })
+  const teaPrice = priced(run, TEA_PRICE)
+  if (open.some((n) => n.type === 'shop') && run.gold >= teaPrice) options.push({ kind: 'tea', amount: Math.min(TEA_HEAL, missing), price: teaPrice })
+  return options.filter((o) => o.amount > 0)
 }
 
 /** A Rigorous level is earned on the Long walk; a Short walk at that level is practice for it. */
@@ -712,6 +771,14 @@ function fromVersion6(saved: Saved): Saved {
   return { ...saved, length: 'long', battle, defeatRound: null, reward: isRecord(saved.reward) ? { ...saved.reward, finalRound: null } : null }
 }
 
+/** Version 8 banks stopped damage as Shaken and keeps the best round for the end of the walk; round summaries are dropped because they lack the Shaken fields. */
+function fromVersion7(saved: Saved): Saved {
+  const battle = isRecord(saved.battle)
+    ? eachCore(saved.battle, (core) => ({ ...core, lastRound: null, enemy: { ...(core.enemy as Saved), shaken: 0 } }))
+    : null
+  return { ...saved, battle, defeatRound: null, bestArgument: null, reward: isRecord(saved.reward) ? { ...saved.reward, finalRound: null } : null }
+}
+
 /** Loads a saved run from any earlier version this game shipped, or returns null if it cannot be read. */
 export function migrateRun(saved: unknown, version: number): RunState | null {
   if (!isRecord(saved)) return null
@@ -720,5 +787,6 @@ export function migrateRun(saved: unknown, version: number): RunState | null {
   const v4 = version === 3 ? fromVersion3(saved) : saved
   const v5 = version <= 4 ? fromVersion4(v4) : v4
   const v6 = version <= 5 ? fromVersion5(v5) : v5
-  return { ...fromVersion6(v6), version: RUN_VERSION } as unknown as RunState
+  const v7 = version <= 6 ? fromVersion6(v6) : v6
+  return { ...fromVersion7(v7), version: RUN_VERSION } as unknown as RunState
 }

@@ -7,7 +7,10 @@ import {
   OCKHAM_MULTIPLIER,
   SECOND_OPINION_DRAW,
   SEED_UNSETTLE,
+  BOOKENDS_DRAW,
+  STILL_WATER_GUARD,
   STOIC_CAP,
+  SUNDIAL_FOCUS,
   WORRY_STONE_GUARD,
 } from '../engine/battle'
 import { LIBRARY_DISCOUNT, TEA_FLASK_HEAL } from '../engine/economy'
@@ -27,6 +30,27 @@ export const RELICS: RelicDef[] = [
   { id: 'tea_flask', name: 'Tea Flask', text: `Restore ${TEA_FLASK_HEAL} Resolve after each fight.`, flavor: 'Still warm.' },
   { id: 'second_opinion', name: 'Second Opinion', text: `On turns when the enemy is not about to attack, draw ${SECOND_OPINION_DRAW} more cards.`, flavor: 'A quiet moment is a chance to think.' },
   { id: 'long_view', name: 'The Long View', text: `Up to ${LONG_VIEW_MAX} unspent Focus carries over to your next turn instead of becoming Guard.`, flavor: 'Not everything has to happen today.' },
+  {
+    id: 'sundial',
+    name: 'Sundial',
+    text: `On turns the enemy shows an attack, gain ${SUNDIAL_FOCUS} more Focus; on turns it does not, ${SUNDIAL_FOCUS} less.`,
+    flavor: 'Some hours are longer than others.',
+    ruleBending: true,
+  },
+  {
+    id: 'bookends',
+    name: 'Bookends',
+    text: `In an argument of 2 or more cards, the card at the other end from your Conclusion is a Conclusion too. You draw ${BOOKENDS_DRAW} fewer card each turn.`,
+    flavor: 'Begin where you mean to finish.',
+    ruleBending: true,
+  },
+  {
+    id: 'still_water',
+    name: 'Still Water',
+    text: `Unsettle on an enemy never halves, but every enemy starts each fight with ${STILL_WATER_GUARD} Guard.`,
+    flavor: 'A question left still does not settle.',
+    ruleBending: true,
+  },
 ]
 
 const RELIC_INDEX = new Map(RELICS.map((relic) => [relic.id, relic]))

@@ -15,10 +15,10 @@ function withFocus(battle: BattleState, focus = 6): BattleState {
 }
 
 describe('every school has build-around rares', () => {
-  it('each school owns at least two rares, each with full and short text from its data', () => {
+  it('each school owns at least three rares, each with full and short text from its data', () => {
     for (const school of SCHOOLS) {
       const rares = CARDS.filter((c) => c.rarity === 'rare' && c.school === school.id)
-      expect(rares.length, school.id).toBeGreaterThanOrEqual(2)
+      expect(rares.length, school.id).toBeGreaterThanOrEqual(3)
       for (const def of rares) {
         expect(describeCard(def).length, def.id).toBeGreaterThan(0)
         expect(summarizeCard(def).length, def.id).toBeGreaterThan(0)

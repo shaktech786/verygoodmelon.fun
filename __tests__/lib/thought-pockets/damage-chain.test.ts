@@ -19,11 +19,11 @@ describe('damage is shown in the order the engine applies it', () => {
     const afterGuard = raw - 3
     const grains = overflowUnsettle(afterGuard - SORITES_CAP)
     expect(preview.chain.map((s) => s.after)).toEqual([afterGuard, SORITES_CAP, 10])
-    expect(preview.chain[1].text).toBe(`Capped at ${SORITES_CAP}: the rest becomes Unsettle ${grains}`)
+    expect(preview.chain[1].text).toBe(`Capped at ${SORITES_CAP}: the rest shakes it, Shaken +${grains}`)
     expect(preview.damage).toBe(10)
     const spill = overflowUnsettle(SORITES_CAP - 10, grains)
-    expect(preview.spill).toBe(spill)
-    expect(preview.chain[2].text).toBe(`It stops at ${half} and changes. Your extra ${SORITES_CAP - 10} shakes it: Unsettle +${spill}`)
+    expect(preview.shaken).toBe(grains + spill)
+    expect(preview.chain[2].text).toBe(`It stops at ${half} and changes. Your extra ${SORITES_CAP - 10} shakes it: Shaken +${spill}`)
     expect(endTurn(battle).lastRound?.chain).toEqual(preview.chain)
   })
 
@@ -46,21 +46,38 @@ describe('damage is shown in the order the engine applies it', () => {
   })
 })
 
-describe('pushing a philosophical problem past half Resolve is not lost: it shakes it', () => {
-  it(`every ${OVERFLOW.rate} past the line becomes 1 Unsettle, at most ${OVERFLOW.max}, which takes its toll next round`, () => {
+describe('pushing a philosophical problem past a line is not lost: it shakes it', () => {
+  it(`every ${OVERFLOW.rate} past the line banks 1 Shaken, at most ${OVERFLOW.max}, and the problem changing lands it all at once`, () => {
     const start = battleWith({ enemyId: 'meaning_of_life', hand: ['smoking_gun'], school: 'skeptic', resolve: 999 })
     const half = Math.floor(start.enemy.maxHealth / 2)
-    const battle = playCard({ ...start, focus: 3, enemy: { ...start.enemy, health: half + 2 } }, 100)
+    const banked = 3
+    const battle = playCard({ ...start, focus: 3, enemy: { ...start.enemy, health: half + 2, shaken: banked } }, 100)
     const preview = previewArgument(battle)
     const overflow = preview.raw - 2
     expect(preview.damage).toBe(2)
-    expect(preview.spill).toBe(Math.min(OVERFLOW.max, Math.floor(overflow / OVERFLOW.rate)))
+    expect(preview.shaken).toBe(Math.min(OVERFLOW.max, Math.floor(overflow / OVERFLOW.rate)))
+    expect(preview.released).toBe(banked + preview.shaken)
     const after = endTurn(battle)
-    expect(after.enemy.health).toBe(half)
     expect(after.enemy.phase).toBe(2)
-    expect(after.enemy.unsettle).toBe(preview.spill)
-    expect(after.lastRound?.spill).toBe(preview.spill)
-    expect(previewArgument({ ...after, focus: 0 }).unsettleTick).toBe(preview.spill)
+    expect(after.enemy.health).toBe(half - preview.released)
+    expect(after.enemy.shaken).toBe(0)
+    expect(after.enemy.unsettle).toBe(Math.floor(preview.released / 2))
+    expect(after.lastRound?.released).toBe(preview.released)
+    expect(after.lastRound?.shaken).toBe(preview.shaken)
+  })
+
+  it('stopped at three quarters, the Shaken waits in the bank and does not tick until the problem changes', () => {
+    const start = battleWith({ enemyId: 'problem_of_induction', hand: ['smoking_gun', 'syllogism'], school: 'skeptic', resolve: 999 })
+    const battle = playAll({ ...start, focus: 9 }, [100, 101])
+    const preview = previewArgument(battle)
+    expect(preview.chain.at(-1)?.kind).toBe('line')
+    expect(preview.shaken).toBeGreaterThan(0)
+    expect(preview.released).toBe(0)
+    const after = endTurn(battle)
+    expect(after.enemy.phase).toBe(1)
+    expect(after.enemy.shaken).toBe(preview.shaken)
+    expect(after.enemy.unsettle).toBe(0)
+    expect(after.lastRound?.released).toBe(0)
   })
 
   it(`The Sorites Paradox caps one argument at ${SORITES_CAP}, and its rule says so`, () => {

@@ -120,11 +120,10 @@ describe('Gentle never lets you walk into a problem unready', () => {
     const run = newRun('empiricist', 905, 'gentle', [], undefined, 'long')
     const { run: ready, node } = standingBefore(run, 'boss')
     const attack = incomingDamage(chooseNode(ready, node.id).battle as BattleState, 0).total
-    expect(fightWarning({ ...ready, resolve: START_RESOLVE }, node)).toBeNull()
-    expect(fightWarning({ ...ready, resolve: attack }, node)).toEqual({ resolve: attack, attack })
-    expect(fightWarning({ ...ready, resolve: Math.floor(START_RESOLVE / 4) }, node)?.resolve).toBe(Math.floor(START_RESOLVE / 4))
-    const rest = run.map.find((n) => n.type === 'rest') as MapNode
-    expect(fightWarning({ ...ready, resolve: 1 }, rest)).toBeNull()
+    const foe = node.enemyId as string
+    expect(fightWarning({ ...ready, resolve: START_RESOLVE }, foe)).toBeNull()
+    expect(fightWarning({ ...ready, resolve: attack }, foe)).toEqual({ resolve: attack, attack })
+    expect(fightWarning({ ...ready, resolve: Math.floor(START_RESOLVE / 4) }, foe)?.resolve).toBe(Math.floor(START_RESOLVE / 4))
   })
 
   it('Reconsider in Gentle restarts the fight with at least half your Resolve', () => {

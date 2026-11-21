@@ -3,6 +3,8 @@ export const RIGOROUS_FLOOR_HEAL = 20
 export const RIGOROUS_HEALTH = 1.25
 export const RIGOROUS_ATTACK = 2
 export const MAX_RIGOR = 7
+/** The Short walk ends at its problem, so the problem holds nothing back: it hits this much harder and has this share more Resolve. */
+export const SHORT_WALK_BOSS = { attack: 2, health: 1.15 } as const
 /** A fight has no turn limit. From this turn the bias tires instead, Unsettled `step` more each turn, so a long fight always ends. */
 export const TIRING = { gentle: 7, rigorous: 16, step: 2 } as const
 

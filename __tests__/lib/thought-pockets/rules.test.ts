@@ -203,7 +203,8 @@ describe('a philosophical problem cannot be argued past half Resolve in one roun
     expect(preview.damage).toBe(10)
     expect(preview.chain.some((m) => m.kind === 'half')).toBe(true)
     const after = endTurn(battle)
-    expect(after.enemy.health).toBe(half('meaning_of_life'))
+    expect(after.enemy.health).toBe(half('meaning_of_life') - preview.released)
+    expect(after.lastRound?.released).toBe(preview.shaken)
     expect(after.enemy.phase).toBe(2)
   })
 
@@ -214,24 +215,26 @@ describe('a philosophical problem cannot be argued past half Resolve in one roun
     const landed = playCard({ ...battleWith({ enemyId: 'meaning_of_life', hand: ['smoking_gun'], school: 'skeptic' }), focus: 3 }, 100)
     const atEdge = { ...landed, enemy: { ...landed.enemy, health: half('meaning_of_life') + 5, unsettle: 40 } }
     expect(previewArgument(atEdge).unsettleTick).toBe(0)
-    expect(endTurn(atEdge).enemy.health).toBe(half('meaning_of_life'))
+    expect(endTurn(atEdge).enemy.health).toBe(half('meaning_of_life') - previewArgument(atEdge).released)
     const phased = playCard({ ...battleWith({ enemyId: 'meaning_of_life', hand: ['smoking_gun'], school: 'skeptic' }), focus: 3 }, 100)
     const second = { ...phased, enemy: { ...phased.enemy, phase: 2 as const, health: 30 } }
     expect(previewArgument(second).damage).toBe(previewArgument(second).raw)
   })
 
-  it('the review’s combo (Rationalist, Ockham’s Razor, Syllogism+ then Observation+) needs at least four rounds for The Meaning of Life', () => {
+  it('the review’s combo (Rationalist, Ockham’s Razor, Syllogism+ then Observation+) cannot skip a line of The Meaning of Life: three quarters, then half, then the rest', () => {
     const start = battleWith({ enemyId: 'meaning_of_life', school: 'rationalist', relics: ['ockhams_razor'], resolve: 999 })
     const combo = [card('syllogism', 300, true), card('observation', 301, true)]
     let battle: BattleState = start
-    let rounds = 0
-    while (battle.outcome === 'ongoing' && rounds < 12) {
+    const seen: number[] = []
+    while (battle.outcome === 'ongoing' && seen.length < 12) {
       const turn = { ...battle, hand: combo, focus: 3 }
       battle = endTurn(playAll(turn, [300, 301]))
-      rounds++
+      seen.push(battle.enemy.health)
     }
     expect(battle.outcome).toBe('won')
-    expect(rounds).toBeGreaterThanOrEqual(4)
+    expect(seen.length).toBeGreaterThanOrEqual(3)
+    expect(seen[0]).toBe(Math.floor(start.enemy.maxHealth * 0.75))
+    expect(battle.lastRound?.phaseChanged || seen[1] <= half('meaning_of_life')).toBe(true)
   })
 })
 
