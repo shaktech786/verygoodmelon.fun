@@ -12,11 +12,6 @@ export interface Combination {
   description: string
 }
 
-export interface GoldenIdea {
-  name: string
-  riddle: string
-}
-
 /** The sixteen starting ideas: the lead, and the light, an alchemist begins with. */
 export const BASE_CONCEPTS: Concept[] = [
   { id: 'love', name: 'Love', emoji: '💕', isBase: true },
@@ -35,20 +30,6 @@ export const BASE_CONCEPTS: Concept[] = [
   { id: 'nature', name: 'Nature', emoji: '🌿', isBase: true },
   { id: 'self', name: 'Self', emoji: '🪞', isBase: true },
   { id: 'other', name: 'Other', emoji: '👥', isBase: true },
-]
-
-/**
- * The seven golds of the Great Work. Each is two steps from the starting ideas,
- * and most begin with a heavy feeling, which is the point: the hard ones are ingredients.
- */
-export const GOLDEN_IDEAS: GoldenIdea[] = [
-  { name: 'Healing', riddle: 'What grief becomes when hope stays close.' },
-  { name: 'Acceptance', riddle: 'What anxiety becomes once it learns patience.' },
-  { name: 'Courage', riddle: 'Fear, carried by hope.' },
-  { name: 'Compassion', riddle: 'Empathy that has come to understand.' },
-  { name: 'Meaning', riddle: 'Mortality, answered by legacy.' },
-  { name: 'Intimacy', riddle: 'Vulnerability that has found trust.' },
-  { name: 'Virtue', riddle: 'Wisdom with the courage to act.' },
 ]
 
 // Written in reading order ("love+fear"); lookups go through findKnownCombination.
@@ -121,6 +102,103 @@ const KNOWN_COMBINATIONS: Record<string, Combination> = {
   'empathy+understanding': { name: 'Compassion', emoji: '❤️', description: 'Feeling with others, and acting to help.' },
   'vulnerability+trust': { name: 'Intimacy', emoji: '💞', description: 'Two people meeting without armour.' },
   'authenticity+discipline': { name: 'Mastery', emoji: '🥋', description: 'Becoming fully yourself through steady practice.' },
+
+  // The second Work's golds.
+  'love+impermanence': { name: 'Gratitude', emoji: '🌻', description: 'Loving what you have while you still have it.' },
+  'time+courage': { name: 'Resilience', emoji: '🌳', description: 'Courage that keeps coming back, one ordinary day at a time.' },
+  'justice+empathy': { name: 'Forgiveness', emoji: '🫶', description: 'Fairness that remembers the other person is human too.' },
+  'balance+patience': { name: 'Serenity', emoji: '🪷', description: 'Steady between the wild and the tidy, and in no hurry.' },
+  'relationship+trust': { name: 'Belonging', emoji: '🏡', description: 'The place where you stop checking whether you are welcome.' },
+  'self+wisdom': { name: 'Humility', emoji: '🌾', description: 'Knowing enough to know how much you do not.' },
+  'freedom+wonder': { name: 'Joy', emoji: '☀️', description: 'Wonder with nowhere else it has to be.' },
+
+  // The rest of the first step: every pair of starting ideas has an answer written by hand.
+  'love+knowledge': { name: 'Fascination', emoji: '🔭', description: 'Loving something makes you want to know everything about it.' },
+  'love+power': { name: 'Protection', emoji: '🛡️', description: 'Love with strength behind it stands between its people and harm.' },
+  'love+beauty': { name: 'Adoration', emoji: '😍', description: 'Love that cannot stop looking.' },
+  'love+justice': { name: 'Mercy', emoji: '🤲', description: 'Fairness, softened by caring about the person in front of you.' },
+  'love+hope': { name: 'Yearning', emoji: '🌠', description: 'Loving something that has not arrived yet.' },
+  'love+chaos': { name: 'Passion', emoji: '🔥', description: 'Love that refuses to stay tidy.' },
+  'love+order': { name: 'Commitment', emoji: '💍', description: 'Love that chooses a shape and keeps it.' },
+  'love+nature': { name: 'Tenderness', emoji: '🐣', description: 'The care living things give one another without being asked.' },
+
+  'fear+knowledge': { name: 'Caution', emoji: '🚧', description: 'Knowing enough to be careful, not enough to be certain.' },
+  'fear+power': { name: 'Control', emoji: '🎛️', description: 'When we are afraid, we grip harder.' },
+  'fear+beauty': { name: 'Awe', emoji: '🏔️', description: 'Beauty so large it makes you feel small, and glad to be.' },
+  'fear+justice': { name: 'Conscience', emoji: '🧭', description: 'The small fear of doing wrong that keeps you honest.' },
+  'fear+chaos': { name: 'Overwhelm', emoji: '🌊', description: 'Too much at once. It passes, and it always has.' },
+  'fear+order': { name: 'Perfectionism', emoji: '📏', description: 'Fear, dressed up as high standards.' },
+  'fear+nature': { name: 'Alertness', emoji: '🦌', description: 'The old animal part of you, keeping watch.' },
+  'fear+other': { name: 'Shyness', emoji: '🙊', description: 'Wanting to be close, and worried about being seen.' },
+
+  'time+power': { name: 'Momentum', emoji: '🚂', description: 'Small efforts, kept up, become hard to stop.' },
+  'time+freedom': { name: 'Leisure', emoji: '🛶', description: 'Hours that belong to no one but you.' },
+  'time+truth': { name: 'Hindsight', emoji: '🔙', description: 'The truth that only arrives once the moment has passed.' },
+  'time+beauty': { name: 'Nostalgia', emoji: '📷', description: 'The past, made lovelier by distance.' },
+  'time+justice': { name: 'Amends', emoji: '🧵', description: 'Time gives us the chance to put things right.' },
+  'time+nature': { name: 'Seasons', emoji: '🍂', description: 'Everything has its time, and then its time again.' },
+  'time+self': { name: 'Growth', emoji: '🌿', description: 'You, slowly becoming more yourself.' },
+  'time+other': { name: 'Friendship', emoji: '🫂', description: 'A stranger, given enough time, becomes a friend.' },
+
+  'death+knowledge': { name: 'Perspective', emoji: '🔭', description: 'Knowing life is short shows you what actually matters.' },
+  'death+power': { name: 'Surrender', emoji: '🏳️', description: 'Even the strongest let go one day, and there is rest in that.' },
+  'death+freedom': { name: 'Release', emoji: '🎈', description: 'Every ending also sets something free.' },
+  'death+truth': { name: 'Clarity', emoji: '🔎', description: 'Nothing clears the mind like remembering that it ends.' },
+  'death+justice': { name: 'Equality', emoji: '🟰', description: 'In the end, everyone is measured the same.' },
+  'death+chaos': { name: 'Transformation', emoji: '🐛', description: 'When things fall apart, they also rearrange.' },
+  'death+order': { name: 'Ritual', emoji: '🕯️', description: 'The shapes we give to goodbyes so that we can bear them.' },
+  'death+other': { name: 'Mourning', emoji: '🖤', description: 'Grieving together, so no one carries it alone.' },
+
+  'knowledge+freedom': { name: 'Curiosity', emoji: '🧐', description: 'A mind allowed to wander wherever it wants.' },
+  'knowledge+beauty': { name: 'Elegance', emoji: '🪶', description: 'When the true answer is also the simplest one.' },
+  'knowledge+justice': { name: 'Discernment', emoji: '🧐', description: 'Knowing the difference between what looks right and what is right.' },
+  'knowledge+hope': { name: 'Vision', emoji: '🗺️', description: 'Knowing where you are, and imagining where you could be.' },
+  'knowledge+chaos': { name: 'Science', emoji: '🔬', description: 'Patient questions, asked of a world that does not explain itself.' },
+  'knowledge+order': { name: 'Logic', emoji: '🧩', description: 'Knowledge that holds hands, one step to the next.' },
+  'knowledge+nature': { name: 'Ecology', emoji: '🌍', description: 'Learning how everything alive depends on everything else.' },
+
+  'power+truth': { name: 'Conviction', emoji: '📣', description: 'Saying what is true, out loud, and meaning it.' },
+  'power+beauty': { name: 'Grace', emoji: '🦢', description: 'Strength that does not need to show off.' },
+  'power+hope': { name: 'Determination', emoji: '💪', description: 'Hope that has rolled up its sleeves.' },
+  'power+order': { name: 'Leadership', emoji: '🧭', description: 'Strength given a direction, so others can follow.' },
+  'power+nature': { name: 'Storm', emoji: '⛈️', description: 'Strength that asks nobody’s permission, and then passes.' },
+  'power+other': { name: 'Influence', emoji: '🌐', description: 'The quiet kind of power, lent to you by people who trust you.' },
+
+  'freedom+beauty': { name: 'Expression', emoji: '🎭', description: 'Making something lovely simply because you can.' },
+  'freedom+justice': { name: 'Rights', emoji: '📜', description: 'Freedom that belongs to everyone, guarded by fairness.' },
+  'freedom+hope': { name: 'Possibility', emoji: '🚪', description: 'An open door, and the feeling it could lead somewhere good.' },
+  'freedom+chaos': { name: 'Spontaneity', emoji: '🎲', description: 'Saying yes before the plan is finished.' },
+  'freedom+nature': { name: 'Wilderness', emoji: '🏞️', description: 'Land that is still allowed to be itself.' },
+
+  'truth+hope': { name: 'Promise', emoji: '🤙', description: 'Hope that someone is willing to stand behind.' },
+  'truth+order': { name: 'Proof', emoji: '✅', description: 'Truth, laid out so that anyone can follow it.' },
+  'truth+nature': { name: 'Reality', emoji: '🪨', description: 'What is there when nobody is describing it.' },
+  'truth+other': { name: 'Candour', emoji: '🗣️', description: 'Telling someone the truth because you respect them.' },
+
+  'beauty+justice': { name: 'Dignity', emoji: '🕊️', description: 'The worth every person has, whether or not anyone notices.' },
+  'beauty+hope': { name: 'Inspiration', emoji: '🎇', description: 'Seeing something lovely and wanting to make your own.' },
+  'beauty+self': { name: 'Confidence', emoji: '🌞', description: 'Feeling at home in your own skin.' },
+  'beauty+other': { name: 'Admiration', emoji: '👏', description: 'Seeing the best in someone else, and saying so.' },
+
+  'justice+hope': { name: 'Reform', emoji: '🛠️', description: 'Believing things can be made fairer, and starting.' },
+  'justice+order': { name: 'Fair Play', emoji: '🤾', description: 'Rules everyone can agree to, because they treat everyone the same.' },
+  'justice+nature': { name: 'Consequence', emoji: '🌾', description: 'What you plant, you harvest.' },
+  'justice+self': { name: 'Responsibility', emoji: '🎒', description: 'Holding yourself to the fairness you ask of others.' },
+  'justice+other': { name: 'Solidarity', emoji: '✊', description: 'Standing up for someone as if their fight were yours.' },
+
+  'hope+order': { name: 'Plan', emoji: '🗒️', description: 'Hope, written down in steps.' },
+  'hope+nature': { name: 'Spring', emoji: '🌷', description: 'The world’s oldest promise that things will grow again.' },
+  'hope+self': { name: 'Self-Belief', emoji: '🌟', description: 'Hoping for yourself the way a good friend would.' },
+  'hope+other': { name: 'Encouragement', emoji: '📣', description: 'Lending someone your hope until they find their own.' },
+
+  'chaos+self': { name: 'Confusion', emoji: '🧶', description: 'Not knowing who you are yet. That is allowed.' },
+  'chaos+other': { name: 'Crowd', emoji: '🏙️', description: 'So many lives at once, each the centre of its own story.' },
+
+  'nature+order': { name: 'Pattern', emoji: '🐚', description: 'The spirals and rhythms the world keeps repeating.' },
+  'nature+other': { name: 'Kinship', emoji: '🐾', description: 'The feeling that every living thing is family, distantly.' },
+
+  'order+self': { name: 'Habit', emoji: '🗓️', description: 'The small shapes you give your days, which then shape you.' },
+  'order+other': { name: 'Society', emoji: '🏘️', description: 'Strangers agreeing on enough to live side by side.' },
 }
 
 const comboKey = (first: string, second: string) =>
@@ -135,8 +213,4 @@ const KNOWN_BY_SORTED_KEY = new Map<string, Combination>(
 
 export function findKnownCombination(first: string, second: string): Combination | undefined {
   return KNOWN_BY_SORTED_KEY.get(comboKey(first, second))
-}
-
-export function isGolden(name: string): boolean {
-  return GOLDEN_IDEAS.some(golden => golden.name.toLowerCase() === name.trim().toLowerCase())
 }

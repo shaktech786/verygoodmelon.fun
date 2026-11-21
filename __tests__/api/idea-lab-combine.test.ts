@@ -167,26 +167,42 @@ describe('POST /api/idea-lab/combine', () => {
   })
 
   it('asks the model for a real, gentle word rather than an invented one', async () => {
-    await combine('Hope', 'Nature')
+    await combine('Jealousy', 'Wonder')
 
     const prompt = JSON.stringify(generateContent.mock.calls[0][0])
     expect(prompt).toMatch(/real/i)
     expect(prompt).toMatch(/never invent/i)
   })
 
+  it('asks for a line that reveals the link between the two, not a definition', async () => {
+    await combine('Jealousy', 'Wonder')
+
+    const prompt = JSON.stringify(generateContent.mock.calls[0][0])
+    expect(prompt).toMatch(/hidden link/i)
+    expect(prompt).toMatch(/not a dictionary definition/i)
+  })
+
+  it('answers every pair of starting ideas without calling the model', async () => {
+    const { status, data } = await combine('Order', 'Fear')
+
+    expect(status).toBe(200)
+    expect(data.name).toBe('Perfectionism')
+    expect(generateContent).not.toHaveBeenCalled()
+  })
+
   it('does not keep a result that is a sentence instead of a concept', async () => {
     modelReply({ name: 'The feeling of watching the sea at night', emoji: '🌊', description: 'Long.' })
 
-    const { status, data } = await combine('Hope', 'Nature')
+    const { status, data } = await combine('Jealousy', 'Wonder')
 
     expect(status).toBe(503)
     expect(data.name).toBeUndefined()
   })
 
   it('does not keep a result that only repeats one of the two concepts', async () => {
-    modelReply({ name: 'hope', emoji: '🌅', description: 'Hope again.' })
+    modelReply({ name: 'wonder', emoji: '🌺', description: 'Wonder again.' })
 
-    const { status } = await combine('Hope', 'Nature')
+    const { status } = await combine('Jealousy', 'Wonder')
 
     expect(status).toBe(503)
   })
@@ -194,7 +210,7 @@ describe('POST /api/idea-lab/combine', () => {
   it('keeps the description to one short line of plain text', async () => {
     modelReply({ name: 'Biophilia', emoji: '🌱', description: `${'Life loving life. '.repeat(30)}\nSecond line` })
 
-    const { status, data } = await combine('Hope', 'Nature')
+    const { status, data } = await combine('Jealousy', 'Wonder')
 
     expect(status).toBe(200)
     expect(data.name).toBe('Biophilia')

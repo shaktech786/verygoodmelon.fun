@@ -38,16 +38,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Use AI for unknown combinations
-    const prompt = `Two ideas are being mixed in a calm, reflective game about how feelings and ideas transform: "${concept1.trim()}" and "${concept2.trim()}".
+    const prompt = `Two ideas are being mixed in a calm, reflective game where an alchemist turns heavy feelings into wiser ones: "${concept1.trim()}" and "${concept2.trim()}".
 
-Name the idea they become together.
+Name the idea they become together. The best answer makes the player pause and think "oh, that is true".
 
 Rules:
 1. The name must be a real, recognisable English word or a well-known short phrase (1-3 words) that a thoughtful reader would know. Never invent or blend words.
-2. It must be different from both inputs and must make intuitive sense as their combination.
-3. The description is one plain sentence of at most 18 words that explains the link, the way a wise friend would.
+2. It must be different from both inputs and not a near-synonym of either. It should feel like what happens when the two meet.
+3. The description is one plain sentence of at most 16 words that reveals the hidden link between them, like a line from a wise friend's notebook. Not a dictionary definition, and never a list.
 4. If the mix is heavy (loss, fear, conflict), name it honestly but find its humane side. No despair, no clichés.
 5. One fitting emoji.
+
+Examples of the tone:
+Love + Death = Grief: "Love does not end where life does. It turns into longing."
+Fear + Order = Perfectionism: "Fear, dressed up as high standards."
+Time + Other = Friendship: "A stranger, given enough time, becomes a friend."
 
 Respond with only this JSON:
 {"name": "Name", "emoji": "🔮", "description": "One sentence."}`
