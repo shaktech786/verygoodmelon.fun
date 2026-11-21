@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils/cn'
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -11,6 +12,7 @@ import { cn } from '@/lib/utils/cn'
 interface BreathingPhase {
   label: string
   duration: number // seconds
+  fill: number // how full the lungs are when the phase ends, 0..1
 }
 
 interface BreathingPattern {
@@ -32,10 +34,10 @@ const PATTERNS: BreathingPattern[] = [
     name: 'Box Breathing',
     description: 'Equal rhythm. Used by Navy SEALs to stay calm.',
     phases: [
-      { label: 'Inhale', duration: 4 },
-      { label: 'Hold', duration: 4 },
-      { label: 'Exhale', duration: 4 },
-      { label: 'Hold', duration: 4 },
+      { label: 'Inhale', duration: 4, fill: 1 },
+      { label: 'Hold', duration: 4, fill: 1 },
+      { label: 'Exhale', duration: 4, fill: 0 },
+      { label: 'Hold', duration: 4, fill: 0 },
     ],
   },
   {
@@ -43,9 +45,9 @@ const PATTERNS: BreathingPattern[] = [
     name: '4-7-8 Relaxation',
     description: 'Deep calm. A natural tranquilizer for the nervous system.',
     phases: [
-      { label: 'Inhale', duration: 4 },
-      { label: 'Hold', duration: 7 },
-      { label: 'Exhale', duration: 8 },
+      { label: 'Inhale', duration: 4, fill: 1 },
+      { label: 'Hold', duration: 7, fill: 1 },
+      { label: 'Exhale', duration: 8, fill: 0 },
     ],
   },
   {
@@ -53,8 +55,8 @@ const PATTERNS: BreathingPattern[] = [
     name: 'Coherent Breathing',
     description: 'Steady rhythm. Balances your autonomic nervous system.',
     phases: [
-      { label: 'Inhale', duration: 5.5 },
-      { label: 'Exhale', duration: 5.5 },
+      { label: 'Inhale', duration: 5.5, fill: 1 },
+      { label: 'Exhale', duration: 5.5, fill: 0 },
     ],
   },
   {
@@ -62,9 +64,9 @@ const PATTERNS: BreathingPattern[] = [
     name: 'Physiological Sigh',
     description: 'Double inhale, long exhale. The fastest way to calm down.',
     phases: [
-      { label: 'Inhale', duration: 1.5 },
-      { label: 'Inhale deeply', duration: 2.5 },
-      { label: 'Exhale slowly', duration: 7 },
+      { label: 'Inhale', duration: 1.5, fill: 0.6 },
+      { label: 'Inhale deeply', duration: 2.5, fill: 1 },
+      { label: 'Exhale slowly', duration: 7, fill: 0 },
     ],
   },
   {
@@ -74,10 +76,6 @@ const PATTERNS: BreathingPattern[] = [
     phases: [], // no guided phases
   },
 ]
-
-// ---------------------------------------------------------------------------
-// Color palette
-// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -93,26 +91,44 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
 
-// Map a phase label to an expansion factor (0 = contracted, 1 = expanded)
-function phaseExpansion(label: string): number {
-  const l = label.toLowerCase()
-  if (l.startsWith('inhale')) return 1
-  if (l === 'hold') return 0.5 // maintain current-ish size
-  if (l.startsWith('exhale')) return 0
-  return 0.5
+interface BreathPosition {
+  phaseIndex: number
+  phaseProgress: number // 0..1 within the current phase
+  cycleProgress: number // 0..1 across the full breathing cycle
+  expansion: number // 0..1 interpolated lung fullness
+}
+
+// The whole session is a pure function of elapsed time, so the label, the
+// progress bar, the shape and the session clock can never disagree.
+function breathPositionAt(phases: BreathingPhase[], elapsedMs: number): BreathPosition {
+  const cycleMs = phases.reduce((sum, phase) => sum + phase.duration * 1000, 0)
+  const inCycle = elapsedMs % cycleMs
+
+  let phaseStart = 0
+  let phaseIndex = 0
+  while (inCycle >= phaseStart + phases[phaseIndex].duration * 1000) {
+    phaseStart += phases[phaseIndex].duration * 1000
+    phaseIndex++
+  }
+
+  const phase = phases[phaseIndex]
+  const previousPhase = phases[(phaseIndex + phases.length - 1) % phases.length]
+  const phaseProgress = (inCycle - phaseStart) / (phase.duration * 1000)
+
+  return {
+    phaseIndex,
+    phaseProgress,
+    cycleProgress: inCycle / cycleMs,
+    expansion: lerp(previousPhase.fill, phase.fill, Math.min(phaseProgress * 1.2, 1)),
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Canvas renderer
 // ---------------------------------------------------------------------------
 
-interface RenderState {
-  phase: string
-  phaseProgress: number // 0..1 within the current phase
-  cycleProgress: number // 0..1 across the full breathing cycle
-  expansion: number // 0..1 interpolated expansion
-  freeBreaths: number[] // timestamps of free-mode taps
-  time: number // performance.now
+interface RenderState extends BreathPosition {
+  time: number // session time in ms
 }
 
 function renderCanvas(
@@ -267,103 +283,76 @@ function renderFreeCanvas(
 // ---------------------------------------------------------------------------
 
 export default function BreathingPatterns() {
-  // State
   const [selectedPatternId, setSelectedPatternId] = useState('box')
   const [sessionState, setSessionState] = useState<SessionState>('idle')
-  const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0)
-  const [phaseElapsed, setPhaseElapsed] = useState(0)
-  const [sessionElapsed, setSessionElapsed] = useState(0)
-  const [freeBreaths, setFreeBreaths] = useState<number[]>([])
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+  const [elapsedMs, setElapsedMs] = useState(0)
+  const [freeBreathCount, setFreeBreathCount] = useState(0)
+  const prefersReducedMotion = useReducedMotion()
 
-  // Refs
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animFrameRef = useRef<number>(0)
-  const lastTickRef = useRef<number>(0)
-  const phaseStartRef = useRef<number>(0)
-  const sessionStartRef = useRef<number>(0)
-  const expansionRef = useRef<number>(0)
-  const announcementRef = useRef<string>('')
+  // performance.now() at which a never-paused session would have started
+  const sessionStartRef = useRef(0)
+  const pausedAtRef = useRef(0)
+  // Session time (ms) of each breath marked in free mode
+  const freeBreathsRef = useRef<number[]>([])
 
   const pattern = PATTERNS.find((p) => p.id === selectedPatternId)!
   const isFreeMode = pattern.id === 'free'
-  const currentPhase = !isFreeMode && pattern.phases[currentPhaseIndex]
   const isRunning = sessionState === 'active'
-
-  // Check reduced motion preference
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setPrefersReducedMotion(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
+  const position = isFreeMode ? null : breathPositionAt(pattern.phases, elapsedMs)
+  const sessionElapsed = Math.floor(elapsedMs / 1000)
 
   // ---------------------------------------------------------------------------
   // Session controls
   // ---------------------------------------------------------------------------
 
   const startSession = useCallback(() => {
-    const now = performance.now()
+    sessionStartRef.current = performance.now()
+    freeBreathsRef.current = []
+    setElapsedMs(0)
+    setFreeBreathCount(0)
     setSessionState('active')
-    setCurrentPhaseIndex(0)
-    setPhaseElapsed(0)
-    setSessionElapsed(0)
-    setFreeBreaths([])
-    phaseStartRef.current = now
-    sessionStartRef.current = now
-    lastTickRef.current = now
-    expansionRef.current = 0
-    announcementRef.current = ''
   }, [])
 
   const pauseSession = useCallback(() => {
+    pausedAtRef.current = performance.now()
     setSessionState('paused')
   }, [])
 
   const resumeSession = useCallback(() => {
-    const now = performance.now()
-    phaseStartRef.current = now - phaseElapsed * 1000
-    lastTickRef.current = now
+    sessionStartRef.current += performance.now() - pausedAtRef.current
     setSessionState('active')
-  }, [phaseElapsed])
+  }, [])
 
   const endSession = useCallback(() => {
     setSessionState('complete')
-    cancelAnimationFrame(animFrameRef.current)
   }, [])
 
   const resetSession = useCallback(() => {
     setSessionState('idle')
-    setCurrentPhaseIndex(0)
-    setPhaseElapsed(0)
-    setSessionElapsed(0)
-    setFreeBreaths([])
-    cancelAnimationFrame(animFrameRef.current)
+    setElapsedMs(0)
+    setFreeBreathCount(0)
   }, [])
 
-  // Free mode tap handler
-  const handleFreeTap = useCallback(() => {
-    if (isFreeMode && isRunning) {
-      setFreeBreaths((prev) => [...prev, performance.now()])
-    }
-  }, [isFreeMode, isRunning])
+  const markBreath = useCallback(() => {
+    freeBreathsRef.current.push(performance.now() - sessionStartRef.current)
+    setFreeBreathCount(freeBreathsRef.current.length)
+  }, [])
 
   // ---------------------------------------------------------------------------
-  // Animation loop
+  // Session clock and drawing
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
-    if (!isRunning || prefersReducedMotion) return
+    if (!isRunning) return
 
+    // With reduced motion there is no canvas, but the clock still has to run.
     const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
+    const ctx = canvas?.getContext('2d') ?? null
     const dpr = window.devicePixelRatio || 1
 
     const resizeCanvas = () => {
+      if (!canvas) return
       const rect = canvas.getBoundingClientRect()
       canvas.width = rect.width * dpr
       canvas.height = rect.height * dpr
@@ -371,70 +360,43 @@ export default function BreathingPatterns() {
     resizeCanvas()
 
     const ro = new ResizeObserver(resizeCanvas)
-    ro.observe(canvas)
+    if (canvas) ro.observe(canvas)
 
+    let frame = 0
     const tick = (now: number) => {
-      lastTickRef.current = now
+      const elapsed = Math.max(0, now - sessionStartRef.current)
+      setElapsedMs(elapsed)
 
-      // Update session elapsed
-      const totalElapsed = (now - sessionStartRef.current) / 1000
-      setSessionElapsed(Math.floor(totalElapsed))
-
-      if (isFreeMode) {
-        renderFreeCanvas(ctx, canvas.width, canvas.height, freeBreaths, now, dpr)
-      } else {
-        // Guided mode: advance phase
-        const phaseDur = pattern.phases[currentPhaseIndex]?.duration ?? 1
-        const elapsed = (now - phaseStartRef.current) / 1000
-        const progress = Math.min(elapsed / phaseDur, 1)
-
-        setPhaseElapsed(elapsed)
-
-        // Interpolate expansion
-        const targetExpansion = phaseExpansion(pattern.phases[currentPhaseIndex]?.label ?? '')
-        const prevExpansion = currentPhaseIndex > 0
-          ? phaseExpansion(pattern.phases[currentPhaseIndex - 1]?.label ?? '')
-          : phaseExpansion(pattern.phases[pattern.phases.length - 1]?.label ?? '')
-        expansionRef.current = lerp(prevExpansion, targetExpansion, Math.min(progress * 1.2, 1))
-
-        // Check phase transition
-        if (elapsed >= phaseDur) {
-          const nextIndex = (currentPhaseIndex + 1) % pattern.phases.length
-          setCurrentPhaseIndex(nextIndex)
-          phaseStartRef.current = now
-          setPhaseElapsed(0)
-
-          // Update announcement for screen readers
-          const nextLabel = pattern.phases[nextIndex]?.label ?? ''
-          announcementRef.current = nextLabel
+      if (canvas && ctx) {
+        if (isFreeMode) {
+          renderFreeCanvas(ctx, canvas.width, canvas.height, freeBreathsRef.current, elapsed, dpr)
+        } else {
+          renderCanvas(ctx, canvas.width, canvas.height, {
+            ...breathPositionAt(pattern.phases, elapsed),
+            time: elapsed,
+          }, dpr)
         }
-
-        const cycleDuration = pattern.phases.reduce((sum, p) => sum + p.duration, 0)
-        const cycleElapsed = totalElapsed % cycleDuration
-        const cycleProgress = cycleElapsed / cycleDuration
-
-        renderCanvas(ctx, canvas.width, canvas.height, {
-          phase: pattern.phases[currentPhaseIndex]?.label ?? '',
-          phaseProgress: progress,
-          cycleProgress,
-          expansion: expansionRef.current,
-          freeBreaths: [],
-          time: now,
-        }, dpr)
       }
 
-      animFrameRef.current = requestAnimationFrame(tick)
+      frame = requestAnimationFrame(tick)
     }
-
-    animFrameRef.current = requestAnimationFrame(tick)
+    frame = requestAnimationFrame(tick)
 
     return () => {
-      cancelAnimationFrame(animFrameRef.current)
+      cancelAnimationFrame(frame)
       ro.disconnect()
     }
-    // We intentionally only re-run when these key values change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRunning, prefersReducedMotion, isFreeMode, pattern.id, currentPhaseIndex, freeBreaths])
+  }, [isRunning, prefersReducedMotion, isFreeMode, pattern])
+
+  // A guide nobody is watching should wait rather than keep counting.
+  useEffect(() => {
+    if (!isRunning) return
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') pauseSession()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [isRunning, pauseSession])
 
   // ---------------------------------------------------------------------------
   // Keyboard controls
@@ -442,16 +404,20 @@ export default function BreathingPatterns() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle when we're the focused context
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+
+      // A focused button or link already acts on Space; handling it here as well
+      // would do the action twice (pause, then immediately resume).
+      const onControl = e.target instanceof HTMLButtonElement || e.target instanceof HTMLAnchorElement
 
       switch (e.key) {
-        case ' ':
-        case 'Space': {
+        case ' ': {
+          if (onControl) return
           e.preventDefault()
           if (sessionState === 'idle') startSession()
           else if (sessionState === 'active') {
-            if (isFreeMode) handleFreeTap()
+            if (isFreeMode) markBreath()
             else pauseSession()
           }
           else if (sessionState === 'paused') resumeSession()
@@ -463,23 +429,17 @@ export default function BreathingPatterns() {
           break
         }
         case 'ArrowLeft':
-        case 'ArrowUp': {
-          if (sessionState === 'idle') {
-            e.preventDefault()
-            const idx = PATTERNS.findIndex((p) => p.id === selectedPatternId)
-            const prev = (idx - 1 + PATTERNS.length) % PATTERNS.length
-            setSelectedPatternId(PATTERNS[prev].id)
-          }
-          break
-        }
+        case 'ArrowUp':
         case 'ArrowRight':
         case 'ArrowDown': {
-          if (sessionState === 'idle') {
-            e.preventDefault()
-            const idx = PATTERNS.findIndex((p) => p.id === selectedPatternId)
-            const next = (idx + 1) % PATTERNS.length
-            setSelectedPatternId(PATTERNS[next].id)
-          }
+          // Only inside the pattern list, so arrow keys still scroll the page elsewhere.
+          if (sessionState !== 'idle' || !(e.target instanceof HTMLElement) || e.target.getAttribute('role') !== 'radio') return
+          e.preventDefault()
+          const step = e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1
+          const idx = PATTERNS.findIndex((p) => p.id === selectedPatternId)
+          const next = PATTERNS[(idx + step + PATTERNS.length) % PATTERNS.length]
+          setSelectedPatternId(next.id)
+          document.getElementById(`breathing-pattern-${next.id}`)?.focus()
           break
         }
         case 'p':
@@ -493,21 +453,7 @@ export default function BreathingPatterns() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [sessionState, selectedPatternId, isFreeMode, startSession, pauseSession, resumeSession, endSession, resetSession, handleFreeTap])
-
-  // ---------------------------------------------------------------------------
-  // Phase announcement for screen readers
-  // ---------------------------------------------------------------------------
-
-  const [announcement, setAnnouncement] = useState('')
-
-  useEffect(() => {
-    if (!isRunning || isFreeMode) return
-    const label = pattern.phases[currentPhaseIndex]?.label
-    if (label) {
-      setAnnouncement(label)
-    }
-  }, [currentPhaseIndex, isRunning, isFreeMode, pattern.phases])
+  }, [sessionState, selectedPatternId, isFreeMode, startSession, pauseSession, resumeSession, endSession, resetSession, markBreath])
 
   // ---------------------------------------------------------------------------
   // Render: Complete state
@@ -524,16 +470,16 @@ export default function BreathingPatterns() {
     return (
       <div className="max-w-2xl mx-auto" role="application" aria-label="Breathing Patterns">
         <div className="bg-card-bg border border-card-border rounded-lg p-8 sm:p-12 text-center min-h-[400px] flex flex-col justify-center">
-          <div className="animate-fade">
+          <div className="animate-fade" role="status">
             <h2 className="text-2xl sm:text-3xl font-semibold mb-4 text-foreground">
               Well done.
             </h2>
             <p className="text-lg text-foreground/70 mb-2">
               You spent {timeStr} breathing.
             </p>
-            {isFreeMode && freeBreaths.length > 0 && (
+            {isFreeMode && freeBreathCount > 0 && (
               <p className="text-sm text-foreground/50 mb-6">
-                {freeBreaths.length} breath{freeBreaths.length !== 1 ? 's' : ''} marked.
+                {freeBreathCount} breath{freeBreathCount !== 1 ? 's' : ''} marked.
               </p>
             )}
             {!isFreeMode && (
@@ -542,7 +488,7 @@ export default function BreathingPatterns() {
               </p>
             )}
             <div className="space-y-3 mt-6">
-              <Button variant="primary" onClick={resetSession}>
+              <Button variant="primary" onClick={resetSession} autoFocus>
                 Breathe Again
               </Button>
             </div>
@@ -557,18 +503,16 @@ export default function BreathingPatterns() {
   // ---------------------------------------------------------------------------
 
   if (sessionState === 'active' || sessionState === 'paused') {
-    const phaseLabel = isFreeMode
-      ? 'Breathe at your own pace'
-      : (currentPhase as BreathingPhase).label
+    const phaseLabel = position
+      ? pattern.phases[position.phaseIndex].label
+      : 'Breathe at your own pace'
+    const lungsFilling = position !== null && pattern.phases[position.phaseIndex].fill > 0
 
     return (
       <div className="max-w-2xl mx-auto" role="application" aria-label="Breathing Patterns">
         {/* Screen reader announcements */}
-        <div aria-live="assertive" aria-atomic="true" className="sr-only">
-          {announcement}
-        </div>
         <div aria-live="polite" aria-atomic="true" className="sr-only">
-          {sessionState === 'paused' ? 'Session paused' : ''}
+          {sessionState === 'paused' ? 'Session paused' : position ? phaseLabel : ''}
         </div>
 
         <div className="bg-card-bg border border-card-border rounded-lg p-6 sm:p-8 text-center min-h-[500px] flex flex-col justify-center relative">
@@ -580,18 +524,21 @@ export default function BreathingPatterns() {
             <div className="flex flex-col items-center mb-6">
               <div
                 className={cn(
-                  'w-40 h-40 rounded-full flex items-center justify-center transition-colors duration-1000',
-                  phaseLabel.toLowerCase().startsWith('inhale')
-                    ? 'bg-success/30'
-                    : phaseLabel.toLowerCase() === 'hold'
+                  'w-40 h-40 rounded-full flex items-center justify-center',
+                  !position
+                    ? 'bg-success/20'
+                    : phaseLabel === 'Hold'
                       ? 'bg-accent/20'
-                      : 'bg-[#1a4d2e]/20'
+                      : lungsFilling
+                        ? 'bg-success/30'
+                        : 'bg-[#1a4d2e]/20'
                 )}
                 role="img"
                 aria-label={`Breathing visualization - ${phaseLabel}`}
+                onClick={isFreeMode && isRunning ? markBreath : undefined}
               >
-                <span className="text-foreground/80 text-lg font-medium">
-                  {phaseLabel}
+                <span className="text-foreground/80 text-lg font-medium" aria-hidden="true">
+                  {position ? phaseLabel : freeBreathCount}
                 </span>
               </div>
             </div>
@@ -599,11 +546,10 @@ export default function BreathingPatterns() {
             <div className="relative mb-4">
               <canvas
                 ref={canvasRef}
-                className="w-full aspect-square max-w-[320px] mx-auto"
+                className={cn('w-full aspect-square max-w-[320px] mx-auto', isFreeMode && 'cursor-pointer')}
                 role="img"
                 aria-label={`Breathing visualization - ${phaseLabel}`}
-                onClick={isFreeMode ? handleFreeTap : undefined}
-                style={isFreeMode ? { cursor: 'pointer' } : undefined}
+                onClick={isFreeMode && isRunning ? markBreath : undefined}
               />
             </div>
           )}
@@ -611,7 +557,7 @@ export default function BreathingPatterns() {
           {/* Phase label */}
           <h2
             className={cn(
-              'text-2xl sm:text-3xl font-semibold mb-2 text-foreground transition-opacity duration-500',
+              'text-2xl sm:text-3xl font-semibold mb-2 text-foreground',
               sessionState === 'paused' && 'opacity-50',
             )}
           >
@@ -619,40 +565,47 @@ export default function BreathingPatterns() {
           </h2>
 
           {/* Visual countdown bar (not numeric) */}
-          {!isFreeMode && currentPhase && (
+          {position && (
             <div className="w-48 h-1.5 mx-auto bg-foreground/10 rounded-full overflow-hidden mb-4">
               <div
-                className="h-full bg-success/60 rounded-full transition-all duration-200"
-                style={{
-                  width: `${Math.min((phaseElapsed / (currentPhase as BreathingPhase).duration) * 100, 100)}%`,
-                }}
+                className="h-full bg-success/60 rounded-full"
+                data-testid="phase-progress"
+                style={{ width: `${position.phaseProgress * 100}%` }}
               />
             </div>
           )}
 
           {isFreeMode && (
-            <p className="text-sm text-foreground/50 mb-4">
-              Tap anywhere or press Space to mark each breath.
+            <p className="text-sm text-foreground/60 mb-4" aria-live="polite">
+              {freeBreathCount} breath{freeBreathCount !== 1 ? 's' : ''} marked
             </p>
           )}
 
           {/* Session timer */}
-          <p className="text-sm text-foreground/40 tabular-nums mb-6">
+          <p className="text-sm text-foreground/50 tabular-nums mb-6" role="timer" aria-label="Session time">
             {formatTime(sessionElapsed)}
           </p>
 
           {/* Controls */}
-          <div className="flex items-center justify-center gap-3">
-            {!isFreeMode && (
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {isFreeMode && (
               <Button
-                variant="ghost"
+                variant="secondary"
                 size="sm"
-                onClick={sessionState === 'paused' ? resumeSession : pauseSession}
-                aria-label={sessionState === 'paused' ? 'Resume session' : 'Pause session'}
+                onClick={markBreath}
+                disabled={!isRunning}
               >
-                {sessionState === 'paused' ? 'Resume' : 'Pause'}
+                Mark a breath
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={sessionState === 'paused' ? resumeSession : pauseSession}
+              aria-label={sessionState === 'paused' ? 'Resume session' : 'Pause session'}
+            >
+              {sessionState === 'paused' ? 'Resume' : 'Pause'}
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -664,9 +617,9 @@ export default function BreathingPatterns() {
           </div>
 
           {/* Keyboard hint */}
-          <p className="text-xs text-foreground/30 mt-4">
+          <p className="text-xs text-foreground/50 mt-4">
             {isFreeMode
-              ? 'Space = mark breath. Escape = end.'
+              ? 'Space = mark breath. P = pause. Escape = end.'
               : 'Space = pause/resume. Escape = end.'}
           </p>
         </div>
@@ -682,7 +635,7 @@ export default function BreathingPatterns() {
     <div className="max-w-2xl mx-auto" role="application" aria-label="Breathing Patterns">
       <div className="text-center mb-6">
         <p className="text-sm sm:text-base text-foreground/70">
-          Choose a breathing pattern. Press Space to begin.
+          Choose a breathing pattern, then press Begin Breathing.
         </p>
       </div>
 
@@ -695,8 +648,10 @@ export default function BreathingPatterns() {
         {PATTERNS.map((p) => (
           <button
             key={p.id}
+            id={`breathing-pattern-${p.id}`}
             role="radio"
             aria-checked={selectedPatternId === p.id}
+            tabIndex={selectedPatternId === p.id ? 0 : -1}
             onClick={() => setSelectedPatternId(p.id)}
             className={cn(
               'text-left px-5 py-4 rounded-lg border transition-all duration-75',
@@ -712,7 +667,7 @@ export default function BreathingPatterns() {
                 <p className="text-sm text-foreground/60">{p.description}</p>
               </div>
               {p.phases.length > 0 && (
-                <span className="text-xs text-foreground/40 whitespace-nowrap mt-1">
+                <span className="text-xs text-foreground/50 whitespace-nowrap mt-1">
                   {p.phases.map((ph) => `${ph.duration}s`).join('-')}
                 </span>
               )}
@@ -729,8 +684,8 @@ export default function BreathingPatterns() {
       </div>
 
       {/* Keyboard instructions */}
-      <div className="text-center mt-4 text-xs text-foreground/30">
-        <p>Arrow keys to change pattern. Space to start.</p>
+      <div className="text-center mt-4 text-xs text-foreground/50">
+        <p>Arrow keys change the pattern while the list is focused. Space starts.</p>
       </div>
     </div>
   )
