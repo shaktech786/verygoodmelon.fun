@@ -6,7 +6,7 @@ import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 export const metadata: Metadata = {
   title: 'The Harmonist | VeryGoodMelon.Fun',
   description:
-    'Guided breathing patterns to calm your nervous system. Box breathing, 4-7-8, coherent breathing, physiological sigh, and free breathing with ambient visuals.',
+    'Breathe along a shape: box, 4-7-8, coherent, the physiological sigh or your own pace. Each finished breath sets a seed in a melon, and with sound on, each turn of the breath sounds a soft note.',
 }
 
 export default function TheStillPointPage() {
@@ -19,7 +19,7 @@ export default function TheStillPointPage() {
               The Harmonist
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl mx-auto">
-              Breathe with intention. Leave calmer than you arrived.
+              Every breath you finish becomes a seed. Leave with the pattern you made.
             </p>
           </div>
 
