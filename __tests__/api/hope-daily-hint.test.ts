@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/lib/games/hope-daily/words', () => ({
   getWordOfDay: () => ({
     word: 'HAPPY',
+    clue: 'How a good day feels',
     category: 'Health',
     fact: 'Happiness is contagious.',
   }),
@@ -27,7 +28,7 @@ describe('POST /api/hope-daily/hint', () => {
     const data = await response.json()
 
     expect(response.status).toBe(200)
-    expect(data.hint).toBeDefined()
+    expect(data.hint).toBe('How a good day feels')
     expect(data.hintNumber).toBe(1)
   })
 

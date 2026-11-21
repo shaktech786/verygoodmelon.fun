@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback } from 'react'
 import { Lightbulb } from 'lucide-react'
 
 type LetterState = 'correct' | 'present' | 'absent' | 'empty'
@@ -15,7 +15,61 @@ interface GameMetadata {
   category: string
 }
 
+interface RevealedWord {
+  word: string
+  fact: string
+  category: string
+}
+
+interface SavedGame {
+  date: string
+  guesses: LetterTile[][]
+  gameState: 'playing' | 'won' | 'lost'
+  revealedData: RevealedWord | null
+  hintsUsed?: number
+  currentHint?: string
+  revealedLetters?: Array<[number, string]>
+}
+
 const MAX_GUESSES = 6
+const MAX_HINTS = 3
+const STORAGE_KEY = 'hope-daily-state'
+const GUESS_ERROR = 'That guess did not go through. Give it another try in a moment.'
+const HINT_ERROR = 'No hint just now. Try again in a moment.'
+
+// The word changes at midnight UTC on the server, so the saved game is keyed the same way.
+const todayKey = () => new Date().toISOString().slice(0, 10)
+
+function isGameMetadata(data: unknown): data is GameMetadata {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    typeof (data as GameMetadata).wordLength === 'number' &&
+    (data as GameMetadata).wordLength > 0
+  )
+}
+
+function isRevealedWord(data: unknown): data is RevealedWord {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    typeof (data as RevealedWord).word === 'string' &&
+    typeof (data as RevealedWord).fact === 'string'
+  )
+}
+
+// Priority: correct > present > absent
+function mergeKeyStates(states: Map<string, LetterState>, tiles: LetterTile[]): Map<string, LetterState> {
+  tiles.forEach(tile => {
+    const currentState = states.get(tile.letter)
+    if (tile.state === 'correct' ||
+        (tile.state === 'present' && currentState !== 'correct') ||
+        (tile.state === 'absent' && !currentState)) {
+      states.set(tile.letter, tile.state)
+    }
+  })
+  return states
+}
 const KEYBOARD_ROWS = [
   ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
   ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
@@ -24,6 +78,8 @@ const KEYBOARD_ROWS = [
 
 export default function HopeDaily() {
   const [metadata, setMetadata] = useState<GameMetadata | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [guesses, setGuesses] = useState<LetterTile[][]>([])
   const [currentGuess, setCurrentGuess] = useState<string>('')
   const [gameState, setGameState] = useState<'playing' | 'won' | 'lost'>('playing')
@@ -31,7 +87,7 @@ export default function HopeDaily() {
   const [shake, setShake] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const [keyboardStates, setKeyboardStates] = useState<Map<string, LetterState>>(new Map())
-  const [revealedData, setRevealedData] = useState<{ word: string; fact: string; category: string } | null>(null)
+  const [revealedData, setRevealedData] = useState<RevealedWord | null>(null)
   const [commentary, setCommentary] = useState<string>('')
   const [showCommentary, setShowCommentary] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -41,144 +97,143 @@ export default function HopeDaily() {
   const [revealedLetters, setRevealedLetters] = useState<Map<number, string>>(new Map())
   const [isFetchingHint, setIsFetchingHint] = useState(false)
 
-  // Initialize game
   useEffect(() => {
+    let cancelled = false
+
     const initGame = async () => {
       try {
         const response = await fetch('/api/hope-daily')
-        const data = await response.json()
-        setMetadata(data)
+        const data: unknown = response.ok ? await response.json() : null
+        if (cancelled) return
 
-        // Check if already played today
-        const today = new Date().toDateString()
-        const savedState = localStorage.getItem('hope-daily-state')
+        if (!isGameMetadata(data)) {
+          setLoadFailed(true)
+          return
+        }
 
+        const savedState = localStorage.getItem(STORAGE_KEY)
         if (savedState) {
           try {
-            const state = JSON.parse(savedState)
-            if (state.date === today) {
-              // Restore saved game
+            const state: SavedGame = JSON.parse(savedState)
+            const fitsToday =
+              state.date === todayKey() &&
+              Array.isArray(state.guesses) &&
+              state.guesses.every(guess => guess.length === data.wordLength)
+
+            if (fitsToday) {
               setGuesses(state.guesses)
               setGameState(state.gameState)
+              setHintsUsed(state.hintsUsed ?? 0)
+              setCurrentHint(state.currentHint ?? '')
+              setRevealedLetters(new Map(state.revealedLetters ?? []))
 
-              // Rebuild keyboard states
-              const newKeyboardStates = new Map<string, LetterState>()
-              state.guesses.forEach((guess: LetterTile[]) => {
-                guess.forEach((tile: LetterTile) => {
-                  const currentState = newKeyboardStates.get(tile.letter)
-                  // Priority: correct > present > absent
-                  if (tile.state === 'correct' ||
-                      (tile.state === 'present' && currentState !== 'correct') ||
-                      (tile.state === 'absent' && !currentState)) {
-                    newKeyboardStates.set(tile.letter, tile.state)
-                  }
-                })
-              })
-              setKeyboardStates(newKeyboardStates)
+              const savedKeyStates = new Map<string, LetterState>()
+              state.guesses.forEach(guess => mergeKeyStates(savedKeyStates, guess))
+              setKeyboardStates(savedKeyStates)
 
               if (state.gameState !== 'playing' && state.revealedData) {
                 setRevealedData(state.revealedData)
                 setRevealed(true)
               }
             } else {
-              // New day, clear old state
-              localStorage.removeItem('hope-daily-state')
+              localStorage.removeItem(STORAGE_KEY)
             }
           } catch {
-            localStorage.removeItem('hope-daily-state')
+            localStorage.removeItem(STORAGE_KEY)
           }
         }
+
+        setMetadata(data)
       } catch (error) {
         console.error('Failed to initialize game:', error)
-        setMessage('Failed to load game. Please refresh.')
+        if (!cancelled) setLoadFailed(true)
       }
     }
 
     initGame()
-  }, [])
-
-  // Save game state
-  const saveState = useCallback(() => {
-    const state = {
-      date: new Date().toDateString(),
-      guesses,
-      gameState,
-      revealedData
+    return () => {
+      cancelled = true
     }
-    localStorage.setItem('hope-daily-state', JSON.stringify(state))
-  }, [guesses, gameState, revealedData])
+  }, [loadAttempt])
 
   useEffect(() => {
-    if (guesses.length > 0 || gameState !== 'playing') {
-      saveState()
+    if (!metadata) return
+    if (guesses.length === 0 && gameState === 'playing' && hintsUsed === 0) return
+
+    const state: SavedGame = {
+      date: todayKey(),
+      guesses,
+      gameState,
+      revealedData,
+      hintsUsed,
+      currentHint,
+      revealedLetters: Array.from(revealedLetters.entries())
     }
-  }, [guesses, gameState, saveState])
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  }, [metadata, guesses, gameState, revealedData, hintsUsed, currentHint, revealedLetters])
 
   // Update keyboard states based on guesses
   const updateKeyboardStates = useCallback((letterStates: LetterTile[]) => {
-    setKeyboardStates(prev => {
-      const newStates = new Map(prev)
-      letterStates.forEach(tile => {
-        const currentState = newStates.get(tile.letter)
-        // Priority: correct > present > absent
-        if (tile.state === 'correct' ||
-            (tile.state === 'present' && currentState !== 'correct') ||
-            (tile.state === 'absent' && !currentState)) {
-          newStates.set(tile.letter, tile.state)
-        }
-      })
-      return newStates
-    })
+    setKeyboardStates(prev => mergeKeyStates(new Map(prev), letterStates))
   }, [])
 
   // Fetch hint from API
   const fetchHint = useCallback(async () => {
-    if (isFetchingHint || hintsUsed >= 3 || gameState !== 'playing') return
+    if (isFetchingHint || hintsUsed >= MAX_HINTS || gameState !== 'playing') return
+
+    // A letter the player already placed correctly would be a wasted hint.
+    const knownPositions = new Set(revealedLetters.keys())
+    guesses.forEach(guess => guess.forEach((tile, position) => {
+      if (tile.state === 'correct') knownPositions.add(position)
+    }))
 
     setIsFetchingHint(true)
+    setMessage('')
     try {
       const response = await fetch('/api/hope-daily/hint', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           hintNumber: hintsUsed + 1,
-          revealedPositions: Array.from(revealedLetters.keys())
+          revealedPositions: Array.from(knownPositions)
         })
       })
 
-      const data = await response.json()
-      if (data.hint) {
-        setCurrentHint(data.hint)
-        setHintsUsed(prev => prev + 1)
+      const data = response.ok ? await response.json() : null
+      if (!data?.hint) {
+        setMessage(HINT_ERROR)
+        return
+      }
 
-        // If a letter was revealed, add it to the map
-        if (data.revealedLetter) {
-          setRevealedLetters(prev => {
-            const newMap = new Map(prev)
-            newMap.set(data.revealedLetter.position, data.revealedLetter.letter)
-            return newMap
-          })
-        }
+      setHintsUsed(prev => prev + 1)
+
+      // Letter hints are listed under "Revealed", so the clue stays on screen.
+      if (!data.revealedLetter) {
+        setCurrentHint(data.hint)
+      } else {
+        setRevealedLetters(prev => {
+          const newMap = new Map(prev)
+          newMap.set(data.revealedLetter.position, data.revealedLetter.letter)
+          return newMap
+        })
       }
     } catch (error) {
       console.error('Failed to fetch hint:', error)
-      setMessage('Failed to get hint. Try again.')
+      setMessage(HINT_ERROR)
     } finally {
       setIsFetchingHint(false)
     }
-  }, [isFetchingHint, hintsUsed, gameState, revealedLetters])
+  }, [isFetchingHint, hintsUsed, gameState, revealedLetters, guesses])
 
-  // Fetch and display AI commentary
   const showCommentaryBubble = useCallback(async (
     guess: string,
-    letterStates?: LetterTile[],
-    isCorrect = false,
-    isInvalid = false
+    letterStates: LetterTile[],
+    isCorrect: boolean
   ) => {
-    // Prevent double-fetching
     if (isFetchingCommentary) return
 
     setIsFetchingCommentary(true)
+    setShowCommentary(false)
     try {
       const response = await fetch('/api/hope-daily/commentary', {
         method: 'POST',
@@ -186,16 +241,14 @@ export default function HopeDaily() {
         body: JSON.stringify({
           guess,
           letterStates,
-          isCorrect,
-          isInvalid
+          isCorrect
         })
       })
 
-      const data = await response.json()
-      if (data.commentary) {
+      const data = response.ok ? await response.json() : null
+      if (data?.commentary) {
         setCommentary(data.commentary)
         setShowCommentary(true)
-        // Commentary stays visible - will be replaced by next guess
       }
     } catch (error) {
       console.error('Failed to fetch commentary:', error)
@@ -206,7 +259,18 @@ export default function HopeDaily() {
 
   // Submit guess to server
   const submitGuess = useCallback(async () => {
-    if (!currentGuess.trim() || !metadata || isSubmitting) return
+    if (!currentGuess || !metadata || isSubmitting) return
+
+    const rejectGuess = (reason: string) => {
+      setMessage(reason)
+      setShake(true)
+      setTimeout(() => setShake(false), 500)
+    }
+
+    if (currentGuess.length < metadata.wordLength) {
+      rejectGuess(`Not enough letters yet. The word has ${metadata.wordLength}.`)
+      return
+    }
 
     setIsSubmitting(true)
 
@@ -217,14 +281,10 @@ export default function HopeDaily() {
         body: JSON.stringify({ guess: currentGuess })
       })
 
-      const data = await response.json()
+      const data = await response.json().catch(() => null)
 
-      if (!response.ok) {
-        setMessage(data.error || 'Invalid guess')
-        setShake(true)
-        setTimeout(() => setShake(false), 500)
-        // Show commentary for invalid guess
-        showCommentaryBubble(currentGuess, undefined, false, true)
+      if (!response.ok || !Array.isArray(data?.letterStates)) {
+        rejectGuess(response.status === 400 && data?.error ? data.error : GUESS_ERROR)
         return
       }
 
@@ -258,24 +318,25 @@ export default function HopeDaily() {
         setMessage(encouragements[Math.floor(Math.random() * encouragements.length)])
 
         // Show victory commentary
-        showCommentaryBubble(guessWord, letterStates, true, false)
+        showCommentaryBubble(guessWord, letterStates, true)
       } else if (newGuesses.length >= MAX_GUESSES) {
-        // Lost - fetch the word
         setGameState('lost')
-        const revealResponse = await fetch('/api/hope-daily', { method: 'PUT' })
-        const revealData = await revealResponse.json()
-        setRevealedData(revealData)
-        setMessage(`The word was ${revealData.word}`)
-        setTimeout(() => setRevealed(true), 1500)
+        setShowCommentary(false)
+        setMessage('That was the last guess.')
+        const revealData: unknown = await fetch('/api/hope-daily', { method: 'PUT' })
+          .then(revealResponse => (revealResponse.ok ? revealResponse.json() : null))
+          .catch(() => null)
+        if (isRevealedWord(revealData)) {
+          setRevealedData(revealData)
+          setMessage(`The word was ${revealData.word}`)
+          setTimeout(() => setRevealed(true), 1500)
+        }
       } else {
-        // Show commentary for regular guess
-        showCommentaryBubble(guessWord, letterStates, false, false)
+        showCommentaryBubble(guessWord, letterStates, false)
       }
     } catch (error) {
       console.error('Failed to submit guess:', error)
-      setMessage('Failed to submit guess. Please try again.')
-      setShake(true)
-      setTimeout(() => setShake(false), 500)
+      rejectGuess(GUESS_ERROR)
     } finally {
       setIsSubmitting(false)
     }
@@ -293,15 +354,16 @@ export default function HopeDaily() {
       setMessage('')
     } else if (key === 'Enter' || key === 'ENTER') {
       submitGuess()
-    } else if (/^[A-Za-z]$/.test(key) && currentGuess.length < metadata.wordLength) {
-      setCurrentGuess(prev => prev + key.toUpperCase())
+    } else if (/^[A-Za-z]$/.test(key)) {
+      // Length is checked against the queued state: right after a guess is scored, this
+      // listener can still hold the previous guess, and the first new letter would be lost.
+      setCurrentGuess(prev => (prev.length < metadata.wordLength ? prev + key.toUpperCase() : prev))
       setMessage('')
     }
-  }, [gameState, metadata, currentGuess, submitGuess])
+  }, [gameState, metadata, submitGuess])
 
   const handleStartOver = () => {
-    // Clear saved state
-    localStorage.removeItem('hope-daily-state')
+    localStorage.removeItem(STORAGE_KEY)
 
     // Reset all game state
     setGuesses([])
@@ -319,17 +381,41 @@ export default function HopeDaily() {
     setRevealedLetters(new Map())
   }
 
-  // Keyboard event listener
-  useEffect(() => {
+  // A layout effect re-subscribes during the commit, so a key pressed as soon as a
+  // result appears never reaches a handler holding the previous state.
+  useLayoutEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Check for modifier keys
-      const hasModifier = e.ctrlKey || e.metaKey || e.altKey || e.shiftKey
-      handleKeyPress(e.key, hasModifier)
+      const target = e.target instanceof HTMLElement ? e.target : null
+      const onLetterKey = target?.closest('[data-letter-key]') != null
+
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return
+      if (e.key === 'Enter' && !onLetterKey && target?.closest('button, a')) return
+      // After tapping a letter, a physical Enter submits instead of pressing that letter again.
+      if (e.key === 'Enter' && onLetterKey) e.preventDefault()
+
+      handleKeyPress(e.key, e.ctrlKey || e.metaKey || e.altKey)
     }
 
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [handleKeyPress])
+
+  if (!metadata && loadFailed) {
+    return (
+      <div className="text-center text-foreground/70 py-12" role="status" aria-live="polite">
+        <p className="mb-4">Today&apos;s word is taking a moment to arrive.</p>
+        <button
+          onClick={() => {
+            setLoadFailed(false)
+            setLoadAttempt(attempt => attempt + 1)
+          }}
+          className="px-4 py-2 text-sm bg-foreground/10 hover:bg-foreground/20 text-foreground rounded-lg transition-colors border border-foreground/20"
+        >
+          Try again
+        </button>
+      </div>
+    )
+  }
 
   if (!metadata) {
     return (
@@ -360,6 +446,10 @@ export default function HopeDaily() {
 
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-0">
+      <p className="mb-2 text-center text-xs sm:text-sm text-foreground/70">
+        Today&apos;s theme: <span className="font-medium text-foreground">{metadata.category}</span> · {metadata.wordLength} letters
+      </p>
+
       {/* Game Board */}
       <div
         className="mb-2 sm:mb-3 flex flex-col gap-1 sm:gap-1.5"
@@ -381,7 +471,7 @@ export default function HopeDaily() {
                   text-base sm:text-lg md:text-xl font-bold transition-all duration-300
                   ${tile.state === 'correct' ? 'bg-[#74c69d] border-[#74c69d] text-white' : ''}
                   ${tile.state === 'present' ? 'bg-[#f59e0b] border-[#f59e0b] text-white' : ''}
-                  ${tile.state === 'absent' ? 'bg-foreground/20 border-foreground/20 text-white' : ''}
+                  ${tile.state === 'absent' ? 'bg-foreground/60 border-transparent text-background' : ''}
                   ${tile.state === 'empty' ? 'border-foreground/20' : ''}
                   ${tile.letter && tile.state === 'empty' ? 'border-foreground/40 scale-105' : ''}
                 `}
@@ -410,7 +500,6 @@ export default function HopeDaily() {
         </div>
       )}
 
-      {/* AI Commentary Bubble */}
       {showCommentary && commentary && (
         <div
           className="flex justify-center mb-2 animate-fade"
@@ -435,24 +524,24 @@ export default function HopeDaily() {
           {/* Hint Button */}
           <button
             onClick={fetchHint}
-            disabled={hintsUsed >= 3 || isFetchingHint}
+            disabled={hintsUsed >= MAX_HINTS || isFetchingHint}
             className={`
               flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
               transition-all duration-200
-              ${hintsUsed >= 3
+              ${hintsUsed >= MAX_HINTS
                 ? 'bg-foreground/5 text-foreground/30 cursor-not-allowed'
-                : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 border border-amber-500/30'
+                : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-200 border border-amber-500/30'
               }
             `}
-            aria-label={`Get hint (${3 - hintsUsed} remaining)`}
+            aria-label={`Get hint (${MAX_HINTS - hintsUsed} remaining)`}
           >
             <Lightbulb size={16} className={isFetchingHint ? 'animate-pulse' : ''} />
-            {isFetchingHint ? 'Thinking...' : `Hint (${3 - hintsUsed} left)`}
+            {isFetchingHint ? 'One moment...' : `Hint (${MAX_HINTS - hintsUsed} left)`}
           </button>
 
           {/* Current Hint Display */}
           {currentHint && (
-            <div className="max-w-sm text-center animate-fade">
+            <div className="max-w-sm text-center animate-fade" role="status" aria-live="polite">
               <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-2">
                 <p className="text-sm text-amber-700 dark:text-amber-300">
                   💡 {currentHint}
@@ -463,11 +552,11 @@ export default function HopeDaily() {
 
           {/* Revealed Letters Display */}
           {revealedLetters.size > 0 && (
-            <div className="flex gap-1 text-xs text-foreground/60">
+            <div className="flex flex-wrap justify-center gap-1 text-xs text-foreground/70">
               <span>Revealed:</span>
-              {Array.from(revealedLetters.entries()).map(([pos, letter]) => (
+              {Array.from(revealedLetters.entries()).sort(([a], [b]) => a - b).map(([pos, letter]) => (
                 <span key={pos} className="font-mono bg-amber-500/20 px-1.5 py-0.5 rounded">
-                  {pos + 1}→{letter}
+                  letter {pos + 1} is {letter}
                 </span>
               ))}
             </div>
@@ -494,13 +583,14 @@ export default function HopeDaily() {
                     transition-all duration-200
                     ${keyState === 'correct' ? 'bg-[#74c69d] text-white border-[#74c69d]' : ''}
                     ${keyState === 'present' ? 'bg-[#f59e0b] text-white border-[#f59e0b]' : ''}
-                    ${keyState === 'absent' ? 'bg-foreground/30 text-white border-foreground/30' : ''}
+                    ${keyState === 'absent' ? 'bg-foreground/60 text-background border-transparent' : ''}
                     ${!keyState ? 'bg-foreground/10 hover:bg-foreground/20 border-foreground/20' : ''}
                     border-2
                     disabled:opacity-50 disabled:cursor-not-allowed
                     active:scale-95
                   `}
                   aria-label={key === 'BACK' ? 'Backspace' : key}
+                  data-letter-key
                 >
                   {key === 'BACK' ? '⌫' : key}
                 </button>
@@ -515,20 +605,20 @@ export default function HopeDaily() {
         <div className="flex flex-wrap justify-center gap-2 sm:gap-3 text-[10px] sm:text-xs mb-2">
           <div className="flex items-center gap-1 sm:gap-1.5">
             <div className="w-4 h-4 sm:w-5 sm:h-5 bg-[#74c69d] rounded border-2 border-[#74c69d]"></div>
-            <span className="whitespace-nowrap">Growth</span>
+            <span className="whitespace-nowrap"><strong className="font-semibold">Growth</strong>: right spot</span>
           </div>
           <div className="flex items-center gap-1 sm:gap-1.5">
             <div className="w-4 h-4 sm:w-5 sm:h-5 bg-[#f59e0b] rounded border-2 border-[#f59e0b]"></div>
-            <span className="whitespace-nowrap">Hope</span>
+            <span className="whitespace-nowrap"><strong className="font-semibold">Hope</strong>: wrong spot</span>
           </div>
           <div className="flex items-center gap-1 sm:gap-1.5">
-            <div className="w-4 h-4 sm:w-5 sm:h-5 bg-foreground/20 rounded border-2 border-foreground/20"></div>
-            <span className="whitespace-nowrap">Absent</span>
+            <div className="w-4 h-4 sm:w-5 sm:h-5 bg-foreground/60 rounded"></div>
+            <span className="whitespace-nowrap"><strong className="font-semibold">Absent</strong>: not in the word</span>
           </div>
         </div>
 
-        {/* Start Over Button */}
-        {(guesses.length > 0 || gameState !== 'playing') && (
+        {/* Once today's word is revealed, replaying it would only repeat the answer. */}
+        {guesses.length > 0 && gameState === 'playing' && (
           <div className="flex justify-center">
             <button
               onClick={handleStartOver}
@@ -558,14 +648,14 @@ export default function HopeDaily() {
           <div className="relative">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-lg" aria-hidden="true">🌱</span>
-              <div className="text-xs font-semibold text-[#74c69d] uppercase tracking-wide">
+              <div className="text-xs font-semibold text-melon-green uppercase tracking-wide">
                 {revealedData.category}
               </div>
             </div>
             <p className="text-sm sm:text-base leading-relaxed text-foreground">
               {revealedData.fact}
             </p>
-            <p className="mt-3 text-xs text-[#74c69d]/80 italic">
+            <p className="mt-3 text-xs text-melon-green/80 italic">
               The world is getting better, one fact at a time.
             </p>
           </div>
@@ -585,6 +675,9 @@ export default function HopeDaily() {
               {revealedData.category}
             </div>
           </div>
+          <p className="mb-2 text-sm sm:text-base text-foreground">
+            The word was <strong className="font-semibold tracking-wide">{revealedData.word}</strong>.
+          </p>
           <p className="text-sm sm:text-base leading-relaxed text-foreground">
             {revealedData.fact}
           </p>
@@ -597,9 +690,9 @@ export default function HopeDaily() {
       {/* Instructions */}
       {guesses.length === 0 && !currentGuess && (
         <div className="mt-3 text-center text-xs sm:text-sm text-foreground/70 space-y-1">
-          <p>Guess the {metadata.wordLength}-letter word about global progress</p>
+          <p>Guess the {metadata.wordLength}-letter word about global progress in {MAX_GUESSES} tries.</p>
           <p className="text-[10px] sm:text-xs">
-            Use your keyboard or tap the letters below
+            Type or tap letters, then press Enter.
           </p>
         </div>
       )}

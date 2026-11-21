@@ -53,15 +53,19 @@ describe('POST /api/hope-daily/commentary', () => {
     expect(response.status).toBe(200)
   })
 
-  it('handles invalid guess context', async () => {
+  it('does not tell a winner to keep going when commentary is unavailable', async () => {
+    delete process.env.OPENAI_API_KEY
+
     const request = new Request('http://localhost/api/hope-daily/commentary', {
       method: 'POST',
-      body: JSON.stringify({ guess: 'ZZZZZ', isInvalid: true }),
+      body: JSON.stringify({ guess: 'HAPPY', isCorrect: true }),
       headers: { 'Content-Type': 'application/json' },
     })
 
     const response = await POST(request as never)
-    expect(response.status).toBe(200)
+    const data = await response.json()
+
+    expect(data.commentary).toBe("You found today's word!")
   })
 
   it('returns 400 for missing guess', async () => {

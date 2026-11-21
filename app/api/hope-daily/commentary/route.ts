@@ -9,9 +9,15 @@ function getOpenAI() {
   return new OpenAI({ apiKey })
 }
 
+const FALLBACK_COMMENTARY = 'Nice try! Keep going!'
+const FALLBACK_WIN_COMMENTARY = "You found today's word!"
+
 export async function POST(request: NextRequest) {
+  let isWin = false
+
   try {
-    const { guess, isCorrect, isInvalid } = await request.json()
+    const { guess, isCorrect } = await request.json()
+    isWin = isCorrect === true
 
     if (!guess || typeof guess !== 'string') {
       return NextResponse.json({ error: 'Invalid guess' }, { status: 400 })
@@ -19,9 +25,7 @@ export async function POST(request: NextRequest) {
 
     // Build context for AI
     let context = ''
-    if (isInvalid) {
-      context = `The user guessed "${guess}" which is not a valid word. Make a fun, witty remark about the word itself or how it sounds!`
-    } else if (isCorrect) {
+    if (isCorrect) {
       context = `The user correctly guessed "${guess}"! Make a celebratory comment that relates to what the word "${guess}" represents!`
     } else {
       // Make commentary about the word itself
@@ -61,13 +65,12 @@ Examples for different guesses:
       max_tokens: 30
     })
 
-    const commentary = completion.choices[0].message.content?.trim() || "Nice try! Keep going!"
+    const commentary = completion.choices[0].message.content?.trim() || (isWin ? FALLBACK_WIN_COMMENTARY : FALLBACK_COMMENTARY)
 
     return NextResponse.json({ commentary })
 
   } catch (error) {
     console.error('Commentary generation error:', error)
-    // Return a generic comment on error
-    return NextResponse.json({ commentary: "Nice try! Keep going!" })
+    return NextResponse.json({ commentary: isWin ? FALLBACK_WIN_COMMENTARY : FALLBACK_COMMENTARY })
   }
 }
