@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils/cn'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
@@ -87,6 +87,11 @@ const MOMENTS: Moment[] = [
 ]
 
 const TICK_MS = 200
+
+// The writing moments never end under a moving pen: the clock rests while the player is
+// typing, and when the time is up with words on the page, the player says when they are done.
+const WRITING_MOMENTS: MomentId[] = ['look', 'appreciate']
+const TYPING_PAUSE_MS = 5000
 
 // Watch the Seeds counts only still time. A little movement right after the tap that
 // began it is just the hand leaving the button, so it does not stir anything.
@@ -286,6 +291,8 @@ export default function TheUnrusher() {
   const [feelings, setFeelings] = useState<string[]>([])
   const [heard, setHeard] = useState<Heard[]>([])
   const [buzzAtEnd, setBuzzAtEnd] = useState(false)
+  const [writingPaused, setWritingPaused] = useState(false)
+  const [timeUp, setTimeUp] = useState(false)
   const countedMsRef = useRef(0)
   const startedAtRef = useRef(0)
   const ownScrollPendingRef = useRef(false)
@@ -293,6 +300,9 @@ export default function TheUnrusher() {
   const lastStirRef = useRef(0)
   const stirsRef = useRef(0)
   const buzzAtEndRef = useRef(false)
+  const writingFocusedRef = useRef(false)
+  const lastTypedAtRef = useRef(0)
+  const hasWritingRef = useRef(false)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const previousViewRef = useRef<View>('menu')
@@ -310,12 +320,29 @@ export default function TheUnrusher() {
 
   const view: View = currentTask ? (showReward ? 'reward' : 'task') : 'menu'
 
+  const finishMoment = useCallback((task: Moment) => {
+    setIsActive(false)
+    setTimeUp(false)
+    setShowReward(true)
+    setStirCount(stirsRef.current)
+    setCompleted((prev) => {
+      const next = prev.includes(task.id) ? prev : [...prev, task.id]
+      saveToday(next)
+      return next
+    })
+    if (task.id === 'listen') {
+      playTones(CHIME, CHIME_LOUDNESS)
+      if (buzzAtEndRef.current) buzz([80, 120, 80])
+    }
+  }, [])
+
   // Time is counted in small slices of wall-clock time, and a slice only counts while
   // the moment is on screen (and, for the seeds, while nothing has moved). Everything
   // on screen derives from that one count, so the ring, the clock and the guidance agree.
   useEffect(() => {
     if (!isActive || !currentTask) return
     const needsStillness = currentTask.id === 'watch'
+    const isWriting = WRITING_MOMENTS.includes(currentTask.id)
 
     let hidden = document.visibilityState === 'hidden'
     lastTickRef.current = Date.now()
@@ -330,25 +357,24 @@ export default function TheUnrusher() {
         lastTickRef.current = now
         return
       }
-      const countFrom = needsStillness ? Math.max(lastTickRef.current, lastStirRef.current + STIR_GRACE_MS) : lastTickRef.current
+      const typing = isWriting && writingFocusedRef.current && now - lastTypedAtRef.current < TYPING_PAUSE_MS
+      const countFrom = typing
+        ? now
+        : needsStillness ? Math.max(lastTickRef.current, lastStirRef.current + STIR_GRACE_MS) : lastTickRef.current
       countedMsRef.current += Math.max(0, now - countFrom)
       lastTickRef.current = now
       if (needsStillness) setStirred(now < lastStirRef.current + STIR_GRACE_MS)
+      if (isWriting) setWritingPaused(typing)
 
       if (countedMsRef.current >= currentTask.duration * 1000) {
         stop()
-        setIsActive(false)
-        setShowReward(true)
-        setStirCount(stirsRef.current)
-        setCompleted((prev) => {
-          const next = prev.includes(currentTask.id) ? prev : [...prev, currentTask.id]
-          saveToday(next)
-          return next
-        })
-        if (currentTask.id === 'listen') {
-          playTones(CHIME, CHIME_LOUDNESS)
-          if (buzzAtEndRef.current) buzz([80, 120, 80])
+        if (isWriting && (hasWritingRef.current || writingFocusedRef.current)) {
+          setElapsedMs(currentTask.duration * 1000)
+          setWritingPaused(false)
+          setTimeUp(true)
+          return
         }
+        finishMoment(currentTask)
         return
       }
       setElapsedMs(countedMsRef.current)
@@ -369,7 +395,7 @@ export default function TheUnrusher() {
     const interval = setInterval(tick, TICK_MS)
     document.addEventListener('visibilitychange', onVisibilityChange)
     return stop
-  }, [isActive, currentTask])
+  }, [isActive, currentTask, finishMoment])
 
   // Any touch, scroll, key or real pointer movement stirs the seeds. Stirring never
   // undoes anything: the seeds simply wait until the player is still again.
@@ -453,12 +479,17 @@ export default function TheUnrusher() {
     countedMsRef.current = 0
     lastStirRef.current = now - STIR_GRACE_MS
     stirsRef.current = 0
+    writingFocusedRef.current = false
+    lastTypedAtRef.current = 0
+    hasWritingRef.current = false
     wakeTones()
     setCurrentTask(task)
     setElapsedMs(0)
     setIsActive(true)
     setShowReward(false)
     setWelcomeBack(false)
+    setWritingPaused(false)
+    setTimeUp(false)
     setStirred(false)
     setStirCount(0)
     setThings(['', '', ''])
@@ -473,6 +504,16 @@ export default function TheUnrusher() {
     setIsActive(false)
     setShowReward(false)
     setWelcomeBack(false)
+    setTimeUp(false)
+  }
+
+  const writingHandlers = {
+    onFocus: () => { writingFocusedRef.current = true },
+    onBlur: () => { writingFocusedRef.current = false },
+  }
+  const noteTyping = (allText: string[]) => {
+    lastTypedAtRef.current = Date.now()
+    hasWritingRef.current = allText.some((t) => t.trim() !== '')
   }
 
   if (currentTask) {
@@ -562,7 +603,11 @@ export default function TheUnrusher() {
                     type="text"
                     value={lookedAt}
                     maxLength={40}
-                    onChange={(e) => setLookedAt(e.target.value)}
+                    onChange={(e) => {
+                      noteTyping([e.target.value])
+                      setLookedAt(e.target.value)
+                    }}
+                    {...writingHandlers}
                     className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
                   />
                 </label>
@@ -602,7 +647,12 @@ export default function TheUnrusher() {
                         type="text"
                         value={things[i]}
                         maxLength={80}
-                        onChange={(e) => setThings((prev) => prev.map((t, j) => (j === i ? e.target.value : t)))}
+                        onChange={(e) => {
+                          const next = things.map((t, j) => (j === i ? e.target.value : t))
+                          noteTyping(next)
+                          setThings(next)
+                        }}
+                        {...writingHandlers}
                         className="flex-1 min-w-0 rounded-lg border border-card-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
                       />
                     </label>
@@ -647,14 +697,32 @@ export default function TheUnrusher() {
               </div>
 
               {!compact && (
-                <>
-                  <p className="text-sm text-foreground/70">No rush. Just be here.</p>
-                  <div className="mt-6">
-                    <Button variant="ghost" onClick={resetTask}>
-                      I need to stop
-                    </Button>
-                  </div>
-                </>
+                timeUp ? (
+                  <>
+                    <p className="text-sm text-foreground/80" role="status">
+                      That was the whole time. Finish your thought, then press Done.
+                    </p>
+                    <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                      <Button variant="primary" onClick={() => finishMoment(currentTask)} className="w-full sm:w-auto">
+                        Done
+                      </Button>
+                      <Button variant="ghost" onClick={resetTask}>
+                        I need to stop
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-foreground/70 min-h-5">
+                      {writingPaused ? 'The time waits while you write.' : 'No rush. Just be here.'}
+                    </p>
+                    <div className="mt-6">
+                      <Button variant="ghost" onClick={resetTask}>
+                        I need to stop
+                      </Button>
+                    </div>
+                  </>
+                )
               )}
             </>
           ) : (

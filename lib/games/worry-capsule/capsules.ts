@@ -47,9 +47,9 @@ export const RESEAL_HORIZONS: readonly { id: ResealHorizon; label: string }[] = 
 ]
 
 export const OUTCOMES: readonly { id: Outcome; label: string }[] = [
-  { id: 'yes', label: 'Yes' },
-  { id: 'partly', label: 'Partly' },
-  { id: 'no', label: 'No' },
+  { id: 'yes', label: 'It happened' },
+  { id: 'partly', label: 'Partly happened' },
+  { id: 'no', label: 'It didn’t happen' },
 ]
 
 export function normalizeWorry(text: string): string | null {

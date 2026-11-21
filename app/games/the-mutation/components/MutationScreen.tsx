@@ -139,9 +139,10 @@ export default function MutationScreen({
                   event.stopPropagation()
                   handleContinue()
                 }}
-                className={`text-[11px] sm:text-xs tracking-[0.15em] px-5 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${retroFont}`}
+                className={`uppercase text-[11px] sm:text-xs tracking-[0.15em] px-5 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${retroFont}`}
               >
-                {isTouch ? 'TAP TO CONTINUE' : 'PRESS ENTER'}
+                Continue
+                {!isTouch && <span aria-hidden="true"> · Enter</span>}
               </button>
             )}
           </div>

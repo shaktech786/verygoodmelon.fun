@@ -213,7 +213,12 @@ export default function CascadeGame() {
     setPhase('finale')
 
     let name = fallbackName(allMutations.map(m => m.id), style)
-    let line = fallbackTagline(style)
+    let line = fallbackTagline({
+      mechanicIds: allMutations.map(m => m.id),
+      style,
+      collected: s?.collectTotal ?? 0,
+      transformed: s?.transformed ?? 0,
+    })
     try {
       const res = await fetch(MUTATE_URL, {
         method: 'POST',

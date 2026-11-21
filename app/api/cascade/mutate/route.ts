@@ -164,6 +164,7 @@ How it grew: ${picture.history.map(m => `${m.title || m.id} (${m.id})`).join(', 
 The player ${STYLE_NOTES[picture.style]} (${picture.style}). They turned ${transformed} shadows into stars and were nudged ${nudges} times.
 
 Give it a name of 2 to 4 words in ALL CAPS that sounds like a gentle retro arcade cabinet, and a one-line tagline that begins "For someone who" and kindly notices how they played.
+The tagline must mention something particular to this run, such as one of its rules by name, so no two runs share a line.
 
 Respond ONLY with JSON: {"gameName": "...", "tagline": "..."}`
 

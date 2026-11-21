@@ -157,11 +157,11 @@ test.describe('database unreachable (the current reality)', () => {
     }
 
     await expect(page.getByRole('heading', { name: ENDING })).toBeFocused()
-    // Odd dilemmas were answered A, even ones B: the portrait names what each answer protects
-    await expect(page.getByRole('list', { name: ENDING }).getByRole('listitem')).toHaveText([
-      'Joy', 'Purpose', 'Friendship', 'Selfhood', 'Openness', 'Encouragement',
-      'Closeness', 'Self-respect', 'Challenge', 'Roots', 'Making', 'Self-kindness',
-    ])
+    // Odd dilemmas were answered A, even ones B: what each answer protects, gathered into at most three themes
+    const group = (name: string) => page.getByRole('list', { name, exact: true }).getByRole('listitem')
+    await expect(group('The people around you')).toHaveText(['Friendship', 'Openness', 'Encouragement', 'Closeness', 'Roots'])
+    await expect(group('Stretching further')).toHaveText(['Purpose', 'Challenge', 'Making'])
+    await expect(group('And also')).toHaveText(['Selfhood', 'Self-respect', 'Self-kindness', 'Joy'])
     // A reading of the pattern, not only the words: four answers leaned toward other people, four toward the self
     await expect(page.getByRole('heading', { name: 'A reading' })).toBeVisible()
     await expect(page.getByText(
@@ -403,7 +403,7 @@ test.describe('choosing at your own pace', () => {
       await page.getByRole('button', { name: 'Let this one pass' }).click()
     }
     await expect(page.getByRole('heading', { name: ENDING })).toBeFocused()
-    await expect(page.getByRole('list', { name: ENDING }).getByRole('listitem')).toHaveText(['Joy'])
+    await expect(page.getByRole('list', { name: 'Feeling settled', exact: true }).getByRole('listitem')).toHaveText(['Joy'])
     await expect(page.getByText('You let 11 questions pass. That is allowed too.')).toBeVisible()
     expect(api.posts).toHaveLength(1)
   })

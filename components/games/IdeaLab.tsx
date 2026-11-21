@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Sparkles, Trash2, RotateCcw, FlaskConical } from 'lucide-react'
-import { BASE_CONCEPTS, type Concept } from '@/lib/games/idea-lab/concepts'
+import { BASE_CONCEPTS, findKnownCombination, type Concept } from '@/lib/games/idea-lab/concepts'
 import { WORK_TITLES, goldsFor, isGolden, type GoldenIdea } from '@/lib/games/idea-lab/golds'
 import {
   DEFAULT_PROGRESS, afterCombination, beginNextWork, parseCombinations, parseDiscoveries, parseProgress, type LabProgress,
@@ -34,6 +34,22 @@ const WIDE_QUERY = '(min-width: 1024px)'
 const CLUE_LABELS = ['Riddle:', 'Plainer:', 'Ingredients:']
 
 const getComboKey = (c1: Concept, c2: Concept) => [c1.id, c2.id].sort().join('+')
+
+interface CombineReply {
+  name?: unknown
+  emoji?: unknown
+  description?: unknown
+}
+
+async function askForCombination(first: string, second: string): Promise<CombineReply> {
+  const response = await fetch('/api/idea-lab/combine', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ concept1: first, concept2: second }),
+  })
+  if (!response.ok) throw new Error('Failed to combine concepts')
+  return response.json()
+}
 
 function save(key: string, value: unknown) {
   localStorage.setItem(key, JSON.stringify(value))
@@ -225,20 +241,8 @@ export default function IdeaLab() {
     setAnnouncement('Combining')
 
     try {
-      const response = await fetch('/api/idea-lab/combine', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          concept1: concept1.name,
-          concept2: concept2.name
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to combine concepts')
-      }
-
-      const data = await response.json()
+      // The hand-written pairs are answered here, so they still work on a flaky connection
+      const data = findKnownCombination(concept1.name, concept2.name) ?? await askForCombination(concept1.name, concept2.name)
       if (typeof data?.name !== 'string' || !data.name.trim()) {
         throw new Error('Combination has no name')
       }

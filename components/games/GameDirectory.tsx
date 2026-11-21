@@ -1,7 +1,7 @@
 'use client'
 
 import { useCareMode } from '@/components/games/CareMode'
-import { GentleGames, HEAVY_GAMES } from '@/components/games/CrossGameSuggestions'
+import { GentleGames, stepsAsideInCare } from '@/components/games/CrossGameSuggestions'
 import { GameCardShowcase } from '@/components/games/GameCardShowcase'
 import { SHOWCASE_GROUPS } from '@/lib/games/config'
 
@@ -11,13 +11,13 @@ const ABOVE_THE_FOLD = new Set(
     .map((game) => game.id)
 )
 
-/** Every game by category; while care mode lasts, calm games lead and the games about death step aside. */
+/** Every game by category; while care mode lasts, calm games lead (once) and the games about death step aside. */
 export function GameDirectory() {
   const { care } = useCareMode()
 
   return (
     <div className="space-y-10 sm:space-y-14">
-      {care && <GentleGames />}
+      {care && <GentleGames helplines />}
       {SHOWCASE_GROUPS.map(({ category, title, description, games }) => (
         <section key={category} aria-labelledby={`category-${category.toLowerCase()}`}>
           <div className="mb-4 sm:mb-5">
@@ -31,7 +31,7 @@ export function GameDirectory() {
           </div>
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {games
-              .filter((game) => !(care && HEAVY_GAMES.has(game.id)))
+              .filter((game) => !(care && stepsAsideInCare(game.id)))
               .map((game) => (
                 <li key={game.id}>
                   <GameCardShowcase game={game} priority={ABOVE_THE_FOLD.has(game.id)} showCategory={false} />

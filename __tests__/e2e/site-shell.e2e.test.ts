@@ -362,6 +362,30 @@ test.describe('Finding your way', () => {
     await page.goto('/games')
     expect(await readGroups()).toEqual(expected)
   })
+
+  test('in care mode the game lists offer helplines once, list each gentle game once, and a new tab keeps the care', async ({ page, context }) => {
+    await page.goto('/')
+    await page.evaluate(() => localStorage.setItem('verygoodmelon:care', JSON.stringify({ until: Date.now() + 60 * 60 * 1000 })))
+
+    for (const listing of ['/', '/games']) {
+      await page.goto(listing)
+      const gentle = page.getByRole('region', { name: 'Something gentle, if it helps' })
+      await expect(gentle).toBeVisible()
+      await expect(gentle.getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+      await expect(gentle.getByRole('link', { name: '116 123' })).toHaveAttribute('href', 'tel:116123')
+      await expect(gentle.getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
+      await expect(page.getByRole('link', { name: '988' })).toHaveCount(1)
+      for (const slug of ['the-still-point', 'quiet-grove']) {
+        await expect(page.locator(`main section a[href="/games/${slug}"]`)).toHaveCount(1)
+      }
+      await expect(page.locator('main a[href="/games/final-breath"], main a[href="/games/first-breath"]')).toHaveCount(0)
+    }
+
+    const secondTab = await context.newPage()
+    await secondTab.goto('/games')
+    await expect(secondTab.getByRole('region', { name: 'Something gentle, if it helps' })).toBeVisible()
+    await secondTab.close()
+  })
 })
 
 test.describe('Thoughts', () => {

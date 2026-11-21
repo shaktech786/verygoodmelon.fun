@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { vi } from 'vitest'
 
 const mockFetch = vi.fn()
@@ -24,8 +24,10 @@ const reply = (name: string, description = `${name}, briefly.`) =>
 const concept = (name: string) => screen.getByRole('button', { name })
 const status = () => screen.getByRole('status')
 
-function begin() {
+// Saved progress is read in a microtask after mounting; a real player cannot click before it lands
+async function begin() {
   render(<IdeaLab />)
+  await act(() => Promise.resolve())
   fireEvent.click(screen.getByRole('button', { name: 'Begin Exploring' }))
 }
 
@@ -42,20 +44,33 @@ describe('IdeaLab', () => {
   })
 
   it('moves keyboard focus to the first concept after Begin Exploring', async () => {
-    begin()
+    await begin()
     await waitFor(() => expect(concept('Love')).toHaveFocus())
   })
 
-  it('announces a new discovery politely and adds it to the concepts', async () => {
-    reply('Bittersweet', 'The tender ache of love touched by fear.')
-    begin()
+  it('answers a curated pair in the page itself, announcing the discovery politely', async () => {
+    await begin()
     fireEvent.click(concept('Love'))
     fireEvent.click(concept('Fear'))
 
-    await waitFor(() => expect(status()).toHaveTextContent('New discovery: Bittersweet. The tender ache of love touched by fear.'))
+    await waitFor(() => expect(status()).toHaveTextContent('New discovery: Jealousy. When love fears loss, it curdles into possession.'))
     expect(status()).toHaveAttribute('aria-live', 'polite')
-    expect(concept('Bittersweet')).toBeInTheDocument()
+    expect(concept('Jealousy')).toBeInTheDocument()
     expect(screen.getByText('1 discovery')).toBeInTheDocument()
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  it('asks the server only for a pair nobody has written', async () => {
+    await begin()
+    fireEvent.click(concept('Love'))
+    fireEvent.click(concept('Fear'))
+    await waitFor(() => expect(concept('Jealousy')).toBeInTheDocument())
+
+    reply('Restlessness', 'A heart that cannot settle.')
+    fireEvent.click(concept('Jealousy'))
+    fireEvent.click(concept('Chaos'))
+    await waitFor(() => expect(status()).toHaveTextContent('New discovery: Restlessness. A heart that cannot settle.'))
+    expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
   it('keeps loading discoveries saved before riddles and Works existed', async () => {
@@ -66,14 +81,13 @@ describe('IdeaLab', () => {
   })
 
   it('makes one riddle plainer after a few tries without gold, and reads it out', async () => {
-    begin()
+    await begin()
     const pairs: Array<[string, string]> = [['Love', 'Fear'], ['Time', 'Death'], ['Power', 'Truth'], ['Beauty', 'Chaos'], ['Order', 'Self']]
     expect(screen.queryByText('Plainer:')).not.toBeInTheDocument()
-    for (const [i, [a, b]] of pairs.entries()) {
-      reply(`Thing ${'abcde'[i]}`)
+    for (const [a, b] of pairs) {
       fireEvent.click(concept(a))
       fireEvent.click(concept(b))
-      await waitFor(() => expect(status()).toHaveTextContent(`New discovery: Thing ${'abcde'[i]}.`))
+      await waitFor(() => expect(status()).toHaveTextContent(/New discovery: /))
     }
     expect(status()).toHaveTextContent('A riddle has grown plainer: Let love meet its ending, then let the dawn sit beside it.')
     expect(screen.getAllByText('Let love meet its ending, then let the dawn sit beside it.', { exact: false }).length).toBeGreaterThan(0)

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 import { PLANT_TYPES, seasonAt, type PlantType } from '@/lib/games/calm-garden/garden'
-import { buildSuggestionPrompt, parseSuggestionReply, settleSpot, suggestLocally } from '@/lib/games/calm-garden/suggest'
+import { buildSuggestionPrompt, parseSuggestionReply, repeatsLastPlant, settleSpot, suggestLocally } from '@/lib/games/calm-garden/suggest'
 
 // ---------------------------------------------------------------------------
 // Rate limiting (in-memory, per IP)
@@ -90,7 +90,10 @@ export async function POST(request: NextRequest) {
     })
     const suggestion = parseSuggestionReply(result.text ?? '')
     if (!suggestion) throw new Error('Unusable garden suggestion reply')
-    return NextResponse.json({ suggestion: settleSpot(suggestion, plants) })
+    const settled = settleSpot(suggestion, plants)
+    // Suggesting the plant just placed reads as not having looked; the local rules never do
+    if (repeatsLastPlant(settled, plants)) return NextResponse.json({ suggestion: suggestLocally(plants, Math.random()) })
+    return NextResponse.json({ suggestion: settled })
   } catch (error) {
     console.error('Calm garden suggest error:', error)
     return NextResponse.json({ suggestion: suggestLocally(plants, Math.random()) })

@@ -8,20 +8,15 @@ import { test, expect, type Page, type Route } from '@playwright/test'
  * ends the Work with a letter written from the order they were found.
  * Discoveries, remembered pairs and riddle progress live in localStorage.
  *
- * Combinations are answered from a fixed table so runs never reach the live service.
- * Some tests use the real route for curated pairs, which needs no outside call.
+ * The curated pairs are answered in the page itself; any other pair is answered from a fixed
+ * table here, so runs never reach the live service.
  */
 
 const TABLE: Record<string, { name: string; emoji: string; description: string }> = {
-  'fear+love': { name: 'Devotion', emoji: '🕯️', description: 'Loving even while afraid to lose.' },
-  'devotion+time': { name: 'Loyalty', emoji: '🤝', description: 'Devotion that keeps showing up.' },
-  'death+time': { name: 'Legacy', emoji: '📜', description: 'What remains after we are gone.' },
-  'chaos+order': { name: 'Balance', emoji: '⚖️', description: 'Structure and spontaneity in step.' },
+  'jealousy+time': { name: 'Loyalty', emoji: '🤝', description: 'Devotion that keeps showing up.' },
+  'chaos+jealousy': { name: 'Restlessness', emoji: '🌪️', description: 'A heart that cannot settle.' },
   // The service answering with a name the player already has.
-  'beauty+nature': { name: 'Love', emoji: '💕', description: 'Beauty in nature opens the heart.' },
-  'fear+hope': { name: 'Courage', emoji: '🦁', description: 'Acting despite fear because something matters more.' },
-  'self+wisdom': { name: 'Humility', emoji: '🌾', description: 'Knowing enough to know how much you do not.' },
-  'courage+wisdom': { name: 'Virtue', emoji: '🏛️', description: 'Excellence of character, practised until it is natural.' },
+  'jealousy+nature': { name: 'Love', emoji: '💕', description: 'Even envy grows from something tender.' },
 }
 
 const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
@@ -103,12 +98,12 @@ test('a first-time player discovers, goes deeper, and keeps it all after a reloa
   await expect(counter(page)).toHaveText('0 discoveries')
 
   await combine(page, 'Love', 'Fear')
-  await expect(announcement(page)).toHaveText('New discovery: Devotion. Loving even while afraid to lose.')
-  await expect(concept(page, 'Devotion')).toBeVisible()
+  await expect(announcement(page)).toHaveText('New discovery: Jealousy. When love fears loss, it curdles into possession.')
+  await expect(concept(page, 'Jealousy')).toBeVisible()
   await expect(counter(page)).toHaveText('1 discovery')
 
   // A discovery is an ingredient too.
-  await combine(page, 'Devotion', 'Time')
+  await combine(page, 'Jealousy', 'Time')
   await expect(announcement(page)).toContainText('New discovery: Loyalty.')
   await combine(page, 'Time', 'Death')
   await expect(announcement(page)).toContainText('New discovery: Legacy.')
@@ -123,9 +118,29 @@ test('a first-time player discovers, goes deeper, and keeps it all after a reloa
 
   // A remembered pair answers instantly, in either order, without asking again.
   await combine(page, 'Fear', 'Love')
-  await expect(announcement(page)).toHaveText('Devotion, already in your concepts. Loving even while afraid to lose.')
-  expect(calls).toEqual(['fear+love', 'devotion+time', 'death+time'])
+  await expect(announcement(page)).toHaveText('Jealousy, already in your concepts. When love fears loss, it curdles into possession.')
+  // Only the open-ended mix needed the service; curated pairs are answered in the page
+  expect(calls).toEqual(['jealousy+time'])
   await expect(counter(page)).toHaveText('3 discoveries')
+})
+
+test('on a flaky connection the curated pairs still mix, and only open-ended pairs wait for the service', async ({ page }) => {
+  let asked = 0
+  await page.route('**/api/idea-lab/combine', (route) => {
+    asked++
+    return route.abort('internetdisconnected')
+  })
+  await startLab(page)
+
+  await combine(page, 'Love', 'Fear')
+  await expect(announcement(page)).toHaveText('New discovery: Jealousy. When love fears loss, it curdles into possession.')
+  await combine(page, 'Order', 'Fear')
+  await expect(announcement(page)).toContainText('New discovery: Perfectionism.')
+  expect(asked).toBe(0)
+
+  await combine(page, 'Jealousy', 'Time')
+  await expect(announcement(page)).toHaveText(/^These two are keeping their secret for now\./)
+  expect(asked).toBe(1)
 })
 
 test('Begin Exploring hands keyboard focus to the first concept', async ({ page }) => {
@@ -157,7 +172,7 @@ test('after a result, the next pick starts a fresh pair and Clear empties the be
   await concept(page, 'Love').click()
   await expect(concept(page, 'Love')).toHaveAttribute('aria-pressed', 'true')
   await expect(concept(page, 'Chaos')).toHaveAttribute('aria-pressed', 'false')
-  await expect(page.getByText('Structure and spontaneity in step.')).toHaveCount(0)
+  await expect(page.getByText('The dance between structure and spontaneity.')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Clear' }).click()
   await expect(concept(page, 'Love')).toHaveAttribute('aria-pressed', 'false')
@@ -165,19 +180,19 @@ test('after a result, the next pick starts a fresh pair and Clear empties the be
 })
 
 test('when a pair cannot be combined right now, nothing is saved and it can be tried again', async ({ page }) => {
-  const calls = await mockCombine(page, ['devotion+justice'])
+  const calls = await mockCombine(page, ['jealousy+justice'])
   await startLab(page)
   await combine(page, 'Love', 'Fear')
   await expect(counter(page)).toHaveText('1 discovery')
 
-  await combine(page, 'Justice', 'Devotion')
+  await combine(page, 'Justice', 'Jealousy')
   await expect(announcement(page)).toHaveText(/^These two are keeping their secret for now\./)
   await expect(counter(page)).toHaveText('1 discovery')
   await expect(concept(page, 'Mystery')).toHaveCount(0)
 
-  await combine(page, 'Justice', 'Devotion')
+  await combine(page, 'Justice', 'Jealousy')
   await expect(announcement(page)).toHaveText(/^These two are keeping their secret for now\./)
-  expect(calls).toEqual(['fear+love', 'devotion+justice', 'devotion+justice'])
+  expect(calls).toEqual(['jealousy+justice', 'jealousy+justice'])
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('ideaLab_discoveries') ?? '[]').length)
   expect(stored).toBe(1)
 })
@@ -186,31 +201,34 @@ test('a result that matches a concept the player already has is not counted twic
   const calls = await mockCombine(page)
   await startLab(page)
 
-  await combine(page, 'Beauty', 'Nature')
+  await combine(page, 'Love', 'Fear')
+  await combine(page, 'Jealousy', 'Nature')
   await expect(announcement(page)).toContainText('Love, already in your concepts.')
-  await expect(counter(page)).toHaveText('0 discoveries')
+  await expect(counter(page)).toHaveText('1 discovery')
   await expect(concept(page, 'Love')).toHaveCount(1)
 
-  await combine(page, 'Nature', 'Beauty')
+  await combine(page, 'Nature', 'Jealousy')
   await expect(announcement(page)).toContainText('Love, already in your concepts.')
-  expect(calls).toEqual(['beauty+nature'])
+  expect(calls).toEqual(['jealousy+nature'])
 })
 
 test('concepts stay locked while a pair is being combined', async ({ page }) => {
   let release: () => void = () => {}
   await page.route('**/api/idea-lab/combine', async route => {
     await new Promise<void>(resolve => { release = resolve })
-    await route.fulfill({ json: TABLE['chaos+order'] })
+    await route.fulfill({ json: TABLE['chaos+jealousy'] })
   })
   await startLab(page)
+  await combine(page, 'Love', 'Fear')
+  await expect(concept(page, 'Jealousy')).toBeVisible()
 
-  await combine(page, 'Chaos', 'Order')
+  await combine(page, 'Chaos', 'Jealousy')
   await expect(announcement(page)).toHaveText('Combining')
   await expect(concept(page, 'Love')).toBeDisabled()
   await expect(page.getByRole('button', { name: 'Reset all discoveries' })).toBeDisabled()
 
   release()
-  await expect(announcement(page)).toContainText('New discovery: Balance.')
+  await expect(announcement(page)).toContainText('New discovery: Restlessness.')
   await expect(concept(page, 'Love')).toBeEnabled()
 })
 
@@ -218,7 +236,7 @@ test('reset asks first, can be cancelled from the keyboard, and clears everythin
   await mockCombine(page)
   await startLab(page)
   await combine(page, 'Love', 'Fear')
-  await expect(concept(page, 'Devotion')).toBeVisible()
+  await expect(concept(page, 'Jealousy')).toBeVisible()
 
   const resetButton = page.getByRole('button', { name: 'Reset all discoveries' })
   await resetButton.click()
@@ -235,11 +253,11 @@ test('reset asks first, can be cancelled from the keyboard, and clears everythin
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await expect(resetButton).toBeFocused()
-  await expect(concept(page, 'Devotion')).toBeVisible()
+  await expect(concept(page, 'Jealousy')).toBeVisible()
 
   await resetButton.click()
   await dialog.getByRole('button', { name: 'Reset' }).click()
-  await expect(concept(page, 'Devotion')).toHaveCount(0)
+  await expect(concept(page, 'Jealousy')).toHaveCount(0)
   await expect(counter(page)).toHaveText('0 discoveries')
   expect(await page.evaluate(() => localStorage.getItem('ideaLab_progress'))).toBeNull()
 
@@ -330,7 +348,7 @@ test('damaged saved data does not stop the lab from opening', async ({ page }) =
   await page.getByRole('button', { name: 'Begin Exploring' }).click()
 
   await combine(page, 'Love', 'Fear')
-  await expect(announcement(page)).toContainText('New discovery: Devotion.')
+  await expect(announcement(page)).toContainText('New discovery: Jealousy.')
   await expect(counter(page)).toHaveText('1 discovery')
   await expect(shelf(page)).toContainText('0 of 7 found')
 })
@@ -427,7 +445,7 @@ test('a save from when one clue level covered every riddle keeps the clues it ha
   await expect(shelf(page).getByText('Ingredients:', { exact: true })).toHaveCount(0)
 
   await combine(page, 'Love', 'Fear')
-  await expect(announcement(page)).toHaveText(/^New discovery: Devotion\./)
+  await expect(announcement(page)).toHaveText(/^New discovery: Jealousy\./)
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ideaLab_progress') ?? 'null'))
   expect(saved).toEqual({ work: 0, triesSinceClue: 1, hints: [1, 1, 1, 1, 1, 1, 1] })
 })

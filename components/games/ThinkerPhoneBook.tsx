@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button'
 const SHELVES: ReadonlyArray<{ label: string; fields: RegExp }> = [
   { label: 'Philosophy & spirit', fields: /Philosophy|Spirituality|Humanitarian/ },
   { label: 'Science & invention', fields: /Science|Physics|Chemistry|Mathematics|Astronomy|Invention|Technology/ },
-  { label: 'Arts & writing', fields: /(?:Art|Literature|Music|Diarist|Writing)/ },
+  { label: 'Arts & writing', fields: /\b(?:Art|Literature|Music|Diarist|Writing)\b/ },
   { label: 'Justice & leadership', fields: /Activism|Civil Rights|Leadership|Justice|Law|Diplomacy|Politics/ },
 ]
 

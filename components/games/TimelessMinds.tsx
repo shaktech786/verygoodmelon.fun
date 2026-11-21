@@ -101,6 +101,7 @@ export default function TimelessMinds() {
   const [showTopicSuggestions, setShowTopicSuggestions] = useState(true)
   const inputRowRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const onlyGreetingRef = useRef(true)
   const inputRef = useRef<HTMLInputElement>(null)
   const directoryButtonRef = useRef<HTMLButtonElement>(null)
   const endCallCancelRef = useRef<HTMLButtonElement>(null)
@@ -267,6 +268,7 @@ export default function TimelessMinds() {
   // The support panel shrinks the message area, so the latest reply is brought back into view when it appears too.
   // A fresh call starts at the top instead, so the suggested questions are read from the first one.
   useEffect(() => {
+    onlyGreetingRef.current = messages.length <= 1
     if (messagesContainerRef.current) {
       const container = messagesContainerRef.current
       requestAnimationFrame(() => {
@@ -287,11 +289,14 @@ export default function TimelessMinds() {
   }, [isLoading])
 
   // An opening phone keyboard shrinks the conversation; keep its newest words in view.
+  // Before the first message the suggested questions stay in view from the top instead.
   const hasThinker = thinker !== null
   useEffect(() => {
     const container = messagesContainerRef.current
     if (!container || typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(() => container.scrollTo({ top: container.scrollHeight }))
+    const observer = new ResizeObserver(() => {
+      if (!onlyGreetingRef.current) container.scrollTo({ top: container.scrollHeight })
+    })
     observer.observe(container)
     return () => observer.disconnect()
   }, [hasThinker])
@@ -542,6 +547,9 @@ export default function TimelessMinds() {
     )
   }
 
+  // On a phone the conversation needs the room once it has begun, so the portrait becomes a slim strip
+  const conversationStarted = messages.length > 1
+  const portraitHeight = conversationStarted ? 'h-16' : care ? 'h-20' : 'h-32'
   const statusLabel = isSpeaking ? 'Speaking' : isLoading ? 'Thinking' : isListening ? 'Listening' : 'Ready'
   const toolbarButton = 'flex flex-col items-center gap-0.5 sm:gap-1 px-1 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group'
   const toolbarLabel = 'text-white text-[11px] sm:text-xs whitespace-nowrap'
@@ -552,7 +560,7 @@ export default function TimelessMinds() {
           which would otherwise sit on Send at some sizes and text settings. */}
       <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3 sm:pr-[5.5rem] min-h-0">
         {/* Video Window */}
-        <div className={`${care ? 'h-20' : 'h-32'} sm:h-auto sm:flex-[2] shrink-0 relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden sm:min-h-[200px] lg:min-h-0`}>
+        <div className={`${portraitHeight} sm:h-auto sm:flex-[2] shrink-0 relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden sm:min-h-[200px] lg:min-h-0`}>
           <div className="absolute inset-0">
             {videoEnabled ? (
               <div className="absolute inset-0">
@@ -592,8 +600,8 @@ export default function TimelessMinds() {
 
         {/* Chat Sidebar */}
         <div className="flex-1 min-h-0 w-full lg:flex-1 lg:max-w-md bg-card-bg rounded-lg flex flex-col shadow-xl">
-          {/* Chat Header */}
-          <div className="shrink-0 px-3 py-2 sm:p-4 border-b border-card-border">
+          {/* On a phone the portrait's name tag already names the thinker, so this header is only read aloud there */}
+          <div className="shrink-0 sr-only sm:not-sr-only sm:p-4 sm:border-b sm:border-card-border">
             <h2 className="font-semibold text-foreground text-sm sm:text-base">Talking with {thinker.name}</h2>
             <p className="text-xs text-foreground/70">{thinker.field} · {thinker.era}</p>
           </div>

@@ -53,4 +53,12 @@ describe('POST /api/calm-garden/suggest', () => {
     expect(status).toBe(200)
     expect(data.suggestion.line).not.toMatch(/\bbees?\b/i)
   })
+
+  it('swaps a reply that offers the very plant just placed for one of its own', async () => {
+    const justLavender = [...elements, { type: 'lavender', x: 0.5, y: 0.88 }]
+    const { status, data } = await ask({ elements: justLavender, season: 'summer' }, '10.0.0.5')
+    expect(status).toBe(200)
+    expect(data.suggestion.type).not.toBe('lavender')
+    expect(data.suggestion.line).not.toMatch(/lavender/i)
+  })
 })

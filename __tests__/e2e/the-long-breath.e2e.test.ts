@@ -249,6 +249,10 @@ test.describe('The Patient One', () => {
     await taskButton(page, 'Look at One Thing').click()
     await page.getByRole('textbox', { name: /What are you looking at/ }).fill('the blue mug')
     await advance(page, 60_000)
+    // Words on the page: the time never cuts them off, the player says when they are done.
+    await expect(page.getByRole('heading', { name: REWARD_HEADING })).toHaveCount(0)
+    await expect(page.getByRole('status').filter({ hasText: 'Finish your thought, then press Done.' })).toBeVisible()
+    await page.getByRole('button', { name: 'Done', exact: true }).click()
     await expect(page.getByText('You gave the blue mug a whole minute. Most things get a glance.')).toBeVisible()
   })
 
@@ -266,12 +270,26 @@ test.describe('The Patient One', () => {
     await expect(page.getByText('Right now: content. Good to know this is here too.')).toBeVisible()
   })
 
+  test('the time rests while the player is typing', async ({ page }) => {
+    await openGame(page)
+    await taskButton(page, 'Count Three Things').click()
+    const first = page.getByRole('textbox', { name: 'First thing' })
+    await first.click()
+    for (const word of ['My', 'sister', 'texting', 'me', 'back']) {
+      await first.pressSequentially(`${word} `)
+      await advance(page, 4000)
+    }
+    await expect(page.getByText('The time waits while you write.')).toBeVisible()
+    await expect(timer(page)).toHaveText(/^0:(4|5)\d$/)
+  })
+
   test('three things noted while counting are shown back and never stored', async ({ page }) => {
     await openGame(page)
     await taskButton(page, 'Count Three Things').click()
     await page.getByRole('textbox', { name: 'First thing' }).fill('Morning light')
     await page.getByRole('textbox', { name: 'Third thing' }).fill('A friend who called')
     await advance(page, 50_000)
+    await page.getByRole('button', { name: 'Done', exact: true }).click()
 
     await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeFocused()
     await expect(page.getByText('Today you noticed')).toBeVisible()

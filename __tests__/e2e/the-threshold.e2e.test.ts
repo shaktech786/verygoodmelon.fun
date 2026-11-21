@@ -139,7 +139,7 @@ test.describe('The Plain Speaker', () => {
     await expectStep(page, 'Choose a first sentence.')
     await page.getByText('Could we have ten minutes?').click()
     await next(page)
-    await expectStep(page, 'For my manager, today comes with its own pressures too.')
+    await expectStep(page, 'For your manager, today comes with its own pressures too.')
     await expect(page.getByText('Nearly there')).toBeVisible()
     await next(page)
     await expectStep(page, /you’re allowed to be kind to yourself/)

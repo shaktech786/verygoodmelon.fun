@@ -494,6 +494,22 @@ test.describe('on a phone', () => {
     }
   })
 
+  test('tapping Try it keeps focus in the guess box after every attempt, right or short', async ({ page }) => {
+    await pinDailyWord(page)
+    await openGame(page)
+    const tryIt = page.getByRole('button', { name: 'Try it' })
+
+    await input(page).fill('PLANT')
+    await tryIt.tap()
+    await expect(status(page)).not.toHaveText('')
+    await expect(input(page)).toBeFocused()
+
+    await input(page).fill('ABC')
+    await tryIt.tap()
+    await expect(status(page)).toHaveText('Today’s word has 5 letters.')
+    await expect(input(page)).toBeFocused()
+  })
+
   test('the longest word fits without sideways scrolling and the controls are easy to tap', async ({ page }) => {
     await page.route('**/api/hope-daily', route =>
       route.request().method() === 'GET' ? route.fulfill({ json: { ...PUZZLE, wordLength: 12 } }) : route.fallback()
@@ -505,7 +521,8 @@ test.describe('on a phone', () => {
     expect(slots && slots.x + slots.width).toBeLessThanOrEqual(390)
     for (const name of ['Try it', 'Read on']) {
       const button = await page.getByRole('button', { name }).boundingBox()
-      expect(button?.height).toBeGreaterThanOrEqual(44)
+      // Sub-pixel layout can land a hair under 44
+      expect(button?.height).toBeGreaterThanOrEqual(43.9)
     }
   })
 })

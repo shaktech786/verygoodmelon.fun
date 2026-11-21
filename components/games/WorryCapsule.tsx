@@ -578,7 +578,7 @@ function Resting({ capsule, today, motion, focus, onBack, onLetGo }: CapsuleView
 
 type Choice = Outcome | 'not-yet'
 
-const CHOICES: readonly { id: Choice; label: string }[] = [...OUTCOMES, { id: 'not-yet', label: 'Not yet' }]
+const CHOICES: readonly { id: Choice; label: string }[] = [...OUTCOMES, { id: 'not-yet', label: 'Too soon to tell' }]
 
 interface OpeningProps extends CapsuleViewProps {
   onAnswer: (outcome: Outcome, note: string) => boolean
@@ -601,7 +601,7 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: 
         <ViewHeading focus={focus}>This one is ready</ViewHeading>
         <p className={muted}>You sealed it on {sealedOn}. Open it whenever you like.</p>
         <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center pt-1">
-          <Button variant="secondary" onClick={onBack}>Not now</Button>
+          <Button variant="secondary" onClick={onBack}>Close for now</Button>
           <Button onClick={() => setOpen(true)}>Open it</Button>
         </div>
       </div>
@@ -620,7 +620,7 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: 
       <div className={cn('space-y-5', motion && styles.motion)}>
         <div className={cn('space-y-5', styles.afterOpen)}>
           <fieldset>
-            <legend className="mx-auto text-lg font-semibold text-foreground mb-3">Did it happen?</legend>
+            <legend className="mx-auto text-lg font-semibold text-foreground mb-3">How did it turn out?</legend>
             <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
               {CHOICES.map((option) => (
                 <label
@@ -700,7 +700,7 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: 
           )}
 
           <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center">
-            <Button variant="secondary" onClick={onBack}>Not now</Button>
+            <Button variant="secondary" onClick={onBack}>Close for now</Button>
             {outcome === 'not-yet' ? (
               <Button onClick={() => setFailed(!onReseal(again))}>Seal it again</Button>
             ) : (

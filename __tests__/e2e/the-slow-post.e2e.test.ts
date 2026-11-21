@@ -4,7 +4,7 @@ import { test, expect, type Page } from '@playwright/test'
 
 /**
  * The Keeper (/games/the-slow-post): seal one worry, come back after the chosen date,
- * answer "Did it happen?". Everything lives in localStorage; a fake clock stands in for
+ * answer "How did it turn out?". Everything lives in localStorage; a fake clock stands in for
  * the days in between.
  */
 
@@ -262,7 +262,7 @@ test.describe('The Keeper', () => {
     expect(errors).toEqual([])
   })
 
-  for (const [answer, word] of [['Yes', 'Happened'], ['Partly', 'Partly happened'], ['No', 'Didn’t happen']] as const) {
+  for (const [answer, id, word] of [['It happened', 'yes', 'Happened'], ['Partly happened', 'partly', 'Partly happened'], ['It didn’t happen', 'no', 'Didn’t happen']] as const) {
     test(`returning after the date and answering "${answer}"`, async ({ page }) => {
       const errors = collectPageErrors(page)
       await openKeeper(page)
@@ -276,6 +276,10 @@ test.describe('The Keeper', () => {
       await expect(page.getByRole('heading', { name: 'On Saturday, November 21, you wrote:' })).toBeFocused()
       await expect(page.getByText(WORRY)).toBeVisible()
       await expect(page.getByRole('button', { name: 'Close the capsule' })).toBeDisabled()
+      // The question asks how it went, and leaving is never mistaken for an answer
+      await expect(page.getByRole('group', { name: 'How did it turn out?' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Close for now' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Not now' })).toHaveCount(0)
 
       await page.getByRole('radio', { name: answer, exact: true }).locator('..').click()
       await page.getByLabel(/A line to your past self/).fill('  Dear me: it was all right.  ')
@@ -285,7 +289,7 @@ test.describe('The Keeper', () => {
       await expect(page.getByText('Closed and kept with the others.')).toBeVisible()
       await expect(page.getByRole('heading', { name: 'How they turned out' })).toBeVisible()
       const [saved] = await stored(page)
-      expect(saved.opening).toMatchObject({ outcome: answer.toLowerCase(), note: 'Dear me: it was all right.' })
+      expect(saved.opening).toMatchObject({ outcome: id, note: 'Dear me: it was all right.' })
 
       await page.getByRole('button', { name: new RegExp(WORRY) }).click()
       await expect(page.getByText(`Opened Saturday, November 28: ${word.toLowerCase()}.`)).toBeVisible()
@@ -294,7 +298,7 @@ test.describe('The Keeper', () => {
     })
   }
 
-  test('too soon to tell: "Not yet" seals it again for the chosen time and keeps it out of the tally', async ({ page }) => {
+  test('too soon to tell: "Too soon to tell" seals it again for the chosen time and keeps it out of the tally', async ({ page }) => {
     const errors = collectPageErrors(page)
     await openKeeper(page)
     await sealWorry(page)
@@ -303,7 +307,7 @@ test.describe('The Keeper', () => {
     await page.getByRole('button', { name: /Ready to open/ }).click()
     await page.getByRole('button', { name: 'Open it' }).click()
 
-    await page.getByRole('radio', { name: 'Not yet', exact: true }).locator('..').click()
+    await page.getByRole('radio', { name: 'Too soon to tell', exact: true }).locator('..').click()
     await expect(page.getByLabel(/A line to your past self/)).toHaveCount(0)
     await expect(page.getByRole('radio', { name: /Another week/ })).toBeChecked()
     await page.getByRole('radio', { name: /Another month/ }).check()
@@ -432,7 +436,7 @@ test.describe('The Keeper', () => {
     await returnOn(page, T0 + 8 * DAY)
     await page.getByRole('button', { name: /Ready to open/ }).click()
     await page.getByRole('button', { name: 'Open it' }).click()
-    await page.getByRole('radio', { name: 'No', exact: true }).locator('..').click()
+    await page.getByRole('radio', { name: 'It didn’t happen', exact: true }).locator('..').click()
     await page.getByRole('button', { name: 'Close the capsule' }).click()
     await expect(shelfHeading(page)).toBeVisible()
     expect(leaks).toEqual([])
@@ -504,10 +508,10 @@ test.describe('The Keeper', () => {
     await expect(page.getByRole('button', { name: 'Open it' })).toBeFocused()
     await page.keyboard.press('Enter')
     await page.keyboard.press('Tab')
-    await expect(page.getByRole('radio', { name: 'Yes', exact: true })).toBeFocused()
+    await expect(page.getByRole('radio', { name: 'It happened', exact: true })).toBeFocused()
     await page.keyboard.press('ArrowRight')
     await page.keyboard.press('ArrowRight')
-    await expect(page.getByRole('radio', { name: 'No', exact: true })).toBeChecked()
+    await expect(page.getByRole('radio', { name: 'It didn’t happen', exact: true })).toBeChecked()
     await page.keyboard.press('Tab')
     await expect(page.getByLabel(/A line to your past self/)).toBeFocused()
     await page.keyboard.type('Told you.')
@@ -533,7 +537,7 @@ test.describe('The Keeper', () => {
 
       await page.getByRole('button', { name: /Ready to open/ }).click()
       await page.getByRole('button', { name: 'Open it' }).click()
-      await page.getByRole('radio', { name: 'Partly', exact: true }).locator('..').click()
+      await page.getByRole('radio', { name: 'Partly happened', exact: true }).locator('..').click()
       // Let the opening scene finish so contrast is measured on the settled page.
       await page.clock.runFor(3000)
       await page.emulateMedia({ reducedMotion: 'reduce' })

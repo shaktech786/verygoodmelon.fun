@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readChoices, THEMES, type Theme, type ChosenValue } from '@/lib/games/hard-choices/reading'
+import { groupChoices, readChoices, THEMES, type Theme, type ChosenValue } from '@/lib/games/hard-choices/reading'
 
 const pick = (theme: Theme, n: number): ChosenValue[] =>
   Array.from({ length: n }, (_, i) => ({ value: `${theme}-${i + 1}`, theme }))
@@ -99,5 +99,53 @@ describe('readChoices: a short reading of what the choices protect', () => {
             }
           }
     expect(combinations).toBe(1820)
+  })
+})
+
+describe('groupChoices: the chosen values gathered into a few themes', () => {
+  it('gathers values under the pull they share, strongest first, in the order they were chosen', () => {
+    const groups = groupChoices([
+      { value: 'Joy', theme: 'ease' },
+      { value: 'Friendship', theme: 'others' },
+      { value: 'Rest', theme: 'ease' },
+      { value: 'Closeness', theme: 'others' },
+      { value: 'Devotion', theme: 'others' },
+    ])
+    expect(groups).toEqual([
+      { title: 'The people around you', values: ['Friendship', 'Closeness', 'Devotion'] },
+      { title: 'Feeling settled', values: ['Joy', 'Rest'] },
+    ])
+  })
+
+  it('never shows more than three groups, and keeps every value', () => {
+    const chosen = mix({ ease: 1, growth: 4, others: 3, self: 2 })
+    const groups = groupChoices(chosen)
+    expect(groups.map((g) => g.title)).toEqual(['Stretching further', 'The people around you', 'And also'])
+    expect(groups.flatMap((g) => g.values).sort()).toEqual(chosen.map((c) => c.value).sort())
+  })
+
+  it('has no groups when every question was let pass', () => {
+    expect(groupChoices([])).toEqual([])
+  })
+})
+
+describe('readChoices names the player’s own answers', () => {
+  it('a tension line quotes the values on each side', () => {
+    const lines = readChoices([
+      { value: 'Rest', theme: 'ease' },
+      { value: 'Challenge', theme: 'growth' },
+      { value: 'Peace', theme: 'ease' },
+      { value: 'Purpose', theme: 'growth' },
+    ])
+    expect(lines[0]).toBe('You reached for Rest and Peace, and also for Challenge and Purpose. That is not indecision: most good lives need both rest and stretching, at different times.')
+  })
+
+  it('an even spread names where it went, from one answer to a different kind', () => {
+    const [line] = readChoices([
+      { value: 'Joy', theme: 'ease' },
+      { value: 'Purpose', theme: 'growth' },
+      { value: 'Roots', theme: 'others' },
+    ])
+    expect(line).toBe('Your answers spread out, from Joy to Purpose, with no single pull winning: each question was weighed on its own.')
   })
 })

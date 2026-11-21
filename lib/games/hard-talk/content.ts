@@ -239,8 +239,15 @@ export function pick<T>(pool: readonly T[], run: number): T {
   return pool[Math.max(0, run) % pool.length]
 }
 
+// The player names the person in their own words ("my manager"); the game speaks back to the player.
+const SPOKEN_BACK: Record<string, string> = { my: 'your', our: 'your', mine: 'yours', ours: 'yours' }
+
+export function asSpokenToPlayer(who: string): string {
+  return who.trim().replace(/\b(my|our|mine|ours)\b/gi, (word) => SPOKEN_BACK[word.toLowerCase()])
+}
+
 export function themLine(kind: TalkKind, who: string): string {
-  const name = who.trim()
+  const name = asSpokenToPlayer(who)
   if (!name) return TALKS[kind].them.unnamed
   const line = TALKS[kind].them.named.replace('{who}', name)
   return line.charAt(0).toUpperCase() + line.slice(1)

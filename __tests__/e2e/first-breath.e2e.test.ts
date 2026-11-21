@@ -64,6 +64,27 @@ test.describe('The Awakening', () => {
     await expect(page.getByRole('button', { name: 'Copy it for tomorrow' })).toBeVisible()
   })
 
+  test.describe('on a phone', () => {
+    test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+    test('a long plan for tomorrow is shown whole, growing past two rows, and Enter still wakes', async ({ page }) => {
+      await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+      await page.goto('/games/first-breath')
+      await speak(page, 'I wish I had called more often.')
+
+      const box = intentionBox(page)
+      await expect(box).toHaveAttribute('rows', '2')
+      const long = 'Call Grandad after breakfast and ask him about the summer he spent fixing boats by the harbour'
+      await box.fill(long)
+      const fits = await box.evaluate((el) => el.scrollHeight <= el.clientHeight && el.clientHeight > 60)
+      expect(fits).toBe(true)
+
+      await box.press('Enter')
+      await expect(page.getByRole('heading', { name: 'Good morning' })).toBeFocused()
+      await expect(page.getByText(long, { exact: true })).toBeVisible()
+    })
+  })
+
   test('a suggestion never overwrites what the player has already started writing', async ({ page }) => {
     await page.route('**/api/first-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
     let answer: () => void = () => {}

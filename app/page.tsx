@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { useCareMode } from '@/components/games/CareMode'
-import { GentleGames, HEAVY_GAMES } from '@/components/games/CrossGameSuggestions'
+import { GentleGames, stepsAsideInCare } from '@/components/games/CrossGameSuggestions'
 import { GameCardShowcase } from '@/components/games/GameCardShowcase'
 import { PersonalizedSuggestions } from '@/components/home/PersonalizedSuggestions'
 import { SHOWCASE_GAMES, SHOWCASE_GROUPS } from '@/lib/games/config'
@@ -126,9 +126,9 @@ export default function Home() {
 
       {/* Games by category; after words of danger, calm games lead and the games about death step aside */}
       <div className="w-full max-w-3xl space-y-10 sm:space-y-14">
-        {care && <GentleGames />}
+        {care && <GentleGames helplines />}
         {SHOWCASE_GROUPS.map(({ category, title, description, games: groupGames }) => {
-          const games = care ? groupGames.filter((game) => !HEAVY_GAMES.has(game.id)) : groupGames
+          const games = care ? groupGames.filter((game) => !stepsAsideInCare(game.id)) : groupGames
           // Use first game's index for category header delay
           const firstGameIdx = GAME_INDICES.get(games[0].id) ?? 0
 

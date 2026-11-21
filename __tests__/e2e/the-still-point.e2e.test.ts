@@ -191,9 +191,16 @@ test.describe('The Harmonist', () => {
     await advance(page, 17_000)
     await expect(guide(page)).toContainText('1 seed so far')
 
+    // While breathing the rhythms are out of reach, so a stray tap never cuts a breath short
     const rhythm = page.getByRole('radiogroup', { name: 'Change rhythm' })
+    await expect(rhythm).toHaveCount(0)
+    await page.getByRole('button', { name: 'Change rhythm' }).click()
+    await expect(phase(page)).toHaveText('Paused')
+    await expect(rhythm.getByRole('radio', { name: 'Box' })).toBeFocused()
     await rhythm.getByRole('radio', { name: 'Coherent' }).click()
     await expect(rhythm.getByRole('radio', { name: 'Coherent' })).toHaveAttribute('aria-checked', 'true')
+    await page.getByRole('button', { name: 'Resume' }).click()
+    await expect(rhythm).toHaveCount(0)
     await expect(phase(page)).toHaveText('Inhale')
     await expect(sessionTime(page)).toHaveText('0:17')
     await advance(page, 6000)
@@ -203,9 +210,11 @@ test.describe('The Harmonist', () => {
     await expect(guide(page)).toContainText('2 seeds so far')
 
     // Arrow keys move through the rhythms too.
-    await rhythm.getByRole('radio', { name: 'Coherent' }).focus()
+    await page.getByRole('button', { name: 'Change rhythm' }).click()
+    await expect(rhythm.getByRole('radio', { name: 'Coherent' })).toBeFocused()
     await page.keyboard.press('ArrowRight')
     await expect(rhythm.getByRole('radio', { name: 'Physiological Sigh' })).toBeFocused()
+    await page.getByRole('button', { name: 'Resume' }).click()
     await expect(phase(page)).toHaveText('Inhale')
 
     await page.getByRole('button', { name: 'End session' }).click()

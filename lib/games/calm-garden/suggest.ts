@@ -69,9 +69,17 @@ function flowersPhrase(flowers: readonly PlantSpot[]): string {
   return flowers.every((f) => f.type === type) ? `${numberWord(flowers.length)} ${variantOf(type).plural}` : 'flowers'
 }
 
-/** A thoughtful suggestion from simple rules, chosen by what is planted. */
+/** Whether a suggestion only echoes the plant just placed: the same kind again, or the same spot. */
+export function repeatsLastPlant(suggestion: PlantSpot, plants: readonly PlantSpot[]): boolean {
+  const last = plants.at(-1)
+  if (!last) return false
+  return suggestion.type === last.type || Math.hypot((suggestion.x - last.x) * 1.5, suggestion.y - last.y) < 0.07
+}
+
+/** A thoughtful suggestion from simple rules, chosen by what is planted, never just another of what was planted last. */
 export function suggestLocally(plants: readonly PlantSpot[], seed: number): Suggestion {
   const rand = seeded(seed)
+  const lastType = plants.at(-1)?.type
   const of = (c: string) => plants.filter((p) => categoryOf(p.type) === c)
   const flowers = of('flower')
   const trees = of('tree')
@@ -130,13 +138,21 @@ export function suggestLocally(plants: readonly PlantSpot[], seed: number): Sugg
   }
   ideas.push(() => {
     const flowerTypes = PLANT_TYPES.filter((t) => categoryOf(t) === 'flower')
-    const type = [...flowerTypes].sort((a, b) => plants.filter((p) => p.type === a).length - plants.filter((p) => p.type === b).length)[0]
+    const type = [...flowerTypes]
+      .filter((t) => t !== lastType)
+      .sort((a, b) => plants.filter((p) => p.type === a).length - plants.filter((p) => p.type === b).length)[0]
     const at = openSpot(plants, { x0: X_MIN, x1: X_MAX, y0: Y_MIN, y1: Y_MAX }, rand)
     return { type, ...at, line: `There is a quiet patch ${describeArea(at.x, at.y)}. ${capital(withArticle(nameOf(type)))} would fill it gently.` }
   })
 
   const pick = Math.floor(clamp(seed, 0, 0.999) * Math.min(2, ideas.length))
-  return ideas[pick]()
+  const ordered = [...ideas.slice(pick), ...ideas.slice(0, pick)]
+  for (const idea of ordered) {
+    const suggestion = idea()
+    if (suggestion.type !== lastType) return suggestion
+  }
+  // Unreachable in practice: the quiet-patch idea never names the last kind
+  return ordered[ordered.length - 1]()
 }
 
 const UNTRUSTED_LINE = /\b(ai|a\.i\.|assistant|language model|model|generat\w*|algorithm\w*|prompt)\b|<|>|https?:|www\./i
@@ -180,11 +196,14 @@ export function buildSuggestionPrompt(plants: readonly PlantSpot[], season: Seas
   const recent = plants.slice(-PROMPT_PLANTS)
   const asPlants: Plant[] = recent.map((p, i) => ({ ...p, id: String(i), scale: 1, colorSeed: 0, phase: 0, plantedAt: 0 }))
   const lines = asPlants.map((p) => `- ${nameOf(p.type)}: ${describePlace(p, asPlants)} (x ${p.x.toFixed(2)}, y ${p.y.toFixed(2)})`)
+  const lastName = nameOf(asPlants[asPlants.length - 1].type)
 
   return `You are an old, kind gardener looking over someone's shoulder at the small meadow garden they are planting. It is ${season}.
 
 What they have planted so far, oldest first:
 ${lines.join('\n')}
+
+They have just planted the last one, ${withArticle(lastName)}. Do not suggest another ${lastName} or that same spot: they have only just chosen it.
 
 Suggest ONE thing to add, chosen because of something they planted: shade for flowers, somewhere to sit, company for an empty side, something for the butterflies, a quiet gap that wants filling, or a plant that likes to grow near one of theirs.
 The only creatures that visit this garden are butterflies by day and fireflies at night. Never mention any other animal, such as bees or birds.

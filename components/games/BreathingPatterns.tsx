@@ -181,6 +181,13 @@ function vertexAt(sides: number, k: number, cx: number, cy: number, r: number): 
   return [cx + Math.cos(angle) * r, cy + Math.sin(angle) * r]
 }
 
+// The full melon stays inside the shape with room to spare, so it never covers the path being followed:
+// a triangle's sides come much closer to its centre than a square's.
+export function fullMelonRadius(sides: number, r: number): number {
+  const inner = sides === 2 ? r : r * Math.cos(Math.PI / sides)
+  return Math.min(r * 0.45, inner * 0.8)
+}
+
 function guidePoint(sides: number, phaseIndex: number, t: number, cx: number, cy: number, r: number): [number, number] {
   if (sides === 2) {
     const angle = Math.PI / 2 + (phaseIndex + t) * Math.PI
@@ -310,7 +317,7 @@ function renderGuided(
   ctx.strokeStyle = colour(position.phaseIndex)
   strokeSide(ctx, sides, position.phaseIndex, position.phaseProgress, c, c, r)
 
-  const melonRadius = lerp(r * 0.16, r * 0.45, position.expansion)
+  const melonRadius = lerp(r * 0.16, fullMelonRadius(sides, r), position.expansion)
   drawMelon(ctx, c, c, melonRadius, palette, seeds, newestSeedAlpha)
 
   const [px, py] = guidePoint(sides, position.phaseIndex, position.phaseProgress, c, c, r)
@@ -419,7 +426,7 @@ function StillGuide({ phases, phaseIndex, breaths }: { phases: BreathingPhase[];
           strokeLinecap="round"
         />
       ))}
-      <MelonSvg c={c} r={phases[phaseIndex].fill > 0.5 ? r * 0.45 : r * 0.22} breaths={breaths} />
+      <MelonSvg c={c} r={phases[phaseIndex].fill > 0.5 ? fullMelonRadius(sides, r) : r * 0.22} breaths={breaths} />
       <circle cx={px} cy={py} r={8} className={KIND_FILL[kind]} />
     </svg>
   )
@@ -600,6 +607,19 @@ export default function BreathingPatterns() {
     pausedAtRef.current = performance.now()
     setSessionState('paused')
   }, [])
+
+  // The rhythm only changes while paused, so a breath is never cut off mid-way by a stray tap
+  const focusRhythmRef = useRef(false)
+  const pauseToChangeRhythm = () => {
+    focusRhythmRef.current = true
+    pauseSession()
+  }
+
+  useEffect(() => {
+    if (sessionState !== 'paused' || !focusRhythmRef.current) return
+    focusRhythmRef.current = false
+    document.getElementById(`rhythm-${selectedPatternId}`)?.focus()
+  }, [sessionState, selectedPatternId])
 
   const resumeSession = useCallback(() => {
     sessionStartRef.current += performance.now() - pausedAtRef.current
@@ -1022,37 +1042,45 @@ export default function BreathingPatterns() {
           </div>
 
           <div className="mt-6 pt-4 border-t border-card-border">
-            <div
-              role="radiogroup"
-              aria-label="Change rhythm"
-              className="flex flex-wrap justify-center gap-1.5"
-              onKeyDown={(e) => moveInRadioGroup(e, PATTERNS.map((p) => `rhythm-${p.id}`), patternIndex, (i) => switchPattern(PATTERNS[i].id))}
-            >
-              {PATTERNS.map((p) => (
-                <button
-                  key={p.id}
-                  id={`rhythm-${p.id}`}
-                  type="button"
-                  role="radio"
-                  aria-checked={p.id === selectedPatternId}
-                  tabIndex={p.id === selectedPatternId ? 0 : -1}
-                  onClick={() => switchPattern(p.id)}
-                  className={cn(
-                    'px-3 py-1.5 rounded-full text-xs border transition-colors duration-75',
-                    'focus:outline-none focus:ring-2 focus:ring-accent',
-                    p.id === selectedPatternId
-                      ? 'border-accent bg-accent-soft text-foreground'
-                      : 'border-card-border text-foreground/75 hover:border-accent/50',
-                  )}
-                >
-                  {p.name.replace(/ (Breathing|Relaxation)$/, '')}
-                </button>
-              ))}
-            </div>
+            {sessionState === 'paused' ? (
+              <div
+                role="radiogroup"
+                aria-label="Change rhythm"
+                className="flex flex-wrap justify-center gap-1.5"
+                onKeyDown={(e) => moveInRadioGroup(e, PATTERNS.map((p) => `rhythm-${p.id}`), patternIndex, (i) => switchPattern(PATTERNS[i].id))}
+              >
+                {PATTERNS.map((p) => (
+                  <button
+                    key={p.id}
+                    id={`rhythm-${p.id}`}
+                    type="button"
+                    role="radio"
+                    aria-checked={p.id === selectedPatternId}
+                    tabIndex={p.id === selectedPatternId ? 0 : -1}
+                    onClick={() => switchPattern(p.id)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-full text-xs border transition-colors duration-75',
+                      'focus:outline-none focus:ring-2 focus:ring-accent',
+                      p.id === selectedPatternId
+                        ? 'border-accent bg-accent-soft text-foreground'
+                        : 'border-card-border text-foreground/75 hover:border-accent/50',
+                    )}
+                  >
+                    {p.name.replace(/ (Breathing|Relaxation)$/, '')}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={pauseToChangeRhythm}>
+                Change rhythm
+              </Button>
+            )}
             <p className={cn(keyboardHint, 'mt-3')}>
-              {isFreeMode
-                ? 'Space marks a breath. P pauses. Escape ends.'
-                : 'Space pauses. Escape ends.'}
+              {sessionState === 'paused'
+                ? 'Choose a rhythm, then Resume. Escape ends.'
+                : isFreeMode
+                  ? 'Space marks a breath. P pauses. Escape ends.'
+                  : 'Space pauses. Escape ends.'}
             </p>
           </div>
         </div>

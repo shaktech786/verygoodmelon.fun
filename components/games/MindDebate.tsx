@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button, buttonClassName } from '@/components/ui/Button'
-import { MessagesSquare, RotateCcw, Loader2, Square, Play, Shuffle, UserRound, HelpCircle } from 'lucide-react'
+import { MessagesSquare, RotateCcw, Loader2, Square, Play, Shuffle, UserRound, HelpCircle, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
 interface DebateEntry {
@@ -30,8 +30,9 @@ type FocusTarget = 'transcript' | 'person1' | 'topic' | 'start'
 type Side = 'left' | 'right'
 
 const TOTAL_ROUNDS = 6
-const CHAR_DELAY_MS = 18
-const TURN_PAUSE_MS = 400
+// About 200 words a minute, an easy reading pace, with a breath between speakers.
+const WORD_DELAY_MS = 300
+const TURN_PAUSE_MS = 1500
 const NAME_MAX = 60
 const TOPIC_MAX = 120
 const STICK_TO_BOTTOM_PX = 48
@@ -117,7 +118,10 @@ export default function MindDebate() {
   const [interruption, setInterruption] = useState<string | null>(null)
   const [declineReason, setDeclineReason] = useState<DeclineReason>(null)
   const [closing, setClosing] = useState<Closing | null>(null)
+  const [turnByTurnChoice, setTurnByTurnChoice] = useState<boolean | null>(null)
+  const [awaitingReader, setAwaitingReader] = useState(false)
   const reducedMotion = useReducedMotion()
+  const turnByTurn = turnByTurnChoice ?? reducedMotion
 
   const regionRef = useRef<HTMLDivElement>(null)
   const debateRef = useRef<HTMLDivElement>(null)
@@ -137,6 +141,12 @@ export default function MindDebate() {
   const historyRef = useRef<DebateEntry[]>([])
   const pendingRef = useRef<{ round: number; reply: Promise<DebateEntry> } | null>(null)
   const pairingRef = useRef(-1)
+  const turnByTurnRef = useRef(turnByTurn)
+  const advanceRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    turnByTurnRef.current = turnByTurn
+  }, [turnByTurn])
 
   useEffect(() => () => {
     sessionRef.current?.abort()
@@ -171,7 +181,23 @@ export default function MindDebate() {
 
   const handleTranscriptScroll = () => {
     const el = debateRef.current
-    if (el) stickToBottomRef.current = el.scrollTop + el.clientHeight >= el.scrollHeight - STICK_TO_BOTTOM_PX
+    if (!el) return
+    stickToBottomRef.current = el.scrollTop + el.clientHeight >= el.scrollHeight - STICK_TO_BOTTOM_PX
+    // Reading back pauses the debate; coming back down to the newest turn lets it go on
+    if (stickToBottomRef.current && !turnByTurnRef.current) advanceRef.current?.()
+  }
+
+  const chooseTurnByTurn = (on: boolean) => {
+    setTurnByTurnChoice(on)
+    turnByTurnRef.current = on
+    if (!on && stickToBottomRef.current) advanceRef.current?.()
+  }
+
+  const handleNextTurn = () => {
+    if (!advanceRef.current) return
+    advanceRef.current()
+    stickToBottomRef.current = true
+    if (!turnByTurnRef.current) stopRef.current?.focus()
   }
 
   const person1Name = person1.trim()
@@ -186,15 +212,16 @@ export default function MindDebate() {
           resolve()
           return
         }
+        const words = text.match(/\S+\s*/g) ?? [text]
         let i = 0
         const interval = setInterval(() => {
           i++
-          setTypingText(text.slice(0, i))
-          if (i >= text.length) {
+          setTypingText(words.slice(0, i).join(''))
+          if (i >= words.length) {
             clearInterval(interval)
             resolve()
           }
-        }, CHAR_DELAY_MS)
+        }, WORD_DELAY_MS)
         signal.addEventListener('abort', () => { clearInterval(interval); resolve() }, { once: true })
       })
     },
@@ -249,6 +276,20 @@ export default function MindDebate() {
     },
     [person1Name, person2Name, topicName]
   )
+
+  const waitForReader = useCallback((signal: AbortSignal): Promise<void> => {
+    return new Promise((resolve) => {
+      const done = () => {
+        if (advanceRef.current !== done) return
+        advanceRef.current = null
+        setAwaitingReader(false)
+        resolve()
+      }
+      advanceRef.current = done
+      setAwaitingReader(true)
+      signal.addEventListener('abort', done, { once: true })
+    })
+  }, [])
 
   const commit = useCallback((entry: DebateEntry) => {
     if (historyRef.current.length !== entry.round - 1) return
@@ -315,7 +356,11 @@ export default function MindDebate() {
         if (play.signal.aborted) return
       }
 
-      if (round < TOTAL_ROUNDS) await wait(TURN_PAUSE_MS, play.signal)
+      if (round < TOTAL_ROUNDS) {
+        if (!turnByTurnRef.current) await wait(TURN_PAUSE_MS, play.signal)
+        if (play.signal.aborted) return
+        if (turnByTurnRef.current || !stickToBottomRef.current) await waitForReader(play.signal)
+      }
       if (play.signal.aborted) return
     }
 
@@ -324,7 +369,7 @@ export default function MindDebate() {
     if (session.aborted) return
     setClosing(result)
     setPhase('closing')
-  }, [requestTurn, commit, typeText, fetchClosing, person1Name, person2Name])
+  }, [requestTurn, commit, typeText, waitForReader, fetchClosing, person1Name, person2Name])
 
   const resetDebate = () => {
     sessionRef.current?.abort()
@@ -427,6 +472,8 @@ export default function MindDebate() {
               autoComplete="off"
             />
           </div>
+
+          <PaceToggle checked={turnByTurn} onChange={chooseTurnByTurn} />
 
           <div className="pt-2 flex flex-col sm:flex-row gap-3">
             <button
@@ -561,11 +608,28 @@ export default function MindDebate() {
         )}
       </div>
 
+      {phase === 'debating' && awaitingReader && !turnByTurn && (
+        <p className="mt-3 text-center text-sm text-foreground/80">
+          Paused while you read back. Scroll down, or press Next turn, to go on.
+        </p>
+      )}
+
       {phase === 'closing' && closing && (
         <ClosingThoughts closing={closing} first={person1Name} second={person2Name} headingRef={closingHeadingRef} />
       )}
 
       <div className="flex flex-wrap justify-center gap-3 mt-5">
+        {phase === 'debating' && (turnByTurn || awaitingReader) && (
+          <button
+            type="button"
+            onClick={handleNextTurn}
+            aria-disabled={!awaitingReader}
+            className={buttonClassName('primary', 'md', `${ACTION} aria-disabled:opacity-60 aria-disabled:cursor-default`)}
+          >
+            Next turn
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        )}
         {phase === 'debating' && (
           <button ref={stopRef} type="button" onClick={handleStop} className={buttonClassName('secondary', 'md', ACTION)}>
             <Square size={16} aria-hidden="true" />
@@ -606,7 +670,29 @@ export default function MindDebate() {
           New debate
         </Button>
       </div>
+
+      {(phase === 'debating' || phase === 'stopped') && (
+        <div className="mt-4 flex justify-center">
+          <PaceToggle checked={turnByTurn} onChange={chooseTurnByTurn} />
+        </div>
+      )}
     </div>
+  )
+}
+
+function PaceToggle({ checked, onChange }: { checked: boolean; onChange: (on: boolean) => void }) {
+  return (
+    <label className="flex items-center gap-2.5 py-2 text-sm text-foreground/80 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 shrink-0 accent-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      />
+      <span>
+        Turn by turn <span className="text-foreground/75">(each reply waits for Next turn)</span>
+      </span>
+    </label>
   )
 }
 

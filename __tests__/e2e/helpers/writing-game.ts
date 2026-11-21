@@ -461,7 +461,7 @@ export function describeWritingGame(config: WritingGameConfig) {
     expect(await heading.evaluate((el) => getComputedStyle(el).boxShadow)).toBe('none')
     await page.keyboard.press('Tab')
     const control = page.locator(':focus')
-    expect(await control.evaluate((el) => el.tagName)).toMatch(/^(BUTTON|A|INPUT)$/)
+    expect(await control.evaluate((el) => el.tagName)).toMatch(/^(BUTTON|A|INPUT|TEXTAREA)$/)
     expect(await control.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
   })
 

@@ -8,7 +8,7 @@ import { useRealtimeVotes } from '@/lib/hooks/useRealtimeVotes'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { DILEMMAS, type Choice, type ChoiceId } from '@/lib/games/hard-choices/dilemmas'
 import { keepKnownAnswers, keepKnownIds, type Answer, type Answers } from '@/lib/games/hard-choices/answers'
-import { readChoices } from '@/lib/games/hard-choices/reading'
+import { groupChoices, readChoices } from '@/lib/games/hard-choices/reading'
 
 const ANSWERS_KEY = 'hardChoicesVotes'
 const COUNTED_KEY = 'hardChoicesCounted'
@@ -69,22 +69,30 @@ function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index:
   })
   const passed = DILEMMAS.length - chosen.length
   const reading = readChoices(chosen.map(({ choice }) => choice))
+  const groups = groupChoices(chosen.map(({ choice }) => choice))
 
   return (
     <div className="space-y-5 text-left">
       {chosen.length > 0 ? (
         <>
           <p className="text-foreground/80 text-center">Across these questions, this is what you reached for:</p>
-          <ul className="flex flex-wrap justify-center gap-2" aria-label="What you chose to protect">
-            {chosen.map(({ dilemma, choice }) => (
-              <li
-                key={dilemma.id}
-                className="rounded-full border border-card-border bg-background px-3 py-1 text-sm sm:text-base text-foreground"
-              >
-                {choice.value}
-              </li>
+          <div className="space-y-3">
+            {groups.map((group) => (
+              <div key={group.title} className="text-center">
+                <p className="text-sm font-semibold text-foreground/80 mb-1.5" aria-hidden="true">{group.title}</p>
+                <ul className="flex flex-wrap justify-center gap-2" aria-label={group.title}>
+                  {group.values.map((value) => (
+                    <li
+                      key={value}
+                      className="rounded-full border border-card-border bg-background px-3 py-1 text-sm sm:text-base text-foreground"
+                    >
+                      {value}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
           <section aria-labelledby="reading-heading" className="rounded-lg bg-background border border-card-border px-4 py-4 sm:px-6 space-y-2">
             <h3 id="reading-heading" className="text-sm font-semibold text-foreground/80 text-center">
               A reading

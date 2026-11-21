@@ -14,18 +14,13 @@ export interface ChosenValue {
 
 interface Axis {
   sides: readonly [Theme, Theme]
-  tension: string
+  /** Why reaching both ways is not indecision. */
+  because: string
 }
 
 const AXES: readonly Axis[] = [
-  {
-    sides: ['ease', 'growth'],
-    tension: 'You moved between rest and stretching, choosing each more than once. That is not indecision: most good lives need both, at different times.',
-  },
-  {
-    sides: ['others', 'self'],
-    tension: 'You moved between the people around you and your own footing, choosing each more than once. That is not indecision: close bonds stay healthy when both get a turn.',
-  },
+  { sides: ['ease', 'growth'], because: 'most good lives need both rest and stretching, at different times' },
+  { sides: ['others', 'self'], because: 'close bonds stay healthy when the people around you and your own footing both get a turn' },
 ]
 
 const PHRASE: Record<Theme, string> = {
@@ -35,7 +30,19 @@ const PHRASE: Record<Theme, string> = {
   self: 'your own footing',
 }
 
-const SPREAD = 'Your answers spread out with no single pull winning, which usually means each question was weighed on its own.'
+const GROUP_TITLE: Record<Theme, string> = {
+  ease: 'Feeling settled',
+  growth: 'Stretching further',
+  others: 'The people around you',
+  self: 'Your own footing',
+}
+
+export interface ValueGroup {
+  title: string
+  values: string[]
+}
+
+const MAX_GROUPS = 3
 
 function list(items: string[]): string {
   if (items.length <= 1) return items.join('')
@@ -44,6 +51,20 @@ function list(items: string[]): string {
 
 function capitalise(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+/**
+ * The chosen values gathered under the pulls they share, strongest first, so a dozen words read as
+ * two or three themes. Answers in a fourth, smaller theme join the last group rather than stand alone.
+ */
+export function groupChoices(chosen: ChosenValue[]): ValueGroup[] {
+  const valuesOf = (theme: Theme) => chosen.filter((c) => c.theme === theme).map((c) => c.value)
+  const themes = THEMES.filter((theme) => valuesOf(theme).length > 0)
+    .sort((a, b) => valuesOf(b).length - valuesOf(a).length)
+  const groups = themes.map((theme) => ({ title: GROUP_TITLE[theme], values: valuesOf(theme) }))
+  if (groups.length <= MAX_GROUPS) return groups
+  const rest = groups.slice(MAX_GROUPS - 1)
+  return [...groups.slice(0, MAX_GROUPS - 1), { title: 'And also', values: rest.flatMap((group) => group.values) }]
 }
 
 /** A short, kind reading of the answers given, in dilemma order. Empty when nothing was chosen. */
@@ -59,6 +80,8 @@ export function readChoices(chosen: ChosenValue[]): string[] {
   const top = Math.max(...THEMES.map(count))
   const leaders = THEMES.filter((theme) => count(theme) === top)
   const smaller = ({ sides: [a, b] }: Axis) => Math.min(count(a), count(b))
+  const tensionOf = ({ sides: [a, b], because }: Axis) =>
+    `You reached for ${list(valuesOf(a))}, and also for ${list(valuesOf(b))}. That is not indecision: ${because}.`
 
   const lines: string[] = []
   let readAxis: Axis | undefined
@@ -69,16 +92,18 @@ export function readChoices(chosen: ChosenValue[]): string[] {
   } else if (leaders.length === 2) {
     readAxis = AXES.find(({ sides }) => sides.every((side) => leaders.includes(side)))
     lines.push(readAxis
-      ? readAxis.tension
+      ? tensionOf(readAxis)
       : `Two pulls kept returning in equal measure: ${leaders.map((theme) => `${PHRASE[theme]} (${list(valuesOf(theme))})`).join(' and ')}.`)
   } else {
-    lines.push(SPREAD)
+    const first = chosen[0]
+    const far = chosen.find((c) => c.theme !== first.theme) ?? chosen[chosen.length - 1]
+    lines.push(`Your answers spread out, from ${first.value} to ${far.value}, with no single pull winning: each question was weighed on its own.`)
   }
 
   const tension = AXES
     .filter((axis) => axis !== readAxis && smaller(axis) >= 2 && Math.abs(count(axis.sides[0]) - count(axis.sides[1])) <= 1)
     .sort((x, y) => smaller(y) - smaller(x))[0]
-  if (tension) return [...lines, tension.tension]
+  if (tension) return [...lines, tensionOf(tension)]
 
   const quiet = AXES
     .filter((axis) => smaller(axis) === 0 && Math.max(count(axis.sides[0]), count(axis.sides[1])) >= 3)

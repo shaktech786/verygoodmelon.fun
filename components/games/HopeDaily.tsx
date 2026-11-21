@@ -272,6 +272,8 @@ export default function HopeDaily() {
 
   const submitGuess = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    // A tap on Try it would otherwise leave focus on a button that is about to be disabled, and so on the page itself
+    inputRef.current?.focus()
     if (busy) return
     const guess = draft.toUpperCase()
 

@@ -1,12 +1,15 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect, type Page, type Route } from '@playwright/test'
+import { test, expect as baseExpect, type Page, type Route } from '@playwright/test'
 
 /**
  * The Arena (/games/the-arena): pick two people and a topic, watch six rounds, then read a
  * closing that names what each side got right instead of crowning a winner.
  * Both endpoints are mocked so the suite never reaches the paid model.
  */
+
+// Six turns with a calm breath between each take longer than the default wait
+const expect = baseExpect.configure({ timeout: 15_000 })
 
 interface TurnBody {
   person1: string
@@ -65,10 +68,14 @@ async function openArena(page: Page) {
   })
 }
 
-async function setUp(page: Page, first: string, second: string, topic: string) {
+const turnByTurn = (page: Page) => page.getByRole('checkbox', { name: /^Turn by turn/ })
+
+// Most tests let the debate flow on its own; reader-paced play has its own tests below
+async function setUp(page: Page, first: string, second: string, topic: string, { flowing = true } = {}) {
   await page.getByLabel('First debater').fill(first)
   await page.getByLabel('Second debater').fill(second)
   await page.getByLabel('Topic').fill(topic)
+  if (flowing) await turnByTurn(page).uncheck()
 }
 
 const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
@@ -147,7 +154,21 @@ test.describe('The Arena', () => {
       await page.getByRole('button', { name: 'Start debate' }).click()
       await expect(page.getByText('Round 1/6')).toBeVisible()
       await expect(transcript(page).getByText(/makes point 1/)).toBeVisible()
-      await expect(closing(page).getByText(CLOSING.question)).toBeVisible({ timeout: 20_000 })
+      await expect(closing(page).getByText(CLOSING.question)).toBeVisible({ timeout: 45_000 })
+    })
+
+    test('words arrive at an easy reading pace, not in a rush', async ({ page }) => {
+      const words = Array.from({ length: 20 }, (_, i) => `word${i + 1}`).join(' ')
+      await mockDebate(page, { turn: (route, body) => route.fulfill({ json: { argument: `${words} (${body.round})`, round: body.round } }) })
+      await openArena(page)
+      await setUp(page, 'Ada Lovelace', 'Alan Turing', 'Can machines dream?')
+      await expect(turnByTurn(page)).not.toBeChecked()
+      await page.getByRole('button', { name: 'Start debate' }).click()
+      await expect(debate(page).getByText(/word1 /)).toBeVisible()
+      const shownAt = Date.now()
+      await expect(transcript(page).getByText(`${words} (1)`)).toBeVisible({ timeout: 15_000 })
+      // Twenty words at about 200 a minute take around six seconds, never a blink
+      expect(Date.now() - shownAt).toBeGreaterThan(4000)
     })
 
     test('Stop while a turn is typing keeps the whole turn, and Continue goes on to the next round without asking again', async ({ page }) => {
@@ -433,16 +454,49 @@ test.describe('The Arena', () => {
       await expect(page.getByLabel(field)).not.toHaveValue('')
     }
     const first = await page.getByLabel('First debater').inputValue()
+    await turnByTurn(page).uncheck()
     await page.getByRole('button', { name: 'Start debate' }).click()
     await expect(closing(page)).toBeVisible()
     expect(turns[0].person1).toBe(first)
   })
 
-  test('a reader scrolled back to an earlier turn is not pulled down by new ones', async ({ page }) => {
+  test('with reduced motion the debate goes turn by turn, each turn whole and announced once', async ({ page }) => {
+    const { turns } = await mockDebate(page)
+    await openArena(page)
+    await setUp(page, 'Plato', 'Aristotle', 'Are ideas real?', { flowing: false })
+    await expect(turnByTurn(page)).toBeChecked()
+    await page.getByRole('button', { name: 'Start debate' }).click()
+
+    await expect(transcript(page).getByText('Plato makes point 1 on Are ideas real?.')).toBeVisible()
+    await page.waitForTimeout(2000)
+    expect(turns.map((t) => t.round)).toEqual([1])
+    await expect(transcript(page).getByText(/makes point 2/)).toHaveCount(0)
+
+    const next = page.getByRole('button', { name: 'Next turn' })
+    for (let round = 2; round <= 6; round++) {
+      await next.click()
+      await expect(transcript(page).getByText(`makes point ${round} `)).toHaveCount(1)
+      // Focus stays on Next turn, so a keyboard reader just presses it again
+      if (round < 6) await expect(next).toBeFocused()
+    }
+    await expect(closing(page)).toBeVisible()
+    // The live log holds each finished turn exactly once, and never the half-typed one
+    await expect(transcript(page)).toHaveAttribute('aria-live', 'polite')
+    await expect(transcript(page).locator('[aria-hidden="true"]').getByText(/makes point/)).toHaveCount(0)
+
+    // The pace can be changed in the middle of a debate, too
+    await page.getByRole('button', { name: 'New debate' }).click()
+    await page.getByRole('button', { name: 'Start debate' }).click()
+    await expect(transcript(page).getByText(/makes point 1/)).toBeVisible()
+    await turnByTurn(page).uncheck()
+    await expect(closing(page)).toBeVisible()
+  })
+
+  test('a reader scrolled back to an earlier turn is not pulled down, and the debate waits for them', async ({ page }) => {
     let release: () => void = () => {}
     const gate = new Promise<void>((r) => { release = r })
     const long = 'A long and winding thought that takes its time to arrive somewhere. '.repeat(6)
-    await mockDebate(page, {
+    const { turns } = await mockDebate(page, {
       turn: async (route, body) => {
         if (body.round === 4) await gate
         await route.fulfill({ json: { argument: `${long}(${body.round})`, round: body.round } }).catch(() => {})
@@ -452,12 +506,20 @@ test.describe('The Arena', () => {
     await setUp(page, 'Plato', 'Aristotle', 'Are ideas real?')
     await page.getByRole('button', { name: 'Start debate' }).click()
     await expect(transcript(page).getByText(/\(3\)$/)).toBeVisible()
+    await expect.poll(() => turns.length).toBe(4)
 
     await expect(transcript(page)).toHaveAttribute('tabindex', '0')
     await transcript(page).evaluate((el) => { el.scrollTop = 0; el.dispatchEvent(new Event('scroll')) })
     release()
-    await expect(transcript(page).getByText(/\(5\)$/)).toBeAttached()
+    await expect(transcript(page).getByText(/\(4\)$/)).toBeAttached()
     expect(await transcript(page).evaluate((el) => el.scrollTop)).toBeLessThan(40)
+    await expect(page.getByText('Paused while you read back.', { exact: false })).toBeVisible()
+    await page.waitForTimeout(2500)
+    await expect(transcript(page).getByText(/\(5\)$/)).toHaveCount(0)
+    expect(turns).toHaveLength(4)
+
+    await transcript(page).evaluate((el) => { el.scrollTop = el.scrollHeight; el.dispatchEvent(new Event('scroll')) })
+    await expect(transcript(page).getByText(/\(5\)$/)).toBeAttached()
   })
 
   test('two debaters with the same name still alternate sides', async ({ page }) => {

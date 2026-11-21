@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildSuggestionPrompt, parseSuggestion, parseSuggestionReply, settleSpot, suggestLocally, type PlantSpot } from '@/lib/games/calm-garden/suggest'
+import { buildSuggestionPrompt, parseSuggestion, parseSuggestionReply, repeatsLastPlant, settleSpot, suggestLocally, type PlantSpot } from '@/lib/games/calm-garden/suggest'
 import { GROUND_TOP, PLANT_TYPES } from '@/lib/games/calm-garden/garden'
 
 const spot = (type: PlantSpot['type'], x: number, y: number): PlantSpot => ({ type, x, y })
@@ -36,6 +36,27 @@ describe('a suggestion that answers what was planted', () => {
     expect(s.type).toBe('flat-stone')
     expect(s.y).toBeGreaterThan(0.75)
     expect(s.line).toBe('There is nowhere to sit near your flowers yet. A flat stone would do.')
+  })
+
+  it('never suggests the kind of plant just placed, whatever the seed', () => {
+    const justLavender = [spot('daisy', 0.3, 0.7), spot('oak', 0.5, 0.45), spot('lavender', 0.5, 0.88)]
+    const justDaisy = [spot('lavender', 0.4, 0.88), spot('daisy', 0.6, 0.7)]
+    for (let seed = 0; seed < 1; seed += 0.05) {
+      for (const plants of [justLavender, justDaisy, [spot('poppy', 0.5, 0.7)]]) {
+        const s = suggestLocally(plants, seed)
+        expect(s.type).not.toBe(plants[plants.length - 1].type)
+        expect(repeatsLastPlant(s, plants)).toBe(false)
+        expect(s.line).not.toMatch(new RegExp(plants[plants.length - 1].type))
+      }
+    }
+  })
+
+  it('knows a repeat when it sees one: the same kind, or the very same spot', () => {
+    const plants = [spot('oak', 0.3, 0.5), spot('lavender', 0.5, 0.88)]
+    expect(repeatsLastPlant(spot('lavender', 0.1, 0.6), plants)).toBe(true)
+    expect(repeatsLastPlant(spot('daisy', 0.51, 0.88), plants)).toBe(true)
+    expect(repeatsLastPlant(spot('oak', 0.8, 0.6), plants)).toBe(false)
+    expect(repeatsLastPlant(spot('oak', 0.8, 0.6), [])).toBe(false)
   })
 
   it('always lands on open grass inside the garden', () => {
@@ -111,6 +132,11 @@ describe('asking for a suggestion', () => {
     expect(prompt).toContain('butterflies')
     expect(prompt).toContain('fireflies')
     expect(prompt).toMatch(/never mention any other animal/i)
+  })
+
+  it('tells the gardener what was just planted, and not to offer it again', () => {
+    const prompt = buildSuggestionPrompt([spot('oak', 0.3, 0.5), spot('lavender', 0.5, 0.88)], 'summer')
+    expect(prompt).toContain('They have just planted the last one, a lavender. Do not suggest another lavender or that same spot')
   })
 
   it('keeps the prompt small however big the garden gets', () => {

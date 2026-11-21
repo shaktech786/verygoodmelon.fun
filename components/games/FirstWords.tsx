@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { CARE_GAMES } from '@/components/games/CrossGameSuggestions'
@@ -111,6 +111,7 @@ export default function FirstWords() {
   const [carried, setCarried] = useState<string | null>(null)
   const reduceMotion = useReducedMotion()
   const sceneRef = useRef<HTMLDivElement>(null)
+  const intentionRef = useRef<HTMLTextAreaElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const beforeWakingRef = useRef<HTMLHeadingElement>(null)
   const morningRef = useRef<HTMLHeadingElement>(null)
@@ -120,6 +121,14 @@ export default function FirstWords() {
   const awake = carried !== null
   // The suggestion fills the box until the player writes their own
   const intention = typedIntention ?? reflection.intention
+
+  // The plan for tomorrow grows with what is written, so none of it is ever hidden past the edge
+  useLayoutEffect(() => {
+    const box = intentionRef.current
+    if (!box) return
+    box.style.height = 'auto'
+    box.style.height = `${box.scrollHeight + box.offsetHeight - box.clientHeight}px`
+  }, [intention])
 
   // Keep keyboard and screen-reader users oriented when the view changes. On a phone the
   // keyboard leaves the page scrolled low, so the dawn sky is brought back into view first.
@@ -245,14 +254,22 @@ export default function FirstWords() {
                     <label htmlFor={intentionId} className="block text-sm sm:text-base font-medium text-foreground">
                       One small thing to bring back into tomorrow
                     </label>
-                    <input
+                    <textarea
+                      ref={intentionRef}
                       id={intentionId}
-                      type="text"
+                      rows={2}
                       value={intention}
-                      onChange={(e) => setTypedIntention(e.target.value)}
+                      onChange={(e) => setTypedIntention(e.target.value.replace(/\s*\n\s*/g, ' '))}
+                      onKeyDown={(e) => {
+                        // One line of intention: Enter wakes, as it did before the box could grow
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          e.currentTarget.form?.requestSubmit()
+                        }
+                      }}
                       maxLength={MAX_INTENTION_LENGTH}
                       placeholder="Something small you could do tomorrow…"
-                      className="mt-2 w-full px-4 py-3 border border-card-border rounded-lg bg-background text-foreground text-base sm:text-lg placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent"
+                      className="mt-2 w-full resize-none overflow-hidden px-4 py-3 border border-card-border rounded-lg bg-background text-foreground text-base sm:text-lg placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent"
                     />
                     <p className="mt-1 text-xs sm:text-sm text-primary-light">
                       Change it, or leave it empty. It is never sent or saved anywhere; you can copy it once you wake.

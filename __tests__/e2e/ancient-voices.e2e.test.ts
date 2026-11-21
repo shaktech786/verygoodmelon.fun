@@ -479,6 +479,14 @@ test.describe('on a phone', () => {
     await input(page).press('Enter')
     await expect(bubbles(page).nth(2)).toContainText('Reply 1')
 
+    // Once talking, the portrait becomes a slim strip and the conversation gets the room
+    const log = page.getByRole('log', { name: 'Conversation' })
+    expect((await log.boundingBox())!.height).toBeGreaterThan(844 * 0.4)
+    // The thinker is named once on screen; the chat heading is kept for screen readers only
+    const heading = page.getByRole('heading', { name: /^Talking with / })
+    await expect(heading).toBeAttached()
+    expect(await heading.evaluate((el) => el.parentElement!.getBoundingClientRect().height)).toBeLessThanOrEqual(1)
+
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     expect(overflow).toBeLessThanOrEqual(0)
   })
@@ -701,5 +709,8 @@ test.describe('on a phone, first load', () => {
       const firstSuggestion = (await log.locator('button').first().boundingBox())!
       expect(firstSuggestion.y).toBeGreaterThanOrEqual(logBox.y)
     }).toPass()
+    // Regression: the log's own resize handling later scrolled the questions under the header
+    await page.waitForTimeout(1000)
+    expect(await log.evaluate((el) => el.scrollTop)).toBe(0)
   })
 })

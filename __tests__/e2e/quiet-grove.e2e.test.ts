@@ -65,6 +65,15 @@ async function openGarden(page: Page) {
   await expect(contents(page)).toHaveText(/In your garden: nothing yet\./)
   // The drawing loop sizes the canvas only once React has hydrated and wired up input.
   await expect(garden(page)).toHaveAttribute('width', /\d+/)
+  // A click during the entrance fade lands on a still-moving canvas, which Playwright scrolls to.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => undefined))
+    )
+  )
 }
 
 async function seedGarden(page: Page, plants: object[], lastVisit: number) {

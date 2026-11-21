@@ -269,7 +269,8 @@ test.describe('The Shapeshifter', () => {
     const finale = finaleDialog(page)
     // Nobody moved, so the game is named for a gentle player, from the rules it grew and their order
     await expect(finale.getByRole('heading', { name: /QUIET (STARS|GEMS) & (SHADOWS|TIDES|LANTERNS|GLIDES|RHYTHMS|ORBITS)$/ })).toBeFocused()
-    await expect(finale.getByText('A game for someone who let the good things come to them.')).toBeVisible()
+    // The tagline is drawn from this run: what was gathered, and the latest rule it grew
+    await expect(finale.getByText(/^A game for someone who let \d+ (stars?|gems?) drift their way (among the wandering shadows|as the tides came and went|by lantern light|in quick, quiet glides|in an easy rhythm|around the slow orbits)\.$/)).toBeVisible()
     await expect(finale.getByText(/(error|failed|\bAI\b)/)).toHaveCount(0)
 
     await finale.getByRole('button', { name: 'PLAY AGAIN' }).click()
@@ -289,7 +290,7 @@ test.describe('The Shapeshifter', () => {
 
     await expect(page.getByRole('dialog', { name: 'A new rule is arriving' })).toBeVisible()
     const card = page.getByRole('dialog', { name: /^Rule 1 of 6: WAVE 1 ARROW_KEYS/ })
-    await expect(card.getByRole('button', { name: 'PRESS ENTER' })).toBeVisible()
+    await expect(card.getByRole('button', { name: 'Continue', exact: true })).toBeVisible()
     await page.keyboard.press('Enter')
     await expect(card).toBeHidden()
     await mutate(page, 2)
@@ -309,7 +310,7 @@ test.describe('The Shapeshifter', () => {
     await page.keyboard.press('Enter')
     await page.keyboard.press(' ')
     await page.keyboard.press('ArrowLeft')
-    await expect(card.getByRole('button', { name: 'PRESS ENTER' })).toBeVisible()
+    await expect(card.getByRole('button', { name: 'Continue', exact: true })).toBeVisible()
     await page.keyboard.press(' ')
     await expect(card).toBeVisible()
     await page.keyboard.press('Enter')
@@ -521,7 +522,7 @@ test.describe('The Shapeshifter', () => {
       const card = page.getByRole('dialog', { name: /^Rule 1 of 6/ })
       await expect(card.getByText('Drag your finger to guide the orb.')).toBeVisible()
       // A thumb still guiding the orb lands on the card: only the button moves on.
-      const goOn = card.getByRole('button', { name: 'TAP TO CONTINUE' })
+      const goOn = card.getByRole('button', { name: 'Continue', exact: true })
       await expect(goOn).toBeVisible()
       await card.getByText('Drag your finger to guide the orb.').tap()
       const cardBox = await card.boundingBox()

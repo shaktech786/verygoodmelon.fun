@@ -7,6 +7,7 @@ import {
   TALK_KINDS,
   pick,
   themLine,
+  asSpokenToPlayer,
   worriesFor,
   type Prompt,
 } from '@/lib/games/hard-talk/content'
@@ -94,7 +95,7 @@ describe('themLine', () => {
   })
 
   it('capitalises a role written in lower case at the start of the sentence', () => {
-    expect(themLine('tell', 'my manager').startsWith('My manager')).toBe(true)
+    expect(themLine('tell', 'the manager').startsWith('The manager')).toBe(true)
   })
 
   it('reads right for one person or several, never leaning on a verb that must agree with them', () => {
@@ -106,15 +107,29 @@ describe('themLine', () => {
     const lines = Object.fromEntries(people.map((who) => [who, TALK_KINDS.map((kind) => themLine(kind, who))]))
     for (const who of people) {
       for (const line of lines[who]) {
-        expect(line.toLowerCase(), line).toContain(who.toLowerCase())
+        expect(line.toLowerCase(), line).toContain(asSpokenToPlayer(who).toLowerCase())
         expect(line, line).not.toMatch(/\b(parents|team|mum|Sam) (is|was|has|were|are)\b/)
       }
     }
-    expect(themLine('sorry', 'my parents')).toBe('It hurt my parents, and those feelings get to be what they are.')
+    expect(themLine('sorry', 'my parents')).toBe('It hurt your parents, and those feelings get to be what they are.')
     expect(themLine('sorry', 'Sam')).toBe('It hurt Sam, and those feelings get to be what they are.')
     expect(themLine('ask', 'the team')).toBe('For the team, today comes with its own pressures too.')
-    expect(themLine('doctor', 'my mum')).toBe('With my mum, your questions are welcome. They’re part of why you’re there.')
-    expect(themLine('other', 'my parents')).toBe('On the other side, my parents may be a little nervous as well.')
+    expect(themLine('doctor', 'my mum')).toBe('With your mum, your questions are welcome. They’re part of why you’re there.')
+    expect(themLine('other', 'my parents')).toBe('On the other side, your parents may be a little nervous as well.')
+  })
+
+  it('speaks the player’s own words back to them: “my manager” becomes “your manager”', () => {
+    expect(themLine('problem', 'my manager')).toBe('Your manager probably didn’t set out to upset you.')
+    expect(themLine('problem', 'My manager')).toBe('Your manager probably didn’t set out to upset you.')
+    expect(themLine('sorry', 'my parents')).toBe('It hurt your parents, and those feelings get to be what they are.')
+    expect(themLine('ask', 'our landlord')).toBe('For your landlord, today comes with its own pressures too.')
+    expect(themLine('problem', 'Sam')).toBe('Sam probably didn’t set out to upset you.')
+    expect(themLine('problem', 'the team')).toBe('The team probably didn’t set out to upset you.')
+    expect(asSpokenToPlayer('a friend of mine')).toBe('a friend of yours')
+    expect(asSpokenToPlayer('my mum and my dad')).toBe('your mum and your dad')
+    // Only whole words: names that merely start with the letters are left alone
+    expect(asSpokenToPlayer('Myra')).toBe('Myra')
+    expect(asSpokenToPlayer('Ourania')).toBe('Ourania')
   })
 
   it('falls back gracefully when no one was named', () => {
