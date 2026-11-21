@@ -10,6 +10,7 @@ import { test, expect, type Page } from '@playwright/test'
 
 const URL = '/games/the-slow-post'
 const STORAGE_KEY = 'verygoodmelon:worry-capsule'
+const DRAFT_KEY = 'verygoodmelon:worry-capsule:draft'
 const KIND = 'verygoodmelon.fun/worry-capsules'
 const DAY = 86_400_000
 const T0 = new Date('2026-11-21T10:00:00').getTime()
@@ -89,6 +90,10 @@ async function sealWorry(page: Page, worry = WORRY, horizon = 'In about a week')
 }
 
 async function runAxe(page: Page) {
+  // Contrast is judged on the settled page, not part-way through a fade-in.
+  await page.waitForFunction(() =>
+    document.getAnimations().every((a) => a.effect?.getComputedTiming().endTime === Infinity || a.playState !== 'running'),
+  )
   await page.addScriptTag({ path: AXE })
   return page.evaluate(async () => {
     const axe = (window as unknown as { axe: { run: (context: Element) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> } }).axe
@@ -134,8 +139,103 @@ test.describe('The Keeper', () => {
     expect(saved).toMatchObject({ worry: WORRY, horizon: 'month', opensOn: '2026-12-21', opening: null })
     await page.getByRole('button', { name: 'Done' }).click()
     await expect(shelfHeading(page)).toBeFocused()
-    await expect(page.getByRole('button', { name: 'Sealed Saturday, November 21. Resting until Monday, December 21.' })).toBeVisible()
+    const jar = page.getByRole('button', { name: 'Opens Monday, December 21, sealed Saturday, November 21' })
+    await expect(jar).toBeVisible()
+    await expect(jar).toContainText('Opens Dec 21')
+    await expect(jar).toContainText('sealed Nov 21')
     expect(errors).toEqual([])
+  })
+
+  test('a half-written worry survives a reload, comes back with a gentle note, and is cleared once sealed', async ({ page }) => {
+    await openKeeper(page)
+    await page.getByLabel('Your worry').fill('That the landlord')
+    await page.getByRole('radio', { name: /In three months/ }).check()
+    await page.reload()
+
+    await expect(composerHeading(page)).toBeVisible()
+    await expect(page.getByLabel('Your worry')).toHaveValue('That the landlord')
+    await expect(page.getByRole('radio', { name: /In three months/ })).toBeChecked()
+    await expect(page.getByText('You were partway through this. It was kept for you, just as you left it.')).toBeVisible()
+
+    await page.getByLabel('Your worry').fill('That the landlord will not renew')
+    await page.getByRole('button', { name: 'Fold it up' }).click()
+    await page.getByRole('button', { name: 'Seal it' }).click()
+    await expect(page.getByRole('heading', { name: 'Sealed.' })).toBeFocused()
+    expect((await stored(page))[0]).toMatchObject({ worry: 'That the landlord will not renew', horizon: 'season' })
+    expect(await page.evaluate((key) => localStorage.getItem(key), DRAFT_KEY)).toBeNull()
+
+    await page.reload()
+    await expect(shelfHeading(page)).toBeVisible()
+    await page.getByRole('button', { name: 'Seal another worry' }).click()
+    await expect(page.getByLabel('Your worry')).toHaveValue('')
+    await expect(page.getByText(/You were partway through this/)).toHaveCount(0)
+  })
+
+  test('a kept draft waits behind the shelf and can be set aside for a blank page', async ({ page }) => {
+    await openKeeper(page)
+    await sealWorry(page)
+    await page.getByRole('button', { name: 'Done' }).click()
+    await page.getByRole('button', { name: 'Seal another worry' }).click()
+    await page.getByLabel('Your worry').fill('A second worry, half done')
+    await page.getByRole('button', { name: 'Back to the shelf' }).click()
+    await page.reload()
+
+    await expect(page.getByLabel('Your worry')).toHaveValue('A second worry, half done')
+    await page.getByRole('button', { name: 'Back to the shelf' }).click()
+    await page.getByRole('button', { name: 'Finish the worry you started' }).click()
+    await expect(page.getByLabel('Your worry')).toHaveValue('A second worry, half done')
+
+    await page.getByRole('button', { name: 'Start a blank page' }).click()
+    await expect(page.getByLabel('Your worry')).toHaveValue('')
+    await expect(page.getByLabel('Your worry')).toBeFocused()
+    expect(await page.evaluate((key) => localStorage.getItem(key), DRAFT_KEY)).toBeNull()
+    await page.reload()
+    await expect(shelfHeading(page)).toBeVisible()
+  })
+
+  test('sealing is one slow beat: fold, drop, lid, wax, and only then the words', async ({ page }) => {
+    await openKeeper(page)
+    await page.getByLabel('Your worry').fill(WORRY)
+    await page.getByRole('button', { name: 'Fold it up' }).click()
+    await page.getByRole('button', { name: 'Seal it' }).click()
+    await expect(page.getByRole('heading', { name: 'Sealed.' })).toBeFocused()
+    const beat = await page.evaluate(() =>
+      document.getAnimations().map((a) => ({
+        name: (a as CSSAnimation).animationName,
+        start: Number(a.effect?.getComputedTiming().delay ?? 0),
+        end: Number(a.effect?.getComputedTiming().endTime ?? 0),
+      })),
+    )
+    const at = (name: string) => beat.find((b) => b.name.replace(/^.*__/, '') === name)
+    for (const name of ['fold', 'drop-in', 'lid-down', 'stamp', 'settle']) expect(at(name), name).toBeDefined()
+    expect(at('fold')!.end).toBeLessThanOrEqual(at('drop-in')!.start)
+    expect(at('drop-in')!.end).toBeLessThanOrEqual(at('lid-down')!.start)
+    expect(at('lid-down')!.end).toBeLessThanOrEqual(at('stamp')!.start)
+    expect(at('settle')!.start).toBeGreaterThanOrEqual(3000)
+    expect(at('settle')!.end).toBeLessThanOrEqual(4000)
+  })
+
+  test('jars on the shelf say when each was sealed, never what it says', async ({ page }) => {
+    await openKeeper(page)
+    await seed(page, [
+      { ...capsule('a', -1), sealedAt: new Date(T0 - 9 * DAY).toISOString() },
+      { ...capsule('b', -2), sealedAt: new Date(T0 - 30 * DAY).toISOString() },
+    ])
+    const jars = page.getByRole('list', { name: 'Sealed capsules' }).getByRole('button')
+    await expect(jars).toHaveCount(2)
+    await expect(jars.nth(0)).toHaveText(/Ready\s*sealed Oct 22/)
+    await expect(jars.nth(1)).toHaveText(/Ready\s*sealed Nov 12/)
+    await expect(page.getByText('Worry number a')).toHaveCount(0)
+  })
+
+  test('the three outcomes are marked by shape as well as colour', async ({ page }) => {
+    await openKeeper(page)
+    const opened = (outcome: string) => ({ at: new Date(T0 - DAY).toISOString(), outcome, note: '' })
+    await seed(page, [capsule('a', -5, opened('no')), capsule('b', -5, opened('partly')), capsule('c', -5, opened('yes'))])
+    const legend = page.getByRole('heading', { name: 'How they turned out' }).locator('..').locator('ul li svg')
+    await expect(legend).toHaveCount(3)
+    const shapes = await legend.evaluateAll((svgs) => svgs.map((svg) => [...svg.children].map((c) => c.tagName).join('+')))
+    expect(new Set(shapes).size).toBe(3)
   })
 
   test('an early visit shows it resting, with no countdown and no way to peek', async ({ page }) => {
@@ -143,7 +243,7 @@ test.describe('The Keeper', () => {
     await sealWorry(page)
     await returnOn(page, T0 + 3 * DAY)
     await expect(page.getByText('Nothing to open today. Everything here is resting.')).toBeVisible()
-    await page.getByRole('button', { name: /Resting until Saturday, November 28/ }).click()
+    await page.getByRole('button', { name: /Opens Saturday, November 28/ }).click()
     await expect(page.getByRole('heading', { name: 'Still resting' })).toBeFocused()
     await expect(page.getByText('Nothing to do until then.')).toBeVisible()
     await expect(page.getByText(WORRY)).toHaveCount(0)
@@ -157,7 +257,7 @@ test.describe('The Keeper', () => {
     // Two days before the seal; a jump across New Year trips the site footer's year, which is not this game's.
     await returnOn(page, T0 - 2 * DAY)
     await expect(shelfHeading(page)).toBeVisible()
-    await expect(page.getByRole('button', { name: /Resting until Saturday, November 28/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Opens Saturday, November 28/ })).toBeVisible()
     expect(errors).toEqual([])
   })
 
@@ -287,13 +387,17 @@ test.describe('The Keeper', () => {
     expect(copy.capsules[0]).toMatchObject({ worry: WORRY, opensOn: '2026-11-28' })
   })
 
-  test('the worry never leaves the browser', async ({ page }) => {
+  test('the worry never leaves the browser, half-written or sealed', async ({ page }) => {
     const leaks: string[] = []
     page.on('request', (request) => {
       const body = request.postData() ?? ''
       if (request.url().includes('freeze') || body.includes('freeze')) leaks.push(request.url())
     })
     await openKeeper(page)
+    await page.getByLabel('Your worry').fill('Half a thought about freeze')
+    await page.reload()
+    await expect(page.getByLabel('Your worry')).toHaveValue('Half a thought about freeze')
+    await page.getByLabel('Your worry').fill('')
     await sealWorry(page)
     await returnOn(page, T0 + 8 * DAY)
     await page.getByRole('button', { name: /Ready to open/ }).click()
@@ -323,7 +427,7 @@ test.describe('The Keeper', () => {
     await openKeeper(page)
     await sealWorry(page)
     await page.getByRole('button', { name: 'Done' }).click()
-    await page.getByRole('button', { name: /Resting until/ }).click()
+    await page.getByRole('button', { name: /^Opens / }).click()
     await page.getByRole('button', { name: 'Let it go' }).click()
     await page.getByRole('button', { name: 'Keep it' }).click()
     expect(await stored(page)).toHaveLength(1)
@@ -341,7 +445,7 @@ test.describe('The Keeper', () => {
     await expect(page.getByTestId('dev-today')).toContainText('7 days ahead')
     await expect(page.getByRole('button', { name: /Ready to open/ })).toBeVisible()
     await page.getByRole('button', { name: 'Back to today' }).click()
-    await expect(page.getByRole('button', { name: /Resting until/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Opens / })).toBeVisible()
   })
 
   test('keyboard only: write, choose, seal, return and answer', async ({ page }) => {
@@ -417,6 +521,7 @@ test.describe('The Keeper with reduced motion on a phone', () => {
     await sealWorry(page)
     const sealedText = page.getByText('It comes back on Saturday, November 28.')
     await expect(sealedText).toBeVisible()
+    for (const frame of ['Folded', 'Set inside', 'Sealed']) await expect(page.getByText(frame, { exact: true })).toBeVisible()
     const motion = await page.evaluate(() =>
       [...document.querySelectorAll('svg *, p, h2')].filter((el) => getComputedStyle(el).animationName !== 'none').length,
     )

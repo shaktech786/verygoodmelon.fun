@@ -41,6 +41,14 @@ async function expectStep(page: Page, name: string | RegExp) {
   await expect(heading(page, name)).toBeFocused()
 }
 
+/** A step with a text box puts the cursor straight in it, with the step's words describing it. */
+async function expectWritingStep(page: Page, name: string | RegExp) {
+  await expect(heading(page, name)).toBeVisible()
+  const field = page.getByRole('textbox')
+  await expect(field).toBeFocused()
+  await expect(field).toHaveAttribute('aria-describedby', /hard-talk-sub/)
+}
+
 async function next(page: Page, label: 'Next' | 'Skip' = 'Next') {
   await button(page, label).click()
 }
@@ -48,6 +56,18 @@ async function next(page: Page, label: 'Next' | 'Skip' = 'Next') {
 /** From a filled-in "who" step, past the body steps, skipping the optional breaths. */
 async function throughSettling(page: Page) {
   for (const label of ['Next', 'Next', 'Next', 'Skip'] as const) await next(page, label)
+}
+
+/** From the "who" step, past the body steps, skipping the optional breaths. */
+async function throughSettlingFrom(page: Page, whoLabel: 'Next' | 'Skip') {
+  for (const label of [whoLabel, 'Next', 'Next', 'Skip'] as const) await next(page, label)
+}
+
+async function finishedMinutesAgo(page: Page, minutes: number) {
+  await page.evaluate(({ key, ms }) => {
+    const s = JSON.parse(localStorage.getItem(key) ?? '{}')
+    localStorage.setItem(key, JSON.stringify({ ...s, finishedAt: Date.now() - ms, updatedAt: Date.now() - ms }))
+  }, { key: KEY, ms: minutes * 60 * 1000 })
 }
 
 async function saved(page: Page): Promise<Record<string, unknown>> {
@@ -85,8 +105,10 @@ test.describe('The Envoy', () => {
     await expect(page.getByRole('complementary', { name: 'Support' })).toContainText('not a substitute for support')
     await expect(page.getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
 
+    await expect(page.getByText('Settling in')).toBeVisible()
+    await expect(page.getByText(/Step \d+ of/)).toHaveCount(0)
     await page.getByRole('button', { name: /Asking for something/ }).click()
-    await expectStep(page, 'Who is it with?')
+    await expectWritingStep(page, 'Who is it with?')
     await expect(button(page, 'Skip')).toBeVisible()
     await page.getByLabel('Who the talk is with').fill('my manager')
     await expect(button(page, 'Next')).toBeVisible()
@@ -105,8 +127,9 @@ test.describe('The Envoy', () => {
     await expect(page.getByText('That’s three. Carry on whenever you like.')).toBeVisible()
     await next(page)
 
-    await expectStep(page, 'What do you most want them to understand?')
-    await page.getByRole('textbox').fill('SECRET-WORDS I have grown into this role')
+    await expectWritingStep(page, 'What do you most want them to understand?')
+    await expect(page.getByText('Finding your words')).toBeVisible()
+    await page.keyboard.type('SECRET-WORDS I have grown into this role')
     await next(page)
     await expectStep(page, 'Which moment worries you most?')
     await page.getByText('They say no').click()
@@ -117,13 +140,16 @@ test.describe('The Envoy', () => {
     await page.getByText('Could we have ten minutes?').click()
     await next(page)
     await expectStep(page, 'My manager is a person too, with their own pressures today.')
+    await expect(page.getByText('Nearly there')).toBeVisible()
     await next(page)
     await expectStep(page, /you’re allowed to be kind to yourself/)
     await next(page)
 
     await expectStep(page, 'One line to carry in')
-    await expect(page.getByText('Ask clearly, then let them answer.')).toBeVisible()
-    await expect(page.getByText('“SECRET-WORDS I have grown into this role”')).toBeVisible()
+    await expect(page.getByText('In your own words.')).toBeVisible()
+    await expect(page.locator('blockquote')).toHaveText('SECRET-WORDS I have grown into this role.')
+    await expect(page.getByText('Ask clearly, then let them answer.')).toHaveCount(0)
+    await expect(page.getByText('Begin with')).toBeVisible()
     await expect(page.getByText('“Could we have ten minutes? There’s something I’d like to ask for.”')).toBeVisible()
     await expect(button(page, 'Next')).toHaveCount(0)
     await expect(page.locator('#hard-talk').getByText(/\bready\b|\bsafe\b/i)).toHaveCount(0)
@@ -141,7 +167,7 @@ test.describe('The Envoy', () => {
     await next(page)
     await next(page)
     await next(page, 'Skip')
-    await expectStep(page, 'What are you sorry for, in plain words?')
+    await expectWritingStep(page, 'What are you sorry for, in plain words?')
     await page.getByRole('textbox').fill('I missed your birthday.')
     await next(page)
     await expectStep(page, 'Jo was hurt, and gets to feel how they feel.')
@@ -154,7 +180,8 @@ test.describe('The Envoy', () => {
     await next(page)
     await next(page)
     await expectStep(page, 'One line to carry in')
-    await expect(page.getByText('Say sorry, then listen.')).toBeVisible()
+    await expect(page.locator('blockquote')).toHaveText('I missed your birthday.')
+    await expect(page.getByText('“Before anything else, I want to say sorry.”')).toBeVisible()
   })
 
   test('a doctor’s appointment, played with the keyboard alone', async ({ page }) => {
@@ -176,9 +203,7 @@ test.describe('The Envoy', () => {
 
     await tabTo(page.getByRole('button', { name: /A doctor or appointment/ }))
     await page.keyboard.press('Enter')
-    await expectStep(page, 'Who is it with?')
-    await page.keyboard.press('Tab')
-    await expect(page.getByLabel('Who the talk is with')).toBeFocused()
+    await expectWritingStep(page, 'Who is it with?')
     await page.keyboard.type('Dr Okafor')
     await page.keyboard.press('Enter')
     for (const step of ['Let your shoulders drop.', 'Feel your feet on the floor.']) {
@@ -195,9 +220,8 @@ test.describe('The Envoy', () => {
     await tabTo(button(page, 'Next'))
     await page.keyboard.press('Enter')
 
-    await expectStep(page, 'What’s the main thing you want them to know?')
-    await page.keyboard.press('Tab')
-    await page.keyboard.type('The pain is worse at night.')
+    await expectWritingStep(page, 'What’s the main thing you want them to know?')
+    await page.keyboard.type('the pain is worse at night')
     await tabTo(button(page, 'Next'))
     await page.keyboard.press('Enter')
 
@@ -227,18 +251,29 @@ test.describe('The Envoy', () => {
     await tabTo(button(page, 'Next'))
     await page.keyboard.press('Enter')
     await expectStep(page, 'One line to carry in')
-    await expect(page.getByText('Your questions belong in the room.')).toBeVisible()
+    await expect(page.locator('blockquote')).toHaveText('The pain is worse at night.')
+
+    await tabTo(button(page, 'Keep this on screen'))
+    await page.keyboard.press('Enter')
+    const onScreen = page.getByRole('dialog', { name: 'Your line to carry in' })
+    await expect(onScreen).toBeVisible()
+    await expect(onScreen).toContainText('The pain is worse at night.')
+    await expect(onScreen).toContainText('The main thing I’d like help with today is…')
+    await expect(onScreen.getByRole('button', { name: 'Done' })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(onScreen).toHaveCount(0)
+    await expect(button(page, 'Keep this on screen')).toBeFocused()
   })
 
   test('skipping every question still ends with a line, and nothing is invented', async ({ page }) => {
     await openGame(page)
     await next(page, 'Skip')
-    await expectStep(page, 'Who is it with?')
+    await expectWritingStep(page, 'Who is it with?')
     await next(page, 'Skip')
     await next(page)
     await next(page)
     await next(page, 'Skip')
-    await expectStep(page, 'What do you most want them to understand?')
+    await expectWritingStep(page, 'What do you most want them to understand?')
     await next(page, 'Skip')
     await next(page, 'Skip')
     await page.getByText('In my own words').click()
@@ -249,8 +284,8 @@ test.describe('The Envoy', () => {
     await next(page)
     await expectStep(page, 'One line to carry in')
     await expect(page.getByText('Lead with what you want, then listen.')).toBeVisible()
-    await expect(page.getByText('What you want them to understand')).toHaveCount(0)
-    await expect(page.getByText('Your first sentence')).toHaveCount(0)
+    await expect(page.getByText('In your own words.')).toHaveCount(0)
+    await expect(page.getByText('Begin with')).toHaveCount(0)
   })
 
   test('back keeps what was written, and changing the kind of talk clears only its own choices', async ({ page }) => {
@@ -263,7 +298,7 @@ test.describe('The Envoy', () => {
     await page.getByText('They say no').click()
 
     await button(page, 'Back').click()
-    await expectStep(page, 'What do you most want them to understand?')
+    await expectWritingStep(page, 'What do you most want them to understand?')
     await expect(page.getByRole('textbox')).toHaveValue('I would like a raise')
     for (let i = 0; i < 5; i++) await button(page, 'Back').click()
     await expectStep(page, FIRST)
@@ -304,7 +339,7 @@ test.describe('The Envoy', () => {
     await expect(heading(page, 'Welcome back.')).toBeVisible()
     await expect(page.getByText('telling someone something hard', { exact: false })).toBeVisible()
     await button(page, 'Carry on where I was').click()
-    await expectStep(page, 'What’s the one thing you need them to hear?')
+    await expectWritingStep(page, 'What’s the one thing you need them to hear?')
     await expect(page.getByRole('textbox')).toHaveValue('I am moving abroad')
 
     await page.evaluate(({ key, day }) => {
@@ -354,12 +389,18 @@ test.describe('The Envoy', () => {
     await expectStep(page, 'Let your shoulders fall away from your ears.')
   })
 
-  test('coming back after finishing offers a gentle check-in', async ({ page }) => {
+  test('reloading straight after finishing shows the line again; the check-in waits half an hour', async ({ page }) => {
     await openGame(page)
     await page.getByRole('button', { name: /A doctor or appointment/ }).click()
     for (const label of ['Skip', 'Next', 'Next', 'Skip', 'Skip', 'Skip', 'Skip', 'Next', 'Next'] as const) await next(page, label)
     await expectStep(page, 'One line to carry in')
 
+    await page.reload()
+    await expect(heading(page, 'One line to carry in')).toBeVisible()
+    await expect(page.getByText('Your questions belong in the room.')).toBeVisible()
+    await expect(page.getByText(/Welcome back/)).toHaveCount(0)
+
+    await finishedMinutesAgo(page, 31)
     await page.reload()
     await expect(heading(page, 'Welcome back. How did it go?')).toBeVisible()
     await expect(page.getByText('Your questions belong in the room.')).toBeVisible()
@@ -368,12 +409,36 @@ test.describe('The Envoy', () => {
     await button(page, 'See my notes again').click()
     await expectStep(page, 'One line to carry in')
 
+    await finishedMinutesAgo(page, 31)
     await page.reload()
     await expect(page.getByRole('radio', { name: 'It hasn’t happened yet' })).toBeChecked()
     await page.getByText('It was hard').click()
     await expect(page.getByText('go gently today', { exact: false })).toBeVisible()
     await button(page, 'Start a new talk').click()
     await expectStep(page, FIRST)
+  })
+
+  test('the line can be copied to take into the room', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    await openGame(page)
+    await page.getByRole('button', { name: /Raising a problem/ }).click()
+    await throughSettlingFrom(page, 'Skip')
+    await page.keyboard.type('when plans change last minute I feel like an afterthought')
+    await next(page)
+    await next(page)
+    await next(page, 'Skip')
+    await page.getByText('In my own words').click()
+    await page.getByRole('textbox').fill('Can we talk about weekends?')
+    await next(page)
+    await next(page)
+    await expectStep(page, 'One line to carry in')
+    await expect(page.locator('blockquote')).toHaveText('When plans change last minute I feel like an afterthought.')
+    await button(page, 'Copy').click()
+    await expect(page.getByRole('status').filter({ hasText: 'Copied.' })).toBeVisible()
+    // Some systems store line breaks on the clipboard as \r\n.
+    expect((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n')).toBe(
+      'Can we talk about weekends?\nWhen plans change last minute I feel like an afterthought.',
+    )
   })
 
   test('works for this visit when the browser refuses storage', async ({ page }) => {
@@ -384,7 +449,7 @@ test.describe('The Envoy', () => {
     await openGame(page)
     await expect(page.getByText('This browser isn’t keeping anything', { exact: false })).toBeVisible()
     await page.getByRole('button', { name: /Something else/ }).click()
-    await expectStep(page, 'Who is it with?')
+    await expectWritingStep(page, 'Who is it with?')
     await next(page, 'Skip')
     await expectStep(page, 'Let your shoulders drop.')
     expect(errors).toEqual([])
@@ -418,7 +483,13 @@ test.describe('The Envoy', () => {
       await expect(page.getByText('That’s the most this box holds.')).toBeVisible()
       await expect(box).toBeInViewport()
       await noHorizontalScroll(page)
-      for (const label of ['Next', 'Skip', 'Skip'] as const) {
+      await next(page)
+      await expectStep(page, 'Which moment worries you most?')
+      await page.getByText('Finding the words').tap()
+      await expect(page.getByText('Plain words are kind words.', { exact: false })).toBeInViewport()
+      await expect(page.locator('[aria-live="polite"]').filter({ hasText: 'Plain words are kind words.' })).toHaveCount(1)
+      await noHorizontalScroll(page)
+      for (const label of ['Next', 'Skip'] as const) {
         await next(page, label)
         await noHorizontalScroll(page)
       }
@@ -429,6 +500,12 @@ test.describe('The Envoy', () => {
       await expectStep(page, 'One line to carry in')
       await noHorizontalScroll(page)
       await expect(page.locator('#hard-talk [style*="transition"]')).toHaveCount(0)
+      await button(page, 'Keep this on screen').tap()
+      const onScreen = page.getByRole('dialog', { name: 'Your line to carry in' })
+      await expect(onScreen.getByText('x'.repeat(280) + '.')).toBeVisible()
+      await noHorizontalScroll(page)
+      await onScreen.getByRole('button', { name: 'Done' }).tap()
+      await expect(onScreen).toHaveCount(0)
     })
   })
 
@@ -454,9 +531,15 @@ test.describe('The Envoy', () => {
       await next(page)
       await next(page)
       await expectStep(page, 'One line to carry in')
+      expect(await axeViolations(page)).toEqual([])
+      await button(page, 'Keep this on screen').click()
+      await expect(page.getByRole('dialog')).toBeVisible()
+      expect(await axeViolations(page)).toEqual([])
+      await page.keyboard.press('Escape')
       await button(page, 'Start over').click()
       expect(await axeViolations(page)).toEqual([])
       await button(page, 'Keep going').click()
+      await finishedMinutesAgo(page, 45)
       await page.reload()
       await expect(heading(page, 'Welcome back. How did it go?')).toBeVisible()
       await page.getByText('Better than I feared').click()

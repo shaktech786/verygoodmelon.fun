@@ -61,17 +61,18 @@ export function HelpLine() {
   )
 }
 
+/** Didn’t happen: an open circle. Partly: a half-filled diamond. Happened: a square. */
 export function OutcomeMark({ outcome, className }: { outcome: Outcome; className?: string }) {
   return (
-    <svg viewBox="0 0 12 12" className={cn('w-3 h-3 shrink-0', className)} aria-hidden="true" focusable="false" shapeRendering="crispEdges">
-      {outcome === 'no' && <rect x="1.5" y="1.5" width="9" height="9" className="fill-none stroke-melon-green" strokeWidth="2" />}
+    <svg viewBox="0 0 12 12" className={cn('w-3 h-3 shrink-0', className)} aria-hidden="true" focusable="false">
+      {outcome === 'no' && <circle cx="6" cy="6" r="4.6" className={styles.markNo} strokeWidth="1.6" />}
       {outcome === 'partly' && (
         <>
-          <rect x="1.5" y="1.5" width="9" height="9" className="fill-none stroke-warm" strokeWidth="2" />
-          <rect x="1" y="6" width="10" height="5" className="fill-warm" />
+          <path d="M6 6 H10.9 L6 10.9 L1.1 6 Z" className={styles.markPartlyFill} />
+          <path d="M6 1.1 L10.9 6 L6 10.9 L1.1 6 Z" className={styles.markPartly} strokeWidth="1.6" strokeLinejoin="round" />
         </>
       )}
-      {outcome === 'yes' && <rect x="1" y="1" width="10" height="10" className="fill-foreground/70" />}
+      {outcome === 'yes' && <rect x="1.8" y="1.8" width="8.4" height="8.4" rx="1" className={styles.markYes} strokeWidth="1.6" />}
     </svg>
   )
 }

@@ -8,6 +8,8 @@ const HOUR = 60 * 60 * 1000
 export const RESUME_WINDOW_MS = 12 * HOUR
 /** After this, what was written is let go rather than kept indefinitely. */
 export const KEEP_WINDOW_MS = 14 * 24 * HOUR
+/** Until this has passed since finishing, the talk can hardly have happened, so the line is shown again. */
+export const CHECK_IN_AFTER_MS = 30 * 60 * 1000
 
 export type OpeningPick = number | 'own' | null
 
@@ -147,7 +149,7 @@ export function decideReturn(session: Session | null, now: number): ReturnPlan {
   // A clock that jumped backwards must not make a session look ancient or lost.
   const age = Math.max(0, now - (session.finishedAt ?? session.updatedAt))
   if (age > KEEP_WINDOW_MS) return { type: 'fresh', run: session.run + 1 }
-  if (session.finishedAt !== null) return { type: 'check-in', session }
+  if (session.finishedAt !== null) return age < CHECK_IN_AFTER_MS ? { type: 'resume', session } : { type: 'check-in', session }
   return age <= RESUME_WINDOW_MS ? { type: 'resume', session } : { type: 'offer', session }
 }
 
@@ -157,16 +159,29 @@ export function openingText(session: Session): string | null {
   return TALKS[session.kind ?? 'other'].openings[session.openingPick] ?? null
 }
 
+const WRAPPING_QUOTES = /^[\s“”"‘’']+|[\s“”"‘’']+$/g
+
+/** Their words on one line, as they wrote them, with a capital and an ending. */
+export function asCarryLine(text: string): string {
+  const line = text.replace(/\s+/g, ' ').replace(WRAPPING_QUOTES, '')
+  if (!line) return ''
+  const capitalised = line.charAt(0).toUpperCase() + line.slice(1)
+  return /[\p{L}\p{N}]$/u.test(capitalised) ? `${capitalised}.` : capitalised
+}
+
 export interface CarryNotes {
   line: string
-  understand: string | null
-  opening: string | null
+  /** True when the line is made of words they typed, not a sentence they picked. */
+  ownWords: boolean
+  /** Their first sentence, when the line is something else. */
+  begin: string | null
 }
 
 export function carryNotes(session: Session): CarryNotes {
-  return {
-    line: pick(TALKS[session.kind ?? 'other'].carry, session.run),
-    understand: session.understand.trim() || null,
-    opening: openingText(session),
-  }
+  const understand = asCarryLine(session.understand)
+  const opening = openingText(session)
+  if (understand) return { line: understand, ownWords: true, begin: opening }
+  if (session.openingPick === 'own' && opening) return { line: asCarryLine(opening), ownWords: true, begin: null }
+  if (opening) return { line: opening, ownWords: false, begin: null }
+  return { line: pick(TALKS[session.kind ?? 'other'].carry, session.run), ownWords: false, begin: null }
 }

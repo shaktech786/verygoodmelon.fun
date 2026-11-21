@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { Button } from '@/components/ui/Button'
+import { Button, buttonClassName } from '@/components/ui/Button'
+import { CarryScreen } from '@/components/games/hard-talk/CarryScreen'
 import { BreathMelon, ThresholdArt } from '@/components/games/hard-talk/ThresholdArt'
 import { cn } from '@/lib/utils/cn'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
@@ -19,7 +20,7 @@ import {
   type CheckInId,
   type TalkKind,
 } from '@/lib/games/hard-talk/content'
-import { nextStep, previousStep, stepPosition, type StepId } from '@/lib/games/hard-talk/flow'
+import { STAGES, nextStep, previousStep, stageOf, stepPosition, type StepId } from '@/lib/games/hard-talk/flow'
 import {
   carryNotes,
   chooseKind,
@@ -111,7 +112,7 @@ function openGame(): Opening {
     view: plan.type === 'resume' ? 'steps' : plan.type,
     session: plan.session,
     storageWorks: saved.available,
-    welcomeBack: plan.type === 'resume' && plan.session.step !== 'kind',
+    welcomeBack: plan.type === 'resume' && plan.session.step !== 'kind' && plan.session.step !== 'carry',
     replacesSaved: false,
   }
 }
@@ -165,15 +166,40 @@ function HardTalkGame() {
   const [confirmingStartOver, setConfirmingStartOver] = useState<'top' | 'bottom' | null>(null)
   const [breathingIn, setBreathingIn] = useState(false)
   const [focusRequest, setFocusRequest] = useState(0)
+  const [onScreen, setOnScreen] = useState(false)
+  const [copied, setCopied] = useState('')
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const fieldRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null)
+  const responseRef = useRef<HTMLDivElement>(null)
+  const keepOnScreenRef = useRef<HTMLButtonElement>(null)
+  const revealResponse = useRef(false)
 
   useEffect(() => {
     if (opening.replacesSaved) writeSaved(browserStorage(), opening.session)
   }, [opening])
 
   useEffect(() => {
-    if (focusRequest > 0) headingRef.current?.focus()
+    if (focusRequest === 0) return
+    const field = fieldRef.current
+    if (!field) {
+      headingRef.current?.focus()
+      return
+    }
+    // Typing should go straight into the box; the heading still describes it to screen readers.
+    headingRef.current?.scrollIntoView({ block: 'nearest' })
+    field.focus({ preventScroll: true })
   }, [focusRequest])
+
+  useEffect(() => {
+    if (!revealResponse.current) return
+    revealResponse.current = false
+    const response = responseRef.current
+    if (!response) return
+    const { top, bottom } = response.getBoundingClientRect()
+    if (top < 0 || bottom > window.innerHeight) {
+      response.scrollIntoView({ block: 'center', behavior: reducedMotion ? 'auto' : 'smooth' })
+    }
+  }, [session.worry, session.checkIn, reducedMotion])
 
   const save = (next: Session) => {
     setSession(next)
@@ -186,6 +212,7 @@ function HardTalkGame() {
     setWelcomeBack(false)
     setConfirmingStartOver(null)
     setBreathingIn(false)
+    setCopied('')
     setView('steps')
   }
 
@@ -221,6 +248,7 @@ function HardTalkGame() {
   const kind = session.kind ?? 'other'
   const talk = TALKS[kind]
   const { index, total } = stepPosition(session.kind, session.step)
+  const stage = stageOf(session.kind, session.step)
   const progress = view === 'check-in' ? 1 : (index - 1) / (total - 1)
   const hasWritten = Boolean(session.who || session.understand || session.ownOpening)
   const canStartOver = view === 'steps' && (session.step !== 'kind' || hasWritten || session.kind !== null)
@@ -228,13 +256,14 @@ function HardTalkGame() {
   const heading = (text: string) => (
     <h2
       ref={headingRef}
+      id="hard-talk-heading"
       tabIndex={-1}
       className="text-2xl sm:text-3xl font-semibold leading-snug text-foreground focus:outline-none [overflow-wrap:anywhere]"
     >
       {text}
     </h2>
   )
-  const sub = (text: string) => <p className="mt-3 text-base sm:text-lg text-foreground/75 leading-relaxed">{text}</p>
+  const sub = (text: string) => <p id="hard-talk-sub" className="mt-3 text-base sm:text-lg text-foreground/75 leading-relaxed">{text}</p>
 
   const optional = (filled: boolean) => (filled ? 'Next' : 'Skip')
 
@@ -278,7 +307,9 @@ function HardTalkGame() {
               <input
                 id="hard-talk-who"
                 type="text"
+                ref={fieldRef}
                 autoComplete="off"
+                aria-describedby="hard-talk-sub"
                 maxLength={WHO_MAX}
                 value={session.who}
                 onChange={(e) => update((s) => ({ ...s, who: e.target.value.slice(0, WHO_MAX) }))}
@@ -345,11 +376,12 @@ function HardTalkGame() {
               <p id="hard-talk-example" className="mt-4 text-sm text-foreground/70">For example: {talk.understand.example}</p>
               <label htmlFor="hard-talk-understand" className="sr-only">{talk.understand.heading}</label>
               <textarea
+                ref={fieldRef}
                 id="hard-talk-understand"
                 rows={3}
                 maxLength={TEXT_MAX}
                 value={session.understand}
-                aria-describedby="hard-talk-example"
+                aria-describedby="hard-talk-sub hard-talk-example"
                 onChange={(e) => update((s) => ({ ...s, understand: e.target.value.slice(0, TEXT_MAX) }))}
                 onFocus={(e) => keepInView(e.currentTarget, !reducedMotion)}
                 className={cn(fieldClass, 'mt-2 resize-none')}
@@ -377,7 +409,10 @@ function HardTalkGame() {
                         name="hard-talk-worry"
                         value={w.id}
                         checked={session.worry === w.id}
-                        onChange={() => update((s) => ({ ...s, worry: w.id }))}
+                        onChange={() => {
+                          revealResponse.current = true
+                          update((s) => ({ ...s, worry: w.id }))
+                        }}
                         className="sr-only"
                       />
                       <ChoiceMark selected={session.worry === w.id} />
@@ -386,7 +421,7 @@ function HardTalkGame() {
                   ))}
                 </div>
               </fieldset>
-              <div aria-live="polite" className="mt-5 min-h-6">
+              <div ref={responseRef} aria-live="polite" className="mt-5 min-h-6">
                 {chosen && (
                   <p className="rounded-lg border-l-4 border-l-[var(--melon-green)] bg-background px-4 py-3 text-base sm:text-lg leading-relaxed text-foreground">
                     {chosen.response}
@@ -459,35 +494,58 @@ function HardTalkGame() {
       }
       case 'carry': {
         const notes = carryNotes(session)
+        const copy = async () => {
+          try {
+            await navigator.clipboard.writeText(notes.begin ? `${notes.begin}\n${notes.line}` : notes.line)
+            setCopied('Copied.')
+          } catch {
+            setCopied('Copying isn’t allowed here, but you can select the words and copy them.')
+          }
+        }
         return {
           nextLabel: null,
           body: (
             <>
               {heading('One line to carry in')}
+              {notes.ownWords && sub('In your own words.')}
               <figure className="mt-6 overflow-hidden rounded-lg border-2 border-card-border bg-background text-center soft-shadow">
                 <div aria-hidden="true" className="h-2 bg-melon-green" />
                 <div aria-hidden="true" className="h-1.5 bg-success" />
-                <blockquote className="px-5 py-6 text-2xl sm:text-3xl font-semibold leading-snug text-foreground">{notes.line}</blockquote>
+                <blockquote className="px-5 py-6 text-2xl sm:text-3xl font-semibold leading-snug text-foreground [overflow-wrap:anywhere]">
+                  {notes.line}
+                </blockquote>
               </figure>
-              {(notes.understand || notes.opening) && (
-                <dl className="mt-6 space-y-4 text-left">
-                  {notes.understand && (
-                    <div>
-                      <dt className="text-sm font-medium text-foreground/75">What you want them to understand</dt>
-                      <dd className="mt-1 text-lg text-foreground"><Quote>{notes.understand}</Quote></dd>
-                    </div>
-                  )}
-                  {notes.opening && (
-                    <div>
-                      <dt className="text-sm font-medium text-foreground/75">Your first sentence</dt>
-                      <dd className="mt-1 text-lg text-foreground"><Quote>{notes.opening}</Quote></dd>
-                    </div>
-                  )}
-                </dl>
+              {notes.begin && (
+                <div className="mt-5 text-left">
+                  <p className="text-sm font-medium text-foreground/75">Begin with</p>
+                  <p className="mt-1 text-lg text-foreground"><Quote>{notes.begin}</Quote></p>
+                </div>
               )}
-              <p className="mt-6 text-base text-foreground/75">
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button
+                  ref={keepOnScreenRef}
+                  type="button"
+                  onClick={() => setOnScreen(true)}
+                  className={buttonClassName('primary', 'lg', 'w-full sm:flex-1')}
+                >
+                  Keep this on screen
+                </button>
+                <Button size="lg" variant="secondary" onClick={copy} className="w-full sm:w-auto">Copy</Button>
+              </div>
+              <p role="status" className="mt-2 min-h-6 text-sm text-foreground/75">{copied}</p>
+              <p className="mt-3 text-base text-foreground/75">
                 Take one more slow breath, and go in when you choose. If you come back afterwards, there’s a quiet place to say how it went.
               </p>
+              {onScreen && (
+                <CarryScreen
+                  line={notes.line}
+                  begin={notes.begin}
+                  onClose={() => {
+                    setOnScreen(false)
+                    keepOnScreenRef.current?.focus()
+                  }}
+                />
+              )}
             </>
           ),
         }
@@ -514,7 +572,10 @@ function HardTalkGame() {
 
   function renderCheckIn() {
     const answer = CHECK_INS.find((c) => c.id === session.checkIn)
-    const setCheckIn = (id: CheckInId) => update((s) => ({ ...s, checkIn: id }))
+    const setCheckIn = (id: CheckInId) => {
+      revealResponse.current = true
+      update((s) => ({ ...s, checkIn: id }))
+    }
     return (
       <>
         {heading('Welcome back. How did it go?')}
@@ -538,7 +599,7 @@ function HardTalkGame() {
             ))}
           </div>
         </fieldset>
-        <div aria-live="polite" className="mt-5 min-h-6">
+        <div ref={responseRef} aria-live="polite" className="mt-5 min-h-6">
           {answer && (
             <p className="rounded-lg border-l-4 border-l-[var(--melon-green)] bg-background px-4 py-3 text-base sm:text-lg leading-relaxed text-foreground">
               {answer.response}
@@ -570,13 +631,13 @@ function HardTalkGame() {
     <section aria-label="Before the talk" className={cardClass}>
       <div className="flex min-h-11 items-center justify-between gap-3">
         {view === 'steps' ? (
-          <div role="img" className="flex items-center gap-1.5" aria-label={`Step ${index} of ${total}`}>
-            {Array.from({ length: total }, (_, i) => (
-              <span
-                key={i}
-                className={cn('h-2.5 w-1.5 rounded-full', i < index ? 'bg-foreground/70' : 'border border-foreground/40')}
-              />
-            ))}
+          <div className="flex items-center gap-3">
+            <div className="flex gap-1" aria-hidden="true">
+              {STAGES.map((label, i) => (
+                <span key={label} className={cn('h-1.5 w-5 rounded-full', i < stage ? 'bg-melon-green' : 'bg-foreground/15')} />
+              ))}
+            </div>
+            <p className="text-sm text-foreground/75">{session.step === 'carry' ? 'Here’s your line' : STAGES[stage - 1]}</p>
           </div>
         ) : <span />}
         {canStartOver && session.step !== 'carry' && !confirmingStartOver && (

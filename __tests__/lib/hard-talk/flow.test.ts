@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nextStep, previousStep, stepPosition, stepsFor, type StepId } from '@/lib/games/hard-talk/flow'
+import { STAGES, nextStep, previousStep, stageOf, stepPosition, stepsFor, type StepId } from '@/lib/games/hard-talk/flow'
 import { TALK_KINDS } from '@/lib/games/hard-talk/content'
 
 const DEFAULT_ORDER: StepId[] = [
@@ -65,5 +65,25 @@ describe('step sequence', () => {
     expect(stepPosition('ask', 'kind')).toEqual({ index: 1, total: 11 })
     expect(stepPosition('ask', 'carry')).toEqual({ index: 11, total: 11 })
     expect(stepPosition('sorry', 'them')).toEqual({ index: 7, total: 11 })
+  })
+
+  it('groups the steps into three gentle stages that only ever move forward', () => {
+    expect(STAGES).toHaveLength(3)
+    for (const kind of [null, ...TALK_KINDS]) {
+      const stages = stepsFor(kind).map((step) => stageOf(kind, step))
+      expect(stages[0]).toBe(1)
+      expect(stages.at(-1)).toBe(3)
+      for (let i = 1; i < stages.length; i++) expect(stages[i] - stages[i - 1]).toBeGreaterThanOrEqual(0)
+      expect(new Set(stages)).toEqual(new Set([1, 2, 3]))
+    }
+  })
+
+  it('keeps the body settling in the first stage and the line to carry in the last', () => {
+    for (const kind of [null, ...TALK_KINDS]) {
+      for (const step of ['kind', 'who', 'shoulders', 'ground', 'breath'] as const) expect(stageOf(kind, step)).toBe(1)
+      expect(stageOf(kind, 'understand')).toBe(2)
+      expect(stageOf(kind, 'kindness')).toBe(3)
+      expect(stageOf(kind, 'carry')).toBe(3)
+    }
   })
 })

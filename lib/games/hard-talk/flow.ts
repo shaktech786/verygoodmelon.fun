@@ -30,3 +30,12 @@ export function stepPosition(kind: TalkKind | null, step: StepId): { index: numb
   const steps = stepsFor(kind)
   return { index: steps.indexOf(step) + 1, total: steps.length }
 }
+
+/** Eleven steps read as a long form, so progress is shown as three calm stages instead. */
+export const STAGES = ['Settling in', 'Finding your words', 'Nearly there'] as const
+export type Stage = 1 | 2 | 3
+
+export function stageOf(kind: TalkKind | null, step: StepId): Stage {
+  const { index } = stepPosition(kind, step)
+  return index <= 5 ? 1 : index <= 8 ? 2 : 3
+}

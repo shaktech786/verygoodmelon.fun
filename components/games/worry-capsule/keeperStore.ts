@@ -1,4 +1,5 @@
 import type { Capsule } from '@/lib/games/worry-capsule/capsules'
+import { type WorryDraft, clearDraft, loadDraft, saveDraft } from '@/lib/games/worry-capsule/draft'
 import {
   type KeyValueStore,
   type SaveResult,
@@ -17,6 +18,8 @@ export interface KeeperSnapshot {
   capsules: Capsule[]
   storage: 'ok' | 'unreadable' | 'unavailable'
   writable: boolean
+  /** Words typed but not yet sealed, kept so a reload or interruption does not lose them. */
+  draft: WorryDraft | null
   nowMs: number
   devOffsetDays: number
 }
@@ -61,6 +64,7 @@ function build(): KeeperSnapshot {
     capsules: loaded.status === 'unavailable' ? [] : loaded.capsules,
     storage: loaded.status === 'ok' ? 'ok' : loaded.status,
     writable: canWrite(store),
+    draft: loadDraft(store),
     nowMs: clockMs(devOffsetDays),
     devOffsetDays,
   }
@@ -116,6 +120,17 @@ export function commit(capsules: Capsule[]): SaveResult {
     emit({ ...current, capsules, storage: 'ok', writable: true, nowMs: at.getTime() })
   }
   return result
+}
+
+export function keepDraft(draft: WorryDraft) {
+  const store = browserStore()
+  saveDraft(store, draft)
+  if (current) emit({ ...current, draft: loadDraft(store) })
+}
+
+export function forgetDraft() {
+  clearDraft(browserStore())
+  if (current) emit({ ...current, draft: null })
 }
 
 export function requestPersistence() {

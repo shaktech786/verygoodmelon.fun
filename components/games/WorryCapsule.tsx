@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils/cn'
 import { type ArchiveProblem, MAX_ARCHIVE_CHARS, type Merge, mergeCapsules, readArchive, writeArchive } from '@/lib/games/worry-capsule/archive'
 import {
   type Capsule,
-  type Horizon,
   HORIZONS,
   MAX_NOTE_LENGTH,
   MAX_WORRY_LENGTH,
@@ -23,14 +22,17 @@ import {
 } from '@/lib/games/worry-capsule/capsules'
 import { OUTCOME_RESPONSES, RESTING_LINES, SEALED_LINES, pickLine } from '@/lib/games/worry-capsule/copy'
 import { type DateKey, localDateKey } from '@/lib/games/worry-capsule/dates'
+import type { WorryDraft as Draft } from '@/lib/games/worry-capsule/draft'
 import { DevTimeTravel } from './worry-capsule/DevTimeTravel'
-import { Jar } from './worry-capsule/Jar'
+import { ComposeArt, Jar, SealSteps } from './worry-capsule/Jar'
 import styles from './worry-capsule/Keeper.module.css'
 import {
   type KeeperSnapshot,
   commit,
+  forgetDraft,
   getServerSnapshot,
   getSnapshot,
+  keepDraft,
   newCapsuleId,
   now,
   requestPersistence,
@@ -38,14 +40,9 @@ import {
 } from './worry-capsule/keeperStore'
 import { HelpLine, OUTCOME_WORDS, OutcomeMark, Slip, TallyCard, ViewHeading, formatDay, saveTextFile, sealedDay } from './worry-capsule/parts'
 
-interface Draft {
-  text: string
-  horizon: Horizon
-}
-
 type View =
   | { kind: 'shelf' }
-  | { kind: 'compose'; draft: Draft }
+  | { kind: 'compose'; draft: Draft; restored?: boolean }
   | { kind: 'review'; draft: Draft }
   | { kind: 'sealed'; id: string }
   | { kind: 'rescue'; draft: Draft; reason: 'full' | 'unavailable' }
@@ -97,7 +94,8 @@ export default function WorryCapsule() {
   const nowDate = new Date(snapshot.nowMs)
   const today = localDateKey(nowDate)
   const { capsules } = snapshot
-  const current: View = view ?? (capsules.length > 0 ? { kind: 'shelf' } : { kind: 'compose', draft: EMPTY_DRAFT })
+  const composeView: View = snapshot.draft ? { kind: 'compose', draft: snapshot.draft, restored: true } : { kind: 'compose', draft: EMPTY_DRAFT }
+  const current: View = view ?? (capsules.length > 0 && !snapshot.draft ? { kind: 'shelf' } : composeView)
 
   const go = (next: View | null) => {
     setNavigated(true)
@@ -117,6 +115,7 @@ export default function WorryCapsule() {
       go({ kind: 'rescue', draft, reason: result.reason })
       return
     }
+    forgetDraft()
     requestPersistence()
     go({ kind: 'sealed', id: capsule.id })
   }
@@ -182,14 +181,23 @@ export default function WorryCapsule() {
   let bodyKey: string = current.kind
 
   if (current.kind === 'compose') {
+    const { restored } = current
     body = (
       <Composer
         draft={current.draft}
+        restored={restored ?? false}
         today={today}
         snapshot={snapshot}
         motion={motion}
         focus={navigated}
-        onChange={(draft) => setView({ kind: 'compose', draft })}
+        onChange={(draft) => {
+          setView({ kind: 'compose', draft, restored })
+          keepDraft(draft)
+        }}
+        onDiscard={() => {
+          forgetDraft()
+          setView({ kind: 'compose', draft: EMPTY_DRAFT })
+        }}
         onNext={(draft) => go({ kind: 'review', draft })}
         onCancel={capsules.length > 0 ? () => go({ kind: 'shelf' }) : undefined}
         restore={
@@ -228,8 +236,12 @@ export default function WorryCapsule() {
     const capsule = capsules.find((c) => c.id === current.id)
     bodyKey = `sealed-${current.id}`
     body = capsule ? (
-      <div>
-        <Jar scene="sealing" motion={motion} className="w-44 h-40 mx-auto mb-4" />
+      <div className={cn(motion && styles.motion)}>
+        {motion ? (
+          <Jar scene="sealing" motion className="w-44 h-56 mx-auto mb-2" />
+        ) : (
+          <SealSteps className="mb-5" />
+        )}
         <div className={cn('space-y-4', styles.afterSeal)}>
           <ViewHeading focus={navigated}>Sealed.</ViewHeading>
           <p className="text-base sm:text-lg text-foreground">{pickLine(SEALED_LINES, capsule.id)}</p>
@@ -286,13 +298,14 @@ export default function WorryCapsule() {
                   <button
                     type="button"
                     onClick={() => go({ kind: 'capsule', id: capsule.id })}
-                    aria-label={ready ? `Sealed ${sealedOn}. Ready to open.` : `Sealed ${sealedOn}. Resting until ${formatDay(capsule.opensOn, today)}.`}
+                    aria-label={ready ? `Ready to open, sealed ${sealedOn}` : `Opens ${formatDay(capsule.opensOn, today)}, sealed ${sealedOn}`}
                     className="group w-full rounded-md pb-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent hover:bg-hover-bg transition-colors duration-75"
                   >
                     <Jar scene={ready ? 'ready' : 'sealed'} motion={false} plank={false} className="w-20 h-[4.5rem] sm:w-24 sm:h-[5.4rem] mx-auto" />
                     <span className={cn('block text-xs sm:text-sm', ready ? 'font-semibold text-foreground' : 'text-foreground/75')}>
-                      {ready ? 'Ready' : formatDay(capsule.opensOn, today, 'short')}
+                      {ready ? 'Ready' : `Opens ${formatDay(capsule.opensOn, today, 'short')}`}
                     </span>
+                    <span className="block text-xs text-foreground/75">sealed {sealedDay(capsule, today, 'short')}</span>
                   </button>
                 </li>
               )
@@ -300,7 +313,7 @@ export default function WorryCapsule() {
           </ul>
         )}
 
-        <Button onClick={() => go({ kind: 'compose', draft: EMPTY_DRAFT })}>Seal another worry</Button>
+        <Button onClick={() => go(composeView)}>{snapshot.draft ? 'Finish the worry you started' : 'Seal another worry'}</Button>
 
         {counts.total > 0 && <TallyCard counts={counts} opened={shelf.opened} />}
 
@@ -380,18 +393,21 @@ function StorageNotes({ snapshot }: { snapshot: KeeperSnapshot }) {
 
 interface ComposerProps {
   draft: Draft
+  restored: boolean
   today: DateKey
   snapshot: KeeperSnapshot
   motion: boolean
   focus: boolean
   onChange: (draft: Draft) => void
+  onDiscard: () => void
   onNext: (draft: Draft) => void
   onCancel?: () => void
   restore: ReactNode
 }
 
-function Composer({ draft, today, snapshot, motion, focus, onChange, onNext, onCancel, restore }: ComposerProps) {
+function Composer({ draft, restored, today, snapshot, motion, focus, onChange, onDiscard, onNext, onCancel, restore }: ComposerProps) {
   const id = useId()
+  const boxRef = useRef<HTMLTextAreaElement>(null)
   const ready = normalizeWorry(draft.text) !== null
   const left = MAX_WORRY_LENGTH - draft.text.length
   return (
@@ -402,7 +418,7 @@ function Composer({ draft, today, snapshot, motion, focus, onChange, onNext, onC
         if (ready) onNext(draft)
       }}
     >
-      <Jar scene="waiting" motion={motion} className="w-28 h-24 sm:w-36 sm:h-32 mx-auto" />
+      <ComposeArt text={draft.text} motion={motion} className="w-44 h-24 sm:w-56 sm:h-32 mx-auto" />
       <div className="space-y-2">
         <ViewHeading focus={focus}>What’s on your mind?</ViewHeading>
         <p className={cn(muted, 'max-w-md mx-auto')}>
@@ -410,9 +426,28 @@ function Composer({ draft, today, snapshot, motion, focus, onChange, onNext, onC
         </p>
       </div>
 
+      {restored && draft.text && (
+        <div className="flex flex-col items-center gap-1 rounded-lg bg-hover-bg px-4 py-3 sm:flex-row sm:justify-between sm:text-left">
+          <p className="text-sm text-foreground">You were partway through this. It was kept for you, just as you left it.</p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0"
+            onClick={() => {
+              onDiscard()
+              boxRef.current?.focus()
+            }}
+          >
+            Start a blank page
+          </Button>
+        </div>
+      )}
+
       <div className="text-left">
         <label htmlFor={`${id}-worry`} className="block text-sm font-medium text-foreground mb-1.5">Your worry</label>
         <textarea
+          ref={boxRef}
           id={`${id}-worry`}
           value={draft.text}
           maxLength={MAX_WORRY_LENGTH}

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CHECK_IN_AFTER_MS,
   KEEP_WINDOW_MS,
   RESUME_WINDOW_MS,
   STORAGE_KEY,
+  asCarryLine,
   carryNotes,
   chooseKind,
   decideReturn,
@@ -143,6 +145,24 @@ describe('coming back', () => {
     expect(decideReturn(old, NOW)).toEqual({ type: 'fresh', run: 1 })
   })
 
+  it('shows the line again, not a check-in, until the talk could have happened', () => {
+    const justDone = session({ step: 'carry', kind: 'ask', finishedAt: NOW - 5 * 60 * 1000, updatedAt: NOW - 5 * 60 * 1000 })
+    expect(decideReturn(justDone, NOW)).toEqual({ type: 'resume', session: justDone })
+    const edge = { ...justDone, finishedAt: NOW - CHECK_IN_AFTER_MS + 1 }
+    expect(decideReturn(edge, NOW)).toEqual({ type: 'resume', session: edge })
+    const later = { ...justDone, finishedAt: NOW - CHECK_IN_AFTER_MS }
+    expect(decideReturn(later, NOW)).toEqual({ type: 'check-in', session: later })
+  })
+
+  it('waits at least half an hour before asking how it went', () => {
+    expect(CHECK_IN_AFTER_MS).toBeGreaterThanOrEqual(30 * 60 * 1000)
+  })
+
+  it('shows the line again when the clock says it finished in the future', () => {
+    const s = session({ step: 'carry', kind: 'ask', finishedAt: NOW + HOUR, updatedAt: NOW + HOUR })
+    expect(decideReturn(s, NOW)).toEqual({ type: 'resume', session: s })
+  })
+
   it('does not trust a clock that has gone backwards', () => {
     const s = session({ step: 'opening', kind: 'ask', updatedAt: NOW + 5 * HOUR })
     expect(decideReturn(s, NOW)).toEqual({ type: 'resume', session: s })
@@ -157,17 +177,51 @@ describe('what the player carries in', () => {
     expect(openingText(session({ kind: 'ask' }))).toBeNull()
   })
 
-  it('always has a line, even when every question was skipped', () => {
-    const notes = carryNotes(session({ kind: null }))
-    expect(notes.line).toBe(TALKS.other.carry[0])
-    expect(notes.understand).toBeNull()
-    expect(notes.opening).toBeNull()
+  it('builds the line from what they most want understood, and begins with their first sentence', () => {
+    const notes = carryNotes(session({ kind: 'ask', understand: ' I have grown into this role ', openingPick: 2 }))
+    expect(notes).toEqual({ line: 'I have grown into this role.', ownWords: true, begin: TALKS.ask.openings[2] })
   })
 
-  it('varies the line between runs and includes what was written', () => {
-    const first = carryNotes(session({ kind: 'sorry', run: 0, understand: ' I missed your birthday. ' }))
-    const second = carryNotes(session({ kind: 'sorry', run: 1 }))
-    expect(first.line).not.toBe(second.line)
-    expect(first.understand).toBe('I missed your birthday.')
+  it('uses their own first sentence as the line when that is all they wrote', () => {
+    const notes = carryNotes(session({ kind: 'tell', openingPick: 'own', ownOpening: 'Mum, I have news' }))
+    expect(notes).toEqual({ line: 'Mum, I have news.', ownWords: true, begin: null })
+  })
+
+  it('uses a chosen first sentence as the line when nothing was written', () => {
+    const notes = carryNotes(session({ kind: 'doctor', openingPick: 1 }))
+    expect(notes).toEqual({ line: TALKS.doctor.openings[1], ownWords: false, begin: null })
+  })
+
+  it('falls back to a stock line only when nothing was written or chosen', () => {
+    expect(carryNotes(session({ kind: null }))).toEqual({ line: TALKS.other.carry[0], ownWords: false, begin: null })
+    expect(carryNotes(session({ kind: 'sorry', understand: '   ', openingPick: 'own', ownOpening: ' ' }))).toEqual({
+      line: TALKS.sorry.carry[0], ownWords: false, begin: null,
+    })
+  })
+
+  it('still varies the stock line between runs', () => {
+    expect(carryNotes(session({ kind: 'sorry', run: 0 })).line).not.toBe(carryNotes(session({ kind: 'sorry', run: 1 })).line)
+  })
+})
+
+describe('tidying their words into a line', () => {
+  it('keeps their words, joined onto one line, with a capital and a full stop', () => {
+    expect(asCarryLine('  i missed your\n\nbirthday  ')).toBe('I missed your birthday.')
+  })
+
+  it('leaves their own punctuation alone', () => {
+    expect(asCarryLine('Can we talk?')).toBe('Can we talk?')
+    expect(asCarryLine('I need this!')).toBe('I need this!')
+    expect(asCarryLine('So…')).toBe('So…')
+    expect(asCarryLine('It matters (to me)')).toBe('It matters (to me)')
+  })
+
+  it('drops quote marks wrapped around the whole thing, as the examples show them', () => {
+    expect(asCarryLine('“The pain is worse at night.”')).toBe('The pain is worse at night.')
+    expect(asCarryLine('"I want to stay"')).toBe('I want to stay.')
+  })
+
+  it('is empty when there is nothing but space or quote marks', () => {
+    expect(asCarryLine('  “ ” ')).toBe('')
   })
 })
