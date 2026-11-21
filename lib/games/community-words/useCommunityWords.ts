@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useCareMode } from '@/components/games/CareMode'
 import type { WordFrequency } from '@/lib/games/wordFrequency'
 import { MAX_SUBMISSION_LENGTH, soundsLikeDistress } from './moderation'
@@ -36,8 +36,16 @@ export function useCommunityWords(game: CommunityWordsGame) {
   const [cloud, setCloud] = useState<CloudState>({ status: 'hidden' })
   const [reflection, setReflection] = useState<Reflection>(NO_REFLECTION)
   const [wordsNeedCare, setWordsNeedCare] = useState(false)
-  const { care: visitNeedsCare, enterCareMode } = useCareMode()
+  const { care: visitNeedsCare, enterCareMode, setAwaitingJudgement } = useCareMode()
   const care = wordsNeedCare || visitNeedsCare
+  /** Nothing that celebrates or keeps the words may appear before they have been heard and judged safe. */
+  const judgedSafe = submitted !== null && !care && !reflection.pending && !reflection.unjudged
+  const awaitingJudgement = submitted !== null && !care && !judgedSafe
+
+  useEffect(() => {
+    setAwaitingJudgement(awaitingJudgement)
+  }, [awaitingJudgement, setAwaitingJudgement])
+  useEffect(() => () => setAwaitingJudgement(false), [setAwaitingJudgement])
   const session = useRef(0)
   // A double click lands before the first click's render, so state alone cannot guard it
   const hasSubmitted = useRef(false)
@@ -131,5 +139,5 @@ export function useCommunityWords(game: CommunityWordsGame) {
     return true
   }
 
-  return { submitted, stored, cloud, reflection, care, submit, reset, noticeDistress }
+  return { submitted, stored, cloud, reflection, care, judgedSafe, submit, reset, noticeDistress }
 }

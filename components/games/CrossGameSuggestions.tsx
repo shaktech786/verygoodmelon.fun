@@ -80,10 +80,11 @@ interface CrossGameSuggestionsProps {
 }
 
 export function CrossGameSuggestions({ currentGameId }: CrossGameSuggestionsProps) {
-  const { care } = useCareMode()
+  const { care, awaitingJudgement } = useCareMode()
   const className = 'mt-12 pt-8 border-t border-card-border'
 
   if (care) return <GentleGames className={className} />
+  if (awaitingJudgement) return null
 
   const suggestions = findGames(RELATED_GAMES[currentGameId] ?? [])
   if (suggestions.length === 0) return null

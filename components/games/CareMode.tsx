@@ -6,13 +6,21 @@ interface CareModeValue {
   /** True once a visitor's words suggest they may be in danger; lasts a few hours, in every tab. */
   care: boolean
   enterCareMode: () => void
+  /** True while words just written have not yet been judged safe; nothing heavy is suggested meanwhile. */
+  awaitingJudgement: boolean
+  setAwaitingJudgement: (awaiting: boolean) => void
 }
 
 const CARE_KEY = 'verygoodmelon:care'
 // Long enough to cover the rest of a hard evening and a new tab opened in it, short enough not to follow someone for days
 export const CARE_LASTS_MS = 4 * 60 * 60 * 1000
 
-const CareModeContext = createContext<CareModeValue>({ care: false, enterCareMode: () => {} })
+const CareModeContext = createContext<CareModeValue>({
+  care: false,
+  enterCareMode: () => {},
+  awaitingJudgement: false,
+  setAwaitingJudgement: () => {},
+})
 
 // Another tab entering care mode updates this one too
 function subscribeToOtherTabs(onChange: () => void): () => void {
@@ -52,6 +60,7 @@ export function CareModeProvider({ children }: { children: ReactNode }) {
   const stored = useSyncExternalStore(subscribeToOtherTabs, readStoredCare, () => false)
   // Held in memory too, for browsers that refuse all storage
   const [entered, setEntered] = useState(false)
+  const [awaitingJudgement, setAwaitingJudgement] = useState(false)
 
   const enterCareMode = () => {
     setEntered(true)
@@ -59,7 +68,7 @@ export function CareModeProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <CareModeContext.Provider value={{ care: entered || stored, enterCareMode }}>
+    <CareModeContext.Provider value={{ care: entered || stored, enterCareMode, awaitingJudgement, setAwaitingJudgement }}>
       {children}
     </CareModeContext.Provider>
   )

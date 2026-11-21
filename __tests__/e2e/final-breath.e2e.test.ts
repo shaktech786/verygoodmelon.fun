@@ -37,6 +37,7 @@ test.describe('The Final Word', () => {
     firstPrompt: 'What do you want the people you love to know?',
     secondPrompt: 'What took you too long to learn?',
     closingButton: 'Blow out the candle',
+    closingNeedsJudgement: true,
     closingLine: /^The candle is out\./,
     othersLine: /It joins what 300 others would say/,
     firstLine: /^Yours are the first words here\.$/,
@@ -204,6 +205,56 @@ test.describe('The Final Word', () => {
     await page.getByRole('button', { name: 'Write another' }).click()
     await expect(page.getByRole('textbox', { name: 'Your final words' })).toBeFocused()
     await expect(page.getByTestId('candle')).toHaveCount(0)
+  })
+
+  test('regression: nothing to keep or celebrate appears before the words have been heard', async ({ page }) => {
+    let answer: (() => void) | null = null
+    await page.route('**/api/last-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
+    await page.route('**/api/last-words/reflect', (route) => {
+      answer = () => void route.fulfill({ json: { reflection: 'Thank you for trusting this page.', care: true } })
+    })
+    await page.goto('/games/final-breath')
+
+    await expect(async () => {
+      await page.getByRole('textbox', { name: 'Your final words' }).fill('I would rather just not have to wake up into any of this again.')
+      await expect(page.getByRole('button', { name: 'Leave these words' })).toBeEnabled({ timeout: 500 })
+    }).toPass()
+    await page.getByRole('button', { name: 'Leave these words' }).click()
+
+    // While the reply is on its way: no candle to blow out, no card to save, no heavy game suggested
+    await expect(page.getByText('Sitting with your words…')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Blow out the candle' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Save image' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Continue your journey' })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: /The Awakening/ })).toHaveCount(0)
+
+    await expect.poll(() => answer !== null).toBe(true)
+    answer!()
+    await expect(page.getByRole('complementary', { name: 'Support' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Blow out the candle' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Save image' })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: /The Awakening/ })).toHaveCount(0)
+  })
+
+  test('the candle and its card come once ordinary words have been heard', async ({ page }) => {
+    let answer: (() => void) | null = null
+    await page.route('**/api/last-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
+    await page.route('**/api/last-words/reflect', (route) => {
+      answer = () => void route.fulfill({ json: { reflection: 'This is about your sister.' } })
+    })
+    await page.goto('/games/final-breath')
+
+    await expect(async () => {
+      await page.getByRole('textbox', { name: 'Your final words' }).fill('Tell my sister I was proud of her.')
+      await expect(page.getByRole('button', { name: 'Leave these words' })).toBeEnabled({ timeout: 500 })
+    }).toPass()
+    await page.getByRole('button', { name: 'Leave these words' }).click()
+    await expect(page.getByRole('button', { name: 'Blow out the candle' })).toHaveCount(0)
+
+    await expect.poll(() => answer !== null).toBe(true)
+    answer!()
+    await page.getByRole('button', { name: 'Blow out the candle' }).click()
+    await expect(page.getByRole('button', { name: 'Save image' })).toBeVisible()
   })
 
   test('regression: the support panel stays for the rest of the visit, and the heading is gentle', async ({ page }) => {

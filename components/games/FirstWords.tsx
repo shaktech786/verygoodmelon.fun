@@ -186,7 +186,7 @@ function GentleExit() {
 
 export default function FirstWords() {
   // Care lasts for the visit, so every later arrival is met the gentle way too
-  const { submitted, stored, cloud, reflection, care, submit, reset, noticeDistress } = useCommunityWords('first-words')
+  const { submitted, stored, cloud, reflection, care, judgedSafe, submit, reset, noticeDistress } = useCommunityWords('first-words')
   const [typedIntention, setTypedIntention] = useState<string | null>(null)
   const [carried, setCarried] = useState<string | null>(null)
   const reduceMotion = useReducedMotion()
@@ -295,7 +295,7 @@ export default function FirstWords() {
                       copiedMessage="Copied. Put it somewhere you will see it tomorrow."
                     />
                   </div>
-                  <MorningCard note={carried} />
+                  {judgedSafe && <MorningCard note={carried} />}
                 </>
               )}
             </div>

@@ -39,6 +39,8 @@ export interface WritingGameConfig {
   /** The button that closes the experience, and the line it leaves the player with. */
   closingButton: string
   closingLine: RegExp
+  /** Whether the closing waits until the words have been heard and judged safe, as a ceremony over them should. */
+  closingNeedsJudgement: boolean
   /** How the thank-you line counts the others whose words are in the cloud. */
   othersLine: RegExp
   firstLine: RegExp
@@ -181,7 +183,7 @@ export function describeWritingGame(config: WritingGameConfig) {
 
       await write(page, config, 'I was here and it mattered.')
       await expect(page.locator('blockquote')).toContainText('I was here and it mattered.')
-      await expect(page.getByRole('button', { name: config.closingButton })).toBeVisible()
+      await expect(page.getByRole('button', { name: config.closingButton })).toHaveCount(config.closingNeedsJudgement ? 0 : 1)
       await expect(page.getByRole('button', { name: config.againLabel })).toBeVisible()
       await expectNoErrorPanel(page)
       await expect(page.locator('main')).not.toContainText(/\bAI\b|generat|powered by/i)

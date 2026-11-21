@@ -145,7 +145,7 @@ function Goodnight({ words, prompt, lineRef }: GoodnightProps) {
 
 export default function LastWords() {
   // Care lasts for the visit, so the flame stays away even for the next words
-  const { submitted, stored, cloud, reflection, care, submit, reset } = useCommunityWords('last-words')
+  const { submitted, stored, cloud, reflection, care, judgedSafe, submit, reset } = useCommunityWords('last-words')
   const [candleOut, setCandleOut] = useState(false)
   const [prompt, setPrompt] = useState('')
   const reduceMotion = useReducedMotion()
@@ -236,7 +236,7 @@ export default function LastWords() {
             <blockquote className="mt-5 text-lg sm:text-xl text-foreground whitespace-pre-wrap break-words leading-relaxed">
               &ldquo;{submitted}&rdquo;
             </blockquote>
-            {candleOut && !care && <Goodnight words={submitted} prompt={prompt} lineRef={goodnightRef} />}
+            {candleOut && judgedSafe && <Goodnight words={submitted} prompt={prompt} lineRef={goodnightRef} />}
           </div>
         )}
       </div>
@@ -279,7 +279,7 @@ export default function LastWords() {
           )}
 
           <div className="text-center space-y-4">
-            {!care && !candleOut && (
+            {judgedSafe && !candleOut && (
               <Button variant="primary" onClick={() => setCandleOut(true)}>
                 Blow out the candle
               </Button>

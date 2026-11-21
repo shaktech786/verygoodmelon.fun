@@ -24,6 +24,7 @@ test.describe('The Awakening', () => {
     firstPrompt: 'Who do you hope is there?',
     secondPrompt: 'What do you notice first?',
     closingButton: 'Wake up',
+    closingNeedsJudgement: false,
     closingLine: /^Good morning$/,
     othersLine: /300 others have stood here and come back/,
     firstLine: /^You are the first to stand here and come back\.$/,
