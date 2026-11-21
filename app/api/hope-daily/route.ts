@@ -1,111 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getWordOfDay } from '@/lib/games/hope-daily/words'
+import { puzzleFor, revealFor } from '@/lib/games/hope-daily/daily'
+import { lettersInPlace, nextLetter } from '@/lib/games/hope-daily/puzzle'
 
-// Helper to get letter states server-side
-function getLetterStates(guess: string, target: string) {
-  const result: Array<{ letter: string; state: 'correct' | 'present' | 'absent' }> = []
-  const targetLetters = target.split('')
-  const guessLetters = guess.split('')
-
-  // Count letter frequencies in target
-  const targetCounts = new Map<string, number>()
-  targetLetters.forEach(letter => {
-    targetCounts.set(letter, (targetCounts.get(letter) || 0) + 1)
-  })
-
-  // First pass: mark correct letters
-  guessLetters.forEach((letter, i) => {
-    if (letter === targetLetters[i]) {
-      result[i] = { letter, state: 'correct' }
-      targetCounts.set(letter, (targetCounts.get(letter) || 0) - 1)
-    } else {
-      result[i] = { letter, state: 'absent' }
-    }
-  })
-
-  // Second pass: mark present letters
-  guessLetters.forEach((letter, i) => {
-    if (result[i].state === 'absent' && targetLetters.includes(letter)) {
-      const count = targetCounts.get(letter) || 0
-      if (count > 0) {
-        result[i] = { letter, state: 'present' }
-        targetCounts.set(letter, count - 1)
-      }
-    }
-  })
-
-  return result
-}
-
+/** Today's puzzle: everything but the word. */
 export async function GET() {
-  const wordData = getWordOfDay()
-
-  // Only send metadata, NOT the actual word
-  return NextResponse.json({
-    wordLength: wordData.word.length,
-    category: wordData.category
-  })
+  return NextResponse.json(puzzleFor(getWordOfDay()))
 }
 
 export async function POST(request: NextRequest) {
-  const { guess } = await request.json()
-  const wordData = getWordOfDay()
+  const body = await request.json().catch(() => null)
+  const entry = getWordOfDay()
+  const guess: unknown = body?.guess
 
-  if (!guess || typeof guess !== 'string') {
-    return NextResponse.json({ error: 'Invalid guess' }, { status: 400 })
+  if (typeof guess !== 'string') {
+    return NextResponse.json({ error: 'Type a word first.' }, { status: 400 })
+  }
+  if (!/^[A-Za-z]*$/.test(guess)) {
+    return NextResponse.json({ error: 'Letters only, please.' }, { status: 400 })
+  }
+  if (guess.length !== entry.word.length) {
+    return NextResponse.json({ error: `Today’s word has ${entry.word.length} letters.` }, { status: 400 })
   }
 
-  const guessUpper = guess.toUpperCase()
-
-  // Validate guess length
-  if (guessUpper.length !== wordData.word.length) {
-    return NextResponse.json({
-      error: `Word must be ${wordData.word.length} letters`
-    }, { status: 400 })
+  const inPlace = lettersInPlace(guess, entry.word)
+  if (guess.toUpperCase() === entry.word) {
+    return NextResponse.json({ isCorrect: true, inPlace, reveal: revealFor(entry) })
   }
 
-  // Validate only letters
-  if (!/^[A-Z]+$/.test(guessUpper)) {
-    return NextResponse.json({
-      error: 'Word must contain only letters'
-    }, { status: 400 })
+  if (body?.wantLetter !== true) {
+    return NextResponse.json({ isCorrect: false, inPlace })
   }
 
-  // Get letter states
-  const letterStates = getLetterStates(guessUpper, wordData.word)
-
-  // Check if correct
-  const isCorrect = guessUpper === wordData.word
-
-  // Build response
-  const response: {
-    letterStates: typeof letterStates
-    isCorrect: boolean
-    word?: string
-    fact?: string
-    category?: string
-  } = {
-    letterStates,
-    isCorrect
-  }
-
-  // Only reveal word and fact if correct
-  if (isCorrect) {
-    response.word = wordData.word
-    response.fact = wordData.fact
-    response.category = wordData.category
-  }
-
-  return NextResponse.json(response)
+  const known: number[] = Array.isArray(body?.known) ? body.known.filter(Number.isInteger) : []
+  const letter = nextLetter(entry.word, [...known, ...inPlace.map(([position]) => position)])
+  return NextResponse.json({ isCorrect: false, inPlace, letter })
 }
 
-// Reveal the word (called when user runs out of guesses)
+/** The word and its good news, for someone who would rather be told. */
 export async function PUT() {
-  const wordData = getWordOfDay()
-
-  return NextResponse.json({
-    word: wordData.word,
-    fact: wordData.fact,
-    category: wordData.category
-  })
+  return NextResponse.json(revealFor(getWordOfDay()))
 }

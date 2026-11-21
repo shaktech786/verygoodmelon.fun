@@ -1,82 +1,57 @@
 import { test, expect, type Page, type Route } from '@playwright/test'
-import { getWordOfDay } from '../../lib/games/hope-daily/words'
+import { readFileSync } from 'fs'
+import path from 'path'
+import { getWordOfDay, wordList } from '../../lib/games/hope-daily/words'
+import { puzzleFor, revealFor } from '../../lib/games/hope-daily/daily'
+import { fallbackCommentary } from '../../lib/games/hope-daily/commentary'
+import { buildLadder, lettersInPlace, nextLetter, storyText } from '../../lib/games/hope-daily/puzzle'
 
 /**
- * The Optimist (Hope Daily): a daily word guess that ends with a hopeful fact.
- * A finished day stays finished; the ending is the fact, a reflection and a way to pass it on.
+ * The Optimist: a true piece of good news with one word missing. The story unfolds a part
+ * at a time, with every guess or on request, then the clue, then letters, until the word is
+ * found or arrives by itself. There is no limit and no losing.
  *
- * The daily word is pinned by answering /api/hope-daily from the test, so every
- * run plays the same puzzle. One test plays against the real routes using the
- * same word list the server reads.
+ * The daily word is pinned by answering /api/hope-daily from the test with a real entry,
+ * so every run plays the same puzzle. One test plays today's word against the real routes.
  */
 
-const WORD = 'SOLAR'
-const FACT = 'The first practical silicon solar cell was demonstrated in 1954.'
-const CATEGORY = 'Energy'
-const CLUE = 'Power that comes from our nearest star'
+const ENTRY = wordList.find(entry => entry.word === 'SOLAR')!
+const PUZZLE = puzzleFor(ENTRY)
+const REVEAL = revealFor(ENTRY)
+const FACT = ENTRY.fact
+const LADDER = buildLadder(PUZZLE.story.length)
+const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
 
-type TileState = 'correct' | 'present' | 'absent'
-
-function score(guess: string, target: string) {
-  const states: TileState[] = guess.split('').map((letter, i) => (letter === target[i] ? 'correct' : 'absent'))
-  const remaining = target.split('').filter((letter, i) => guess[i] !== letter)
-  guess.split('').forEach((letter, i) => {
-    const at = remaining.indexOf(letter)
-    if (states[i] === 'absent' && at !== -1) {
-      states[i] = 'present'
-      remaining.splice(at, 1)
-    }
-  })
-  return guess.split('').map((letter, i) => ({ letter, state: states[i] }))
-}
-
-interface PinnedWord {
+interface Seen {
   guesses: string[]
-  hintRequests: Array<{ hintNumber: number; revealedPositions: number[] }>
+  commentary: number
 }
 
-async function pinDailyWord(page: Page): Promise<PinnedWord> {
-  const seen: PinnedWord = { guesses: [], hintRequests: [] }
+async function pinDailyWord(page: Page): Promise<Seen> {
+  const seen: Seen = { guesses: [], commentary: 0 }
 
   await page.route('**/api/hope-daily', async (route: Route) => {
     const request = route.request()
-    if (request.method() === 'GET') {
-      return route.fulfill({ json: { wordLength: WORD.length, category: CATEGORY } })
-    }
-    if (request.method() === 'PUT') {
-      return route.fulfill({ json: { word: WORD, fact: FACT, category: CATEGORY } })
-    }
-    const guess = String(request.postDataJSON().guess).toUpperCase()
+    if (request.method() === 'GET') return route.fulfill({ json: PUZZLE })
+    if (request.method() === 'PUT') return route.fulfill({ json: REVEAL })
+    const body = request.postDataJSON()
+    const guess = String(body.guess).toUpperCase()
     seen.guesses.push(guess)
-    const isCorrect = guess === WORD
-    return route.fulfill({
-      json: {
-        letterStates: score(guess, WORD),
-        isCorrect,
-        ...(isCorrect ? { word: WORD, fact: FACT, category: CATEGORY } : {}),
-      },
-    })
+    const inPlace = lettersInPlace(guess, ENTRY.word)
+    if (guess === ENTRY.word) return route.fulfill({ json: { isCorrect: true, inPlace, reveal: REVEAL } })
+    const letter = body.wantLetter ? nextLetter(ENTRY.word, [...body.known, ...inPlace.map(([position]) => position)]) : undefined
+    return route.fulfill({ json: { isCorrect: false, inPlace, ...(body.wantLetter ? { letter } : {}) } })
   })
 
-  await page.route('**/api/hope-daily/hint', async (route: Route) => {
-    const body = route.request().postDataJSON()
-    seen.hintRequests.push(body)
-    if (body.hintNumber === 1) {
-      return route.fulfill({ json: { hint: CLUE, revealedLetter: null, hintNumber: 1 } })
-    }
-    const position = [0, 1, 2, 3, 4].find(p => !body.revealedPositions.includes(p)) ?? 0
-    return route.fulfill({
-      json: {
-        hint: `The letter at ${position + 1} is "${WORD[position]}"`,
-        revealedLetter: { position, letter: WORD[position] },
-        hintNumber: body.hintNumber,
-      },
-    })
+  await page.route('**/api/hope-daily/hint', route => {
+    const letter = nextLetter(ENTRY.word, route.request().postDataJSON().known)
+    return route.fulfill(letter ? { json: letter } : { status: 400, json: { error: 'Every letter is already known' } })
   })
 
   await page.route('**/api/hope-daily/commentary', route => {
-    const body = route.request().postDataJSON()
-    return route.fulfill({ json: { commentary: body.isCorrect ? 'Sunny!' : `Thought on guess ${body.guessNumber}.` } })
+    seen.commentary++
+    const { guessNumber } = route.request().postDataJSON()
+    return route.fulfill({ json: { commentary: `A thought about guess ${guessNumber}.` } })
   })
 
   return seen
@@ -87,176 +62,219 @@ async function quietBackground(page: Page) {
   await page.route(/\/api\/(game-events|site-visits)/, route => route.fulfill({ status: 500, json: { error: 'unavailable' } }))
 }
 
+const input = (page: Page) => page.getByRole('textbox', { name: 'Your guess' })
+const status = (page: Page) => page.getByRole('status').first()
+const story = (page: Page) => page.getByTestId('story')
+const ending = (page: Page) => page.getByRole('region', { name: ENTRY.word })
+const secondPart = storyText([PUZZLE.story[1]]).trim()
+
 async function openGame(page: Page) {
   await page.goto('/games/the-silver-lining')
-  await expect(page.getByRole('button', { name: 'Q', exact: true })).toBeVisible()
+  await expect(input(page)).toBeVisible()
 }
 
-function row(page: Page, index: number) {
-  return page.getByRole('grid', { name: "Today's guesses" }).getByRole('row').nth(index)
+async function guess(page: Page, word: string) {
+  await input(page).fill(word)
+  await input(page).press('Enter')
 }
 
-async function typeGuess(page: Page, guess: string) {
-  await page.keyboard.type(guess)
-  await page.keyboard.press('Enter')
-}
-
-const factCard = (page: Page) => page.getByRole('region', { name: 'Educational fact' })
-const ending = (page: Page) => page.getByRole('region', { name: /You found it|Today's word/ })
-const keyboardGone = async (page: Page) => {
-  await expect(page.getByRole('button', { name: 'Q', exact: true })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /hint/i })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Start over' })).toHaveCount(0)
+async function expectFinished(page: Page) {
+  await expect(page.getByText(FACT.slice(0, 30))).toBeVisible()
+  await expect(page.getByRole('link', { name: /en\.wikipedia\.org/ })).toHaveAttribute('href', ENTRY.source)
+  await expect(page.getByText(REVEAL.reflection)).toBeVisible()
+  await expect(page.getByText("That is today's puzzle, complete.")).toBeVisible()
+  await expect(input(page)).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Read on|Show a letter|Start over/ })).toHaveCount(0)
 }
 
 test.beforeEach(async ({ page }) => {
   await quietBackground(page)
 })
 
-test('a first-time player reads the theme and wins on the first guess', async ({ page }) => {
+test('a first-time player reads the first part of the good news and finds the word in one guess', async ({ page }) => {
   await pinDailyWord(page)
   await openGame(page)
 
-  await expect(page.getByText("Today's theme:")).toContainText(`${CATEGORY} · 5 letters`)
-  await expect(page.getByText("Guess today's 5-letter word in 6 tries; any letters count.")).toBeVisible()
+  await expect(page.getByText('Name the missing word, or just read on.')).toBeVisible()
+  await expect(story(page)).toContainText('The first practical silicon')
+  await expect(story(page)).not.toContainText(secondPart)
+  await expect(page.getByText('(missing word)')).toBeAttached()
 
-  await typeGuess(page, 'solar')
+  await guess(page, 'solar')
 
-  await expect(page.getByRole('gridcell', { name: 'S - correct' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'You found it' })).toBeFocused()
-  await expect(ending(page)).toContainText(WORD)
-  await expect(factCard(page)).toContainText(FACT)
-  await expect(ending(page)).toContainText('Every light powered by sun or wind is a small vote for tomorrow.')
-  await expect(page.getByText("That is today's puzzle, complete.")).toBeVisible()
-  // Only the played row stays on the finished board.
-  await expect(page.getByRole('gridcell', { name: 'empty' })).toHaveCount(0)
-  await keyboardGone(page)
+  await expect(page.getByRole('heading', { name: 'SOLAR' })).toBeFocused()
+  await expect(ending(page)).toContainText('You found it')
+  await expect(page.getByTestId('good-news')).toHaveText(FACT)
+  await expect(page.getByTestId('good-news').locator('strong')).toHaveText('solar')
+  await expectFinished(page)
 })
 
-test('the good news can be passed on from the ending', async ({ page, context }) => {
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+test('a wrong guess is summed up in the words the page uses, and the story unfolds', async ({ page }) => {
   await pinDailyWord(page)
   await openGame(page)
-  await typeGuess(page, 'solar')
 
-  await page.getByRole('button', { name: 'Pass the good news on' }).click()
-  await expect(page.getByText('Copied. Thank you for passing it on.')).toBeVisible()
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(FACT)
+  await guess(page, 'SOLID')
+  await expect(status(page)).toHaveText('SOLID is not today’s word. Letter 1 is S, letter 2 is O and letter 3 is L. The story unfolds a little more.')
+  await expect(page.getByText('Known so far: letter 1 is S, letter 2 is O, letter 3 is L.')).toBeAttached()
+  await expect(page.getByTestId('word-slots')).toContainText('SOL')
+  await expect(story(page)).toContainText(secondPart)
+  await expect(page.getByText('A thought about guess 1.')).toBeVisible()
+  await expect(page.getByText('Tried: SOLID')).toBeVisible()
+
+  await guess(page, 'SOLID')
+  await expect(status(page)).toHaveText('You tried SOLID already.')
 })
 
-test('the line under the board answers the newest guess, never an older one that arrives late', async ({ page }) => {
-  await pinDailyWord(page)
-  await page.route('**/api/hope-daily/commentary', async route => {
-    const { guessNumber } = route.request().postDataJSON()
-    if (guessNumber === 1) await new Promise(resolve => setTimeout(resolve, 1500))
-    return route.fulfill({ json: { commentary: `About guess ${guessNumber}.` } })
-  })
-  await openGame(page)
-
-  await typeGuess(page, 'TRAIN')
-  await expect(row(page, 0).getByRole('gridcell').first()).toHaveAttribute('aria-label', / - /)
-  await typeGuess(page, 'HOUSE')
-  await expect(page.getByText('About guess 2.')).toBeVisible()
-  await page.waitForTimeout(2000)
-  await expect(page.getByText('About guess 1.')).toHaveCount(0)
-  await expect(page.getByText('About guess 2.')).toBeVisible()
-})
-
-test('colours each letter and wins on the sixth and last guess using the on-screen keyboard', async ({ page }) => {
+test('reading on unfolds the story, then the clue, then letters, until the word arrives by itself', async ({ page }) => {
   const seen = await pinDailyWord(page)
   await openGame(page)
 
-  const misses = ['TRAIN', 'HOUSE', 'PLANT', 'CORAL', 'POLAR']
-  for (const [index, guess] of misses.entries()) {
-    for (const letter of guess) await page.getByRole('button', { name: letter, exact: true }).click()
-    await page.getByRole('button', { name: 'ENTER' }).click()
-    await expect(row(page, index).getByRole('gridcell').first()).toHaveAttribute('aria-label', / - /)
+  for (const step of LADDER.slice(1)) {
+    await page.getByRole('button', { name: 'Read on' }).click()
+    await expect(status(page)).toHaveText(step.kind === 'clue' ? 'The clue is now showing.' : 'The story unfolds a little more.')
   }
-  await expect(page.getByText('Thought on guess 5.')).toBeVisible()
+  await expect(page.getByText(`Clue: ${ENTRY.clue}`)).toBeVisible()
+  await expect(story(page)).toContainText(storyText([PUZZLE.story[PUZZLE.story.length - 1]]).trim())
+  await expect(page.getByText(/still folded/)).toHaveCount(0)
 
-  await expect(row(page, 0).getByRole('gridcell')).toHaveText(['T', 'R', 'A', 'I', 'N'])
-  await expect(page.getByRole('gridcell', { name: 'A - correct' }).first()).toBeVisible()
-  await expect(page.getByRole('gridcell', { name: 'R - present' }).first()).toBeVisible()
-  await expect(page.getByRole('gridcell', { name: 'T - absent' }).first()).toBeVisible()
-  // A spent letter is struck through, so it never depends on colour alone.
-  await expect(page.getByRole('button', { name: 'T', exact: true })).toHaveClass(/line-through/)
-
-  // A tapped key keeps focus, and a physical Enter must submit rather than press it again.
-  for (const letter of WORD) await page.getByRole('button', { name: letter, exact: true }).click()
-  await page.keyboard.press('Enter')
-
-  await expect(factCard(page)).toContainText(FACT)
-  expect(seen.guesses).toEqual(['TRAIN', 'HOUSE', 'PLANT', 'CORAL', 'POLAR', 'SOLAR'])
-})
-
-test('losing reveals the word and the fact kindly, and survives a reload', async ({ page }) => {
-  await pinDailyWord(page)
-  await openGame(page)
-
-  for (const [index, guess] of ['TRAIN', 'HOUSE', 'PLANT', 'CORAL', 'POLAR', 'MOLAR'].entries()) {
-    await typeGuess(page, guess)
-    await expect(row(page, index).getByRole('gridcell').first()).toHaveAttribute('aria-label', / - /)
+  for (const [position, letter] of [...ENTRY.word].entries()) {
+    if (position === ENTRY.word.length - 1) break
+    await page.getByRole('button', { name: 'Show a letter' }).click()
+    await expect(status(page)).toHaveText(`Letter ${position + 1} is ${letter}.`)
   }
+  await page.getByRole('button', { name: 'Show a letter' }).click()
 
-  await expect(page.getByRole('heading', { name: "Today's word" })).toBeFocused()
-  await expect(factCard(page)).toContainText(WORD)
-  await expect(factCard(page)).toContainText(FACT)
-  await expect(page.getByText('Not every word gives itself up, and the good news is true either way.', { exact: false })).toBeVisible()
-  await keyboardGone(page)
-
-  await page.reload()
-  await expect(factCard(page)).toContainText(WORD)
-  await expect(page.getByRole('gridcell', { name: 'M - absent' })).toBeVisible()
-  await keyboardGone(page)
-})
-
-test('if the word cannot be fetched at the end, it arrives on the next visit', async ({ page }) => {
-  await pinDailyWord(page)
-  let failReveal = true
-  await page.route('**/api/hope-daily', async route => {
-    if (route.request().method() !== 'PUT' || !failReveal) return route.fallback()
-    return route.fulfill({ status: 500, body: '' })
-  })
-  await openGame(page)
-  for (const [index, guess] of ['TRAIN', 'HOUSE', 'PLANT', 'CORAL', 'POLAR', 'MOLAR'].entries()) {
-    await typeGuess(page, guess)
-    await expect(row(page, index).getByRole('gridcell').first()).toHaveAttribute('aria-label', / - /)
-  }
-  await expect(page.getByText('The word is on its way.')).toBeVisible()
-
-  failReveal = false
-  await page.reload()
-  await expect(factCard(page)).toContainText(FACT)
-})
-
-test('short guesses are explained without using up a try', async ({ page }) => {
-  const seen = await pinDailyWord(page)
-  await openGame(page)
-
-  await typeGuess(page, 'sun')
-  await expect(page.getByText('Not enough letters yet. The word has 5.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'SOLAR' })).toBeFocused()
+  await expect(ending(page)).toContainText('Here is today’s word')
+  await expectFinished(page)
   expect(seen.guesses).toEqual([])
-
-  // Numbers and symbols never reach the board.
-  await page.keyboard.type('12!')
-  await expect(row(page, 0).getByRole('gridcell').filter({ hasText: /\S/ })).toHaveText(['S', 'U', 'N'])
-
-  await page.keyboard.press('Backspace')
-  await expect(row(page, 0).getByRole('gridcell').filter({ hasText: /\S/ })).toHaveText(['S', 'U'])
 })
 
-test('a guess the server rejects shows its reason and the row stays editable', async ({ page }) => {
+test('once the story is all unfolded, a wrong guess also brings a letter', async ({ page }) => {
   await pinDailyWord(page)
-  await page.route('**/api/hope-daily', async route => {
-    if (route.request().method() !== 'POST') return route.fallback()
-    return route.fulfill({ status: 400, json: { error: 'Word must contain only letters' } })
+  await openGame(page)
+  for (let step = 1; step < LADDER.length; step++) await page.getByRole('button', { name: 'Read on' }).click()
+
+  await guess(page, 'QUIET')
+  await expect(status(page)).toHaveText('QUIET is not today’s word. Letter 1 is S.')
+})
+
+test('someone who would rather be told is asked once, can change their mind, and still gets the good news', async ({ page }) => {
+  await pinDailyWord(page)
+  await openGame(page)
+  await expect(page.getByRole('button', { name: 'Tell me the word' })).toHaveCount(0)
+  for (let step = 1; step < LADDER.length; step++) await page.getByRole('button', { name: 'Read on' }).click()
+
+  await page.getByRole('button', { name: 'Tell me the word' }).click()
+  await expect(page.getByText("This ends today's puzzle and shows the word with its good news.")).toBeVisible()
+  await page.getByRole('button', { name: 'Keep playing' }).click()
+  await expect(input(page)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Tell me the word' }).click()
+  await page.getByRole('button', { name: 'Yes, show me' }).click()
+  await expect(page.getByRole('heading', { name: 'SOLAR' })).toBeFocused()
+  await expectFinished(page)
+
+  await page.reload()
+  await expectFinished(page)
+})
+
+test('reloading mid-game keeps every guess, letter and unfolded part, and there is no starting over', async ({ page }) => {
+  await pinDailyWord(page)
+  await openGame(page)
+  await guess(page, 'SOLID')
+  await expect(story(page)).toContainText(secondPart)
+  await page.getByRole('button', { name: 'Read on' }).click()
+  await expect(page.getByText(`Clue: ${ENTRY.clue}`)).toBeVisible()
+
+  await page.reload()
+  await expect(page.getByText('Tried: SOLID')).toBeVisible()
+  await expect(page.getByText(`Clue: ${ENTRY.clue}`)).toBeVisible()
+  await expect(page.getByTestId('word-slots')).toContainText('SOL')
+  await expect(page.getByRole('button', { name: /start over/i })).toHaveCount(0)
+})
+
+test('a player mid-way through the earlier letter-grid version keeps their place', async ({ page }) => {
+  await pinDailyWord(page)
+  await page.addInitScript(today => {
+    if (sessionStorage.getItem('seeded')) return
+    sessionStorage.setItem('seeded', '1')
+    localStorage.setItem('hope-daily-state', JSON.stringify({
+      date: today,
+      guesses: [['S', 'H', 'I', 'N', 'E'].map((letter, i) => ({ letter, state: i === 0 ? 'correct' : 'absent' }))],
+      gameState: 'playing',
+      revealedData: null,
+      hintsUsed: 2,
+      currentHint: 'Power from our nearest star',
+      revealedLetters: [[4, 'R']],
+    }))
+  }, new Date().toISOString().slice(0, 10))
+  await openGame(page)
+
+  await expect(page.getByText('Tried: SHINE')).toBeVisible()
+  await expect(page.getByText('Known so far: letter 1 is S, letter 5 is R.')).toBeAttached()
+  await expect(page.getByText(`Clue: ${ENTRY.clue}`)).toBeVisible()
+
+  await page.reload()
+  await expect(page.getByText('Tried: SHINE')).toBeVisible()
+})
+
+test('a player who finished the earlier version today sees the finished good news', async ({ page }) => {
+  await pinDailyWord(page)
+  await page.addInitScript(today => {
+    localStorage.setItem('hope-daily-state', JSON.stringify({
+      date: today,
+      guesses: [],
+      gameState: 'lost',
+      revealedData: { word: 'SOLAR', fact: 'old', category: 'Energy' },
+    }))
+  }, new Date().toISOString().slice(0, 10))
+  await page.goto('/games/the-silver-lining')
+  await expectFinished(page)
+})
+
+test('a saved game from an earlier day is set aside for the new word', async ({ page }) => {
+  await pinDailyWord(page)
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('seeded')) return
+    sessionStorage.setItem('seeded', '1')
+    localStorage.setItem('hope-daily-state', JSON.stringify({
+      version: 2, date: '2001-01-01', guesses: ['OLDER'], known: [], unfolded: 3, status: 'shown', reveal: null,
+    }))
   })
   await openGame(page)
 
-  await typeGuess(page, 'solar')
-  await expect(page.getByText('Word must contain only letters')).toBeVisible()
-  await expect(row(page, 0).getByRole('gridcell')).toHaveText(['S', 'O', 'L', 'A', 'R'])
-  await expect(row(page, 0).getByRole('gridcell').first()).toHaveAttribute('aria-label', 'S')
+  await expect(page.getByText('Tried:')).toHaveCount(0)
+  await expect(story(page)).not.toContainText(secondPart)
+})
+
+test('typing while focus is on a link never fills the game, and Enter belongs to whatever has focus', async ({ page }) => {
+  const seen = await pinDailyWord(page)
+  await openGame(page)
+
+  await page.getByRole('link', { name: /Back Home/ }).focus()
+  await page.keyboard.type('solar')
+  await expect(input(page)).toHaveValue('')
+
+  await page.getByRole('button', { name: 'Read on' }).focus()
+  await page.keyboard.press('Enter')
+  await expect(status(page)).toHaveText('The story unfolds a little more.')
+  expect(seen.guesses).toEqual([])
+  await expect(page).toHaveURL(/the-silver-lining/)
+})
+
+test('short guesses and other characters are explained or kept out without being sent', async ({ page }) => {
+  const seen = await pinDailyWord(page)
+  await openGame(page)
+
+  await guess(page, 'sun')
+  await expect(status(page)).toHaveText('Today’s word has 5 letters.')
+  await input(page).fill('so1ar!')
+  await expect(input(page)).toHaveValue('SOAR')
+  await input(page).fill('')
+  await input(page).press('Enter')
+  await expect(status(page)).toHaveText('Type a word first.')
+  expect(seen.guesses).toEqual([])
 })
 
 test('a guess that cannot reach the server asks to try again without revealing why', async ({ page }) => {
@@ -269,96 +287,73 @@ test('a guess that cannot reach the server asks to try again without revealing w
   })
   await openGame(page)
 
-  await typeGuess(page, 'solar')
-  await expect(page.getByText('That guess did not go through. Give it another try in a moment.')).toBeVisible()
+  await guess(page, 'solar')
+  await expect(status(page)).toHaveText('That guess did not go through. Give it another try in a moment.')
+  await expect(input(page)).toHaveValue('SOLAR')
 
-  await page.keyboard.press('Enter')
-  await expect(factCard(page)).toContainText(FACT)
+  await input(page).press('Enter')
+  await expect(page.getByTestId('good-news')).toHaveText(FACT)
   expect(seen.guesses).toEqual(['SOLAR'])
 })
 
-test('hints give a clue first, then letters the player has not found, and stop at three', async ({ page }) => {
-  const seen = await pinDailyWord(page)
-  await openGame(page)
-
-  await typeGuess(page, 'SHINE')
-  await expect(page.getByRole('gridcell', { name: 'S - correct' })).toBeVisible()
-
-  await page.getByRole('button', { name: 'Get hint (3 remaining)' }).click()
-  await expect(page.getByText(CLUE)).toBeVisible()
-
-  await page.getByRole('button', { name: 'Get hint (2 remaining)' }).click()
-  await expect(page.getByText('letter 2 is O')).toBeVisible()
-  // The clue stays on screen once letters start being revealed.
-  await expect(page.getByText(CLUE)).toBeVisible()
-
-  await page.getByRole('button', { name: 'Get hint (1 remaining)' }).click()
-  await expect(page.getByText('letter 3 is L')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Get hint (0 remaining)' })).toBeDisabled()
-
-  // The S found by the guess is never spent on a hint.
-  expect(seen.hintRequests.map(r => r.revealedPositions.sort())).toEqual([[0], [0], [0, 1]])
-
-  await page.reload()
-  await expect(page.getByText(CLUE)).toBeVisible()
-  await expect(page.getByText('letter 3 is L')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Get hint (0 remaining)' })).toBeDisabled()
-})
-
-test('an unavailable hint is not counted and can be asked for again', async ({ page }) => {
+test('an unavailable letter is not counted and can be asked for again', async ({ page }) => {
   await pinDailyWord(page)
   let failNext = true
   await page.route('**/api/hope-daily/hint', async route => {
     if (!failNext) return route.fallback()
     failNext = false
-    return route.fulfill({ status: 500, json: { error: 'Failed to generate hint' } })
+    return route.fulfill({ status: 500, json: {} })
+  })
+  await openGame(page)
+  for (let step = 1; step < LADDER.length; step++) await page.getByRole('button', { name: 'Read on' }).click()
+
+  await page.getByRole('button', { name: 'Show a letter' }).click()
+  await expect(status(page)).toHaveText('No letter just now. Try again in a moment.')
+  await page.getByRole('button', { name: 'Show a letter' }).click()
+  await expect(status(page)).toHaveText('Letter 1 is S.')
+})
+
+test('the line after a guess answers the newest guess, and only the first three are answered live', async ({ page }) => {
+  const seen = await pinDailyWord(page)
+  await page.route('**/api/hope-daily/commentary', async route => {
+    seen.commentary++
+    const { guessNumber } = route.request().postDataJSON()
+    if (guessNumber === 1) await new Promise(resolve => setTimeout(resolve, 1500))
+    return route.fulfill({ json: { commentary: `About guess ${guessNumber}.` } })
   })
   await openGame(page)
 
-  await page.getByRole('button', { name: 'Get hint (3 remaining)' }).click()
-  await expect(page.getByText('No hint just now. Try again in a moment.')).toBeVisible()
+  await guess(page, 'TRAIN')
+  await expect(page.getByText('Tried: TRAIN')).toBeVisible()
+  await guess(page, 'HOUSE')
+  await expect(page.getByText('About guess 2.')).toBeVisible()
+  await page.waitForTimeout(2000)
+  await expect(page.getByText('About guess 1.')).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Get hint (3 remaining)' }).click()
-  await expect(page.getByText(CLUE)).toBeVisible()
+  for (const word of ['PLANT', 'CORAL', 'QUIET']) {
+    await guess(page, word)
+    await expect(page.getByText(new RegExp(`Tried: .*${word}`))).toBeVisible()
+  }
+  expect(seen.commentary).toBe(3)
+  await expect(page.getByText(fallbackCommentary('QUIET', 5))).toBeVisible()
 })
 
-test('reloading mid-game keeps the guesses, and Start Over clears them', async ({ page }) => {
+test('if the good news cannot be fetched at the end, it arrives on the next visit', async ({ page }) => {
   await pinDailyWord(page)
-  await openGame(page)
-
-  await typeGuess(page, 'TRAIN')
-  await expect(row(page, 0).getByRole('gridcell').first()).toHaveAttribute('aria-label', 'T - absent')
-  await typeGuess(page, 'HOUSE')
-  await expect(row(page, 1).getByRole('gridcell').first()).toHaveAttribute('aria-label', 'H - absent')
-
-  await page.reload()
-  await expect(row(page, 0).getByRole('gridcell')).toHaveText(['T', 'R', 'A', 'I', 'N'])
-  await expect(row(page, 1).getByRole('gridcell')).toHaveText(['H', 'O', 'U', 'S', 'E'])
-  await expect(page.getByRole('button', { name: 'R', exact: true })).toHaveClass(/bg-warm/)
-
-  await page.getByRole('button', { name: 'Start over' }).click()
-  await expect(page.getByRole('gridcell', { name: 'empty' })).toHaveCount(30)
-  await page.reload()
-  await expect(page.getByRole('gridcell', { name: 'empty' })).toHaveCount(30)
-})
-
-test('a saved game from an earlier day is set aside for the new word', async ({ page }) => {
-  await pinDailyWord(page)
-  await page.addInitScript(() => {
-    if (sessionStorage.getItem('seeded')) return
-    sessionStorage.setItem('seeded', '1')
-    localStorage.setItem('hope-daily-state', JSON.stringify({
-      date: '2001-01-01',
-      guesses: [[{ letter: 'O', state: 'absent' }, { letter: 'L', state: 'absent' }, { letter: 'D', state: 'absent' }, { letter: 'E', state: 'absent' }, { letter: 'R', state: 'absent' }]],
-      gameState: 'lost',
-      revealedData: { word: 'OLDER', fact: 'Old fact', category: 'Peace' },
-    }))
+  let failReveal = true
+  await page.route('**/api/hope-daily', async route => {
+    if (route.request().method() !== 'PUT' || !failReveal) return route.fallback()
+    return route.fulfill({ status: 500, body: '' })
   })
   await openGame(page)
+  for (let step = 1; step < LADDER.length; step++) await page.getByRole('button', { name: 'Read on' }).click()
+  await page.getByRole('button', { name: 'Tell me the word' }).click()
+  await page.getByRole('button', { name: 'Yes, show me' }).click()
+  await expect(page.getByText('The good news is on its way.')).toBeVisible()
 
-  await expect(page.getByRole('gridcell', { name: 'empty' })).toHaveCount(30)
-  await expect(page.getByRole('button', { name: 'Q', exact: true })).toBeEnabled()
-  await expect(page.getByText('Old fact')).toHaveCount(0)
+  failReveal = false
+  await page.reload()
+  await expectFinished(page)
 })
 
 test('when the puzzle cannot load, a calm retry brings it back', async ({ page }) => {
@@ -370,47 +365,105 @@ test('when the puzzle cannot load, a calm retry brings it back', async ({ page }
   })
   await page.goto('/games/the-silver-lining')
 
-  await expect(page.getByText("Today's word is taking a moment to arrive.")).toBeVisible()
+  await expect(page.getByText("Today's good news is taking a moment to arrive.")).toBeVisible()
   failing = false
   await page.getByRole('button', { name: 'Try again' }).click()
-  await expect(page.getByRole('button', { name: 'Q', exact: true })).toBeVisible()
+  await expect(input(page)).toBeVisible()
 })
 
-test('plays today\'s real word against the real routes and a returning player sees the finished game', async ({ page }) => {
+test('the good news, not a score, can be passed on with its source', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await pinDailyWord(page)
+  await openGame(page)
+  await guess(page, 'solar')
+
+  await page.getByRole('button', { name: 'Pass the good news on' }).click()
+  await expect(page.getByText('Copied. Thank you for passing it on.')).toBeVisible()
+  const copied = await page.evaluate(() => navigator.clipboard.readText())
+  expect(copied).toContain(FACT)
+  expect(copied).toContain(ENTRY.source)
+  expect(copied).not.toMatch(/guess|tries|\d\/\d/i)
+})
+
+test('with reduced motion the good news appears without animation', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await pinDailyWord(page)
+  await openGame(page)
+  await guess(page, 'solar')
+  await expect(page.getByTestId('good-news')).toHaveText(FACT)
+  await expect(page.getByTestId('good-news').locator('.animate-fade')).toHaveCount(0)
+})
+
+test("plays today's real word against the real routes, and a returning player sees the finished good news", async ({ page }) => {
   await page.route('**/api/hope-daily/commentary', route => route.fulfill({ json: { commentary: 'Lovely.' } }))
   const today = getWordOfDay()
+  const todayReveal = revealFor(today)
 
   await openGame(page)
-  await expect(page.getByText("Today's theme:")).toContainText(`${today.category} · ${today.word.length} letters`)
+  await expect(page.getByRole('heading', { name: `Today's good news · ${today.category}` })).toBeVisible()
+  await guess(page, 'Q'.repeat(today.word.length))
+  await expect(status(page)).toContainText('is not today’s word.')
 
-  await page.getByRole('button', { name: 'Get hint (3 remaining)' }).click()
-  await expect(page.getByText(today.clue)).toBeVisible()
-
-  await typeGuess(page, today.word)
-  await expect(factCard(page)).toContainText(today.fact)
+  await guess(page, today.word)
+  await expect(page.getByTestId('good-news')).toHaveText(today.fact)
+  await expect(page.getByText(todayReveal.reflection)).toBeVisible()
 
   await page.reload()
-  await expect(factCard(page)).toContainText(today.fact)
-  await expect(page.getByText("That is today's puzzle, complete.")).toBeVisible()
-  await keyboardGone(page)
+  await expect(page.getByTestId('good-news')).toHaveText(today.fact)
+  await expect(input(page)).toHaveCount(0)
 })
 
-test.describe('on a phone', () => {
-  test.use({ viewport: { width: 390, height: 844 } })
+async function axeViolations(page: Page) {
+  await page.waitForTimeout(600)
+  await page.addScriptTag({ content: AXE_SOURCE })
+  return page.evaluate(async () => {
+    const axe = (window as unknown as { axe: { run: (context: unknown, options: unknown) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> } }).axe
+    const result = await axe.run({ include: [['main']] }, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] } })
+    return result.violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`)
+  })
+}
 
-  test('the longest words fit without sideways scrolling and the keys are easy to tap', async ({ page }) => {
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`playing and the ending have no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+    await pinDailyWord(page)
+    await openGame(page)
+    await guess(page, 'SOLID')
+    for (let step = 2; step < LADDER.length; step++) await page.getByRole('button', { name: 'Read on' }).click()
+    await page.getByRole('button', { name: 'Tell me the word' }).click()
+    expect(await axeViolations(page)).toEqual([])
+
+    await guess(page, 'solar')
+    await expect(page.getByTestId('good-news')).toHaveText(FACT)
+    expect(await axeViolations(page)).toEqual([])
+  })
+}
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+  test('the instructions, the story and the guess box are all on the first screen', async ({ page }) => {
+    await pinDailyWord(page)
+    await openGame(page)
+
+    for (const locator of [page.getByText('Name the missing word, or just read on.'), story(page), input(page), page.getByRole('button', { name: 'Try it' })]) {
+      const box = await locator.boundingBox()
+      expect(box && box.y + box.height).toBeLessThanOrEqual(844)
+    }
+  })
+
+  test('the longest word fits without sideways scrolling and the controls are easy to tap', async ({ page }) => {
     await page.route('**/api/hope-daily', route =>
-      route.request().method() === 'GET'
-        ? route.fulfill({ json: { wordLength: 12, category: 'Health' } })
-        : route.fallback()
+      route.request().method() === 'GET' ? route.fulfill({ json: { ...PUZZLE, wordLength: 12 } }) : route.fallback()
     )
     await openGame(page)
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
-    const tile = await row(page, 0).getByRole('gridcell').last().boundingBox()
-    expect(tile && tile.x + tile.width).toBeLessThanOrEqual(390)
-    const key = await page.getByRole('button', { name: 'Q', exact: true }).boundingBox()
-    expect(key?.height).toBeGreaterThanOrEqual(44)
-    expect(key?.width).toBeGreaterThanOrEqual(28)
+    const slots = await page.getByTestId('word-slots').boundingBox()
+    expect(slots && slots.x + slots.width).toBeLessThanOrEqual(390)
+    for (const name of ['Try it', 'Read on']) {
+      const button = await page.getByRole('button', { name }).boundingBox()
+      expect(button?.height).toBeGreaterThanOrEqual(44)
+    }
   })
 })

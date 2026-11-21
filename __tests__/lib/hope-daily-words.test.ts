@@ -7,6 +7,7 @@ import {
   getWordOfDay,
   wordList,
 } from '@/lib/games/hope-daily/words'
+import { REFLECTIONS } from '@/lib/games/hope-daily/reflections'
 
 const DAY = 24 * 60 * 60 * 1000
 const START = Date.UTC(2025, 0, 1)
@@ -41,6 +42,20 @@ describe('The Optimist word list', () => {
     for (const entry of wordList) {
       expect(entry.clue.toUpperCase(), entry.word).not.toContain(entry.word)
     }
+  })
+
+  it('closes every word with a reflection of its own that adds no figures of its own', () => {
+    const texts = new Set<string>()
+    for (const entry of wordList) {
+      const reflection = REFLECTIONS[entry.word]
+      expect(reflection, entry.word).toBeDefined()
+      expect(['progress', 'wonder'], entry.word).toContain(reflection.kind)
+      expect(reflection.text, entry.word).not.toMatch(/\d/)
+      expect(reflection.text.length, entry.word).toBeLessThanOrEqual(150)
+      texts.add(reflection.text)
+    }
+    expect(texts.size).toBe(wordList.length)
+    expect(Object.keys(REFLECTIONS).sort()).toEqual(wordList.map(entry => entry.word).sort())
   })
 
   it('is long enough to run for most of a year before any word comes back', () => {

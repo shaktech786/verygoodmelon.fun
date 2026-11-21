@@ -1,99 +1,39 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
-// Mock the word-of-day module
 vi.mock('@/lib/games/hope-daily/words', () => ({
   getWordOfDay: () => ({
     word: 'HAPPY',
     clue: 'How a good day feels',
     category: 'Health',
     fact: 'Happiness is contagious.',
+    source: 'https://example.org',
   }),
 }))
 
 import { POST } from '@/app/api/hope-daily/hint/route'
 
+const ask = async (body: unknown) => {
+  const response = await POST(new Request('http://localhost/api/hope-daily/hint', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json' },
+  }) as never)
+  return { status: response.status, data: await response.json() }
+}
+
 describe('POST /api/hope-daily/hint', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  it('shows the first letter the player does not know yet', async () => {
+    expect(await ask({ known: [] })).toEqual({ status: 200, data: { position: 0, letter: 'H' } })
+    expect(await ask({ known: [0, 1, 3] })).toEqual({ status: 200, data: { position: 2, letter: 'P' } })
   })
 
-  it('returns thematic hint for hintNumber 1', async () => {
-    const request = new Request('http://localhost/api/hope-daily/hint', {
-      method: 'POST',
-      body: JSON.stringify({ hintNumber: 1 }),
-      headers: { 'Content-Type': 'application/json' },
-    })
-
-    const response = await POST(request as never)
-    const data = await response.json()
-
-    expect(response.status).toBe(200)
-    expect(data.hint).toBe('How a good day feels')
-    expect(data.hintNumber).toBe(1)
+  it('has nothing more to give once every letter is known', async () => {
+    expect((await ask({ known: [0, 1, 2, 3, 4] })).status).toBe(400)
   })
 
-  it('returns letter reveal for hintNumber 2', async () => {
-    const request = new Request('http://localhost/api/hope-daily/hint', {
-      method: 'POST',
-      body: JSON.stringify({ hintNumber: 2, revealedPositions: [] }),
-      headers: { 'Content-Type': 'application/json' },
-    })
-
-    const response = await POST(request as never)
-    const data = await response.json()
-
-    expect(response.status).toBe(200)
-    expect(data.revealedLetter).toBeDefined()
-    if (data.revealedLetter) {
-      expect(data.revealedLetter.position).toBeGreaterThanOrEqual(0)
-      expect(data.revealedLetter.letter).toHaveLength(1)
-    }
-  })
-
-  it('returns letter reveal for hintNumber 3', async () => {
-    const request = new Request('http://localhost/api/hope-daily/hint', {
-      method: 'POST',
-      body: JSON.stringify({ hintNumber: 3, revealedPositions: [0] }),
-      headers: { 'Content-Type': 'application/json' },
-    })
-
-    const response = await POST(request as never)
-    const data = await response.json()
-
-    expect(response.status).toBe(200)
-    expect(data.hintNumber).toBe(3)
-  })
-
-  it('returns 400 for invalid hintNumber', async () => {
-    const request = new Request('http://localhost/api/hope-daily/hint', {
-      method: 'POST',
-      body: JSON.stringify({ hintNumber: 5 }),
-      headers: { 'Content-Type': 'application/json' },
-    })
-
-    const response = await POST(request as never)
-    expect(response.status).toBe(400)
-  })
-
-  it('returns 400 for hintNumber 0', async () => {
-    const request = new Request('http://localhost/api/hope-daily/hint', {
-      method: 'POST',
-      body: JSON.stringify({ hintNumber: 0 }),
-      headers: { 'Content-Type': 'application/json' },
-    })
-
-    const response = await POST(request as never)
-    expect(response.status).toBe(400)
-  })
-
-  it('returns 400 for missing hintNumber', async () => {
-    const request = new Request('http://localhost/api/hope-daily/hint', {
-      method: 'POST',
-      body: JSON.stringify({}),
-      headers: { 'Content-Type': 'application/json' },
-    })
-
-    const response = await POST(request as never)
-    expect(response.status).toBe(400)
+  it('turns away a request that does not list known places', async () => {
+    expect((await ask({})).status).toBe(400)
+    expect((await ask({ known: ['a'] })).status).toBe(400)
+    expect((await ask({ known: [9] })).status).toBe(400)
   })
 })

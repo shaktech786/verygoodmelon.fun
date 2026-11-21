@@ -5,7 +5,7 @@ import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 
 export const metadata: Metadata = {
   title: 'The Optimist | VeryGoodMelon.Fun',
-  description: 'One word a day about how the world is getting better. Guess it, then read the good news behind it.'
+  description: 'A true piece of good news each day, with one word missing. Every guess unfolds a little more of the story.'
 }
 
 export default function TheOptimistPage() {
@@ -18,7 +18,7 @@ export default function TheOptimistPage() {
               The Optimist
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl mx-auto">
-              One word a day, and the good news behind it.
+              A true piece of good news each day, with one word missing.
             </p>
           </div>
 

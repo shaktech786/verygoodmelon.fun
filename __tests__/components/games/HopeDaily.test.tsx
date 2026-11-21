@@ -1,15 +1,13 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { vi } from 'vitest'
 
-// Mock fetch globally
 const mockFetch = vi.fn()
 global.fetch = mockFetch
 
-// Mock localStorage
 const mockLocalStorage = (() => {
   let store: Record<string, string> = {}
   return {
-    getItem: vi.fn((key: string) => store[key] || null),
+    getItem: vi.fn((key: string) => store[key] ?? null),
     setItem: vi.fn((key: string, value: string) => { store[key] = value }),
     removeItem: vi.fn((key: string) => { delete store[key] }),
     clear: vi.fn(() => { store = {} }),
@@ -17,125 +15,96 @@ const mockLocalStorage = (() => {
 })()
 Object.defineProperty(window, 'localStorage', { value: mockLocalStorage })
 
-// Must import after mocks
 import HopeDaily from '@/components/games/HopeDaily'
+
+const PUZZLE = {
+  category: 'Energy',
+  wordLength: 5,
+  clue: 'Power from our nearest star',
+  story: [
+    [{ text: 'The first practical silicon ' }, { text: '', word: true }, { text: ' cell was ' }],
+    [{ text: 'demonstrated at Bell Labs in 1954; ' }],
+    [{ text: 'panels now power homes, satellites and whole towns.' }],
+  ],
+}
+
+const respond = (json: unknown) => ({ ok: true, status: 200, json: async () => json })
+const today = () => new Date().toISOString().slice(0, 10)
 
 describe('HopeDaily', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockFetch.mockReset()
     mockLocalStorage.clear()
-    // Default: game init returns 5-letter word metadata
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ wordLength: 5, category: 'health' }),
-    })
+    mockFetch.mockResolvedValueOnce(respond(PUZZLE))
   })
 
-  it('shows loading state initially', () => {
+  it('opens on the first part of the story with the word left out, and the rest still folded', async () => {
     render(<HopeDaily />)
-    expect(screen.getByText(/loading/i)).toBeInTheDocument()
+    expect(await screen.findByText('The first practical silicon')).toBeInTheDocument()
+    expect(screen.getByText('(missing word)')).toBeInTheDocument()
+    expect(screen.queryByText(/Bell Labs/)).not.toBeInTheDocument()
+    expect(screen.getByText('2 more parts of the story are still folded.')).toBeInTheDocument()
+    expect(screen.queryByText(/nearest star/)).not.toBeInTheDocument()
   })
 
-  it('renders keyboard after loading', async () => {
+  it('unfolds the story, then the clue, without any guess', async () => {
     render(<HopeDaily />)
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Q' })).toBeInTheDocument()
-    })
-    expect(screen.getByRole('button', { name: 'ENTER' })).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'Read on' }))
+    expect(screen.getByText(/Bell Labs/)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('The story unfolds a little more.')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Read on' }))
+    expect(screen.getByText(/nearest star/)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('The clue is now showing.')
   })
 
-  it('shows word length instruction', async () => {
+  it('sends a typed guess and says how it went in plain words', async () => {
+    mockFetch.mockResolvedValueOnce(respond({ isCorrect: false, inPlace: [[0, 'S']] }))
+    mockFetch.mockResolvedValueOnce(respond({ commentary: 'Sunny thought.' }))
+
     render(<HopeDaily />)
-    await waitFor(() => {
-      expect(screen.getByText(/5-letter word/i)).toBeInTheDocument()
-    })
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Your guess' }), { target: { value: 'sh1ne' } })
+    expect(screen.getByRole('textbox', { name: 'Your guess' })).toHaveValue('SHNE')
+    fireEvent.change(screen.getByRole('textbox', { name: 'Your guess' }), { target: { value: 'shine' } })
+    fireEvent.submit(screen.getByRole('textbox', { name: 'Your guess' }).closest('form')!)
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('SHINE is not today’s word. Letter 1 is S. The story unfolds a little more.')
+    )
+    expect(mockFetch).toHaveBeenCalledWith('/api/hope-daily', expect.objectContaining({ method: 'POST' }))
+    expect(await screen.findByText('Sunny thought.')).toBeInTheDocument()
   })
 
-  it('accepts letter input from keyboard buttons', async () => {
+  it('explains a short guess without sending it', async () => {
     render(<HopeDaily />)
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'H' })).toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'H' }))
-    fireEvent.click(screen.getByRole('button', { name: 'E' }))
-    // Letters should appear in grid
-    const cells = screen.getAllByRole('gridcell')
-    expect(cells.length).toBeGreaterThan(0)
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Your guess' }), { target: { value: 'sun' } })
+    fireEvent.submit(screen.getByRole('textbox', { name: 'Your guess' }).closest('form')!)
+
+    expect(screen.getByRole('status')).toHaveTextContent('Today’s word has 5 letters.')
+    expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
-  it('accepts physical keyboard input', async () => {
+  it('never takes keys typed while focus is elsewhere on the page', async () => {
     render(<HopeDaily />)
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Q' })).toBeInTheDocument()
-    })
-    fireEvent.keyDown(document, { key: 'h' })
-    fireEvent.keyDown(document, { key: 'e' })
-    const cells = screen.getAllByRole('gridcell')
-    expect(cells.length).toBeGreaterThan(0)
+    const input = await screen.findByRole('textbox', { name: 'Your guess' })
+    fireEvent.keyDown(document.body, { key: 's' })
+    fireEvent.keyDown(document.body, { key: 'Enter' })
+    expect(input).toHaveValue('')
+    expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
-  it('shows hint button', async () => {
-    render(<HopeDaily />)
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /hint/i })).toBeInTheDocument()
-    })
-  })
-
-  it('fetches hint on hint button click', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ hint: 'Think about wellness', revealedLetter: null, hintNumber: 1 }),
-    })
+  it('keeps a player’s place from the earlier letter-grid version of the game', async () => {
+    mockLocalStorage.setItem('hope-daily-state', JSON.stringify({
+      date: today(),
+      guesses: [['S', 'H', 'I', 'N', 'E'].map((letter, i) => ({ letter, state: i === 0 ? 'correct' : 'absent' }))],
+      gameState: 'playing',
+      revealedData: null,
+      hintsUsed: 0,
+    }))
 
     render(<HopeDaily />)
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /hint/i })).toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /hint/i }))
-
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/hope-daily/hint', expect.any(Object))
-    })
-  })
-
-  it('submits guess on ENTER', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        letterStates: [
-          { letter: 'H', state: 'correct' },
-          { letter: 'E', state: 'present' },
-          { letter: 'L', state: 'absent' },
-          { letter: 'L', state: 'absent' },
-          { letter: 'O', state: 'absent' },
-        ],
-        isCorrect: false,
-      }),
-    })
-
-    render(<HopeDaily />)
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'H' })).toBeInTheDocument()
-    })
-
-    // Type HELLO
-    for (const key of ['H', 'E', 'L', 'L', 'O']) {
-      fireEvent.click(screen.getByRole('button', { name: key }))
-    }
-    fireEvent.click(screen.getByRole('button', { name: 'ENTER' }))
-
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/hope-daily', expect.objectContaining({ method: 'POST' }))
-    })
-  })
-
-  it('shows color legend', async () => {
-    render(<HopeDaily />)
-    await waitFor(() => {
-      expect(screen.getByText('Growth')).toBeInTheDocument()
-      expect(screen.getByText('Hope')).toBeInTheDocument()
-      expect(screen.getByText('Resting')).toBeInTheDocument()
-    })
+    expect(await screen.findByText('SHINE')).toBeInTheDocument()
+    expect(screen.getByText('Known so far: letter 1 is S.')).toBeInTheDocument()
+    expect(screen.getByText(/Bell Labs/)).toBeInTheDocument()
   })
 })

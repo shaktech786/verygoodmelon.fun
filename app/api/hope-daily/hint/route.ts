@@ -1,68 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getWordOfDay } from '@/lib/games/hope-daily/words'
+import { nextLetter } from '@/lib/games/hope-daily/puzzle'
 
-/**
- * Hint API for Hope Daily
- *
- * Progressive hints that guide without giving away:
- * - Hint 1: A clue about the word's meaning
- * - Hint 2: Reveal one letter position
- * - Hint 3: Reveal another letter position
- */
-
+/** The first letter of today's word that the player does not know yet. */
 export async function POST(request: NextRequest) {
-  try {
-    const { hintNumber, revealedPositions = [] } = await request.json()
-    const wordData = getWordOfDay()
-    const word = wordData.word
+  const body = await request.json().catch(() => null)
+  const { word } = getWordOfDay()
+  const known: unknown = body?.known
 
-    if (typeof hintNumber !== 'number' || hintNumber < 1 || hintNumber > 3) {
-      return NextResponse.json({ error: 'Invalid hint number' }, { status: 400 })
-    }
-
-    let hint: string
-    let revealedLetter: { position: number; letter: string } | null = null
-
-    if (hintNumber === 1) {
-      // First hint: thematic clue
-      hint = wordData.clue
-    } else {
-      // Hints 2 and 3: reveal a letter position
-      // Find positions not yet revealed
-      const availablePositions = []
-      for (let i = 0; i < word.length; i++) {
-        if (!revealedPositions.includes(i)) {
-          availablePositions.push(i)
-        }
-      }
-
-      if (availablePositions.length === 0) {
-        hint = 'No more letters to reveal!'
-      } else {
-        // Pick a random available position
-        const position = availablePositions[Math.floor(Math.random() * availablePositions.length)]
-        const letter = word[position]
-        revealedLetter = { position, letter }
-
-        // Ordinal suffix
-        const ordinal = (n: number) => {
-          const s = ['th', 'st', 'nd', 'rd']
-          const v = n % 100
-          return n + (s[(v - 20) % 10] || s[v] || s[0])
-        }
-
-        hint = `The ${ordinal(position + 1)} letter is "${letter}"`
-      }
-    }
-
-    return NextResponse.json({
-      hint,
-      revealedLetter,
-      hintNumber
-    })
-
-  } catch (error) {
-    console.error('Hint API error:', error)
-    return NextResponse.json({ error: 'Failed to generate hint' }, { status: 500 })
+  const valid =
+    Array.isArray(known) &&
+    known.every(position => Number.isInteger(position) && position >= 0 && position < word.length)
+  if (!valid) {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
+
+  const letter = nextLetter(word, known)
+  if (!letter) {
+    return NextResponse.json({ error: 'Every letter is already known' }, { status: 400 })
+  }
+  return NextResponse.json(letter)
 }
