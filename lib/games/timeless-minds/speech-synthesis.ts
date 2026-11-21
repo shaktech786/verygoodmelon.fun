@@ -138,9 +138,14 @@ export function synthesizeSpeech(
       resolve()
     }
 
-    utterance.onerror = (error) => {
-      console.error('Speech synthesis error:', error)
-      reject(error)
+    utterance.onerror = (event) => {
+      // Cancelling speech (switching thinker, muting) is expected, not a failure.
+      if (event.error === 'interrupted' || event.error === 'canceled') {
+        onEnd?.()
+        resolve()
+        return
+      }
+      reject(new Error(`Speech synthesis failed: ${event.error}`))
     }
 
     window.speechSynthesis.speak(utterance)

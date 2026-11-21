@@ -108,12 +108,6 @@ const StaticAvatar = forwardRef<AvatarHandle, AvatarComponentProps>(
                 aria-hidden="true"
               />
             )}
-
-            {/* Live indicator */}
-            <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5" aria-hidden="true">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-[10px] font-medium text-white/80 tracking-wider uppercase">Live</span>
-            </div>
           </div>
         ) : (
           <div className="w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 rounded-2xl bg-gradient-to-br from-accent/30 to-success/30 border border-white/10 flex items-center justify-center text-6xl sm:text-8xl md:text-9xl backdrop-blur-sm">

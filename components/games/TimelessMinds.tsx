@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { getRandomThinker, thinkers as allThinkers, getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
-import { PhoneOff, Send, Loader2, Mic, MicOff, VideoIcon, VideoOff, MoreVertical, Book, Plus } from 'lucide-react'
+import { PhoneOff, Send, Loader2, Mic, MicOff, VideoIcon, VideoOff, Volume2, VolumeX, MoreVertical, Book, Plus } from 'lucide-react'
 import ThinkerPhoneBook from './ThinkerPhoneBook'
 import RequestThinkerModal from './RequestThinkerModal'
 import { Button } from '@/components/ui/Button'
@@ -20,6 +20,18 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   emotion?: AvatarEmotion
+}
+
+const REPLY_TROUBLE = 'Forgive me, my thoughts drifted for a moment. Could you say that again?'
+const VOICE_INPUT_UNAVAILABLE = 'Speaking is not available here, so please type your message instead.'
+
+function pickAnotherThinker(current: Thinker): Thinker {
+  const others = allThinkers.filter(t => t.id !== current.id)
+  return others[Math.floor(Math.random() * others.length)]
+}
+
+function openingMessage(thinker: Thinker): Message {
+  return { role: 'assistant', content: thinker.openingLine, emotion: 'happy' }
 }
 
 // Topic suggestions based on thinker's domain
@@ -65,6 +77,10 @@ export default function TimelessMinds() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const endCallCancelRef = useRef<HTMLButtonElement>(null)
+  // Bumped whenever a new conversation starts, so a reply still in flight for the
+  // previous thinker is dropped instead of landing in the new conversation.
+  const conversationRef = useRef(0)
 
   // Avatar & audio state
   const [videoEnabled, setVideoEnabled] = useState(true)
@@ -73,6 +89,7 @@ export default function TimelessMinds() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [currentEmotion, setCurrentEmotion] = useState<AvatarEmotion>('neutral')
   const [interimTranscript, setInterimTranscript] = useState('')
+  const [voiceInputNote, setVoiceInputNote] = useState('')
   const speechRecognitionRef = useRef<SpeechRecognitionManager | null>(null)
 
   // Provider-agnostic avatar state
@@ -198,14 +215,12 @@ export default function TimelessMinds() {
   useEffect(() => {
     const selectedThinker = getRandomThinker()
     setThinker(selectedThinker)
-
-    const openingMessage = {
-      role: 'assistant' as const,
-      content: selectedThinker.openingLine,
-      emotion: 'happy' as AvatarEmotion
-    }
-    setMessages([openingMessage])
+    setMessages([openingMessage(selectedThinker)])
   }, [])
+
+  useEffect(() => {
+    if (showEndCallDialog) endCallCancelRef.current?.focus()
+  }, [showEndCallDialog])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -246,9 +261,11 @@ export default function TimelessMinds() {
       content: textToSend
     }
 
+    const conversation = conversationRef.current
     setMessages(prev => [...prev, userMessage])
     setInputMessage('')
     setInterimTranscript('')
+    setVoiceInputNote('')
     setIsLoading(true)
 
     setTimeout(() => {
@@ -269,51 +286,33 @@ export default function TimelessMinds() {
         })
       })
 
-      const data = await response.json()
+      const data = await response.json().catch(() => null)
+      if (conversation !== conversationRef.current) return
 
-      if (data.error) {
-        console.error('API error:', data.error)
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: `I'm having trouble connecting right now. ${data.error === 'Failed to generate response' ? 'The wisdom servers may be resting. Please try again in a moment.' : data.error}`,
-            emotion: 'concerned'
-          }
-        ])
+      const reply = typeof data?.response === 'string' ? data.response.trim() : ''
+      if (!response.ok || !reply) {
+        console.error('Chat reply unavailable:', response.status, data?.error)
+        setMessages(prev => [...prev, { role: 'assistant', content: REPLY_TROUBLE, emotion: 'concerned' }])
         return
       }
 
-      if (data.response) {
-        const emotion = (data.emotion as AvatarEmotion) || 'neutral'
-        const assistantMessage: Message = {
-          role: 'assistant',
-          content: data.response,
-          emotion
-        }
+      const emotion = (data.emotion as AvatarEmotion) || 'neutral'
+      setMessages(prev => [...prev, { role: 'assistant', content: reply, emotion }])
+      setCurrentEmotion(emotion)
 
-        setMessages(prev => [...prev, assistantMessage])
-        setCurrentEmotion(emotion)
-
-        // Speak when avatar is connected or audio is enabled (browser TTS fallback)
-        const handleConnected = avatarHandleRef.current?.isConnected() ?? false
-        if (handleConnected || audioEnabled) {
-          await speakWithAvatar(data.response, thinker.id, emotion)
-        }
+      // Not awaited: the player can keep typing while the thinker speaks.
+      if (audioEnabled) {
+        speakWithAvatar(reply, thinker.id, emotion).catch(console.error)
       }
     } catch (error) {
       console.error('Failed to send message:', error)
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: 'I apologize, but I seem to be having trouble hearing you clearly. Could you try again?',
-          emotion: 'concerned'
-        }
-      ])
+      if (conversation !== conversationRef.current) return
+      setMessages(prev => [...prev, { role: 'assistant', content: REPLY_TROUBLE, emotion: 'concerned' }])
     } finally {
-      setIsLoading(false)
-      inputRef.current?.focus()
+      if (conversation === conversationRef.current) {
+        setIsLoading(false)
+        inputRef.current?.focus()
+      }
     }
   }
 
@@ -321,59 +320,46 @@ export default function TimelessMinds() {
     setShowEndCallDialog(true)
   }
 
-  const confirmEndCall = () => {
+  const startConversation = (nextThinker: Thinker) => {
+    conversationRef.current += 1
     stopSpeech()
     speechRecognitionRef.current?.abort()
     avatarHandleRef.current?.clearBuffer()
 
-    const newThinker = getRandomThinker()
-    setThinker(newThinker)
+    setThinker(nextThinker)
+    setMessages([openingMessage(nextThinker)])
+    setShowTopicSuggestions(true)
+    setInputMessage('')
+    setIsLoading(false)
     setCurrentEmotion('neutral')
     setIsSpeaking(false)
     setIsListening(false)
+    setInterimTranscript('')
+    setVoiceInputNote('')
+    inputRef.current?.focus()
 
-    const openingMessage: Message = {
-      role: 'assistant',
-      content: newThinker.openingLine,
-      emotion: 'happy'
+    if (audioEnabled) {
+      speakWithAvatar(nextThinker.openingLine, nextThinker.id, 'happy').catch(console.error)
     }
-    setMessages([openingMessage])
+  }
+
+  const confirmEndCall = () => {
+    if (!thinker) return
     setShowEndCallDialog(false)
-
-    const handleConnected = avatarHandleRef.current?.isConnected() ?? false
-    if (handleConnected || audioEnabled) {
-      speakWithAvatar(newThinker.openingLine, newThinker.id, 'happy').catch(console.error)
-    }
+    startConversation(pickAnotherThinker(thinker))
   }
 
   const handleSelectThinker = (thinkerId: string) => {
     const selectedThinker = getThinkerById(thinkerId)
-    if (selectedThinker) {
-      stopSpeech()
-      speechRecognitionRef.current?.abort()
-      avatarHandleRef.current?.clearBuffer()
-
-      setThinker(selectedThinker)
-      setCurrentEmotion('neutral')
-      setIsSpeaking(false)
-      setIsListening(false)
-
-      const openingMessage: Message = {
-        role: 'assistant',
-        content: selectedThinker.openingLine,
-        emotion: 'happy'
-      }
-      setMessages([openingMessage])
-
-      const handleConnected = avatarHandleRef.current?.isConnected() ?? false
-      if (handleConnected || audioEnabled) {
-        speakWithAvatar(selectedThinker.openingLine, selectedThinker.id, 'happy').catch(console.error)
-      }
-    }
+    if (selectedThinker) startConversation(selectedThinker)
   }
 
   const cancelEndCall = () => {
     setShowEndCallDialog(false)
+  }
+
+  const handleEndCallDialogKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') cancelEndCall()
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -404,6 +390,12 @@ export default function TimelessMinds() {
       setIsListening(false)
       setInterimTranscript('')
     } else {
+      if (!SpeechRecognitionManager.isSupported()) {
+        setVoiceInputNote(VOICE_INPUT_UNAVAILABLE)
+        return
+      }
+
+      setVoiceInputNote('')
       if (!speechRecognitionRef.current) {
         speechRecognitionRef.current = new SpeechRecognitionManager({
           continuous: false,
@@ -420,6 +412,9 @@ export default function TimelessMinds() {
             console.error('Speech recognition error:', error)
             setIsListening(false)
             setInterimTranscript('')
+            if (error !== 'no-speech' && error !== 'aborted') {
+              setVoiceInputNote(VOICE_INPUT_UNAVAILABLE)
+            }
           },
           onEnd: () => {
             setIsListening(false)
@@ -428,8 +423,8 @@ export default function TimelessMinds() {
         })
       }
 
-      speechRecognitionRef.current.start()
       setIsListening(true)
+      speechRecognitionRef.current.start()
     }
   }
 
@@ -464,8 +459,8 @@ export default function TimelessMinds() {
                 )}
               </div>
             ) : (
-              <div className="text-center p-8">
-                <div className="text-6xl mb-4">&#x1F399;&#xFE0F;</div>
+              <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                <div className="text-6xl mb-4" aria-hidden="true">&#x1F399;&#xFE0F;</div>
                 <p className="text-white/70">Audio Only Mode</p>
                 <p className="text-white/50 text-sm mt-2">Turn on video to see {thinker?.name}</p>
               </div>
@@ -584,6 +579,12 @@ export default function TimelessMinds() {
               </div>
             )}
 
+            {voiceInputNote && (
+              <p className="mb-2 text-xs text-foreground/70" role="status">
+                {voiceInputNote}
+              </p>
+            )}
+
             <div className="flex gap-1.5 sm:gap-2">
               <input
                 ref={inputRef}
@@ -620,7 +621,7 @@ export default function TimelessMinds() {
           &#x26A0;&#xFE0F; <strong>Disclaimer:</strong> AI simulation for entertainment only. Not real conversations.
           AI-generated interpretations based on historical records.{' '}
           <a
-            href="/games/timeless-minds/disclaimer"
+            href="/games/ancient-voices/disclaimer"
             target="_blank"
             className="text-white/80 hover:text-white underline"
           >
@@ -693,9 +694,9 @@ export default function TimelessMinds() {
               audioEnabled ? 'bg-gray-700 group-hover:bg-gray-600' : 'bg-red-500'
             }`}>
               {audioEnabled ? (
-                <Mic size={16} className="text-white sm:w-5 sm:h-5" />
+                <Volume2 size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
               ) : (
-                <MicOff size={16} className="text-white sm:w-5 sm:h-5" />
+                <VolumeX size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
               )}
             </div>
             <span className="text-white text-[10px] sm:text-xs">
@@ -743,8 +744,14 @@ export default function TimelessMinds() {
       {/* End Call Dialog */}
       {showEndCallDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-card-bg rounded-xl p-4 sm:p-6 max-w-md w-full shadow-2xl animate-fade">
-            <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3 text-foreground">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="end-call-title"
+            onKeyDown={handleEndCallDialogKeyDown}
+            className="bg-card-bg rounded-xl p-4 sm:p-6 max-w-md w-full shadow-2xl animate-fade"
+          >
+            <h3 id="end-call-title" className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3 text-foreground">
               End this conversation?
             </h3>
             <p className="text-sm sm:text-base text-foreground/70 mb-3 sm:mb-4 leading-relaxed">
@@ -759,6 +766,7 @@ export default function TimelessMinds() {
             </div>
             <div className="flex gap-2 sm:gap-3">
               <button
+                ref={endCallCancelRef}
                 onClick={cancelEndCall}
                 className="flex-1 px-3 py-1.5 sm:px-4 sm:py-2 border border-foreground/20 rounded-lg hover:bg-foreground/5 transition-colors text-sm sm:text-base"
               >
@@ -776,12 +784,15 @@ export default function TimelessMinds() {
       )}
 
       {/* Phone Book Modal */}
-      <ThinkerPhoneBook
-        isOpen={showPhoneBook}
-        onClose={() => setShowPhoneBook(false)}
-        thinkers={allThinkers}
-        onSelectThinker={handleSelectThinker}
-      />
+      {/* Mounted only while open, so each visit starts with an empty search. */}
+      {showPhoneBook && (
+        <ThinkerPhoneBook
+          isOpen
+          onClose={() => setShowPhoneBook(false)}
+          thinkers={allThinkers}
+          onSelectThinker={handleSelectThinker}
+        />
+      )}
 
       {/* Request Thinker Modal */}
       <RequestThinkerModal

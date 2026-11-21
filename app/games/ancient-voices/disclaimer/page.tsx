@@ -11,7 +11,7 @@ export default function DisclaimerPage() {
   return (
     <div className="container mx-auto px-6 py-12 max-w-4xl">
       <Link
-        href="/games/timeless-minds"
+        href="/games/ancient-voices"
         className="inline-flex items-center gap-2 text-accent hover:underline mb-6"
       >
         <ArrowLeft size={16} />
@@ -192,7 +192,7 @@ export default function DisclaimerPage() {
             By using Timeless Minds, you acknowledge that you have read, understood, and agree to this disclaimer.
           </p>
           <Link
-            href="/games/timeless-minds"
+            href="/games/ancient-voices"
             className="inline-block mt-4 px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
           >
             Return to Timeless Minds

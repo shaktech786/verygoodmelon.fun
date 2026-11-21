@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Book, Search, X, Phone, Calendar, Globe2 } from 'lucide-react'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
 import { Button } from '@/components/ui/Button'
@@ -20,6 +20,15 @@ export default function ThinkerPhoneBook({
 }: ThinkerPhoneBookProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+
+  useEffect(() => {
+    if (!isOpen) return
+    const closeOnEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [isOpen, onClose])
 
   if (!isOpen) return null
 
@@ -46,31 +55,38 @@ export default function ThinkerPhoneBook({
   return (
     <div className="fixed inset-0 bg-black/50 z-[100] overflow-y-auto">
       <div className="min-h-screen px-4 py-8 flex items-center justify-center">
-        <div className="bg-background rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col animate-fade overflow-hidden my-8">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="phone-book-title"
+          className="bg-background rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col animate-fade overflow-hidden my-8"
+        >
         {/* Header */}
-        <div className="bg-gradient-to-r from-accent to-accent/80 text-white p-6">
+        <div className="shrink-0 bg-gradient-to-r from-accent to-accent/80 text-white p-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <Book size={32} className="text-white" />
+              <Book size={32} className="text-white" aria-hidden="true" />
               <div>
-                <h2 className="text-2xl font-semibold">The Phone Book</h2>
+                <h2 id="phone-book-title" className="text-2xl font-semibold">The Phone Book</h2>
                 <p className="text-white/90 text-sm">Select who you&apos;d like to speak with</p>
               </div>
             </div>
             <button
               onClick={onClose}
               className="text-white/80 hover:text-white transition-colors"
-              aria-label="Close"
+              aria-label="Close phone book"
             >
-              <X size={24} />
+              <X size={24} aria-hidden="true" />
             </button>
           </div>
 
           {/* Search Bar */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground/40" size={20} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground/40" size={20} aria-hidden="true" />
             <input
-              type="text"
+              type="search"
+              aria-label="Search thinkers"
+              autoFocus
               placeholder="Search by name, field, or culture..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -80,12 +96,13 @@ export default function ThinkerPhoneBook({
         </div>
 
         {/* Category Filter */}
-        <div className="bg-card-bg border-b border-card-border px-6 py-3 overflow-x-auto">
+        <div className="shrink-0 bg-card-bg border-b border-card-border px-6 py-3 overflow-x-auto">
           <div className="flex gap-2 min-w-max">
             {categories.map(category => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
+                aria-pressed={selectedCategory === category}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   selectedCategory === category
                     ? 'bg-accent text-white'
@@ -113,10 +130,13 @@ export default function ThinkerPhoneBook({
                   className="bg-card-bg border border-card-border rounded-lg p-4 hover:shadow-lg hover:border-accent/30 transition-all group cursor-pointer"
                   onClick={() => handleCall(thinker.id)}
                 >
-                  {/* Avatar Placeholder */}
-                  <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-gradient-to-br from-accent/20 to-success/20 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
-                    👤
-                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/games/timeless-minds/avatars/${thinker.id}.png`}
+                    alt=""
+                    loading="lazy"
+                    className="w-20 h-20 mx-auto mb-3 rounded-full object-cover bg-gradient-to-br from-accent/20 to-success/20"
+                  />
 
                   {/* Name & Title */}
                   <h3 className="text-center font-semibold text-foreground mb-1 group-hover:text-accent transition-colors">
@@ -149,8 +169,9 @@ export default function ThinkerPhoneBook({
                     }}
                     variant="primary"
                     className="w-full px-4 py-2 flex items-center justify-center gap-2 text-sm group-hover:shadow-md"
+                    aria-label={`Start call with ${thinker.name}`}
                   >
-                    <Phone size={14} />
+                    <Phone size={14} aria-hidden="true" />
                     Start Call
                   </Button>
                 </div>
@@ -160,7 +181,7 @@ export default function ThinkerPhoneBook({
         </div>
 
         {/* Footer */}
-        <div className="bg-hover-bg border-t border-card-border px-6 py-4 text-center text-xs text-foreground/60">
+        <div className="shrink-0 bg-hover-bg border-t border-card-border px-6 py-4 text-center text-xs text-foreground/60">
           <p>
             {filteredThinkers.length} {filteredThinkers.length === 1 ? 'thinker' : 'thinkers'} available
             {searchQuery && ` matching "${searchQuery}"`}

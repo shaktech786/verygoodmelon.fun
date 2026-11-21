@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X, Heart, Loader2, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+
+const REQUEST_UNAVAILABLE = 'Your request could not be sent just now. Your words are still here, so you can try again a little later.'
 
 interface RequestThinkerModalProps {
   isOpen: boolean
@@ -23,6 +25,15 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    if (!isOpen) return
+    const closeOnEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,16 +42,20 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
     setError('')
 
     try {
-      // TODO: Implement Stripe payment flow
-      // For now, just submit the request
       const response = await fetch('/api/timeless-minds/request-thinker', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       })
 
+      if (response.status === 400) {
+        const data = await response.json().catch(() => null)
+        setError(typeof data?.error === 'string' ? data.error : REQUEST_UNAVAILABLE)
+        return
+      }
+
       if (!response.ok) {
-        throw new Error('Failed to submit request')
+        throw new Error(`Request failed with status ${response.status}`)
       }
 
       setIsSuccess(true)
@@ -58,7 +73,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
         })
       }, 3000)
     } catch (err) {
-      setError('Something went wrong. Please try again.')
+      setError(REQUEST_UNAVAILABLE)
       console.error(err)
     } finally {
       setIsSubmitting(false)
@@ -77,12 +92,9 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
           <div className="text-center">
             <CheckCircle2 className="w-16 h-16 text-success mx-auto mb-4" />
             <h3 className="text-2xl font-semibold mb-3 text-foreground">Request Submitted!</h3>
-            <p className="text-foreground/70 mb-4">
+            <p className="text-foreground/70">
               Thank you for your request. We&apos;ll research your suggested thinker
               and work on bringing them to life.
-            </p>
-            <p className="text-sm text-foreground/60">
-              You now have access to the Phone Book to select specific thinkers!
             </p>
           </div>
           </div>
@@ -94,11 +106,16 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
   return (
     <div className="fixed inset-0 bg-black/50 z-[100] overflow-y-auto">
       <div className="min-h-screen px-4 py-8 flex items-center justify-center">
-        <div className="bg-card-bg rounded-xl p-6 max-w-2xl w-full shadow-2xl animate-fade my-8">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="request-thinker-title"
+          className="bg-card-bg rounded-xl p-6 max-w-2xl w-full shadow-2xl animate-fade my-8"
+        >
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-semibold text-foreground mb-2">Request a Thinker</h2>
+            <h2 id="request-thinker-title" className="text-2xl font-semibold text-foreground mb-2">Request a Thinker</h2>
             <p className="text-sm text-foreground/70">
               Suggest a mind you&apos;d like to talk to
             </p>
@@ -106,7 +123,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
           <button
             onClick={onClose}
             className="text-foreground/50 hover:text-foreground transition-colors"
-            aria-label="Close"
+            aria-label="Close request form"
           >
             <X size={24} />
           </button>
@@ -122,7 +139,6 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
                 <li>Request any positive historical figure who is <strong>no longer living</strong></li>
                 <li>Speak with minds you can no longer reach in real life</li>
                 <li>We research their speaking style, beliefs, and wisdom</li>
-                <li>Get access to the Phone Book (select specific thinkers)</li>
               </ul>
             </div>
           </div>
@@ -219,7 +235,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
               onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                   e.preventDefault()
-                  handleSubmit(e as unknown as React.FormEvent)
+                  e.currentTarget.form?.requestSubmit()
                 }
               }}
               placeholder="What wisdom or perspective would they bring? How would they help people grow?"
@@ -240,7 +256,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
               onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                   e.preventDefault()
-                  handleSubmit(e as unknown as React.FormEvent)
+                  e.currentTarget.form?.requestSubmit()
                 }
               }}
               placeholder="Any personal reason why this person matters to you?"
@@ -308,7 +324,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
             <p className="text-xs text-foreground/70 leading-relaxed text-center">
               <strong>Creator&apos;s Discretion:</strong> All requests are subject to approval/denial at the sole discretion of the creator.
               The creator reserves the right to modify, change, or remove any thinker at any time for any reason without notice.
-              Request approval is not guaranteed, even with payment.
+              Request approval is not guaranteed.
             </p>
           </div>
         </form>
