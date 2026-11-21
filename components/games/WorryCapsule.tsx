@@ -12,15 +12,18 @@ import {
   MAX_WORRY_LENGTH,
   OUTCOMES,
   type Outcome,
+  RESEAL_HORIZONS,
+  type ResealHorizon,
   capsuleStatus,
   normalizeWorry,
   openCapsule,
   opensOnFor,
+  resealCapsule,
   sealCapsule,
   shelve,
   tally,
 } from '@/lib/games/worry-capsule/capsules'
-import { OUTCOME_RESPONSES, RESTING_LINES, SEALED_LINES, pickLine } from '@/lib/games/worry-capsule/copy'
+import { NOT_YET_LINES, OUTCOME_RESPONSES, RESTING_LINES, SEALED_LINES, pickLine } from '@/lib/games/worry-capsule/copy'
 import { type DateKey, localDateKey } from '@/lib/games/worry-capsule/dates'
 import type { WorryDraft as Draft } from '@/lib/games/worry-capsule/draft'
 import { DevTimeTravel } from './worry-capsule/DevTimeTravel'
@@ -132,7 +135,15 @@ export default function WorryCapsule() {
     const next = capsules.map((c) => (c.id === capsule.id ? openCapsule(c, outcome, note, now()) : c))
     if (!commit(next).ok) return false
     go({ kind: 'shelf' })
-    setAnnouncement('Closed and kept. It is part of your tally now.')
+    setAnnouncement('Closed and kept with the others.')
+    return true
+  }
+
+  const reseal = (capsule: Capsule, horizon: ResealHorizon): boolean => {
+    const resealed = resealCapsule(capsule, horizon, now())
+    if (!commit(capsules.map((c) => (c.id === capsule.id ? resealed : c))).ok) return false
+    go({ kind: 'shelf' })
+    setAnnouncement(`Sealed again. It comes back on ${formatDay(resealed.opensOn, today)}.`)
     return true
   }
 
@@ -265,7 +276,7 @@ export default function WorryCapsule() {
       const status = capsuleStatus(capsule, nowDate)
       const back = () => go({ kind: 'shelf' })
       if (status === 'resting') body = <Resting capsule={capsule} today={today} motion={motion} focus={navigated} onBack={back} onLetGo={() => letGo(capsule.id)} />
-      else if (status === 'ready') body = <Opening capsule={capsule} today={today} motion={motion} focus={navigated} onBack={back} onAnswer={(o, n) => answer(capsule, o, n)} />
+      else if (status === 'ready') body = <Opening capsule={capsule} today={today} motion={motion} focus={navigated} onBack={back} onAnswer={(o, n) => answer(capsule, o, n)} onReseal={(h) => reseal(capsule, h)} />
       else body = <Reread capsule={capsule} today={today} motion={motion} focus={navigated} onBack={back} onLetGo={() => letGo(capsule.id)} />
     }
   }
@@ -542,6 +553,7 @@ function LetGo({ onLetGo, opened }: { onLetGo: () => boolean; opened: boolean })
 }
 
 function Resting({ capsule, today, motion, focus, onBack, onLetGo }: CapsuleViewProps & { onLetGo: () => boolean }) {
+  const lastLook = capsule.lookedIn.at(-1)
   return (
     <div className="space-y-4">
       <Jar scene="sealed" motion={motion} className="w-40 h-36 mx-auto" />
@@ -551,6 +563,11 @@ function Resting({ capsule, today, motion, focus, onBack, onLetGo }: CapsuleView
         You sealed it on {sealedDay(capsule, today)}. It comes back to you on{' '}
         <strong className="font-semibold text-foreground">{formatDay(capsule.opensOn, today)}</strong>. Nothing to do until then.
       </p>
+      {lastLook && (
+        <p className={cn(muted, 'max-w-md mx-auto')}>
+          You looked in on {formatDay(localDateKey(new Date(lastLook)), today)}, and it was too soon to tell, so it has more time.
+        </p>
+      )}
       <div className="flex flex-col items-center gap-3 pt-1">
         <Button onClick={onBack}>Back to the shelf</Button>
         <LetGo onLetGo={onLetGo} opened={false} />
@@ -559,10 +576,20 @@ function Resting({ capsule, today, motion, focus, onBack, onLetGo }: CapsuleView
   )
 }
 
-function Opening({ capsule, today, motion, focus, onBack, onAnswer }: CapsuleViewProps & { onAnswer: (outcome: Outcome, note: string) => boolean }) {
+type Choice = Outcome | 'not-yet'
+
+const CHOICES: readonly { id: Choice; label: string }[] = [...OUTCOMES, { id: 'not-yet', label: 'Not yet' }]
+
+interface OpeningProps extends CapsuleViewProps {
+  onAnswer: (outcome: Outcome, note: string) => boolean
+  onReseal: (horizon: ResealHorizon) => boolean
+}
+
+function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: OpeningProps) {
   const id = useId()
   const [open, setOpen] = useState(false)
-  const [outcome, setOutcome] = useState<Outcome | null>(null)
+  const [outcome, setOutcome] = useState<Choice | null>(null)
+  const [again, setAgain] = useState<ResealHorizon>('week')
   const [note, setNote] = useState('')
   const [failed, setFailed] = useState(false)
   const sealedOn = sealedDay(capsule, today)
@@ -594,8 +621,8 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer }: CapsuleVie
         <div className={cn('space-y-5', styles.afterOpen)}>
           <fieldset>
             <legend className="mx-auto text-lg font-semibold text-foreground mb-3">Did it happen?</legend>
-            <div className="flex justify-center gap-2 sm:gap-3">
-              {OUTCOMES.map((option) => (
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+              {CHOICES.map((option) => (
                 <label
                   key={option.id}
                   className="min-w-[5.5rem] rounded-full border-2 border-card-border bg-background px-4 py-2 text-base font-medium text-foreground cursor-pointer transition-colors duration-75 hover:bg-hover-bg has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:focus-visible]:ring-offset-2"
@@ -615,10 +642,42 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer }: CapsuleVie
           </fieldset>
 
           <div aria-live="polite">
-            {outcome && <p className="text-base sm:text-lg text-foreground max-w-md mx-auto">{pickLine(OUTCOME_RESPONSES[outcome], capsule.id)}</p>}
+            {outcome && (
+              <p className="text-base sm:text-lg text-foreground max-w-md mx-auto">
+                {pickLine(outcome === 'not-yet' ? NOT_YET_LINES : OUTCOME_RESPONSES[outcome], capsule.id)}
+              </p>
+            )}
           </div>
 
-          {outcome && (
+          {outcome === 'not-yet' && (
+            <fieldset className="text-left max-w-md mx-auto">
+              <legend className="text-sm font-medium text-foreground mb-1.5">Look again in</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {RESEAL_HORIZONS.map((horizon) => (
+                  <label
+                    key={horizon.id}
+                    className="flex items-start gap-2.5 rounded-lg border border-card-border bg-background px-3 py-2.5 cursor-pointer transition-colors duration-75 hover:bg-hover-bg has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent"
+                  >
+                    <input
+                      type="radio"
+                      name={`${id}-again`}
+                      value={horizon.id}
+                      checked={again === horizon.id}
+                      onChange={() => setAgain(horizon.id)}
+                      className="mt-1 accent-[var(--accent)] focus:outline-none"
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-foreground">{horizon.label}</span>
+                      <span className="block text-xs text-foreground/75">{formatDay(opensOnFor(today, horizon.id), today, 'short')}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-sm text-foreground/75">It stays out of your tally until you can say how it went.</p>
+            </fieldset>
+          )}
+
+          {outcome && outcome !== 'not-yet' && (
             <div className="text-left max-w-md mx-auto">
               <label htmlFor={`${id}-note`} className="block text-sm font-medium text-foreground mb-1.5">
                 A line to your past self <span className="font-normal text-foreground/75">(optional)</span>
@@ -642,7 +701,11 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer }: CapsuleVie
 
           <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center">
             <Button variant="secondary" onClick={onBack}>Not now</Button>
-            <Button disabled={!outcome} onClick={() => outcome && setFailed(!onAnswer(outcome, note))}>Close the capsule</Button>
+            {outcome === 'not-yet' ? (
+              <Button onClick={() => setFailed(!onReseal(again))}>Seal it again</Button>
+            ) : (
+              <Button disabled={!outcome} onClick={() => outcome && setFailed(!onAnswer(outcome, note))}>Close the capsule</Button>
+            )}
           </div>
           <HelpLine />
         </div>

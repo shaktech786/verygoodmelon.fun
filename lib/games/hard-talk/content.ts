@@ -21,7 +21,7 @@ export interface TalkContent {
   understand: { heading: string; example: string }
   worries: readonly [Worry, Worry, Worry]
   openings: readonly [string, string, string]
-  /** `named` starts with {who}: the name or role the player typed. */
+  /** `named` holds {who}, the name or role the player typed: one person or several, so no verb may need to agree with it. */
   them: { named: string; unnamed: string; listen: string }
   carry: readonly string[]
 }
@@ -45,7 +45,7 @@ export const TALKS: Record<TalkKind, TalkContent> = {
       'Could we have ten minutes? There’s something I’d like to ask for.',
     ],
     them: {
-      named: '{who} is a person too, with their own pressures today.',
+      named: 'For {who}, today comes with its own pressures too.',
       unnamed: 'They’re a person too, with their own pressures today.',
       listen: 'When they answer, hear all of it before you reply.',
     },
@@ -93,7 +93,7 @@ export const TALKS: Record<TalkKind, TalkContent> = {
       'Before anything else, I want to say sorry.',
     ],
     them: {
-      named: '{who} was hurt, and gets to feel how they feel.',
+      named: 'It hurt {who}, and those feelings get to be what they are.',
       unnamed: 'They were hurt, and they get to feel how they feel.',
       listen: 'Listen for what it was like for them. That’s most of an apology.',
     },
@@ -165,7 +165,7 @@ export const TALKS: Record<TalkKind, TalkContent> = {
       'Something’s been worrying me, and I’d like to understand it.',
     ],
     them: {
-      named: '{who} is there to help, and your questions are welcome.',
+      named: 'With {who}, your questions are welcome. They’re part of why you’re there.',
       unnamed: 'They’re there to help, and your questions are welcome.',
       listen: 'If something isn’t clear, it’s fine to ask them to say it again.',
     },
@@ -189,7 +189,7 @@ export const TALKS: Record<TalkKind, TalkContent> = {
       'This is a little hard for me to say, so bear with me.',
     ],
     them: {
-      named: '{who} is a whole person too, maybe a little nervous as well.',
+      named: 'On the other side, {who} may be a little nervous as well.',
       unnamed: 'They’re a whole person too, maybe a little nervous as well.',
       listen: 'When they speak, try to hear them out before you answer.',
     },

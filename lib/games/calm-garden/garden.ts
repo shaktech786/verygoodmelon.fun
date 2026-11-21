@@ -75,12 +75,20 @@ export function timeOfDayAt(date: Date): TimeOfDay {
   return 'night'
 }
 
-export function seasonAt(date: Date): Season {
-  const month = date.getMonth()
+export function seasonAt(date: Date, southern = false): Season {
+  const month = (date.getMonth() + (southern ? 6 : 0)) % 12
   if (month >= 2 && month <= 4) return 'spring'
   if (month >= 5 && month <= 7) return 'summer'
   if (month >= 8 && month <= 10) return 'autumn'
   return 'winter'
+}
+
+// Time zones whose people live mostly south of the equator, outside the tropics where
+// seasons are felt as the calendar says. Anything unlisted is treated as northern.
+const SOUTHERN_ZONES = /^(Australia|Antarctica)\/|^Pacific\/(Auckland|Chatham|Norfolk)$|^America\/(Argentina\/.+|Buenos_Aires|Sao_Paulo|Montevideo|Santiago|Punta_Arenas|Asuncion)$|^Africa\/(Johannesburg|Maseru|Mbabane|Windhoek|Gaborone|Maputo|Harare|Lusaka)$|^Indian\/(Mauritius|Reunion|Antananarivo)$/
+
+export function isSouthernTimeZone(timeZone: string): boolean {
+  return SOUTHERN_ZONES.test(timeZone)
 }
 
 const HOUR = 3_600_000

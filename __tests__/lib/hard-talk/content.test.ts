@@ -94,7 +94,27 @@ describe('themLine', () => {
   })
 
   it('capitalises a role written in lower case at the start of the sentence', () => {
-    expect(themLine('ask', 'my manager').startsWith('My manager')).toBe(true)
+    expect(themLine('tell', 'my manager').startsWith('My manager')).toBe(true)
+  })
+
+  it('reads right for one person or several, never leaning on a verb that must agree with them', () => {
+    for (const kind of TALK_KINDS) {
+      expect(TALKS[kind].them.named).not.toMatch(/\{who\} (is|was|has|does|isn’t|wasn’t|hasn’t|doesn’t|gets|seems|needs|wants|feels)\b/)
+      expect(TALKS[kind].them.named).not.toMatch(/\{who\}’s\b/)
+    }
+    const people = ['my mum', 'my parents', 'the team', 'Sam']
+    const lines = Object.fromEntries(people.map((who) => [who, TALK_KINDS.map((kind) => themLine(kind, who))]))
+    for (const who of people) {
+      for (const line of lines[who]) {
+        expect(line.toLowerCase(), line).toContain(who.toLowerCase())
+        expect(line, line).not.toMatch(/\b(parents|team|mum|Sam) (is|was|has|were|are)\b/)
+      }
+    }
+    expect(themLine('sorry', 'my parents')).toBe('It hurt my parents, and those feelings get to be what they are.')
+    expect(themLine('sorry', 'Sam')).toBe('It hurt Sam, and those feelings get to be what they are.')
+    expect(themLine('ask', 'the team')).toBe('For the team, today comes with its own pressures too.')
+    expect(themLine('doctor', 'my mum')).toBe('With my mum, your questions are welcome. They’re part of why you’re there.')
+    expect(themLine('other', 'my parents')).toBe('On the other side, my parents may be a little nervous as well.')
   })
 
   it('falls back gracefully when no one was named', () => {

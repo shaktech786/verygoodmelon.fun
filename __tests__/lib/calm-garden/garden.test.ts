@@ -7,6 +7,7 @@ import {
   loadGarden,
   plantedSince,
   returnToGarden,
+  isSouthernTimeZone,
   seasonAt,
   timeOfDayAt,
   visitorCount,
@@ -152,5 +153,21 @@ describe('the light of the real day', () => {
     expect(seasonAt(new Date(2026, 0, 5))).toBe('winter')
     expect(seasonAt(new Date(2026, 3, 5))).toBe('spring')
     expect(seasonAt(new Date(2026, 6, 5))).toBe('summer')
+  })
+
+  it('turns the seasons around south of the equator', () => {
+    expect(seasonAt(new Date(2026, 10, 21), true)).toBe('spring')
+    expect(seasonAt(new Date(2026, 0, 5), true)).toBe('summer')
+    expect(seasonAt(new Date(2026, 3, 5), true)).toBe('autumn')
+    expect(seasonAt(new Date(2026, 6, 5), true)).toBe('winter')
+  })
+
+  it('reads the hemisphere from the time zone, assuming north when unsure', () => {
+    for (const zone of ['Australia/Sydney', 'Pacific/Auckland', 'America/Sao_Paulo', 'America/Argentina/Buenos_Aires', 'America/Santiago', 'Africa/Johannesburg', 'Indian/Mauritius']) {
+      expect(isSouthernTimeZone(zone), zone).toBe(true)
+    }
+    for (const zone of ['Europe/London', 'America/New_York', 'Asia/Tokyo', 'UTC', 'Africa/Cairo', 'America/Mexico_City', '', 'Not/AZone']) {
+      expect(isSouthernTimeZone(zone), zone).toBe(false)
+    }
   })
 })

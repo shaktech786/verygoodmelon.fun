@@ -15,6 +15,9 @@ import {
   getReducedMotionSoundscape,
 } from '@/lib/audio/soundscape-presets'
 import { useAccessibility } from '@/lib/hooks/useAccessibility'
+import { isLayerHushed, subscribeToHush } from '@/lib/audio/ambient-hush'
+
+const HUSH_FADE_SECONDS = 1.5
 
 // ---------------------------------------------------------------------------
 // Types
@@ -94,6 +97,7 @@ export function useAmbientSound(
 
     engine.start(layers, 2) // 2-second fade-in
     engine.setVolume(effectiveVolume())
+    engine.hush(isLayerHushed, 0)
     setIsPlaying(true)
   }, [getEngine, getLayersForGame, effectiveVolume])
 
@@ -135,6 +139,13 @@ export function useAmbientSound(
       engineRef.current.unmute(settings.volume / 100)
     }
   }, [settings.muted, settings.volume, isPlaying])
+
+  // -----------------------------------------------------------------------
+  // A game can ask for quiet (see ambient-hush); fade layers out and back
+  // -----------------------------------------------------------------------
+  useEffect(() => {
+    return subscribeToHush(() => engineRef.current?.hush(isLayerHushed, HUSH_FADE_SECONDS))
+  }, [])
 
   // -----------------------------------------------------------------------
   // Cleanup on unmount

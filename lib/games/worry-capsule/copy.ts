@@ -14,12 +14,18 @@ export const OUTCOME_RESPONSES: Record<Outcome, readonly string[]> = {
     'Some of it, not all of it. Fears rarely arrive in full.',
   ],
   yes: [
-    'It happened. And here you are, on the other side of it.',
-    'Some worries are about real things. You met this one anyway.',
-    'It came true, and you are still here, reading this. That counts.',
-    'It happened. You were braver about it than your worry expected.',
+    'It happened. Thank you for coming back to look at it.',
+    'Some worries are about real things. This one was.',
+    'It happened. It is kept here now, with the others.',
+    'It came true. You don’t have to make sense of it today.',
   ],
 }
+
+export const NOT_YET_LINES: readonly string[] = [
+  'Too soon to tell. That is an answer too.',
+  'Some things take longer to show how they’ll go. It can wait.',
+  'Not yet. It can rest a while longer.',
+]
 
 export const RESTING_LINES: readonly string[] = [
   'It is still resting.',
@@ -55,7 +61,7 @@ function joinWithAnd(items: string[]): string {
 export function tallySummary({ no, partly, yes, total }: Tally): string {
   if (total === 0) return ''
   if (total === 1) {
-    const it = no ? 'It didn’t happen.' : partly ? 'It partly happened.' : 'It happened, and you got through it.'
+    const it = no ? 'It didn’t happen.' : partly ? 'It partly happened.' : 'It happened.'
     return `You’ve looked back on 1 worry. ${it}`
   }
   const parts: string[] = []
@@ -70,5 +76,5 @@ export function tallyReflection({ no, partly, total }: Tally): string {
   if (no * 2 > total) return 'Most of what you feared never arrived.'
   if (no * 2 === total) return 'Half of what you feared never arrived.'
   if ((no + partly) * 2 > total) return 'Most of them turned out smaller than they felt.'
-  return 'Some worries are about real things. You met these, and came back to look.'
+  return 'Some worries are about real things. You came back to look at each one.'
 }

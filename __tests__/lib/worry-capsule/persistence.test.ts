@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { writeArchive } from '@/lib/games/worry-capsule/archive'
+import { ARCHIVE_VERSION, writeArchive } from '@/lib/games/worry-capsule/archive'
 import { sealCapsule } from '@/lib/games/worry-capsule/capsules'
 import {
   BACKUP_KEY,
@@ -80,7 +80,7 @@ describe('loadCapsules', () => {
   })
 
   it('sets aside data from a newer version too', () => {
-    const newer = writeArchive([capsule], NOW).replace('"version": 1', '"version": 2')
+    const newer = writeArchive([capsule], NOW).replace(`"version": ${ARCHIVE_VERSION}`, `"version": ${ARCHIVE_VERSION + 1}`)
     const store = memoryStore({ [STORAGE_KEY]: newer })
     expect(loadCapsules(store)).toEqual({ status: 'unreadable', capsules: [] })
     expect(store.data[BACKUP_KEY]).toBe(newer)

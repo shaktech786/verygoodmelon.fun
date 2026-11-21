@@ -183,7 +183,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     slug: 'the-slow-post', // Enigmatic: a letter to your future self
     title: 'The Keeper',
     description: 'Seal a worry, see how it turned out',
-    hook: 'Seal a worry away, then see if it came true',
+    hook: 'Seal a worry away, then see how it turned out',
     cardImage: '/games/worry-capsule/card.svg',
     category: 'Calm',
     accentColor: 'warning',

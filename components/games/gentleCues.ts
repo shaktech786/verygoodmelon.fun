@@ -33,6 +33,11 @@ export function useSoundChosen(): boolean {
   return useSyncExternalStore(subscribeToSoundChoice, soundChosen, () => false)
 }
 
+/** False while the accessibility panel has the site muted or its volume at zero. */
+export function useSoundAudible(): boolean {
+  return useSyncExternalStore(subscribeToSoundChoice, () => volumeFraction() > 0, () => true)
+}
+
 export interface Tone {
   hz: number
   /** Glide to this pitch, so a rising or falling cue can be told apart with eyes closed. */
@@ -50,13 +55,16 @@ function audio(): AudioContext {
   return context
 }
 
-/** Call from a tap or key press: browsers keep audio that is first started later silent. */
-export function wakeTones() {
-  if (soundChosen()) audio()
+/**
+ * Call from a tap or key press: browsers keep audio that is first started later silent.
+ * `chosen` defaults to the page's sound button; a game with its own sound choice passes that.
+ */
+export function wakeTones(chosen = soundChosen()) {
+  if (chosen && volumeFraction() > 0) audio()
 }
 
-export function playTones(tones: Tone[], loudness: number) {
-  if (!soundChosen()) return
+export function playTones(tones: Tone[], loudness: number, chosen = soundChosen()) {
+  if (!chosen || volumeFraction() === 0) return
   const ctx = audio()
   const peak = loudness * volumeFraction()
   for (const tone of tones) {

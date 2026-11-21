@@ -205,27 +205,38 @@ function drawTree(ctx: Ctx, type: PlantType, x: number, y: number, s: number, se
       ctx.fill()
     }
   } else {
-    const trunkH = 45 * s
+    // A weeping willow: a wide, low crown with a curtain of strands falling from all
+    // across it, nearly to the grass. (Strands from a single point read as a palm.)
+    const trunkH = 34 * s
     ctx.fillStyle = BROWNS[1]
     ctx.beginPath()
-    ctx.moveTo(x - 4 * s, y)
-    ctx.quadraticCurveTo(x - 2 * s + sway * 0.2, y - trunkH * 0.5, x + sway * 0.3, y - trunkH)
-    ctx.lineTo(x + 4 * s + sway * 0.3, y - trunkH)
-    ctx.quadraticCurveTo(x + 2 * s + sway * 0.2, y - trunkH * 0.5, x + 4 * s, y)
+    ctx.moveTo(x - 5 * s, y)
+    ctx.quadraticCurveTo(x - 2 * s + sway * 0.2, y - trunkH * 0.5, x - 2 * s + sway * 0.3, y - trunkH)
+    ctx.lineTo(x + 3 * s + sway * 0.3, y - trunkH)
+    ctx.quadraticCurveTo(x + 3 * s + sway * 0.2, y - trunkH * 0.5, x + 5 * s, y)
     ctx.closePath()
     ctx.fill()
     const tx = x + sway * 0.5
-    const ty = y - trunkH
-    blob(ctx, tx, ty - 4 * s, 9 * s, shade(leaves, -0.1))
+    const base = y - trunkH
+    ctx.beginPath()
+    ctx.ellipse(tx, base, 19 * s, 17 * s, 0, Math.PI, Math.PI * 2)
+    ctx.closePath()
+    ctx.fillStyle = shade(leaves, -0.14)
+    ctx.fill()
     ctx.lineCap = 'round'
-    for (let i = 0; i < 11; i++) {
-      const a = -Math.PI * 0.85 + ((Math.PI * 0.7) / 10) * i
-      const len = (24 + (i % 4) * 4) * s
+    ctx.lineWidth = 2.2 * Math.sqrt(s)
+    const strands = 19
+    for (let i = 0; i < strands; i++) {
+      const angle = Math.PI + 0.12 + ((Math.PI - 0.24) * i) / (strands - 1)
+      const out = Math.cos(angle)
+      const sx = tx + out * 18 * s
+      const sy = base + Math.sin(angle) * 16 * s
+      // Strands in front of the trunk stop short so it still shows through the curtain.
+      const end = y - (Math.abs(out) < 0.35 ? 18 : 6 + ((i * 7) % 5) * 2) * s
       ctx.beginPath()
-      ctx.moveTo(tx, ty - 5 * s)
-      ctx.quadraticCurveTo(tx + Math.cos(a) * len * 0.55, ty + 6 * s, tx + Math.cos(a) * len, ty + len * 0.62 + sway * 2)
-      ctx.strokeStyle = i % 2 ? leaves : shade(leaves, -0.15)
-      ctx.lineWidth = 2 * Math.sqrt(s)
+      ctx.moveTo(sx, sy)
+      ctx.quadraticCurveTo(sx + out * 9 * s, sy + 8 * s, sx + out * 6 * s + sway * 2, end)
+      ctx.strokeStyle = i % 2 ? leaves : shade(leaves, -0.2)
       ctx.stroke()
     }
   }

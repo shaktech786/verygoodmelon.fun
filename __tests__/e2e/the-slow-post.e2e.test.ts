@@ -24,6 +24,7 @@ interface StoredCapsule {
   sealedAt: string
   opensOn: string
   opening: { at: string; outcome: string; note: string } | null
+  lookedIn?: string[]
 }
 
 function collectPageErrors(page: Page): string[] {
@@ -281,7 +282,7 @@ test.describe('The Keeper', () => {
       await page.getByRole('button', { name: 'Close the capsule' }).click()
 
       await expect(shelfHeading(page)).toBeFocused()
-      await expect(page.getByText('Closed and kept. It is part of your tally now.')).toBeVisible()
+      await expect(page.getByText('Closed and kept with the others.')).toBeVisible()
       await expect(page.getByRole('heading', { name: 'How they turned out' })).toBeVisible()
       const [saved] = await stored(page)
       expect(saved.opening).toMatchObject({ outcome: answer.toLowerCase(), note: 'Dear me: it was all right.' })
@@ -292,6 +293,35 @@ test.describe('The Keeper', () => {
       expect(errors).toEqual([])
     })
   }
+
+  test('too soon to tell: "Not yet" seals it again for the chosen time and keeps it out of the tally', async ({ page }) => {
+    const errors = collectPageErrors(page)
+    await openKeeper(page)
+    await sealWorry(page)
+    const lookedIn = new Date('2026-11-28T09:00:00').getTime()
+    await returnOn(page, lookedIn)
+    await page.getByRole('button', { name: /Ready to open/ }).click()
+    await page.getByRole('button', { name: 'Open it' }).click()
+
+    await page.getByRole('radio', { name: 'Not yet', exact: true }).locator('..').click()
+    await expect(page.getByLabel(/A line to your past self/)).toHaveCount(0)
+    await expect(page.getByRole('radio', { name: /Another week/ })).toBeChecked()
+    await page.getByRole('radio', { name: /Another month/ }).check()
+    await page.getByRole('button', { name: 'Seal it again' }).click()
+
+    await expect(shelfHeading(page)).toBeFocused()
+    await expect(page.getByText('Sealed again. It comes back on Monday, December 28.')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'How they turned out' })).toHaveCount(0)
+    const [saved] = await stored(page)
+    expect(saved).toMatchObject({ opening: null, opensOn: '2026-12-28' })
+    expect(saved.lookedIn).toHaveLength(1)
+    expect(localKey(Date.parse(saved.lookedIn![0]))).toBe('2026-11-28')
+
+    await page.getByRole('button', { name: /Opens Monday, December 28/ }).click()
+    await expect(page.getByRole('heading', { name: 'Still resting' })).toBeFocused()
+    await expect(page.getByText('You looked in on Saturday, November 28, and it was too soon to tell, so it has more time.')).toBeVisible()
+    expect(errors).toEqual([])
+  })
 
   test('the tally speaks plainly across many capsules', async ({ page }) => {
     await openKeeper(page)

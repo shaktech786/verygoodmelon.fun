@@ -84,6 +84,14 @@ describe('reading a suggestion back', () => {
       expect(parseSuggestion(bad)).toBeNull()
     }
     expect(parseSuggestionReply('no json here')).toBeNull()
+  })
+
+  it('only speaks of visitors that come to this garden: butterflies and fireflies', () => {
+    const ok = { type: 'lavender', x: 0.5, y: 0.8, line: 'Butterflies love lavender, and fireflies like the dusk.' }
+    expect(parseSuggestion(ok)).not.toBeNull()
+    for (const line of ['The bees would love lavender here.', 'A bee or two would visit.', 'Birds could nest in an oak.', 'A hummingbird likes poppies.']) {
+      expect(parseSuggestion({ ...ok, line }), line).toBeNull()
+    }
     expect(parseSuggestionReply('{"type": "pine", "x": 0.5,')).toBeNull()
   })
 })
@@ -96,6 +104,13 @@ describe('asking for a suggestion', () => {
     expect(prompt).toContain('autumn')
     for (const type of PLANT_TYPES) expect(prompt).toContain(type)
     expect(prompt).toContain('berry-bush (berry bush)')
+  })
+
+  it('names only the visitors the garden really has', () => {
+    const prompt = buildSuggestionPrompt([spot('daisy', 0.2, 0.8)], 'spring')
+    expect(prompt).toContain('butterflies')
+    expect(prompt).toContain('fireflies')
+    expect(prompt).toMatch(/never mention any other animal/i)
   })
 
   it('keeps the prompt small however big the garden gets', () => {

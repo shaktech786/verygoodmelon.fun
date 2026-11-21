@@ -134,7 +134,7 @@ test.describe('The Harmonist', () => {
     await expect(page.locator('[role="application"]')).toHaveCount(0)
     await page.getByRole('button', { name: 'Begin breathing' }).click()
     await expect(page.locator('[role="application"]')).toHaveCount(0)
-    await page.getByRole('button', { name: 'End breathing session' }).click()
+    await page.getByRole('button', { name: 'End session' }).click()
     await expect(page.locator('[role="application"]')).toHaveCount(0)
   })
 
@@ -153,7 +153,7 @@ test.describe('The Harmonist', () => {
         await expect(phase(page)).toHaveText(label)
       }
       await expect(guide(page)).toContainText('1 seed so far')
-      await page.getByRole('button', { name: 'End breathing session' }).click()
+      await page.getByRole('button', { name: 'End session' }).click()
       await expect(guide(page)).toContainText('Each seed is a breath you finished: 1 in all.')
     })
   }
@@ -162,7 +162,7 @@ test.describe('The Harmonist', () => {
     await openGame(page)
     await startPattern(page, /Box Breathing/)
     await advance(page, 3000)
-    await page.getByRole('button', { name: 'End breathing session' }).click()
+    await page.getByRole('button', { name: 'End session' }).click()
     await expect(guide(page).getByRole('heading', { name: 'A short pause' })).toBeVisible()
     await expect(guide(page)).toContainText('You spent 3 seconds breathing.')
     await expect(guide(page)).not.toContainText('Each seed')
@@ -174,7 +174,7 @@ test.describe('The Harmonist', () => {
     await advance(page, 9000)
     await expect(phase(page)).toHaveText('Exhale')
 
-    await page.getByRole('button', { name: 'End breathing session' }).click()
+    await page.getByRole('button', { name: 'End session' }).click()
     await page.getByRole('button', { name: 'Breathe again' }).click()
     await startPattern(page, /Coherent/)
     await expect(guide(page)).toContainText('Coherent Breathing')
@@ -208,7 +208,7 @@ test.describe('The Harmonist', () => {
     await expect(rhythm.getByRole('radio', { name: 'Physiological Sigh' })).toBeFocused()
     await expect(phase(page)).toHaveText('Inhale')
 
-    await page.getByRole('button', { name: 'End breathing session' }).click()
+    await page.getByRole('button', { name: 'End session' }).click()
     await expect(guide(page)).toContainText('Patterns: Box Breathing, Coherent Breathing, Physiological Sigh')
     await expect(guide(page)).toContainText('2 in all.')
   })
@@ -279,7 +279,7 @@ test.describe('The Harmonist', () => {
     await expect(phase(page)).toHaveText('Paused')
     await expect(sessionTime(page)).toHaveText('0:05')
 
-    await page.getByRole('button', { name: 'Resume session' }).click()
+    await page.getByRole('button', { name: 'Resume' }).click()
     await expect(phase(page)).toHaveText('Hold')
     await advance(page, 3500)
     await expect(phase(page)).toHaveText('Exhale')
@@ -291,15 +291,15 @@ test.describe('The Harmonist', () => {
     await startPattern(page, /Box Breathing/)
     await advance(page, 1000)
 
-    await page.getByRole('button', { name: 'Pause session' }).focus()
+    await page.getByRole('button', { name: 'Pause' }).focus()
     await page.keyboard.press(' ')
     await expect(phase(page)).toHaveText('Paused')
-    await expect(page.getByRole('button', { name: 'Resume session' })).toBeFocused()
+    await expect(page.getByRole('button', { name: 'Resume' })).toBeFocused()
 
     await page.keyboard.press(' ')
     await expect(phase(page)).toHaveText('Inhale')
 
-    await page.getByRole('button', { name: 'End breathing session' }).focus()
+    await page.getByRole('button', { name: 'End session' }).focus()
     await page.keyboard.press(' ')
     await expect(guide(page).getByRole('heading', { name: 'A short pause' })).toBeVisible()
   })
@@ -347,6 +347,7 @@ test.describe('The Harmonist', () => {
     await expect(page.getByRole('radio', { name: '1 min' })).toHaveAttribute('aria-checked', 'true')
 
     await page.keyboard.press('Enter')
+    await expect(phase(page)).toBeFocused()
     await expect(guide(page)).toContainText('Coherent Breathing')
     await expect(guide(page)).toContainText('0:00 of 1:00')
     await expect(phase(page)).toHaveText('Inhale')
@@ -370,21 +371,23 @@ test.describe('The Harmonist', () => {
     await expect(phase(page)).toHaveText('Inhale')
   })
 
-  test('without sound nothing is played, and the page says how to breathe with eyes closed', async ({ page }) => {
+  test('without breath tones nothing is played, and the page says how to breathe with eyes closed', async ({ page }) => {
     await recordTones(page)
     await openGame(page)
-    await expect(page.getByText('Turn on ambient sound to follow along with your eyes closed.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Breath tones' })).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.getByText('Breath tones let you follow along with your eyes closed.')).toBeVisible()
     await startPattern(page, /Box Breathing/)
     for (let i = 0; i < 8; i++) await advance(page, 2000)
     await expect(guide(page)).toContainText('1 seed so far')
     expect(await tones(page)).toEqual([])
   })
 
-  test('with sound on, a note marks every turn of the breath: rising in, high hold, falling out', async ({ page }) => {
+  test('breath tones on their own, without the background sound: rising in, high hold, falling out', async ({ page }) => {
     await recordTones(page)
     await openGame(page)
-    await turnSoundOn(page)
-    await expect(page.getByText('Sound is on: a rising note means breathe in, a falling one means breathe out.')).toBeVisible()
+    await page.getByRole('button', { name: 'Breath tones' }).click()
+    await expect(page.getByText(/A rising note means breathe in, a falling one means breathe out\./)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Ambient sound' })).toHaveAttribute('aria-pressed', 'false')
     await startPattern(page, /Box Breathing/)
     await advance(page, 100)
     expect(await cues(page)).toEqual([IN_HZ])
@@ -395,20 +398,81 @@ test.describe('The Harmonist', () => {
     expect(await cues(page)).toEqual([IN_HZ, HOLD_HZ, OUT_HZ, HOLD_HZ, IN_HZ])
 
     // A paused guide is silent.
-    await page.getByRole('button', { name: 'Pause session' }).click()
+    await page.getByRole('button', { name: 'Pause' }).click()
     await advance(page, 20_000)
     expect(await cues(page)).toHaveLength(5)
+  })
+
+  test('the background sound alone plays no breath tones, and its waves rest while you breathe', async ({ page }) => {
+    await recordTones(page)
+    // Records every gain ramp target, so each ambient layer's fade can be read back.
+    await page.addInitScript(() => {
+      const ramps: number[] = []
+      Object.assign(window, { __ramps: ramps })
+      const ramp = AudioParam.prototype.linearRampToValueAtTime
+      AudioParam.prototype.linearRampToValueAtTime = function (this: AudioParam, value: number, endTime: number) {
+        ramps.push(Math.round(value * 1000) / 1000)
+        return ramp.call(this, value, endTime)
+      }
+    })
+    const ramps = () => page.evaluate(() => (window as unknown as { __ramps: number[] }).__ramps.splice(0))
+    await openGame(page)
+    await turnSoundOn(page)
+    await ramps()
+
+    await startPattern(page, /Box Breathing/)
+    await advance(page, 500)
+    // The sea (0.2) falls silent; the low drone (0.15) keeps its level.
+    expect(await ramps()).toEqual(expect.arrayContaining([0, 0.15]))
+    for (let i = 0; i < 4; i++) await advance(page, 4000)
+    expect(await cues(page)).toEqual([])
+
+    await page.getByRole('button', { name: 'End session' }).click()
+    await advance(page, 500)
+    expect(await ramps()).toEqual(expect.arrayContaining([0.2, 0.15]))
   })
 
   test('sound muted in the accessibility panel silences the breath notes', async ({ page }) => {
     await recordTones(page)
     await page.addInitScript(() => localStorage.setItem('verygoodmelon:accessibility:settings', JSON.stringify({ muted: true })))
     await openGame(page)
-    await turnSoundOn(page)
-    await expect(page.getByText('Turn on ambient sound to follow along with your eyes closed.')).toBeVisible()
+    await page.getByRole('button', { name: 'Breath tones' }).click()
+    await expect(page.getByText('Sound is muted in the accessibility settings, so the tones stay silent.')).toBeVisible()
     await startPattern(page, /Box Breathing/)
     for (let i = 0; i < 4; i++) await advance(page, 4000)
     expect(await cues(page)).toEqual([])
+  })
+
+  test('the melon keeps the shape of the rhythm, and the last one is waiting on return', async ({ page }) => {
+    await openGame(page)
+    await expect(page.getByText(/Your last melon/)).toHaveCount(0)
+    await startPattern(page, /Box Breathing/)
+    for (let i = 0; i < 9; i++) await advance(page, 4000)
+    await page.getByRole('button', { name: 'End session' }).click()
+    await expect(guide(page)).toContainText('Its shape comes from the rhythm, and longer breaths grew longer seeds.')
+    const seedShapes = (name: RegExp) =>
+      guide(page).getByRole('img', { name }).locator('ellipse').evaluateAll((els) => els.map((e) => `${e.getAttribute('rx')}x${e.getAttribute('ry')}`))
+    const boxSeeds = await seedShapes(/A melon holding 2 seeds/)
+    expect(boxSeeds).toHaveLength(2)
+
+    await page.getByRole('button', { name: 'Breathe again' }).click()
+    await expect(page.getByText('Your last melon: 2 seeds.')).toBeVisible()
+
+    await page.reload()
+    await expect(page.getByText(/^Your last melon, from \w+day, November 21: 2 seeds\.$/)).toBeVisible()
+
+    await startPattern(page, /4-7-8/)
+    for (let i = 0; i < 10; i++) await advance(page, 4000)
+    await page.getByRole('button', { name: 'End session' }).click()
+    expect(await seedShapes(/A melon holding 2 seeds/)).not.toEqual(boxSeeds)
+  })
+
+  test('a broken saved melon is simply not shown', async ({ page }) => {
+    const errors = collectPageErrors(page)
+    await page.addInitScript(() => localStorage.setItem('verygoodmelon:still-point:last-melon', '{oops'))
+    await openGame(page)
+    await expect(page.getByText(/Your last melon/)).toHaveCount(0)
+    expect(errors).toEqual([])
   })
 
   test('leaving mid-session stops cleanly', async ({ page }) => {
@@ -441,7 +505,7 @@ test.describe('The Harmonist on a phone with reduced motion', () => {
     await expect(phase(page)).toHaveText('Exhale')
     await expect(page.getByRole('img', { name: /Breathing visualization/ }).locator('ellipse')).toHaveCount(1)
 
-    await page.getByRole('button', { name: 'End breathing session' }).tap()
+    await page.getByRole('button', { name: 'End session' }).tap()
     await expect(guide(page)).toContainText('You spent 26 seconds breathing.')
 
     await page.getByRole('button', { name: 'Breathe again' }).tap()
@@ -450,6 +514,23 @@ test.describe('The Harmonist on a phone with reduced motion', () => {
     await page.getByRole('img', { name: /Breathing visualization/ }).tap()
     await expect(guide(page)).toContainText('1 breath marked')
     expect(errors).toEqual([])
+  })
+
+  test('with Larger text, Begin brings the guide into view and moves focus to it', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('verygoodmelon:accessibility:settings', JSON.stringify({ textSize: 'larger' })))
+    await openGame(page)
+    await expect(page.locator('html')).toHaveAttribute('data-text-size', 'larger')
+    await page.getByRole('button', { name: 'Begin breathing' }).tap()
+    await expect(phase(page)).toBeFocused()
+    for (const target of [page.getByRole('img', { name: /Breathing visualization/ }), phase(page)]) {
+      const box = await target.boundingBox()
+      expect(box).not.toBeNull()
+      expect(box!.y).toBeGreaterThanOrEqual(0)
+      expect(box!.y + box!.height).toBeLessThanOrEqual(844)
+    }
+    // Space works from there, as the hint says.
+    await page.keyboard.press(' ')
+    await expect(phase(page)).toHaveText('Paused')
   })
 
   test('keyboard hints stay hidden on a touch screen until a key is pressed', async ({ page }) => {
@@ -477,7 +558,7 @@ test.describe('The Harmonist on a phone with reduced motion', () => {
     await page.getByRole('button', { name: 'Begin breathing' }).tap()
     await advance(page, 9000)
     expect(await buzzes()).toEqual([])
-    await page.getByRole('button', { name: 'End breathing session' }).tap()
+    await page.getByRole('button', { name: 'End session' }).tap()
     await page.getByRole('button', { name: 'Breathe again' }).tap()
 
     const offer = page.getByRole('button', { name: 'Buzz as each breath turns' })

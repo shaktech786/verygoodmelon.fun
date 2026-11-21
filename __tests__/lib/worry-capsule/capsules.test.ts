@@ -6,6 +6,7 @@ import {
   capsuleStatus,
   normalizeWorry,
   openCapsule,
+  resealCapsule,
   sealCapsule,
   shelve,
   tally,
@@ -43,6 +44,7 @@ describe('sealCapsule', () => {
     expect(season.opensOn).toBe('2027-02-21')
     expect(week.sealedAt).toBe('2026-11-21T10:00:00.000Z')
     expect(week.opening).toBeNull()
+    expect(week.lookedIn).toEqual([])
   })
 
   it('uses the sealer’s own date when it is already tomorrow there', () => {
@@ -99,6 +101,35 @@ describe('openCapsule', () => {
   it('keeps the first answer if the capsule was already opened', () => {
     const first = openCapsule(sealed(), 'no', 'first', SEALED)
     expect(openCapsule(first, 'yes', 'second', SEALED)).toBe(first)
+  })
+})
+
+describe('resealCapsule', () => {
+  it('gives a capsule that is too soon to tell another week or month from today, without answering it', () => {
+    const capsule = sealed()
+    const lookedIn = new Date('2026-11-29T09:00:00Z')
+    const week = resealCapsule(capsule, 'week', lookedIn, TZ)
+    expect(week.opensOn).toBe('2026-12-06')
+    expect(week.opening).toBeNull()
+    expect(week.lookedIn).toEqual(['2026-11-29T09:00:00.000Z'])
+    expect(week.sealedAt).toBe(capsule.sealedAt)
+    expect(week.horizon).toBe('week')
+    expect(capsuleStatus(week, lookedIn, TZ)).toBe('resting')
+    expect(resealCapsule(week, 'month', new Date('2026-12-07T09:00:00Z'), TZ)).toMatchObject({
+      opensOn: '2027-01-07',
+      lookedIn: ['2026-11-29T09:00:00.000Z', '2026-12-07T09:00:00.000Z'],
+    })
+    expect(capsule.lookedIn).toEqual([])
+  })
+
+  it('leaves an answered capsule as it is', () => {
+    const opened = openCapsule(sealed(), 'no', '', SEALED)
+    expect(resealCapsule(opened, 'week', SEALED, TZ)).toBe(opened)
+  })
+
+  it('stays out of the tally', () => {
+    const resealed = resealCapsule(sealed(), 'month', new Date('2026-11-29T09:00:00Z'), TZ)
+    expect(tally([resealed])).toEqual({ no: 0, partly: 0, yes: 0, total: 0 })
   })
 })
 

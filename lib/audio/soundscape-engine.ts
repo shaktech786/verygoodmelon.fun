@@ -560,6 +560,7 @@ export class SoundscapeEngine {
   private ctx: AudioContext | null = null
   private masterGain: GainNode | null = null
   private layerGains: Map<number, GainNode> = new Map()
+  private layers: SoundLayerConfig[] = []
   private abortControllers: Map<number, AbortController> = new Map()
   private _isPlaying = false
 
@@ -604,6 +605,7 @@ export class SoundscapeEngine {
       void ctx.resume()
     }
 
+    this.layers = layers
     const master = this.masterGain!
     master.gain.setValueAtTime(0, ctx.currentTime)
     master.gain.linearRampToValueAtTime(1, ctx.currentTime + fadeInSeconds)
@@ -666,6 +668,23 @@ export class SoundscapeEngine {
   }
 
   /**
+   * Fade each layer to silence or back to its own level, leaving the master volume alone.
+   */
+  hush(isHushed: (type: SoundType) => boolean, fadeSeconds: number): void {
+    const ctx = this.ctx
+    if (!ctx) return
+    const now = ctx.currentTime
+    this.layerGains.forEach((gain, index) => {
+      const layer = this.layers[index]
+      if (!layer) return
+      const target = isHushed(layer.type) ? 0 : layer.volume
+      gain.gain.cancelScheduledValues(now)
+      gain.gain.setValueAtTime(gain.gain.value, now)
+      gain.gain.linearRampToValueAtTime(target, now + fadeSeconds)
+    })
+  }
+
+  /**
    * Mute by ramping master gain to 0.
    */
   mute(): void {
@@ -703,5 +722,6 @@ export class SoundscapeEngine {
       try { g.disconnect() } catch { /* ok */ }
     })
     this.layerGains.clear()
+    this.layers = []
   }
 }

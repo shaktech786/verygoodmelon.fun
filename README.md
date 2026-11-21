@@ -14,7 +14,7 @@
 - **[The Patient One](https://verygoodmelon.fun/games/the-long-breath)**: Seeds that settle only while you stay still, and a minute for one small thing
 - **[The Harmonist](https://verygoodmelon.fun/games/the-still-point)**: Follow a shape, sound a chord, and leave with the pattern your breaths made
 - **[The Gardener](https://verygoodmelon.fun/games/quiet-grove)**: Tend a garden that answers what you plant and grows while you're away
-- **[The Keeper](https://verygoodmelon.fun/games/the-slow-post)**: Seal a worry away, then see if it came true
+- **[The Keeper](https://verygoodmelon.fun/games/the-slow-post)**: Seal a worry away, then see how it turned out
 - **[The Plain Speaker](https://verygoodmelon.fun/games/the-threshold)**: Settle, find your words, walk in with one line
 
 ### Reflect

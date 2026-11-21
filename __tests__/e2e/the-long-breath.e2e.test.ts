@@ -166,13 +166,55 @@ test.describe('The Patient One', () => {
     await openGame(page)
     await turnSoundOn(page)
     await taskButton(page, 'Listen to Silence').click()
-    await expect(page.getByText('Close your eyes if you like. A soft chime will mark the end.')).toBeVisible()
+    await expect(page.getByText('Close your eyes if you like. The page’s own sound fades away for this minute, and a soft chime will mark the end.')).toBeVisible()
 
     await advance(page, 59_000)
     expect(await heardChime(page)).toBe(false)
     await advance(page, 1000)
     await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeVisible()
     expect(await heardChime(page)).toBe(true)
+  })
+
+  test('the page’s own rain and hum fade out for the listening minute and come back after', async ({ page }) => {
+    // Records every gain ramp target, so the fade of each ambient layer can be read back.
+    await page.addInitScript(() => {
+      const ramps: number[] = []
+      Object.assign(window, { __ramps: ramps })
+      const ramp = AudioParam.prototype.linearRampToValueAtTime
+      AudioParam.prototype.linearRampToValueAtTime = function (this: AudioParam, value: number, endTime: number) {
+        ramps.push(Math.round(value * 1000) / 1000)
+        return ramp.call(this, value, endTime)
+      }
+    })
+    const ramps = () => page.evaluate(() => (window as unknown as { __ramps: number[] }).__ramps.splice(0))
+    await openGame(page)
+    await turnSoundOn(page)
+    await ramps()
+
+    await taskButton(page, 'Look at One Thing').click()
+    await advance(page, 2000)
+    expect(await ramps()).not.toContain(0)
+    await page.getByRole('button', { name: 'I need to stop' }).click()
+
+    await taskButton(page, 'Listen to Silence').click()
+    await advance(page, 1000)
+    // Rain (0.25) and drone (0.1) both fall to silence.
+    expect((await ramps()).filter((v) => v === 0)).toHaveLength(2)
+    await advance(page, 59_000)
+    await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeVisible()
+    expect(await ramps()).toEqual(expect.arrayContaining([0.25, 0.1]))
+    await expect(page.getByRole('button', { name: 'Ambient sound' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  test('the last seed settles in view: the reward shows the full bed', async ({ page }) => {
+    await openGame(page)
+    await taskButton(page, 'Watch the Seeds').click()
+    await advance(page, 40_000)
+    await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeFocused()
+    const bed = page.getByRole('img', { name: '8 of 8 seeds settled' })
+    await expect(bed).toBeVisible()
+    await expect(bed.locator('[data-settled="true"]')).toHaveCount(8)
+    await expect(bed.locator('.animate-fade')).toHaveCount(1)
   })
 
   test('sound muted in the accessibility panel means no chime, even with the sound button on', async ({ page }) => {
@@ -242,7 +284,7 @@ test.describe('The Patient One', () => {
     await openGame(page)
     await taskButton(page, 'Look at One Thing').click()
     await advance(page, 3000)
-    await page.getByRole('button', { name: 'Stop current task' }).click()
+    await page.getByRole('button', { name: 'I need to stop' }).click()
 
     await expect(page.getByRole('heading', { name: MENU_HEADING })).toBeFocused()
     await expect(page.getByText('Today you spent time with')).toHaveCount(0)
@@ -335,7 +377,7 @@ test.describe('The Patient One', () => {
     await expect(page.getByRole('heading', { name: 'Listen to Silence' })).toBeFocused()
 
     await page.keyboard.press('Tab')
-    await expect(page.getByRole('button', { name: 'Stop current task' })).toBeFocused()
+    await expect(page.getByRole('button', { name: 'I need to stop' })).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('heading', { name: MENU_HEADING })).toBeFocused()
 
@@ -369,6 +411,23 @@ test.describe('The Patient One on a phone with reduced motion', () => {
     await expect(field.locator('.animate-fade')).toHaveCount(0)
     await advance(page, 15_000)
     await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeVisible()
+  })
+
+  test('with Larger text, the seeds, the time and Stop all fit on screen without scrolling', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('verygoodmelon:accessibility:settings', JSON.stringify({ textSize: 'larger' })))
+    await openGame(page)
+    await expect(page.locator('html')).toHaveAttribute('data-text-size', 'larger')
+    await taskButton(page, 'Watch the Seeds').tap()
+    await advance(page, 3000)
+    for (const target of [page.getByRole('img', { name: /seeds settled/ }), timer(page), page.getByRole('button', { name: 'I need to stop' })]) {
+      const box = await target.boundingBox()
+      expect(box).not.toBeNull()
+      expect(box!.y).toBeGreaterThanOrEqual(0)
+      expect(box!.y + box!.height).toBeLessThanOrEqual(844)
+    }
+    // Bringing the moment on screen is not counted as the player moving.
+    await expect(page.getByText('The seeds wait while you move.')).toHaveCount(0)
+    await expect(timer(page)).toHaveText('0:37')
   })
 
   test('a phone can offer a gentle buzz at the end of the listening minute', async ({ page }) => {

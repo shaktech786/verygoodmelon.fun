@@ -140,6 +140,8 @@ export function suggestLocally(plants: readonly PlantSpot[], seed: number): Sugg
 }
 
 const UNTRUSTED_LINE = /\b(ai|a\.i\.|assistant|language model|model|generat\w*|algorithm\w*|prompt)\b|<|>|https?:|www\./i
+// Butterflies and fireflies are the garden's only visitors; a line promising others would not come true.
+const ABSENT_VISITORS = /\b(bees?|bumblebees?|birds?|hummingbirds?|robins?|squirrels?|rabbits?|hedgehogs?|frogs?|deer|ladybirds?|ladybugs?|moths?|wasps?)\b/i
 
 /** Validates a suggestion from outside this module (the route reply, or the model's JSON). */
 export function parseSuggestion(value: unknown): Suggestion | null {
@@ -153,7 +155,7 @@ export function parseSuggestion(value: unknown): Suggestion | null {
     .replace(/\s+/g, ' ')
     .replace(/\b(round|flat|berry)-(stone|bush)\b/gi, '$1 $2')
     .trim()
-  if (line.length < LINE_MIN || line.length > LINE_MAX || UNTRUSTED_LINE.test(line)) return null
+  if (line.length < LINE_MIN || line.length > LINE_MAX || UNTRUSTED_LINE.test(line) || ABSENT_VISITORS.test(line)) return null
   return { type: v.type, x: round2(clamp(v.x, X_MIN, X_MAX)), y: round2(clamp(v.y, Y_MIN, Y_MAX)), line }
 }
 
@@ -185,6 +187,7 @@ What they have planted so far, oldest first:
 ${lines.join('\n')}
 
 Suggest ONE thing to add, chosen because of something they planted: shade for flowers, somewhere to sit, company for an empty side, something for the butterflies, a quiet gap that wants filling, or a plant that likes to grow near one of theirs.
+The only creatures that visit this garden are butterflies by day and fireflies at night. Never mention any other animal, such as bees or birds.
 
 Plant types you may choose (id, then its name to use in your line): ${joinWords(PLANT_TYPES.map((t) => `${t} (${nameOf(t)})`))}.
 Coordinates: x runs from 0.05 (left) to 0.95 (right); y runs from ${Y_MIN} (the back, near the horizon at ${GROUND_TOP}) to ${Y_MAX} (the front). Choose open ground near the plant your line is about, leaving room: at least 0.08 away from every plant.

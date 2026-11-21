@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils/cn'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { buzz, playTones, useCanBuzz, useSoundChosen, wakeTones, type Tone } from '@/components/games/gentleCues'
+import { hushAmbient } from '@/lib/audio/ambient-hush'
 
 type MomentId = 'watch' | 'listen' | 'look' | 'reflect' | 'appreciate'
 
@@ -210,6 +211,43 @@ function MomentIcon({ id, className }: { id: MomentId; className?: string }) {
   )
 }
 
+interface SeedFieldProps {
+  settled: number
+  /** Seeds from this index on fade in as they settle; earlier ones are already resting. */
+  fadeFrom: number
+  reducedMotion: boolean
+  className: string
+}
+
+function SeedField({ settled: settledSeeds, fadeFrom, reducedMotion, className }: SeedFieldProps) {
+  return (
+    <div
+      className={cn('relative overflow-hidden rounded-xl bg-gradient-to-b from-transparent to-accent/10', className)}
+      role="img"
+      aria-label={`${settledSeeds} of ${SEED_COUNT} seeds settled`}
+    >
+      {FLOATING_SEEDS.map((seed) => {
+        const settled = seed.id < settledSeeds
+        return (
+          <div
+            key={seed.id}
+            data-settled={settled}
+            className={cn(
+              'absolute w-3 h-5 bg-foreground/70 rounded-full shadow-lg',
+              settled ? !reducedMotion && seed.id >= fadeFrom && 'animate-fade' : !reducedMotion && 'animate-float-seed',
+            )}
+            style={
+              settled
+                ? { left: `${seed.bedX}%`, bottom: `${8 + seed.bedLift}px`, rotate: `${seed.bedLift * 6 - 30}deg` }
+                : { left: `${seed.x}%`, animationDelay: `${seed.delay}s`, top: reducedMotion ? `${seed.restingTop}%` : '-20px' }
+            }
+          />
+        )
+      })}
+    </div>
+  )
+}
+
 function WordChip({ label, pressed, onToggle }: { label: string; pressed: boolean; onToggle: () => void }) {
   return (
     <button
@@ -255,6 +293,7 @@ export default function TheUnrusher() {
   const stirsRef = useRef(0)
   const buzzAtEndRef = useRef(false)
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
   const previousViewRef = useRef<View>('menu')
   const reducedMotion = useReducedMotion()
   const soundOn = useSoundChosen()
@@ -380,10 +419,25 @@ export default function TheUnrusher() {
     }
   }, [isActive])
 
+  // While the room is being listened to, the page's own rain and hum fall away.
+  useEffect(() => {
+    if (!isActive || currentTask?.id !== 'listen') return
+    return hushAmbient('all')
+  }, [isActive, currentTask])
+
   useEffect(() => {
     if (previousViewRef.current === view) return
     previousViewRef.current = view
     headingRef.current?.focus()
+    // Bring the whole moment on screen now, inside the stillness grace period, so the
+    // player never has to scroll (which would stir the seeds) to reach the time or Stop.
+    const card = cardRef.current
+    if (view === 'task' && card) {
+      const { top, bottom } = card.getBoundingClientRect()
+      if (top < 0 || bottom > window.innerHeight) {
+        card.scrollIntoView({ block: bottom - top <= window.innerHeight ? 'end' : 'start', behavior: 'instant' })
+      }
+    }
   }, [view])
 
   const startTask = (task: Moment) => {
@@ -422,15 +476,22 @@ export default function TheUnrusher() {
     const notedThings = things.map((t) => t.trim()).filter(Boolean)
     const lookedAtName = lookedAt.trim()
 
+    const compact = currentTask.id === 'watch'
     const listenInstruction = soundOn
-      ? 'Close your eyes if you like. A soft chime will mark the end.'
+      ? 'Close your eyes if you like. The page’s own sound fades away for this minute, and a soft chime will mark the end.'
       : buzzAtEnd
         ? 'Close your eyes if you like. A gentle buzz will mark the end.'
         : 'Soften your gaze and let it rest low. The screen will change when the minute is over.'
 
     return (
       <div className="max-w-2xl mx-auto">
-        <div className="bg-card-bg border border-card-border rounded-lg px-6 py-10 sm:p-12 text-center min-h-[480px] flex flex-col justify-center">
+        <div
+          ref={cardRef}
+          className={cn(
+            'bg-card-bg border border-card-border rounded-lg px-6 sm:p-12 text-center flex flex-col justify-center',
+            compact && !showReward ? 'py-6' : 'py-10 min-h-[480px]',
+          )}
+        >
           {!showReward ? (
             <>
               {(currentTask.id === 'reflect' || currentTask.id === 'appreciate' || currentTask.id === 'look') && (
@@ -453,37 +514,14 @@ export default function TheUnrusher() {
                 </p>
               )}
 
-              <p className="text-lg text-foreground/80 mb-6 min-h-8" aria-live="polite">
+              <p className={cn('text-lg text-foreground/80 min-h-8', compact ? 'mb-3' : 'mb-6')} aria-live="polite">
                 {currentTask.guidance[guidanceIndex]}
               </p>
 
               {currentTask.id === 'watch' && (
                 <>
-                  <div
-                    className="relative h-56 mb-3 overflow-hidden rounded-xl bg-gradient-to-b from-transparent to-accent/10"
-                    role="img"
-                    aria-label={`${settledSeeds} of ${SEED_COUNT} seeds settled`}
-                  >
-                    {FLOATING_SEEDS.map((seed) => {
-                      const settled = seed.id < settledSeeds
-                      return (
-                        <div
-                          key={seed.id}
-                          data-settled={settled}
-                          className={cn(
-                            'absolute w-3 h-5 bg-foreground/70 rounded-full shadow-lg',
-                            settled ? !reducedMotion && 'animate-fade' : !reducedMotion && 'animate-float-seed',
-                          )}
-                          style={
-                            settled
-                              ? { left: `${seed.bedX}%`, bottom: `${8 + seed.bedLift}px`, rotate: `${seed.bedLift * 6 - 30}deg` }
-                              : { left: `${seed.x}%`, animationDelay: `${seed.delay}s`, top: reducedMotion ? `${seed.restingTop}%` : '-20px' }
-                          }
-                        />
-                      )
-                    })}
-                  </div>
-                  <p className="text-sm text-foreground/70 mb-4 min-h-5">
+                  <SeedField settled={settledSeeds} fadeFrom={0} reducedMotion={reducedMotion} className="h-40 sm:h-56 mb-2" />
+                  <p className="text-sm text-foreground/70 mb-3 min-h-5">
                     {stirred ? 'The seeds wait while you move.' : ''}
                   </p>
                 </>
@@ -572,7 +610,7 @@ export default function TheUnrusher() {
               )}
 
               {/* Progress is shown as a ripening ring, with the time beside it kept quiet. */}
-              <div className="flex items-center justify-center gap-3 mb-2">
+              <div className={cn('flex flex-wrap items-center justify-center gap-3', !compact && 'mb-2')}>
                 <svg viewBox="0 0 60 60" className="w-10 h-10 -rotate-90" aria-hidden="true">
                   <circle cx="30" cy="30" r={RING_RADIUS} className="fill-none stroke-foreground/10" strokeWidth="5" />
                   <circle
@@ -594,19 +632,31 @@ export default function TheUnrusher() {
                 >
                   {Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, '0')}
                 </div>
+                {compact && (
+                  <Button variant="ghost" onClick={resetTask}>
+                    I need to stop
+                  </Button>
+                )}
               </div>
 
-              <p className="text-sm text-foreground/70">No rush. Just be here.</p>
-
-              <div className="mt-6">
-                <Button variant="ghost" onClick={resetTask} aria-label="Stop current task">
-                  I need to stop
-                </Button>
-              </div>
+              {!compact && (
+                <>
+                  <p className="text-sm text-foreground/70">No rush. Just be here.</p>
+                  <div className="mt-6">
+                    <Button variant="ghost" onClick={resetTask}>
+                      I need to stop
+                    </Button>
+                  </div>
+                </>
+              )}
             </>
           ) : (
-            <div className="animate-fade">
-              <MomentIcon id={currentTask.id} className="w-16 h-16 mx-auto mb-6" />
+            <div className={cn(currentTask.id !== 'watch' && 'animate-fade')}>
+              {currentTask.id === 'watch' ? (
+                <SeedField settled={SEED_COUNT} fadeFrom={SEED_COUNT - 1} reducedMotion={reducedMotion} className="h-28 max-w-xs w-full mx-auto mb-6" />
+              ) : (
+                <MomentIcon id={currentTask.id} className="w-16 h-16 mx-auto mb-6" />
+              )}
               <h2 ref={headingRef} tabIndex={-1} className="text-3xl font-semibold mb-4 text-foreground focus:outline-none">
                 Moment savored
               </h2>
@@ -722,9 +772,8 @@ export default function TheUnrusher() {
               key={task.id}
               onClick={() => startTask(task)}
               className={cn(
-                'bg-card-bg border rounded-lg p-5 text-left transition-all duration-75',
+                'bg-card-bg border border-card-border rounded-lg p-5 text-left transition-all duration-75',
                 'hover:border-accent hover:shadow-md focus:outline-none focus:ring-2 focus:ring-accent',
-                isCompleted ? 'border-success' : 'border-card-border',
               )}
               aria-label={`${task.title}: ${task.description} ${task.durationLabel}.${isCompleted ? ' Savored today.' : ''}`}
             >
@@ -735,7 +784,7 @@ export default function TheUnrusher() {
                   <p className="text-sm text-foreground/75 mb-2">{task.description}</p>
                   <div className="text-xs text-foreground/70">
                     {task.durationLabel}
-                    {isCompleted && <span className="ml-2 font-medium text-foreground">· Savored today</span>}
+                    {isCompleted && <span> · savored today</span>}
                   </div>
                 </div>
               </div>

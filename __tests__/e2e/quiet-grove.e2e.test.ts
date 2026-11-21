@@ -33,7 +33,7 @@ function collectPageErrors(page: Page): string[] {
 }
 
 async function mockSuggestion(page: Page, handler?: (route: Route) => Promise<void>) {
-  const bodies: { elements: Record<string, unknown>[] }[] = []
+  const bodies: { elements: Record<string, unknown>[]; season?: string }[] = []
   await page.route('**/api/calm-garden/suggest', async (route) => {
     bodies.push(route.request().postDataJSON())
     if (handler) return handler(route)
@@ -233,9 +233,27 @@ test.describe('The Gardener', () => {
     await page.clock.fastForward(5 * 60_000)
     await expect(hint).toBeVisible()
 
+    // Planting something else does not quietly take the idea away.
+    await plantAt(page, 0.3, 0.85)
+    await expect.poll(async () => (await stored(page)).length).toBe(4)
+    await expect(hint).toBeVisible()
+
     await page.getByRole('button', { name: 'Not now' }).click()
     await expect(hint).toBeHidden()
-    expect(await stored(page)).toHaveLength(3)
+    expect((await stored(page)).map((p) => p.type)).not.toContain('willow')
+  })
+
+  test.describe('in the southern hemisphere', () => {
+    test.use({ timezoneId: 'Australia/Sydney' })
+
+    test('November is spring, and the gardener is told so', async ({ page }) => {
+      await page.clock.install({ time: new Date('2026-11-21T13:00:00') })
+      const bodies = await mockSuggestion(page)
+      await openGarden(page)
+      for (let i = 0; i < 3; i++) await plantAt(page, 0.2 + i * 0.2, 0.6)
+      await expect.poll(() => bodies.length).toBe(1)
+      expect(bodies[0]).toMatchObject({ season: 'spring' })
+    })
   })
 
   test('flowers draw a visitor to the garden, announced for screen readers', async ({ page }) => {

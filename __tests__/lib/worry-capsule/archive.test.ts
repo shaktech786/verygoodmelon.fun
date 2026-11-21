@@ -7,7 +7,7 @@ import {
   readArchive,
   writeArchive,
 } from '@/lib/games/worry-capsule/archive'
-import { type Capsule, openCapsule, sealCapsule } from '@/lib/games/worry-capsule/capsules'
+import { type Capsule, openCapsule, resealCapsule, sealCapsule } from '@/lib/games/worry-capsule/capsules'
 
 const NOW = new Date('2026-11-21T10:00:00Z')
 const one = sealCapsule({ id: 'one', worry: 'Will they like me?', horizon: 'week', now: NOW, timeZone: 'UTC' })
@@ -27,6 +27,17 @@ describe('writeArchive and readArchive', () => {
     const text = writeArchive([one, two], NOW)
     expect(JSON.parse(text)).toMatchObject({ kind: ARCHIVE_KIND, version: ARCHIVE_VERSION, savedAt: NOW.toISOString() })
     expect(readArchive(text)).toEqual({ ok: true, capsules: [one, two] })
+  })
+
+  it('round-trips a capsule given more time', () => {
+    const resealed = resealCapsule(one, 'month', new Date('2026-11-28T10:00:00Z'), 'UTC')
+    expect(readArchive(writeArchive([resealed], NOW))).toEqual({ ok: true, capsules: [resealed] })
+  })
+
+  it('migrates a version 1 copy, which had no record of looking in early', () => {
+    const v1: Record<string, unknown> = { ...one }
+    delete v1.lookedIn
+    expect(readArchive(JSON.stringify({ kind: ARCHIVE_KIND, version: 1, capsules: [v1] }))).toEqual({ ok: true, capsules: [one] })
   })
 
   it('reads an empty archive', () => {
@@ -67,6 +78,9 @@ describe('writeArchive and readArchive', () => {
       [{ ...one, opening: { at: NOW.toISOString(), outcome: 'no', note: 'n'.repeat(10_000) } }],
       [{ ...one, worry: 'w'.repeat(10_000) }],
       [{ ...one, opening: undefined }],
+      [{ ...one, lookedIn: 'yesterday' }],
+      [{ ...one, lookedIn: ['not a date'] }],
+      [{ ...one, lookedIn: Array.from({ length: 1000 }, () => NOW.toISOString()) }],
     ]
     for (const capsules of cases) {
       expect(readArchive(envelope(capsules))).toEqual({ ok: false, reason: 'damaged' })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { OUTCOME_RESPONSES, pickLine, tallyReflection, tallySummary } from '@/lib/games/worry-capsule/copy'
+import { NOT_YET_LINES, OUTCOME_RESPONSES, pickLine, tallyReflection, tallySummary } from '@/lib/games/worry-capsule/copy'
 
 describe('pickLine', () => {
   it('is stable for a capsule and varies across capsules', () => {
@@ -11,7 +11,13 @@ describe('pickLine', () => {
   })
 
   it('has several kind lines for every answer', () => {
-    for (const lines of Object.values(OUTCOME_RESPONSES)) expect(lines.length).toBeGreaterThanOrEqual(3)
+    for (const lines of [...Object.values(OUTCOME_RESPONSES), NOT_YET_LINES]) expect(lines.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('never assumes how a worry that came true went, since some are about loss', () => {
+    for (const line of OUTCOME_RESPONSES.yes) {
+      expect(line).not.toMatch(/brave|got through|other side|tally|counts|handled|met /i)
+    }
   })
 })
 
@@ -23,7 +29,7 @@ describe('tallySummary', () => {
   it('speaks plainly about a single capsule', () => {
     expect(tallySummary({ no: 1, partly: 0, yes: 0, total: 1 })).toBe('You’ve looked back on 1 worry. It didn’t happen.')
     expect(tallySummary({ no: 0, partly: 1, yes: 0, total: 1 })).toBe('You’ve looked back on 1 worry. It partly happened.')
-    expect(tallySummary({ no: 0, partly: 0, yes: 1, total: 1 })).toBe('You’ve looked back on 1 worry. It happened, and you got through it.')
+    expect(tallySummary({ no: 0, partly: 0, yes: 1, total: 1 })).toBe('You’ve looked back on 1 worry. It happened.')
   })
 
   it('lists only the answers that occurred', () => {
@@ -51,7 +57,7 @@ describe('tallyReflection', () => {
 
   it('stays kind when worries came true', () => {
     expect(tallyReflection({ no: 0, partly: 1, yes: 2, total: 3 })).toBe(
-      'Some worries are about real things. You met these, and came back to look.',
+      'Some worries are about real things. You came back to look at each one.',
     )
   })
 })

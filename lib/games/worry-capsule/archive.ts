@@ -1,4 +1,4 @@
-import { type Capsule, type Horizon, type Opening, type Outcome, MAX_NOTE_LENGTH, MAX_WORRY_LENGTH } from './capsules'
+import { type Capsule, type Horizon, type Opening, type Outcome, MAX_LOOKED_IN, MAX_NOTE_LENGTH, MAX_WORRY_LENGTH } from './capsules'
 import { isDateKey } from './dates'
 
 /**
@@ -6,7 +6,8 @@ import { isDateKey } from './dates'
  * so a copy restores exactly what was kept and both share one versioning path.
  */
 export const ARCHIVE_KIND = 'verygoodmelon.fun/worry-capsules'
-export const ARCHIVE_VERSION = 1
+/** Version 2 added `lookedIn`; version 1 copies read as never looked in on. */
+export const ARCHIVE_VERSION = 2
 export const MAX_ARCHIVE_CHARS = 5_000_000
 
 export type ArchiveProblem = 'unreadable' | 'foreign' | 'newer' | 'damaged' | 'too-large'
@@ -36,6 +37,12 @@ function readOpening(value: unknown): Opening | null | undefined {
   return { at, outcome: outcome as Outcome, note }
 }
 
+function readLookedIn(value: unknown): string[] | undefined {
+  if (value === undefined) return []
+  if (!Array.isArray(value) || value.length > MAX_LOOKED_IN || !value.every(isInstant)) return undefined
+  return [...value]
+}
+
 function readCapsule(value: unknown): Capsule | undefined {
   if (!isRecord(value)) return undefined
   const { id, worry, horizon, sealedAt, opensOn } = value
@@ -44,7 +51,9 @@ function readCapsule(value: unknown): Capsule | undefined {
   if (!HORIZON_IDS.includes(horizon as Horizon) || !isInstant(sealedAt) || !isDateKey(opensOn)) return undefined
   const opening = readOpening(value.opening)
   if (opening === undefined) return undefined
-  return { id, worry, horizon: horizon as Horizon, sealedAt, opensOn, opening }
+  const lookedIn = readLookedIn(value.lookedIn)
+  if (!lookedIn) return undefined
+  return { id, worry, horizon: horizon as Horizon, sealedAt, opensOn, opening, lookedIn }
 }
 
 export function readArchive(text: string): ArchiveResult {

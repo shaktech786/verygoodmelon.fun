@@ -1,10 +1,20 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils/cn'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
-import { buzz, playTones, useCanBuzz, useSoundChosen, wakeTones, type Tone } from '@/components/games/gentleCues'
+import { buzz, playTones, useCanBuzz, useSoundAudible, wakeTones, type Tone } from '@/components/games/gentleCues'
+import { hushAmbient } from '@/lib/audio/ambient-hush'
+import {
+  type Breath,
+  type BreathPatternId,
+  LAST_MELON_KEY,
+  type Seed,
+  melonSeeds,
+  readLastMelon,
+  writeLastMelon,
+} from '@/lib/games/breathing-patterns/melon'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -17,7 +27,7 @@ interface BreathingPhase {
 }
 
 interface BreathingPattern {
-  id: string
+  id: BreathPatternId
   name: string
   description: string
   phases: BreathingPhase[]
@@ -93,7 +103,7 @@ const CHECK_INS: { id: CheckIn; label: string; reply: string }[] = [
   { id: 'tense', label: 'Still tense', reply: 'Try one minute of the Physiological Sigh. It is the quickest reset we know.' },
 ]
 
-// With sound on, each turn of the breath sounds one note of a C major chord: a rising
+// With breath tones on, each turn of the breath sounds one note of a C major chord: a rising
 // glide to breathe in, a falling one to breathe out, a soft high note to hold. The
 // direction alone is enough to follow with eyes closed.
 const PHASE_TONES: Record<PhaseKind, Tone[]> = {
@@ -211,26 +221,7 @@ function readPalette(): Palette {
   }
 }
 
-const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
-// A 3-minute session holds about this many breaths, so seeds keep their places until
-// then; a longer session spreads the whole spiral a little wider with each new seed.
-const SEED_SEATS = 21
-const MAX_SEEDS = 89
 const SEED_FADE_MS = 1200
-
-// Each finished breath sets one seed in the melon, placed by the golden angle the way a
-// sunflower places its seeds, so any number of breaths makes an even, balanced pattern.
-// Positions are in melon radii from the centre.
-function seedSeat(n: number, seeds: number): { x: number; y: number; angle: number } {
-  const distance = 0.66 * Math.sqrt((n + 0.5) / Math.max(SEED_SEATS, seeds))
-  const angle = n * GOLDEN_ANGLE
-  return { x: Math.cos(angle) * distance, y: Math.sin(angle) * distance, angle }
-}
-
-// Seeds shrink as the spiral fills, so a long session never crowds the melon.
-function seedSize(seeds: number): number {
-  return Math.min(0.085, 0.3 / Math.sqrt(Math.max(SEED_SEATS, seeds)))
-}
 
 function drawMelon(
   ctx: CanvasRenderingContext2D,
@@ -238,7 +229,7 @@ function drawMelon(
   cy: number,
   r: number,
   palette: Palette,
-  seeds: number,
+  seeds: Seed[],
   newestSeedAlpha: number,
 ) {
   ctx.beginPath()
@@ -255,19 +246,16 @@ function drawMelon(
   ctx.fill()
 
   ctx.fillStyle = palette.seed
-  const shown = Math.min(seeds, MAX_SEEDS)
-  const size = seedSize(shown)
-  for (let n = 0; n < shown; n++) {
-    const seat = seedSeat(n, shown)
+  seeds.forEach((seed, n) => {
     ctx.save()
-    ctx.globalAlpha = n === seeds - 1 ? newestSeedAlpha : 1
-    ctx.translate(cx + seat.x * r, cy + seat.y * r)
-    ctx.rotate(seat.angle + Math.PI / 2)
+    ctx.globalAlpha = n === seeds.length - 1 ? newestSeedAlpha : 1
+    ctx.translate(cx + seed.x * r, cy + seed.y * r)
+    ctx.rotate(seed.angle + Math.PI / 2)
     ctx.beginPath()
-    ctx.ellipse(0, 0, r * size * 0.55, r * size, 0, 0, Math.PI * 2)
+    ctx.ellipse(0, 0, r * seed.width, r * seed.length, 0, 0, Math.PI * 2)
     ctx.fill()
     ctx.restore()
-  }
+  })
 }
 
 function strokeSide(
@@ -298,7 +286,7 @@ function renderGuided(
   phases: BreathingPhase[],
   position: BreathPosition,
   palette: Palette,
-  seeds: number,
+  seeds: Seed[],
   newestSeedAlpha: number,
 ) {
   ctx.clearRect(0, 0, size, size)
@@ -347,7 +335,7 @@ function renderFree(
   freeBreaths: number[],
   palette: Palette,
   time: number,
-  seeds: number,
+  seeds: Seed[],
 ) {
   ctx.clearRect(0, 0, size, size)
   const c = size / 2
@@ -388,26 +376,24 @@ function sidePath(sides: number, k: number, c: number, r: number): string {
   return `M${x1} ${y1} L${x2} ${y2}`
 }
 
-function MelonSvg({ c, r, seeds }: { c: number; r: number; seeds: number }) {
-  const shown = Math.min(seeds, MAX_SEEDS)
+function MelonSvg({ c, r, breaths }: { c: number; r: number; breaths: Breath[] }) {
   return (
     <g>
       <circle cx={c} cy={c} r={r} className="fill-melon-green" />
       <circle cx={c} cy={c} r={r * 0.88} className="fill-melon-green-light" />
       <circle cx={c} cy={c} r={r * 0.8} className="fill-melon-red" />
-      {Array.from({ length: shown }, (_, n) => {
-        const seat = seedSeat(n, shown)
-        const x = c + seat.x * r
-        const y = c + seat.y * r
+      {melonSeeds(breaths).map((seed, n) => {
+        const x = c + seed.x * r
+        const y = c + seed.y * r
         return (
           <ellipse
             key={n}
             cx={x}
             cy={y}
-            rx={r * seedSize(shown) * 0.55}
-            ry={r * seedSize(shown)}
+            rx={r * seed.width}
+            ry={r * seed.length}
             fill="#1a1a1a"
-            transform={`rotate(${(seat.angle * 180) / Math.PI + 90} ${x} ${y})`}
+            transform={`rotate(${(seed.angle * 180) / Math.PI + 90} ${x} ${y})`}
           />
         )
       })}
@@ -415,7 +401,7 @@ function MelonSvg({ c, r, seeds }: { c: number; r: number; seeds: number }) {
   )
 }
 
-function StillGuide({ phases, phaseIndex, seeds }: { phases: BreathingPhase[]; phaseIndex: number; seeds: number }) {
+function StillGuide({ phases, phaseIndex, breaths }: { phases: BreathingPhase[]; phaseIndex: number; breaths: Breath[] }) {
   const c = 100
   const r = 80
   const sides = phases.length
@@ -433,7 +419,7 @@ function StillGuide({ phases, phaseIndex, seeds }: { phases: BreathingPhase[]; p
           strokeLinecap="round"
         />
       ))}
-      <MelonSvg c={c} r={phases[phaseIndex].fill > 0.5 ? r * 0.45 : r * 0.22} seeds={seeds} />
+      <MelonSvg c={c} r={phases[phaseIndex].fill > 0.5 ? r * 0.45 : r * 0.22} breaths={breaths} />
       <circle cx={px} cy={py} r={8} className={KIND_FILL[kind]} />
     </svg>
   )
@@ -484,41 +470,89 @@ function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`
 }
 
+function subscribeToNothing(): () => void {
+  return () => {}
+}
+
+function readSavedMelon(): string | null {
+  try {
+    return localStorage.getItem(LAST_MELON_KEY)
+  } catch {
+    return null
+  }
+}
+
+function formatDay(iso: string): string {
+  return new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(iso))
+}
+
+function Chip({ pressed, onToggle, children }: { pressed: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onToggle}
+      className={cn(
+        'px-3 py-1.5 rounded-full text-sm border transition-colors duration-75',
+        'focus:outline-none focus:ring-2 focus:ring-accent',
+        pressed ? 'border-accent bg-accent-soft text-foreground' : 'border-card-border text-foreground/75 hover:border-accent/50',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function BreathingPatterns() {
-  const [selectedPatternId, setSelectedPatternId] = useState('box')
+  const [selectedPatternId, setSelectedPatternId] = useState<BreathPatternId>('box')
   const [lengthMinutes, setLengthMinutes] = useState<number | null>(3)
   const [sessionState, setSessionState] = useState<SessionState>('idle')
   const [elapsedMs, setElapsedMs] = useState(0)
   const [patternStartMs, setPatternStartMs] = useState(0)
-  const [patternsUsed, setPatternsUsed] = useState<string[]>([])
-  const [seeds, setSeeds] = useState(0)
+  const [patternsUsed, setPatternsUsed] = useState<BreathPatternId[]>([])
+  const [breaths, setBreaths] = useState<Breath[]>([])
   const [freeBreathCount, setFreeBreathCount] = useState(0)
   const [checkIn, setCheckIn] = useState<CheckIn | null>(null)
   const [buzzWithBreath, setBuzzWithBreath] = useState(false)
+  const [tonesOn, setTonesOn] = useState(false)
   const [keysSeen, setKeysSeen] = useState(false)
   const prefersReducedMotion = useReducedMotion()
-  const soundOn = useSoundChosen()
+  const audible = useSoundAudible()
   const canBuzz = useCanBuzz()
+  const seeds = breaths.length
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const guideCardRef = useRef<HTMLDivElement>(null)
+  const phaseHeadingRef = useRef<HTMLHeadingElement>(null)
+  const justStartedRef = useRef(false)
   // performance.now() at which a never-paused session would have started
   const sessionStartRef = useRef(0)
   const pausedAtRef = useRef(0)
   const patternStartRef = useRef(0)
-  // Full breaths finished in patterns used earlier in this session
-  const earlierBreathsRef = useRef(0)
+  // Every breath finished this session, in order; the melon is drawn from it
+  const breathLogRef = useRef<Breath[]>([])
+  // Guided breaths of the current pattern already in the log
+  const loggedInPatternRef = useRef(0)
   // Session time (ms) of each breath marked in free mode
   const freeBreathsRef = useRef<number[]>([])
   const lastCueRef = useRef('')
   const buzzWithBreathRef = useRef(false)
+  const tonesOnRef = useRef(false)
 
   useEffect(() => {
     buzzWithBreathRef.current = buzzWithBreath
   }, [buzzWithBreath])
+
+  useEffect(() => {
+    tonesOnRef.current = tonesOn
+  }, [tonesOn])
+
+  const savedMelon = useSyncExternalStore(subscribeToNothing, readSavedMelon, () => null)
+  const lastMelon = useMemo(() => readLastMelon(savedMelon), [savedMelon])
 
   const pattern = PATTERNS.find((p) => p.id === selectedPatternId)!
   const isFreeMode = pattern.id === 'free'
@@ -532,22 +566,34 @@ export default function BreathingPatterns() {
   // Session controls
   // ---------------------------------------------------------------------------
 
-  const startSession = useCallback((patternId?: string, minutes?: number | null) => {
+  const startSession = useCallback((patternId?: BreathPatternId, minutes?: number | null) => {
     if (patternId) setSelectedPatternId(patternId)
     if (minutes !== undefined) setLengthMinutes(minutes)
-    wakeTones()
+    wakeTones(tonesOnRef.current)
     sessionStartRef.current = performance.now()
     patternStartRef.current = 0
-    earlierBreathsRef.current = 0
+    breathLogRef.current = []
+    loggedInPatternRef.current = 0
     freeBreathsRef.current = []
     lastCueRef.current = ''
+    justStartedRef.current = true
     setPatternStartMs(0)
     setPatternsUsed([patternId ?? selectedPatternId])
     setElapsedMs(0)
     setFreeBreathCount(0)
-    setSeeds(0)
+    setBreaths([])
     setCheckIn(null)
     setSessionState('active')
+  }, [selectedPatternId])
+
+  // Brings the guided breaths of the current pattern into the log, up to `count`.
+  const logGuidedBreaths = useCallback((count: number) => {
+    if (selectedPatternId === 'free') return
+    const seconds = cycleMsOf(PATTERNS.find((p) => p.id === selectedPatternId)!.phases) / 1000
+    while (loggedInPatternRef.current < count) {
+      breathLogRef.current.push({ pattern: selectedPatternId, seconds })
+      loggedInPatternRef.current += 1
+    }
   }, [selectedPatternId])
 
   const pauseSession = useCallback(() => {
@@ -566,9 +612,10 @@ export default function BreathingPatterns() {
   }, [isFreeMode, pattern])
 
   const endSession = useCallback(() => {
-    setSeeds(earlierBreathsRef.current + breathsInCurrentPattern(elapsedMs) + freeBreathsRef.current.length)
+    logGuidedBreaths(breathsInCurrentPattern(elapsedMs))
+    setBreaths([...breathLogRef.current])
     setSessionState('complete')
-  }, [breathsInCurrentPattern, elapsedMs])
+  }, [breathsInCurrentPattern, elapsedMs, logGuidedBreaths])
 
   const resetSession = useCallback(() => {
     setSessionState('idle')
@@ -577,25 +624,30 @@ export default function BreathingPatterns() {
   }, [])
 
   const markBreath = useCallback(() => {
-    freeBreathsRef.current.push(performance.now() - sessionStartRef.current)
+    const at = performance.now() - sessionStartRef.current
+    const previous = Math.max(patternStartRef.current, freeBreathsRef.current.at(-1) ?? 0)
+    freeBreathsRef.current.push(at)
+    breathLogRef.current.push({ pattern: 'free', seconds: Math.max(0.1, (at - previous) / 1000) })
     setFreeBreathCount(freeBreathsRef.current.length)
-    setSeeds((n) => n + 1)
-    playTones(MARK_TONE, TONE_LOUDNESS)
+    setBreaths([...breathLogRef.current])
+    playTones(MARK_TONE, TONE_LOUDNESS, tonesOnRef.current)
   }, [])
 
   // Changing rhythm mid-session keeps the session clock and starts the new
   // pattern from its first inhale.
-  const switchPattern = useCallback((patternId: string) => {
+  const switchPattern = useCallback((patternId: BreathPatternId) => {
     if (patternId === selectedPatternId) return
     const now = sessionState === 'paused' ? pausedAtRef.current : performance.now()
     const elapsed = Math.max(0, now - sessionStartRef.current)
-    earlierBreathsRef.current += breathsInCurrentPattern(elapsed)
+    logGuidedBreaths(breathsInCurrentPattern(elapsed))
+    loggedInPatternRef.current = 0
+    setBreaths([...breathLogRef.current])
     patternStartRef.current = elapsed
     setPatternStartMs(elapsed)
     setElapsedMs(elapsed)
     setSelectedPatternId(patternId)
     setPatternsUsed((used) => (used.includes(patternId) ? used : [...used, patternId]))
-  }, [selectedPatternId, sessionState, breathsInCurrentPattern])
+  }, [selectedPatternId, sessionState, breathsInCurrentPattern, logGuidedBreaths])
 
   // ---------------------------------------------------------------------------
   // Session clock, cues and drawing
@@ -623,6 +675,11 @@ export default function BreathingPatterns() {
     const cycleMs = isFreeMode ? 0 : cycleMsOf(pattern.phases)
     const guidedBreathsAt = (elapsed: number) =>
       isFreeMode ? 0 : Math.floor((elapsed - patternStartRef.current) / cycleMs)
+    let layout = { count: -1, seeds: [] as Seed[] }
+    const seedsOf = (log: Breath[]) => {
+      if (layout.count !== log.length) layout = { count: log.length, seeds: melonSeeds(log) }
+      return layout.seeds
+    }
 
     let frame = 0
     const tick = (now: number) => {
@@ -638,7 +695,8 @@ export default function BreathingPatterns() {
         if (elapsed >= endAt) {
           elapsed = endAt
           setElapsedMs(elapsed)
-          setSeeds(earlierBreathsRef.current + (isFreeMode ? 0 : Math.round((elapsed - patternStartRef.current) / cycleMs)) + freeBreathsRef.current.length)
+          if (!isFreeMode) logGuidedBreaths(Math.round((elapsed - patternStartRef.current) / cycleMs))
+          setBreaths([...breathLogRef.current])
           setSessionState('complete')
           return
         }
@@ -646,8 +704,9 @@ export default function BreathingPatterns() {
 
       setElapsedMs(elapsed)
       const guidedBreaths = guidedBreathsAt(elapsed)
-      const seedsNow = earlierBreathsRef.current + guidedBreaths + freeBreathsRef.current.length
-      setSeeds(seedsNow)
+      logGuidedBreaths(guidedBreaths)
+      const log = breathLogRef.current
+      setBreaths((shown) => (shown.length === log.length ? shown : [...log]))
 
       const breath = isFreeMode ? null : breathPositionAt(pattern.phases, elapsed - patternStartRef.current)
       if (breath) {
@@ -655,7 +714,7 @@ export default function BreathingPatterns() {
         if (cue !== lastCueRef.current) {
           lastCueRef.current = cue
           const kind = phaseKind(pattern.phases, breath.phaseIndex)
-          playTones(PHASE_TONES[kind], TONE_LOUDNESS)
+          playTones(PHASE_TONES[kind], TONE_LOUDNESS, tonesOnRef.current)
           if (buzzWithBreathRef.current && PHASE_BUZZ[kind].length > 0) buzz(PHASE_BUZZ[kind])
         }
       }
@@ -667,9 +726,9 @@ export default function BreathingPatterns() {
         const palette = readPalette()
         if (breath) {
           const sinceSeed = guidedBreaths > 0 ? (elapsed - patternStartRef.current) % cycleMs : SEED_FADE_MS
-          renderGuided(ctx, size, pattern.phases, breath, palette, seedsNow, Math.min(1, sinceSeed / SEED_FADE_MS))
+          renderGuided(ctx, size, pattern.phases, breath, palette, seedsOf(log), Math.min(1, sinceSeed / SEED_FADE_MS))
         } else {
-          renderFree(ctx, size, freeBreathsRef.current, palette, elapsed, seedsNow)
+          renderFree(ctx, size, freeBreathsRef.current, palette, elapsed, seedsOf(log))
         }
         ctx.restore()
       }
@@ -682,7 +741,38 @@ export default function BreathingPatterns() {
       cancelAnimationFrame(frame)
       ro.disconnect()
     }
-  }, [isRunning, prefersReducedMotion, isFreeMode, pattern, targetMs])
+  }, [isRunning, prefersReducedMotion, isFreeMode, pattern, targetMs, logGuidedBreaths])
+
+  // On a phone the guide starts below the choices, so bring it into view and move focus
+  // to it; Space and Escape keep working from there.
+  useEffect(() => {
+    if (sessionState !== 'active' || !justStartedRef.current) return
+    justStartedRef.current = false
+    phaseHeadingRef.current?.focus({ preventScroll: true })
+    const card = guideCardRef.current
+    if (!card) return
+    const { top, bottom } = card.getBoundingClientRect()
+    if (top >= 0 && bottom <= window.innerHeight) return
+    card.scrollIntoView({
+      block: bottom - top <= window.innerHeight ? 'nearest' : 'start',
+      behavior: prefersReducedMotion ? 'instant' : 'smooth',
+    })
+  }, [sessionState, prefersReducedMotion])
+
+  // The sea's fixed swell would compete with the breath, so it rests during a session.
+  useEffect(() => {
+    if (sessionState !== 'active' && sessionState !== 'paused') return
+    return hushAmbient(['ocean-waves'])
+  }, [sessionState])
+
+  useEffect(() => {
+    if (sessionState !== 'complete' || breaths.length === 0) return
+    try {
+      localStorage.setItem(LAST_MELON_KEY, writeLastMelon(breaths, new Date()))
+    } catch {
+      // Without storage the melon is simply not kept for next time.
+    }
+  }, [sessionState, breaths])
 
   // A guide nobody is watching should wait rather than keep counting.
   useEffect(() => {
@@ -744,6 +834,8 @@ export default function BreathingPatterns() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [sessionState, isFreeMode, startSession, pauseSession, resumeSession, endSession, resetSession, markBreath])
 
+  // This visit's melon once there is one; before that, the one kept from last time.
+  const shownMelon: { breaths: Breath[]; at: string | null } | null = breaths.length > 0 ? { breaths, at: null } : lastMelon
   const patternIndex = PATTERNS.findIndex((p) => p.id === selectedPatternId)
   const lengthIndex = LENGTHS.findIndex((l) => l.minutes === lengthMinutes)
   const keyboardHint = cn('text-xs text-foreground/70', keysSeen ? 'block' : KEYBOARD_HINT)
@@ -773,7 +865,7 @@ export default function BreathingPatterns() {
               role="img"
               aria-label={`A melon holding ${plural(seeds, 'seed')}, one for each breath`}
             >
-              <MelonSvg c={100} r={92} seeds={seeds} />
+              <MelonSvg c={100} r={92} breaths={breaths} />
             </svg>
             <h2 className="text-2xl sm:text-3xl font-semibold mb-4 text-foreground">
               {seeds > 0 ? 'Your breaths, gathered' : 'A short pause'}
@@ -783,7 +875,8 @@ export default function BreathingPatterns() {
             </p>
             {seeds > 0 && (
               <p className="text-sm text-foreground/70">
-                Each seed is a breath you {onlyFree ? 'marked' : 'finished'}: {seeds} in all.
+                Each seed is a breath you {onlyFree ? 'marked' : 'finished'}: {seeds} in all. Its shape comes from the rhythm, and
+                longer breaths grew longer seeds.
               </p>
             )}
             {!onlyFree && (
@@ -844,7 +937,7 @@ export default function BreathingPatterns() {
           {sessionState === 'paused' ? 'Session paused' : position ? phaseLabel : ''}
         </div>
 
-        <div className="bg-card-bg border border-card-border rounded-lg px-4 py-6 sm:p-8 text-center flex flex-col justify-center relative">
+        <div ref={guideCardRef} className="bg-card-bg border border-card-border rounded-lg px-4 py-6 sm:p-8 text-center flex flex-col justify-center relative scroll-mt-4">
           <p className="text-sm text-foreground/70 mb-2">{pattern.name}</p>
 
           {/* Canvas or reduced-motion fallback */}
@@ -856,11 +949,11 @@ export default function BreathingPatterns() {
               onClick={isFreeMode && isRunning ? markBreath : undefined}
             >
               {position ? (
-                <StillGuide phases={pattern.phases} phaseIndex={position.phaseIndex} seeds={seeds} />
+                <StillGuide phases={pattern.phases} phaseIndex={position.phaseIndex} breaths={breaths} />
               ) : (
                 <svg viewBox="0 0 200 200" className="w-full h-full" aria-hidden="true">
                   <circle cx="100" cy="100" r="80" className="fill-none stroke-success" strokeWidth="3" strokeDasharray="6 10" strokeLinecap="round" />
-                  <MelonSvg c={100} r={48} seeds={seeds} />
+                  <MelonSvg c={100} r={48} breaths={breaths} />
                 </svg>
               )}
             </div>
@@ -875,8 +968,10 @@ export default function BreathingPatterns() {
           )}
 
           <h2
+            ref={phaseHeadingRef}
+            tabIndex={-1}
             className={cn(
-              'text-2xl sm:text-3xl font-semibold mb-2 text-foreground',
+              'text-2xl sm:text-3xl font-semibold mb-2 text-foreground focus:outline-none',
               sessionState === 'paused' && 'opacity-60',
             )}
           >
@@ -918,11 +1013,10 @@ export default function BreathingPatterns() {
               variant="secondary"
               size="sm"
               onClick={sessionState === 'paused' ? resumeSession : pauseSession}
-              aria-label={sessionState === 'paused' ? 'Resume session' : 'Pause session'}
             >
               {sessionState === 'paused' ? 'Resume' : 'Pause'}
             </Button>
-            <Button variant="ghost" size="sm" onClick={endSession} aria-label="End breathing session">
+            <Button variant="ghost" size="sm" onClick={endSession}>
               End session
             </Button>
           </div>
@@ -976,6 +1070,17 @@ export default function BreathingPatterns() {
         Pick a rhythm and follow the dot around its shape. Every breath you finish sets a seed in the melon.
       </p>
 
+      {shownMelon && (
+        <figure className="flex items-center justify-center gap-3 mb-4">
+          <svg viewBox="0 0 200 200" className="w-14 h-14 shrink-0" aria-hidden="true">
+            <MelonSvg c={100} r={96} breaths={shownMelon.breaths} />
+          </svg>
+          <figcaption className="text-sm text-foreground/75">
+            Your last melon{shownMelon.at ? `, from ${formatDay(shownMelon.at)}` : ''}: {plural(shownMelon.breaths.length, 'seed')}.
+          </figcaption>
+        </figure>
+      )}
+
       <div
         className="grid grid-cols-1 gap-2 mb-5"
         role="radiogroup"
@@ -1006,7 +1111,7 @@ export default function BreathingPatterns() {
               <PatternGlyph phases={p.phases} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline justify-between gap-2">
-                  <h3 className="font-semibold text-foreground">{p.name}</h3>
+                  <span className="font-semibold text-foreground">{p.name}</span>
                   {p.phases.length > 0 && (
                     <span className="text-xs text-foreground/70 whitespace-nowrap">
                       {p.phases.map((ph) => ph.duration).join('-')}s
@@ -1054,28 +1159,19 @@ export default function BreathingPatterns() {
         </div>
       </div>
 
+      <div className="flex flex-wrap justify-center gap-2 mb-2">
+        <Chip pressed={tonesOn} onToggle={() => setTonesOn((on) => !on)}>Breath tones</Chip>
+        {canBuzz && (
+          <Chip pressed={buzzWithBreath} onToggle={() => setBuzzWithBreath((on) => !on)}>Buzz as each breath turns</Chip>
+        )}
+      </div>
       <p className="text-center text-sm text-foreground/75 mb-4 max-w-md mx-auto">
-        {soundOn
-          ? 'Sound is on: a rising note means breathe in, a falling one means breathe out.'
-          : 'Turn on ambient sound to follow along with your eyes closed.'}
+        {!tonesOn
+          ? 'Breath tones let you follow along with your eyes closed.'
+          : audible
+            ? 'A rising note means breathe in, a falling one means breathe out. They play on their own, with or without the background sound.'
+            : 'Sound is muted in the accessibility settings, so the tones stay silent.'}
       </p>
-
-      {canBuzz && (
-        <div className="flex justify-center mb-4">
-          <button
-            type="button"
-            aria-pressed={buzzWithBreath}
-            onClick={() => setBuzzWithBreath((on) => !on)}
-            className={cn(
-              'px-3 py-1.5 rounded-full text-sm border transition-colors duration-75',
-              'focus:outline-none focus:ring-2 focus:ring-accent',
-              buzzWithBreath ? 'border-accent bg-accent-soft text-foreground' : 'border-card-border text-foreground/75 hover:border-accent/50',
-            )}
-          >
-            Buzz as each breath turns
-          </button>
-        </div>
-      )}
 
       <div className="text-center">
         <Button variant="primary" size="lg" onClick={() => startSession()}>

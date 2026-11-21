@@ -15,6 +15,7 @@ import {
   loadGarden,
   plantedSince,
   returnToGarden,
+  isSouthernTimeZone,
   seasonAt,
   timeOfDayAt,
   variantOf,
@@ -146,7 +147,8 @@ export default function CalmGarden() {
       // Storage can be blocked; the garden simply starts fresh.
     }
     const back = returnToGarden(loadGarden(raw, now), now, Math.random)
-    setClock({ tod: timeOfDayAt(new Date(now)), season: seasonAt(new Date(now)) })
+    const southern = isSouthernTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+    setClock({ tod: timeOfDayAt(new Date(now)), season: seasonAt(new Date(now), southern) })
     setGarden(back.garden)
     if (back.note) {
       setNote(back.note)
@@ -180,7 +182,7 @@ export default function CalmGarden() {
   }, [])
 
   // `said` is what was just announced for the planting, so the idea is heard after it, not instead of it.
-  const fetchSuggestion = useCallback(async (current: Plant[], said: string) => {
+  const fetchSuggestion = useCallback(async (current: Plant[], said: string, season: Season) => {
     if (suggestPendingRef.current) return
     suggestPendingRef.current = true
     const spots = current.slice(-120).map(({ type, x, y }) => ({ type, x, y }))
@@ -189,7 +191,7 @@ export default function CalmGarden() {
       const res = await fetch('/api/calm-garden/suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ elements: spots }),
+        body: JSON.stringify({ elements: spots, season }),
       })
       if (res.ok) next = parseSuggestion((await res.json())?.suggestion)
     } catch {
@@ -208,7 +210,6 @@ export default function CalmGarden() {
     const next = [...plants, plant]
     remember(plants)
     setPlants(next)
-    setSuggestion(null)
     setNote(null)
     setSelectedId(null)
 
@@ -222,12 +223,14 @@ export default function CalmGarden() {
     setAnnouncement(message)
 
     sinceSuggestRef.current++
-    if (next.length >= SUGGEST_EVERY && sinceSuggestRef.current >= SUGGEST_EVERY && suggestCountRef.current < MAX_SUGGESTIONS) {
+    // An idea on offer stays until it is planted or set aside, so no new one replaces it.
+    const offerOpen = suggestion !== null && !(suggestion.type === type && suggestion.x === at.x && suggestion.y === at.y)
+    if (!offerOpen && next.length >= SUGGEST_EVERY && sinceSuggestRef.current >= SUGGEST_EVERY && suggestCountRef.current < MAX_SUGGESTIONS) {
       sinceSuggestRef.current = 0
       suggestCountRef.current++
-      void fetchSuggestion(next, message)
+      void fetchSuggestion(next, message, clock.season)
     }
-  }, [plants, remember, setPlants, fetchSuggestion, clock.tod])
+  }, [plants, remember, setPlants, fetchSuggestion, clock.tod, clock.season, suggestion])
 
   const placeAt = useCallback((id: string, at: Point) => {
     setPlants(plants.map((p) => (p.id === id ? { ...p, ...clampToGround(at) } : p)))
@@ -248,7 +251,6 @@ export default function CalmGarden() {
     remember(plants)
     setMoving({ id, from: { x: plant.x, y: plant.y } })
     setSelectedId(null)
-    setSuggestion(null)
     const name = nameOf(plant.type)
     if (withKeys) {
       setCursor(null)
@@ -296,7 +298,9 @@ export default function CalmGarden() {
   }, [plants, remember, setPlants])
 
   const acceptSuggestion = useCallback(() => {
-    if (suggestion) plantNew(suggestion.type, suggestion)
+    if (!suggestion) return
+    setSuggestion(null)
+    plantNew(suggestion.type, suggestion)
   }, [suggestion, plantNew])
 
   const dismissSuggestion = useCallback(() => {
@@ -650,8 +654,8 @@ export default function CalmGarden() {
       <>
         <p>{suggestion.line}</p>
         <span className="flex gap-1.5">
-          <button type="button" onClick={acceptSuggestion} aria-label={`Plant the ${nameOf(suggestion.type)} there`} className={mainButton}>
-            Plant it
+          <button type="button" onClick={acceptSuggestion} className={mainButton}>
+            Plant the {nameOf(suggestion.type)} there
           </button>
           <button type="button" onClick={dismissSuggestion} className={smallButton}>Not now</button>
         </span>

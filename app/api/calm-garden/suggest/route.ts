@@ -49,6 +49,8 @@ const requestSchema = z.object({
     )
     .min(1)
     .max(120),
+  // The visitor's own season: it is spring in Sydney while it is autumn where this runs.
+  season: z.enum(['spring', 'summer', 'autumn', 'winter']).optional(),
 })
 
 // ---------------------------------------------------------------------------
@@ -73,11 +75,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid input.' }, { status: 400 })
   }
   const plants = parsed.data.elements
+  const season = parsed.data.season ?? seasonAt(new Date())
 
   try {
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
-      contents: buildSuggestionPrompt(plants, seasonAt(new Date())),
+      contents: buildSuggestionPrompt(plants, season),
       config: {
         temperature: 0.8,
         topP: 0.9,
