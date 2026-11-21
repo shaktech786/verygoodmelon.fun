@@ -44,6 +44,8 @@ export interface WritingGameConfig {
   /** How the thank-you line counts the others whose words are in the cloud. */
   othersLine: RegExp
   firstLine: RegExp
+  /** The button that, in care mode, opens the premise and the form only when someone chooses to go on. */
+  careGate?: string
 }
 
 const REFLECTION =
@@ -252,6 +254,11 @@ export function describeWritingGame(config: WritingGameConfig) {
       await page.reload()
       await expect(support(page)).toBeVisible()
       await expect(page.getByText(/gentler games are waiting just below/)).toBeVisible()
+      if (config.careGate) {
+        await expect(textbox(page, config)).toHaveCount(0)
+        await page.getByRole('button', { name: config.careGate }).click()
+        await expect(textbox(page, config)).toBeFocused()
+      }
       const supportBox = await support(page).boundingBox()
       const textboxBox = await textbox(page, config).boundingBox()
       expect(supportBox!.y).toBeLessThan(textboxBox!.y)

@@ -76,7 +76,7 @@ export default function FinaleScreen({
       role="dialog"
       aria-label="Your game is finished"
     >
-      <div className="w-full max-w-xl grid gap-x-6 gap-y-4 sm:grid-cols-[18rem_1fr] sm:items-center">
+      <div className="w-full grid gap-x-8 gap-y-4 sm:grid-cols-[minmax(0,26rem)_1fr] sm:items-center">
         <div className="text-center sm:col-start-2 sm:row-start-1">
           {phase >= 1 && (
             <p className={`text-xs tracking-[0.15em] uppercase mb-2 text-foreground/70 ${fade}`} aria-hidden="true">
@@ -94,14 +94,14 @@ export default function FinaleScreen({
                 <span className="sr-only">Your game is finished. It is called </span>
                 {gameName}
               </h2>
-              {tagline && <p className="text-sm italic text-foreground/80 break-words">{tagline}</p>}
+              {tagline && <p className="text-base italic text-foreground/80 break-words">{tagline}</p>}
             </div>
           ) : (
             phase >= 1 && <p className="text-sm text-foreground/70 py-2">Finding its name…</p>
           )}
 
           {phase >= 2 && (
-            <p className={`text-sm text-foreground mt-3 leading-relaxed ${fade}`}>{closingLine}</p>
+            <p className={`text-base text-foreground mt-3 leading-relaxed ${fade}`}>{closingLine}</p>
           )}
 
           {canPlayAgain && (
@@ -113,7 +113,7 @@ export default function FinaleScreen({
               >
                 PLAY AGAIN
               </button>
-              <p className="text-xs mt-2 text-foreground/70">
+              <p className="text-base mt-2 text-foreground/70">
                 Play again and its rules will arrive in a different order.
               </p>
             </div>
@@ -125,7 +125,7 @@ export default function FinaleScreen({
             plan={plan}
             label="The path you took, one colour and shape for each rule"
             hideLabel
-            className={`w-full max-w-[20rem] sm:max-w-[18rem] mx-auto sm:col-start-1 sm:row-start-1 ${fade}`}
+            className={`w-full mx-auto sm:col-start-1 sm:row-start-1 [&_canvas]:max-w-none ${fade}`}
           />
         )}
       </div>

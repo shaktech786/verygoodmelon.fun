@@ -437,6 +437,7 @@ test.describe('The Plain Speaker', () => {
     await next(page)
     await expectStep(page, 'One line to carry in')
     await expect(page.locator('blockquote')).toHaveText('When plans change last minute I feel like an afterthought.')
+    await page.getByText('Save the card as a picture').click()
     await button(page, 'Copy as text').click()
     await expect(page.getByRole('status').filter({ hasText: 'Copied.' })).toBeVisible()
     // Some systems store line breaks on the clipboard as \r\n.
@@ -460,7 +461,9 @@ test.describe('The Plain Speaker', () => {
     await next(page)
     await expectStep(page, 'One line to carry in')
 
-    const card = page.getByRole('region', { name: 'A pocket card to keep' })
+    await page.getByText('Save the card as a picture').click()
+    const card = page.locator('#hard-talk details')
+    await expect(card.getByRole('heading', { name: 'A pocket card to keep' })).toBeAttached()
     await expectKeepsakeSaves(page, {
       within: card,
       fileName: /^the-plain-speaker-\d{4}-\d{2}-\d{2}\.png$/,
@@ -503,6 +506,41 @@ test.describe('The Plain Speaker', () => {
 
   test.describe('on a phone with reduced motion', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: 'reduce' })
+
+    test('the last screen is one pocket card with its door, one main action, and everything else quiet', async ({ page }) => {
+      await openGame(page)
+      await page.getByRole('button', { name: /Asking for something/ }).click()
+      await page.getByLabel('Who the talk is with').fill('Ana')
+      await throughSettling(page)
+      await page.getByRole('textbox').fill('I have grown into this role')
+      await next(page)
+      await next(page, 'Skip')
+      await page.getByText('Could we have ten minutes?').click()
+      await next(page)
+      await next(page)
+      await next(page)
+      await expectStep(page, 'One line to carry in')
+
+      const card = page.locator('#hard-talk figure')
+      await expect(card).toHaveCount(1)
+      // The door lives on the card now, not above it as a second picture
+      await expect(page.locator('#hard-talk svg[viewBox="0 0 160 100"]')).toHaveCount(1)
+      await expect(card.locator('svg[viewBox="0 0 160 100"]')).toHaveCount(1)
+      await expect(page.locator('#hard-talk').getByText('I have grown into this role.', { exact: true })).toHaveCount(1)
+      await expect(page.getByTestId('keepsake-canvas')).toBeHidden()
+      await expect(page.locator('#hard-talk button.bg-accent')).toHaveCount(1)
+      await expect(page.locator('#hard-talk button.bg-accent')).toHaveText('Keep this on screen')
+      await expect(page.locator('#hard-talk button.text-lg')).toHaveCount(1)
+      // The card's words are real text at a readable size
+      for (const text of [card.locator('blockquote'), card.getByText('“Could we have ten minutes? There’s something I’d like to ask for.”')]) {
+        expect(parseFloat(await text.evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16)
+      }
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await card.scrollIntoViewIfNeeded()
+      const box = (await card.boundingBox())!
+      expect(box.height).toBeLessThanOrEqual(844)
+      await noHorizontalScroll(page)
+    })
 
     test('every step fits without sideways scrolling, long words wrap, and nothing moves', async ({ page }) => {
       await openGame(page)

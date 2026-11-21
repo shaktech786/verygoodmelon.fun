@@ -70,9 +70,9 @@ function SuggestionRow({ heading, games, className, helplines = false }: Suggest
   )
 }
 
-/** Leads the game lists while care mode lasts; where no support panel is on the page, the helplines come with it. */
-export function GentleGames({ className = '', helplines = false }: { className?: string; helplines?: boolean }) {
-  return <SuggestionRow heading={GENTLE_HEADING} games={CARE_GAMES} className={className} helplines={helplines} />
+/** Leads the game lists while care mode lasts, with the helplines beside it. */
+export function GentleGames({ className = '' }: { className?: string }) {
+  return <SuggestionRow heading={GENTLE_HEADING} games={CARE_GAMES} className={className} helplines />
 }
 
 interface CrossGameSuggestionsProps {

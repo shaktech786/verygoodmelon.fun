@@ -73,7 +73,7 @@ export function GameDirectory({ mood }: { mood?: MoodId }) {
       </p>
 
       <div className="space-y-10 sm:space-y-14">
-        {care && <GentleGames helplines />}
+        {care && <GentleGames />}
         {chosen ? (
           <section aria-labelledby="mood-heading">
             <div className="mb-4 sm:mb-5">

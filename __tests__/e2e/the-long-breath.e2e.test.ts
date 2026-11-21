@@ -113,7 +113,7 @@ test.describe('The Patient One', () => {
       await page.getByRole('button', { name: 'Continue slowing down' }).click()
       await expect(taskButton(page, moment.title)).toHaveAccessibleName(/Savored today\.$/)
       await expect(todayStrip(page).getByRole('listitem')).toHaveCount(index + 1)
-      await expect(todayStrip(page).getByRole('listitem').last()).toContainText(moment.title)
+      await expect(todayStrip(page).getByRole('listitem').first()).toContainText(moment.title)
     }
 
     // Which moments were visited, never a tally.
@@ -450,28 +450,29 @@ test.describe('The Patient One', () => {
     await page.getByRole('button', { name: 'Done', exact: true }).click()
     await page.getByRole('button', { name: 'Continue slowing down' }).click()
 
-    // A card for each moment, with what was noticed, and no tally anywhere
+    // A card for each moment, newest first, with what was noticed, and no tally anywhere
     const cards = todayStrip(page).getByRole('button')
     await expect(cards).toHaveCount(2)
-    await expect(cards.first()).toContainText('Birds and traffic')
-    await expect(cards.last()).toContainText('Warm socks')
+    await expect(cards.first()).toContainText('Warm socks')
+    await expect(cards.last()).toContainText('Birds and traffic')
     await expect(page.locator('main')).not.toContainText(/\d+ moments?\b/)
     await expect(page.getByTestId('keepsake-canvas')).toHaveCount(0)
 
-    await cards.last().click()
-    await expect(cards.last()).toHaveAttribute('aria-expanded', 'true')
+    await cards.first().click()
+    await expect(cards.first()).toHaveAttribute('aria-expanded', 'true')
     const opened = page.locator('#today-moment')
     await expectKeepsakeSaves(page, {
       within: opened,
       fileName: /^the-patient-one-count-three-things-2026-11-21\.png$/,
-      describedAs: /Warm socks/,
+      describedAs: /^A small green sprout, for Count Three Things\. Today I noticed Warm socks$/,
     })
-    await cards.first().click()
-    await expect(opened.getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/I heard birds and traffic/)
+    await cards.last().click()
+    // Each moment has its own picture: the listening one is never described as seeds
+    await expect(opened.getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/^Soft rings of sound.*I heard birds and traffic/)
     expect(await axeViolations(page)).toEqual([])
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
     expect(await axeViolations(page)).toEqual([])
-    await cards.first().click()
+    await cards.last().click()
     await expect(page.getByTestId('keepsake-canvas')).toHaveCount(0)
     expect(errors).toEqual([])
   })
@@ -554,8 +555,14 @@ test.describe('The Patient One on a phone with reduced motion', () => {
     await expect.poll(() => page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running').map((a) => (a as CSSAnimation).animationName))).toEqual([])
     await expectKeepsakeSaves(page, { fileName: /^the-patient-one-watch-the-seeds-2026-11-21\.png$/, describedAs: /Eight seeds settled/ })
     await page.getByRole('button', { name: 'Continue slowing down' }).tap()
-    await expect(todayStrip(page).getByRole('listitem')).toHaveCount(3)
+    const cards = todayStrip(page).getByRole('listitem')
+    await expect(cards).toHaveCount(3)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+    // The moment just finished leads, and the oldest peeks in at the edge so the row reads as one to scroll
+    await expect(cards.first()).toContainText('Watch the Seeds')
+    const row = await todayStrip(page).boundingBox()
+    const third = await cards.nth(2).boundingBox()
+    expect(third!.x).toBeLessThan(row!.x + row!.width - 12)
     await todayStrip(page).getByRole('button').last().tap()
     const canvas = page.locator('#today-moment').getByTestId('keepsake-canvas')
     await expect(canvas).toBeVisible()

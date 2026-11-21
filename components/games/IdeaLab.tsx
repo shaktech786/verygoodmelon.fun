@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
-import { Sparkles, Trash2, RotateCcw, FlaskConical } from 'lucide-react'
+import { Trash2, RotateCcw, FlaskConical } from 'lucide-react'
 import { BASE_CONCEPTS, findKnownCombination, type Concept } from '@/lib/games/idea-lab/concepts'
 import { WORK_TITLES, goldsFor, isGolden, type GoldenIdea } from '@/lib/games/idea-lab/golds'
 import {
@@ -78,10 +78,10 @@ function save(key: string, value: unknown) {
   localStorage.setItem(key, JSON.stringify(value))
 }
 
-function announcementFor(result: CombinationResult, goldCount: number, goldTotal: number): string {
+function announcementFor(result: CombinationResult): string {
   if (result.status === 'unresolved') return result.description
   const lead = result.riddle
-    ? `Gold: ${result.name}, one of the seven. ${goldCount} of ${goldTotal} found. It answers: ${result.riddle}`
+    ? `Gold: ${result.name}. It answers: ${result.riddle}`
     : result.status === 'new'
       ? `New discovery: ${result.name}.`
       : `${result.name}, already in your concepts.`
@@ -215,7 +215,7 @@ export default function IdeaLab() {
     setFreshClue(clued)
     setLastResult(result)
     setAnnouncement([
-      announcementFor(result, foundNow, golds.length),
+      announcementFor(result),
       hint,
       completes ? `${WORK_TITLES[progress.work]} is complete. A letter has been written for you.` : '',
     ].filter(Boolean).join(' '))
@@ -426,7 +426,6 @@ export default function IdeaLab() {
   const resultIsGold = Boolean(lastResult?.riddle)
   const freshGoldIndex = resultIsGold ? golds.findIndex(g => g.name.toLowerCase() === lastResult?.name.toLowerCase()) : -1
   const answerBeat = reducedMotion ? '' : 'alchemist-gold-answer'
-  const goldCount = goldFound.filter(Boolean).length
   const hasBench = selectedConcepts.length > 0 || lastResult !== null || isCombining
   const unsolved = golds.map((_, index) => index).filter(index => !goldFound[index])
   // The riddle that last grew plainer, or else the oldest one still hidden.
@@ -521,12 +520,6 @@ export default function IdeaLab() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 px-4 py-2 bg-foreground/5 text-foreground rounded-lg">
-                  <Sparkles size={18} aria-hidden="true" />
-                  <span className="font-medium">
-                    {discoveries.length} {discoveries.length === 1 ? 'discovery' : 'discoveries'}
-                  </span>
-                </div>
                 <Button
                   id={RESET_BUTTON_ID}
                   onClick={() => setShowResetConfirm(true)}
@@ -573,7 +566,7 @@ export default function IdeaLab() {
                       {isCombining
                         ? ''
                         : resultIsGold && lastResult?.riddle
-                          ? <span className={answerBeat}>Gold, {goldCount} of {golds.length}. It answers: <span className="italic">{lastResult.riddle}</span></span>
+                          ? <span className={answerBeat}>Gold. It answers: <span className="italic">{lastResult.riddle}</span></span>
                           : lastResult?.description
                             ? <>&ldquo;{lastResult.description}&rdquo;</>
                             : !hasBench && 'Choose two concepts to combine them.'}
@@ -598,9 +591,6 @@ export default function IdeaLab() {
                     >
                       Skip to the riddles
                     </a>
-                    <span className="text-sm text-foreground/70">
-                      {concepts.length} total
-                    </span>
                   </div>
                   <p id="idea-lab-concepts-help" className="sr-only">
                     Arrow keys move between concepts. Enter or Space picks one; pick two to combine them.
@@ -674,7 +664,7 @@ export default function IdeaLab() {
                   )}
                   {resultIsGold && lastResult?.riddle && (
                     <p className={`mt-2 text-sm text-foreground ${answerBeat}`}>
-                      <span className="font-medium">One of the seven golds, {goldCount} of {golds.length} found.</span>{' '}
+                      <span className="font-medium">Gold.</span>{' '}
                       <span className="text-foreground/80">It answers: <span className="italic">{lastResult.riddle}</span></span>
                     </p>
                   )}

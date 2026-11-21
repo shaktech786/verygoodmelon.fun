@@ -199,15 +199,20 @@ export interface HarmonistKeepsakeInput {
   day: Date
 }
 
-export function harmonistKeepsake({ breaths, day }: HarmonistKeepsakeInput): KeepsakePlan {
+/** The opened melon exactly where the keepsake draws it, in keepsake units. */
+export function keepsakeMelon(breaths: readonly Breath[]): OpenedMelon {
   const draft = openedMelon(breaths, [0, 0], MELON_RADIUS)
   const lidReach = restingLid(draft)
   const xs = [-MELON_RADIUS, MELON_RADIUS, ...lidReach.map(([x]) => x)]
   const ys = [-MELON_RADIUS, MELON_RADIUS, ...lidReach.map(([, y]) => y)]
-  const melon = openedMelon(breaths, [
+  return openedMelon(breaths, [
     GROUP_MIDDLE[0] - (Math.min(...xs) + Math.max(...xs)) / 2,
     GROUP_MIDDLE[1] - (Math.min(...ys) + Math.max(...ys)) / 2,
   ], MELON_RADIUS)
+}
+
+export function harmonistKeepsake({ breaths, day }: HarmonistKeepsakeInput): KeepsakePlan {
+  const melon = keepsakeMelon(breaths)
   const [cx, cy] = melon.centre
   const r = melon.radius
   const lines = openedMelonLines(breaths)

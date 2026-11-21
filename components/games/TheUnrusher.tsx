@@ -18,6 +18,7 @@ import {
   TODAY_STRIP_KEY,
   joinNaturally,
   momentGist,
+  newestFirst,
   readTodayStrip,
   withMoment,
   writeTodayStrip,
@@ -928,7 +929,7 @@ export default function TheUnrusher() {
             Each moment you finish rests here until midnight. Open one to keep it.
           </p>
           <ul className="flex gap-3 overflow-x-auto snap-x pb-2 -mx-1 px-1 pt-1" aria-label="Moments from today">
-            {strip.map((record) => {
+            {newestFirst(strip).map((record) => {
               const isOpen = record.key === openCard
               return (
                 <li key={record.key} className="snap-start shrink-0 flex">
@@ -938,7 +939,8 @@ export default function TheUnrusher() {
                     aria-controls="today-moment"
                     onClick={() => setOpenCard(isOpen ? null : record.key)}
                     className={cn(
-                      'w-40 text-left rounded-lg border px-3 py-3 transition-colors duration-75',
+                      // Narrow enough on a phone that the next card peeks in, so the row reads as one to scroll
+                      'w-36 sm:w-40 text-left rounded-lg border px-3 py-3 transition-colors duration-75',
                       'focus:outline-none focus:ring-2 focus:ring-focus-ring',
                       isOpen ? 'border-chosen-line bg-chosen' : 'border-card-border bg-background hover:border-melon-green/50',
                     )}

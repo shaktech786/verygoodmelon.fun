@@ -1,4 +1,4 @@
-import { followedPattern, harmonistKeepsake, openedMelon, restingLid } from '@/lib/keepsake/harmonist'
+import { followedPattern, harmonistKeepsake, keepsakeMelon, openedMelon, restingLid } from '@/lib/keepsake/harmonist'
 import type { Breath } from '@/lib/games/breathing-patterns/melon'
 
 const DAY = new Date(2026, 10, 21, 10, 5)
@@ -103,5 +103,15 @@ describe('harmonistKeepsake', () => {
     const session = breaths('sigh', 11, 5)
     expect(harmonistKeepsake({ breaths: session, day: DAY })).toEqual(harmonistKeepsake({ breaths: session.map((b) => ({ ...b })), day: DAY }))
     expect(harmonistKeepsake({ breaths: session, day: DAY }).fileName).toBe('the-harmonist-2026-11-21.png')
+  })
+
+  it('places the melon where the game opens it, so the opening on screen lands exactly on the saved picture', () => {
+    const session = breaths('box', 16, 4)
+    const melon = keepsakeMelon(session)
+    const plan = harmonistKeepsake({ breaths: session, day: DAY })
+    const rind = plan.ops.find((op) => op.kind === 'disc' && op.ink === 'rind')
+    if (rind?.kind !== 'disc') throw new Error('no melon')
+    expect([rind.x, rind.y, rind.r]).toEqual([...melon.centre, melon.radius])
+    expect(plan.ops.filter((op) => op.kind === 'ellipse' && op.ink === 'seed').map((op) => op.kind === 'ellipse' && op.x)).toEqual(melon.seeds.map((s) => s.x))
   })
 })

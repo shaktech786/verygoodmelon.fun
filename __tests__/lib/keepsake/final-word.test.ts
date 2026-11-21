@@ -26,6 +26,23 @@ describe('letterOf', () => {
     expect(letterOf({ words: 'To be honest, I loved it.', prompt: '' }).to).toBe(`To ${FALLBACK_ADDRESSEE},`)
   })
 
+  it('takes a kin word as the greeting only when a full sentence follows it', () => {
+    expect(letterOf({ words: 'My kids, and the sea at dawn.', prompt: 'What small thing did you love most?' })).toEqual({
+      to: `To ${FALLBACK_ADDRESSEE},`,
+      body: 'My kids, and the sea at dawn.',
+    })
+    expect(letterOf({ words: 'Mum, and Dad.', prompt: 'Who would you thank?' }).to).toBe(`To ${FALLBACK_ADDRESSEE},`)
+    expect(letterOf({ words: 'My kids, the sea.', prompt: 'What do you want the people you love to know?' }).to).toBe('To the people I love,')
+  })
+
+  it('never reads "love" as a name, and falls back to the question instead', () => {
+    expect(letterOf({ words: 'Love, always. Dad', prompt: 'What do you want the people you love to know?' })).toEqual({
+      to: 'To the people I love,',
+      body: 'Love, always. Dad',
+    })
+    expect(letterOf({ words: 'Love, always. Dad', prompt: 'Who would you thank?' }).to).toBe(`To ${FALLBACK_ADDRESSEE},`)
+  })
+
   it('keeps a lone greeting as the words rather than leaving the card empty', () => {
     expect(letterOf({ words: 'Dear Sam,', prompt: '' })).toEqual({ to: `To ${FALLBACK_ADDRESSEE},`, body: 'Dear Sam,' })
   })

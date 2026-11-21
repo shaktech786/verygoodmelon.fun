@@ -56,7 +56,7 @@ describe('IdeaLab', () => {
     await waitFor(() => expect(status()).toHaveTextContent('New discovery: Jealousy. When love fears loss, it curdles into possession.'))
     expect(status()).toHaveAttribute('aria-live', 'polite')
     expect(concept('Jealousy')).toBeInTheDocument()
-    expect(screen.getByText('1 discovery')).toBeInTheDocument()
+    expect(screen.queryByText(/\d+ discover(y|ies)$/)).not.toBeInTheDocument()
     expect(mockFetch).not.toHaveBeenCalled()
   })
 

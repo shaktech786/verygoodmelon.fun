@@ -263,16 +263,19 @@ export default function WorryCapsule() {
         ) : (
           <SealSteps className="mb-5" />
         )}
-        <div className={cn('space-y-4', styles.afterSeal)}>
-          <ViewHeading focus={navigated}>Sealed.</ViewHeading>
-          <p className="text-base sm:text-lg text-foreground">{pickLine(SEALED_LINES, capsule.id)}</p>
-          <p className={muted}>
-            It comes back on <strong className="font-semibold text-foreground">{formatDay(capsule.opensOn, today)}</strong>. Any time after that, it will be ready here.
-          </p>
-          <p className="text-sm text-foreground/75">Only this browser keeps it. A saved copy can move it or keep it safe.</p>
-          <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center pt-1">
-            <Button variant="secondary" onClick={() => exportAll()}>Save a copy</Button>
-            <Button onClick={() => go({ kind: 'shelf' })}>Done</Button>
+        {/* The words take no room until the wax is pressed, so the jar is not left above an empty card */}
+        <div className={styles.reveal}>
+          <div className={cn('space-y-4', styles.revealInner, styles.afterSeal)}>
+            <ViewHeading focus={navigated}>Sealed.</ViewHeading>
+            <p className="text-base sm:text-lg text-foreground">{pickLine(SEALED_LINES, capsule.id)}</p>
+            <p className={muted}>
+              It comes back on <strong className="font-semibold text-foreground">{formatDay(capsule.opensOn, today)}</strong>. Any time after that, it will be ready here.
+            </p>
+            <p className="text-sm text-foreground/75">Only this browser keeps it. A saved copy can move it or keep it safe.</p>
+            <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center pt-1">
+              <Button variant="secondary" onClick={() => exportAll()}>Save a copy</Button>
+              <Button onClick={() => go({ kind: 'shelf' })}>Done</Button>
+            </div>
           </div>
         </div>
       </div>
@@ -649,7 +652,7 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: 
         <ViewHeading focus={focus}>This one is ready</ViewHeading>
         <p className={muted}>You sealed it on {sealedOn}. Open it whenever you like.</p>
         <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center pt-1">
-          <Button variant="secondary" onClick={onBack}>Close for now</Button>
+          <Button variant="secondary" onClick={onBack}>Back to the shelf</Button>
           <Button onClick={() => setOpen(true)}>Open it</Button>
         </div>
       </div>
@@ -748,7 +751,7 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: 
           )}
 
           <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center">
-            <Button variant="secondary" onClick={onBack}>Close for now</Button>
+            <Button variant="secondary" onClick={onBack}>Back to the shelf</Button>
             {outcome === 'not-yet' ? (
               <Button onClick={() => setFailed(!onReseal(again))}>Seal it again</Button>
             ) : (

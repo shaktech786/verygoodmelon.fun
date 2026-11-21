@@ -189,6 +189,8 @@ export default function FirstWords() {
   const { submitted, stored, cloud, reflection, care, judgedSafe, submit, reset, noticeDistress } = useCommunityWords('first-words')
   const [typedIntention, setTypedIntention] = useState<string | null>(null)
   const [carried, setCarried] = useState<string | null>(null)
+  // In care mode the premise waits until someone chooses it, rather than meeting them on arrival
+  const [goingOn, setGoingOn] = useState(false)
   const reduceMotion = useReducedMotion()
   const sceneRef = useRef<HTMLDivElement>(null)
   const intentionRef = useRef<HTMLTextAreaElement>(null)
@@ -229,6 +231,12 @@ export default function FirstWords() {
     morningRef.current?.focus({ preventScroll: true })
   }, [awake, reduceMotion])
 
+  useEffect(() => {
+    if (goingOn) textareaRef.current?.focus()
+  }, [goingOn])
+
+  const goOn = () => setGoingOn(true)
+
   const wake = (event: FormEvent) => {
     event.preventDefault()
     const chosen = care ? '' : intention.trim()
@@ -261,21 +269,31 @@ export default function FirstWords() {
                   This one imagines the moment after a life ends. If that is too close today, gentler games are waiting just below.
                 </p>
               )}
-              <p className="mb-5 text-center text-lg sm:text-xl text-foreground leading-relaxed">
-                You open your eyes. It is quiet, and nothing hurts.
-              </p>
-              <WritingForm
-                prompts={PROMPTS}
-                label="Your first words on arriving"
-                placeholder="Say it the way you would…"
-                submitLabel="Speak"
-                onSubmit={submit}
-                textareaRef={textareaRef}
-                draftKey={draftKey('first-words')}
-              />
-              <p className="mt-4 text-center text-sm text-primary-light">
-                Whatever you believe comes next, or don&apos;t, is welcome here. In a moment, you wake up.
-              </p>
+              {care && !goingOn ? (
+                <div className="text-center">
+                  <Button variant="secondary" onClick={goOn}>
+                    I&apos;d still like to
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <p className="mb-5 text-center text-lg sm:text-xl text-foreground leading-relaxed">
+                    You open your eyes. It is quiet, and the light is soft.
+                  </p>
+                  <WritingForm
+                    prompts={PROMPTS}
+                    label="Your first words on arriving"
+                    placeholder="Say it the way you would…"
+                    submitLabel="Speak"
+                    onSubmit={submit}
+                    textareaRef={textareaRef}
+                    draftKey={draftKey('first-words')}
+                  />
+                  <p className="mt-4 text-center text-sm text-primary-light">
+                    Whatever you believe comes next, or don&apos;t, is welcome here. In a moment, you wake up.
+                  </p>
+                </>
+              )}
             </>
           ) : awake ? (
             <div className="text-center">

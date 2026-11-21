@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect as baseExpect, type Page, type Route } from '@playwright/test'
+import { expectKeepsakeSaves } from './helpers/keepsake'
 
 /**
  * The Arena (/games/the-arena): pick two people and a topic, watch six rounds, then read a
@@ -116,14 +117,14 @@ test.describe('The Arena', () => {
     // Regression: the form vanished on Enter and focus fell to the page body
     await expect(transcript(page)).toBeFocused()
 
-    await expect(closing(page).getByText(CLOSING.question)).toBeVisible()
+    await expect(closing(page).getByText(CLOSING.question, { exact: true })).toBeVisible()
     await expect(closing(page).getByRole('heading', { name: 'Closing thoughts' })).toBeFocused()
     // The closing is its own section, outside the scrolling transcript
     await expect(transcript(page).getByText(CLOSING.question)).toHaveCount(0)
-    await expect(closing(page).getByText('What each got right')).toBeVisible()
-    await expect(closing(page).getByText(CLOSING.firstInsight)).toBeVisible()
-    await expect(closing(page).getByText(CLOSING.secondInsight)).toBeVisible()
-    await expect(closing(page).getByText(CLOSING.revealed)).toBeVisible()
+    await expect(closing(page).getByText('What each got right', { exact: true })).toBeVisible()
+    await expect(closing(page).getByText(CLOSING.firstInsight, { exact: true })).toBeVisible()
+    await expect(closing(page).getByText(CLOSING.secondInsight, { exact: true })).toBeVisible()
+    await expect(closing(page).getByText(CLOSING.revealed, { exact: true })).toBeVisible()
     await expect(debate(page).getByText(/\bwins\b|winner|trophy/i)).toHaveCount(0)
     await expect(debate(page).getByText('Imagined voices, not real quotes.')).toBeVisible()
     for (let round = 1; round <= 6; round++) {
@@ -154,7 +155,7 @@ test.describe('The Arena', () => {
       await page.getByRole('button', { name: 'Begin' }).click()
       await expect(page.getByText('Round 1/6')).toBeVisible()
       await expect(transcript(page).getByText(/makes point 1/)).toBeVisible()
-      await expect(closing(page).getByText(CLOSING.question)).toBeVisible({ timeout: 45_000 })
+      await expect(closing(page).getByText(CLOSING.question, { exact: true })).toBeVisible({ timeout: 45_000 })
     })
 
     test('words arrive at an easy reading pace, not in a rush', async ({ page }) => {
@@ -315,9 +316,9 @@ test.describe('The Arena', () => {
     await openArena(page)
     await setUp(page, 'Marie Curie', 'Batman', 'Should we fear the dark?')
     await page.getByRole('button', { name: 'Begin' }).click()
-    await expect(closing(page).getByText('Marie Curie held to what they believed and said it plainly.')).toBeVisible()
-    await expect(closing(page).getByText('Batman kept pressing on the question underneath.')).toBeVisible()
-    await expect(closing(page).getByText('If you had joined them, what would you have added?')).toBeVisible()
+    await expect(closing(page).getByText('Marie Curie held to what they believed and said it plainly.', { exact: true })).toBeVisible()
+    await expect(closing(page).getByText('Batman kept pressing on the question underneath.', { exact: true })).toBeVisible()
+    await expect(closing(page).getByText('If you had joined them, what would you have added?', { exact: true })).toBeVisible()
     await expect(debate(page).getByText(/error|failed|closing this time/i)).toHaveCount(0)
   })
 
@@ -418,6 +419,33 @@ test.describe('The Arena', () => {
     await expect(debate(page).getByText('thinking', { exact: true })).toBeVisible()
     release()
     await expect(closing(page)).toBeVisible()
+  })
+
+  test('a ready-made pairing keeps its two card pictures on the stage, and its closing gives a keepsake of them and the question', async ({ page }) => {
+    await mockDebate(page)
+    await openArena(page)
+    await page.getByRole('button', { name: /^The Moon and The Sun:/ }).click()
+    await turnByTurn(page).uncheck()
+    await page.getByRole('button', { name: 'Begin' }).click()
+
+    const stage = page.getByRole('region', { name: 'Debate: The Moon and The Sun' })
+    await expect(stage.locator('[data-emblem="moon"]')).toBeVisible()
+    await expect(stage.locator('[data-emblem="sun"]')).toBeVisible()
+
+    await expect(closing(page)).toBeVisible()
+    await expectKeepsakeSaves(page, {
+      within: closing(page),
+      fileName: /^the-arena-\d{4}-\d{2}-\d{2}\.png$/,
+      describedAs: /The Moon, shown as a crescent moon, and The Sun, shown as a sun.*to take with you: “Which of your habits did you actually choose\?”/,
+    })
+  })
+
+  test('a pairing written by hand still gets a keepsake, marked the way the stage marks each side', async ({ page }) => {
+    await mockDebate(page)
+    await openArena(page)
+    await setUp(page, 'Kant', 'Hume', 'Is it ever right to lie?')
+    await page.getByRole('button', { name: 'Begin' }).click()
+    await expect(closing(page).getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/Kant, shown as a round mark, and Hume, shown as a diamond/)
   })
 
   test('after the closing, Surprise me offers a fresh pairing ready to start', async ({ page }) => {
@@ -637,6 +665,27 @@ test.describe('The Arena', () => {
 
   test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+    test('the closing opens at the top of the screen, free of the pinned bar, with New debate as the one main action', async ({ page }) => {
+      await mockDebate(page)
+      await openArena(page)
+      await setUp(page, 'Socrates', 'Nietzsche', 'Is free will an illusion?')
+      await page.getByRole('button', { name: 'Begin' }).tap()
+
+      const heading = closing(page).getByRole('heading', { name: 'Closing thoughts' })
+      await expect(heading).toBeInViewport()
+      const top = await heading.evaluate((el) => el.getBoundingClientRect().top)
+      // Just under the site header, with 50px of slack, not at the foot of the screen
+      expect(top).toBeLessThan(200)
+      expect(await closing(page).evaluate((el) => parseFloat(getComputedStyle(el.querySelector('p')!).fontSize))).toBeGreaterThanOrEqual(16)
+
+      const bar = page.locator('[data-sticky-action-bar]')
+      expect(await bar.evaluate((el) => getComputedStyle(el).position)).not.toBe('sticky')
+      const newDebate = debate(page).getByRole('button', { name: 'New debate' })
+      const surprise = debate(page).getByRole('button', { name: 'Surprise me' })
+      await expect(newDebate).toHaveClass(/bg-accent/)
+      await expect(surprise).not.toHaveClass(/bg-accent/)
+    })
 
     test('long names and a long topic wrap without sideways scrolling', async ({ page }) => {
       await mockDebate(page)

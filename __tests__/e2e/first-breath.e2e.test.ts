@@ -28,9 +28,11 @@ test.describe('The Awakening', () => {
     closingLine: /^Good morning$/,
     othersLine: /300 others have stood here and come back/,
     firstLine: /^You are the first to stand here and come back\.$/,
+    careGate: "I'd still like to",
   })
 
   const INTENTION = 'Put on one song and dance in the kitchen.'
+  const OPENING_LINE = 'You open your eyes. It is quiet, and the light is soft.'
   const intentionBox = (page: Page) => page.getByRole('textbox', { name: 'One small thing to bring back into tomorrow' })
   const daySky = (page: Page) => page.locator('[data-sky="day"]')
 
@@ -51,7 +53,8 @@ test.describe('The Awakening', () => {
   test('the words become one small thing for tomorrow, and the player wakes with it', async ({ page }) => {
     await offline(page, { reflection: 'Dancing sounds like joy you can still reach.', intention: INTENTION })
     await page.goto('/games/first-breath')
-    await expect(page.getByText('You open your eyes. It is quiet, and nothing hurts.')).toBeVisible()
+    await expect(page.getByText(OPENING_LINE)).toBeVisible()
+    await expect(page.getByText(/nothing hurts/)).toHaveCount(0)
 
     await speak(page, 'I wish I had danced more.')
     await expect(intentionBox(page)).toHaveValue(INTENTION)
@@ -211,6 +214,7 @@ test.describe('The Awakening', () => {
     await page.reload()
     await expect(page.getByRole('complementary', { name: 'Support' })).toBeVisible()
     await expect(page.getByText(/This one imagines the moment after a life ends/)).toBeVisible()
+    await page.getByRole('button', { name: "I'd still like to" }).click()
     await speak(page, 'Hello? Is anyone here?')
     await expect(intentionBox(page)).toHaveCount(0)
     await expect(page.getByText('Carry it home.')).toHaveCount(0)
@@ -218,6 +222,23 @@ test.describe('The Awakening', () => {
     await expect(page.getByText('You came back. It is good to have you here, today.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Start over' })).toHaveCount(0)
     await expect(page.getByRole('navigation', { name: 'Somewhere calm to go next' })).toBeVisible()
+  })
+
+  test('regression: in care mode the premise and the form wait behind a choice, and a gentle note comes first', async ({ page }) => {
+    await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+    await page.goto('/')
+    await page.evaluate(() => localStorage.setItem('verygoodmelon:care', JSON.stringify({ until: Date.now() + 60 * 60 * 1000 })))
+    await page.goto('/games/first-breath')
+
+    await expect(page.getByText(/This one imagines the moment after a life ends/)).toBeVisible()
+    await expect(page.getByText(OPENING_LINE)).toHaveCount(0)
+    await expect(page.getByRole('textbox', { name: 'Your first words on arriving' })).toHaveCount(0)
+    await expect(page.getByRole('region', { name: 'Something gentle, if it helps' }).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+
+    await page.getByRole('button', { name: "I'd still like to" }).click()
+    await expect(page.getByText(OPENING_LINE)).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Your first words on arriving' })).toBeFocused()
+    await expect(page.getByRole('button', { name: "I'd still like to" })).toHaveCount(0)
   })
 
   test('the plan for tomorrow says plainly that it goes nowhere', async ({ page }) => {

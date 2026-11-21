@@ -100,6 +100,31 @@
   animation: settle 600ms ease-out 3150ms both;
 }
 
+.reveal {
+  display: grid;
+}
+
+/* Room for the focus rings of the buttons at its edge while it clips. */
+.revealInner {
+  min-height: 0;
+  overflow: hidden;
+  padding: 6px;
+  margin: -6px;
+}
+
+.motion .reveal {
+  animation: open-up 500ms ease-out 3050ms both;
+}
+
+@keyframes open-up {
+  from {
+    grid-template-rows: 0fr;
+  }
+  to {
+    grid-template-rows: 1fr;
+  }
+}
+
 /* Opening: the seal lifts away, the lid comes off, the slip rises and unfolds. */
 .motion .sealAway {
   animation: seal-away 400ms ease-in both;

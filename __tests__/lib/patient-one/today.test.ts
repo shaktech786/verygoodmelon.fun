@@ -1,4 +1,4 @@
-import { localDay, momentGist, readTodayStrip, withMoment, writeTodayStrip, type MomentRecord } from '@/lib/games/patient-one/today'
+import { localDay, momentGist, newestFirst, readTodayStrip, withMoment, writeTodayStrip, type MomentRecord } from '@/lib/games/patient-one/today'
 
 const at = (h: number, m = 0, day = 21) => new Date(2026, 10, day, h, m)
 const record = (when: Date, over: Partial<MomentRecord> = {}): MomentRecord => ({
@@ -22,6 +22,12 @@ describe("the Patient One's today strip", () => {
   it('keeps today’s cards through a reload, in order, with what was noticed', () => {
     const strip = [record(at(9)), record(at(11), { id: 'listen', things: [], heard: ['Birds'] })]
     expect(readTodayStrip(writeTodayStrip(strip, at(12)), at(18))).toEqual(strip)
+  })
+
+  it('shows the newest moment first, without changing what is kept', () => {
+    const strip = [record(at(9)), record(at(11)), record(at(14))]
+    expect(newestFirst(strip).map((r) => r.at)).toEqual([at(14), at(11), at(9)].map((d) => d.toISOString()))
+    expect(strip.map((r) => r.at)).toEqual([at(9), at(11), at(14)].map((d) => d.toISOString()))
   })
 
   it('resets at local midnight', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MECHANIC_CATEGORIES, type PathPoint } from '@/app/games/the-mutation/engine/types'
-import { FIELD_BOX, MAX_ZOOM, RULE_LOOK, displayName, framePath, pathSegments, ruleLook, shapeshifterKeepsake } from '@/lib/keepsake/shapeshifter'
+import { MAX_ZOOM, RULE_LOOK, dashed, displayName, fieldBox, framePath, pathSegments, ruleLook, shapeshifterKeepsake } from '@/lib/keepsake/shapeshifter'
 import type { KeepsakeOp } from '@/lib/keepsake/plan'
 
 const day = new Date(2026, 10, 21)
@@ -19,30 +19,87 @@ const PATH: PathPoint[] = [
 ]
 const texts = (ops: KeepsakeOp[]) => ops.filter((op): op is Extract<KeepsakeOp, { kind: 'text' }> => op.kind === 'text')
 const lines = (ops: KeepsakeOp[]) => ops.filter((op): op is Extract<KeepsakeOp, { kind: 'line' }> => op.kind === 'line')
+const WIDE = { w: 640, h: 480 }
+const FIELD_BOX = fieldBox(WIDE)
+// The path's own strokes: the soft glow under each stretch is the only line drawn see-through
+const glows = (ops: KeepsakeOp[]) => lines(ops).filter((l) => l.alpha !== undefined)
+const strokes = (ops: KeepsakeOp[], colour: string) => lines(ops).filter((l) => l.alpha === undefined && l.ink === colour)
 
 describe('shapeshifterKeepsake', () => {
   const plan = shapeshifterKeepsake({ path: PATH, rules: RULES, field: { w: 640, h: 480 }, name: 'WANDERING GEMS & RHYTHMS', day })
 
-  it('gives every kind of rule its own colour and its own shape', () => {
+  it('gives every kind of rule its own colour, shape and line pattern, and no two colours that blur together', () => {
     const looks = MECHANIC_CATEGORIES.map((c) => RULE_LOOK[c])
     expect(new Set(looks.map((l) => l.colour)).size).toBe(looks.length)
     expect(new Set(looks.map((l) => l.shape)).size).toBe(looks.length)
-  })
-
-  it('draws one stretch of path per rule, each in that rule’s colour, joined end to end', () => {
-    // Each stretch is a soft glow with the line itself on top
-    const drawn = lines(plan.ops).filter((l) => l.alpha === undefined)
-    expect(lines(plan.ops)).toHaveLength(drawn.length * 2)
-    expect(drawn.map((l) => l.ink)).toEqual(RULES.map((r) => ruleLook(r.id).colour))
-    for (let i = 1; i < drawn.length; i++) {
-      expect(drawn[i].points[0]).toEqual(drawn[i - 1].points[drawn[i - 1].points.length - 1])
+    expect(new Set(looks.map((l) => l.dash.join(','))).size).toBe(looks.length)
+    const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+    for (const a of looks) {
+      for (const b of looks) {
+        if (a === b) continue
+        const [x, y] = [rgb(a.colour), rgb(b.colour)]
+        expect(Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2])).toBeGreaterThan(60)
+      }
     }
   })
 
+  it('draws one glowing stretch of path per rule, joined end to end, in that rule’s colour', () => {
+    const glow = glows(plan.ops)
+    expect(glow.map((l) => l.ink)).toEqual(RULES.map((r) => ruleLook(r.id).colour))
+    for (let i = 1; i < glow.length; i++) {
+      expect(glow[i].points[0]).toEqual(glow[i - 1].points[glow[i - 1].points.length - 1])
+    }
+  })
+
+  it('breaks each rule’s line into its own dashes, so the rules differ without colour', () => {
+    const solid = ruleLook('arrow_keys')
+    expect(solid.dash).toEqual([])
+    const straight = [[0, 0], [300, 0]] as const
+    expect(dashed(straight, [])).toEqual([straight])
+    const dashes = dashed(straight, [48, 24])
+    expect(dashes).toHaveLength(5)
+    expect(dashes[0]).toEqual([[0, 0], [48, 0]])
+    expect(dashes[1]).toEqual([[72, 0], [120, 0]])
+    // A dash carries on round a corner instead of starting again
+    const bent = dashed([[0, 0], [30, 0], [30, 30]], [48, 24])
+    expect(bent[0]).toEqual([[0, 0], [30, 0], [30, 18]])
+    for (const rule of RULES.slice(1)) expect(strokes(plan.ops, ruleLook(rule.id).colour).length).toBeGreaterThan(2)
+  })
+
+  it('shapes the night field like the field that was played, wide or tall', () => {
+    const wide = fieldBox(WIDE)
+    expect(wide.h / wide.w).toBeCloseTo(480 / 640, 2)
+    const tall = fieldBox({ w: 480, h: 720 })
+    expect(tall.h / tall.w).toBeCloseTo(720 / 480, 2)
+    expect(tall.h).toBeGreaterThan(wide.h)
+    const phone = shapeshifterKeepsake({ path: PATH, rules: RULES, field: { w: 480, h: 720 }, name: 'x', day })
+    expect(phone.height).toBeGreaterThan(plan.height)
+    // The legend sits below the taller field, never over it
+    const legend = texts(phone.ops).find((op) => op.text === RULES[0].title)
+    expect(legend?.y).toBeGreaterThan(tall.top + tall.h)
+  })
+
+  it('marks each rule in its shape at the very point its stretch of path begins', () => {
+    const glow = glows(plan.ops)
+    RULES.forEach((rule, i) => {
+      const [x, y] = glow[i].points[0]
+      const colour = ruleLook(rule.id).colour
+      const near = plan.ops.filter((op) => op.kind !== 'text' && op.kind !== 'line' && op.ink === colour && 'x' in op && Math.hypot(op.x - x, op.y - y) < 40)
+      const nearPoly = plan.ops.filter((op) => op.kind === 'poly' && op.ink === colour && op.points.every(([px, py]) => Math.hypot(px - x, py - y) < 40))
+      expect(near.length + nearPoly.length).toBeGreaterThan(0)
+    })
+  })
+
+  it('sets the legend large enough to read on a phone', () => {
+    const legend = texts(plan.ops).filter((op) => RULES.some((r) => r.title === op.text))
+    for (const op of legend) expect(op.size).toBeGreaterThanOrEqual(32)
+  })
+
   it('keeps the path inside the art area whatever the field’s shape', () => {
-    const tall = shapeshifterKeepsake({ path: PATH.map((p) => ({ ...p, x: p.x * 0.75, y: p.y * 1.5 })), rules: RULES, field: { w: 480, h: 720 }, name: 'x', day })
-    for (const candidate of [plan, tall]) {
-      for (const [x, y] of lines(candidate.ops).flatMap((l) => l.points)) {
+    const tallField = { w: 480, h: 720 }
+    const tall = shapeshifterKeepsake({ path: PATH.map((p) => ({ ...p, x: p.x * 0.75, y: p.y * 1.5 })), rules: RULES, field: tallField, name: 'x', day })
+    for (const [candidate, FIELD_BOX] of [[plan, fieldBox(WIDE)], [tall, fieldBox(tallField)]] as const) {
+      for (const [x, y] of glows(candidate.ops).flatMap((l) => l.points)) {
         expect(x).toBeGreaterThan(FIELD_BOX.left + 40)
         expect(x).toBeLessThan(FIELD_BOX.left + FIELD_BOX.w - 40)
         expect(y).toBeGreaterThan(FIELD_BOX.top + 40)
@@ -52,7 +109,7 @@ describe('shapeshifterKeepsake', () => {
   })
 
   it('fits the walk itself to the night field, centred, so a short run still fills the picture', () => {
-    const drawn = lines(plan.ops).flatMap((l) => l.points)
+    const drawn = glows(plan.ops).flatMap((l) => l.points)
     const xs = drawn.map(([x]) => x)
     const ys = drawn.map(([, y]) => y)
     const spanX = Math.max(...xs) - Math.min(...xs)
@@ -65,7 +122,7 @@ describe('shapeshifterKeepsake', () => {
   })
 
   it('never blows a tiny walk up past a gentle zoom', () => {
-    const field = { w: 640, h: 480 }
+    const field = WIDE
     const whole = Math.min(FIELD_BOX.w / field.w, FIELD_BOX.h / field.h)
     const tiny = framePath([{ x: 320, y: 240, wave: 0 }, { x: 326, y: 243, wave: 1 }], field)
     expect(tiny.scale).toBeCloseTo(whole * MAX_ZOOM)
@@ -89,9 +146,9 @@ describe('shapeshifterKeepsake', () => {
 
   it('describes each rule by colour and shape, not colour alone, and copies the same', () => {
     expect(plan.alt).toContain('IT CAN MOVE (blue circle), then BREATHING GEMS (gold star)')
-    expect(plan.alt).toContain('THE BLOOM (green flower)')
+    expect(plan.alt).toContain('THE BLOOM (pink flower)')
     expect(plan.text).toContain('Wandering Gems & Rhythms')
-    expect(plan.text).toContain('· RHYTHM (peach square)')
+    expect(plan.text).toContain('· RHYTHM (orange square)')
   })
 
   it('shows no score, tally or time anywhere', () => {

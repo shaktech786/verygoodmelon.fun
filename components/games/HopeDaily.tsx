@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef, useId, type FormEvent } from 'react'
+import { useState, useEffect, useMemo, useRef, useId, type FormEvent } from 'react'
 import { Share2 } from 'lucide-react'
+import { Keepsake } from '@/components/games/Keepsake'
+import { optimistKeepsake } from '@/lib/keepsake/optimist'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { playTones, wakeTones } from '@/components/games/gentleCues'
 import { LIVE_COMMENTARY_GUESSES, fallbackCommentary } from '@/lib/games/hope-daily/commentary'
@@ -556,13 +558,16 @@ export default function HopeDaily() {
             id="optimist-ending-title"
             ref={endingHeadingRef}
             tabIndex={-1}
-            className="mt-1 text-3xl sm:text-4xl font-semibold tracking-wider text-foreground focus-visible:shadow-none!"
+            className="mt-3 text-3xl sm:text-4xl font-semibold tracking-wider text-foreground focus-visible:shadow-none!"
           >
             {progress.reveal ? <SolvedWord word={progress.reveal.word} dropping={foundNow && !reduceMotion} /> : 'Today’s good news'}
           </h2>
 
           {progress.reveal ? (
-            <EndingStory reveal={progress.reveal} fadeIn={fadeIn} shareNote={shareNote} onShare={passItOn} />
+            <>
+              <EndingStory reveal={progress.reveal} fadeIn={fadeIn} shareNote={shareNote} onShare={passItOn} />
+              <Clipping reveal={progress.reveal} />
+            </>
           ) : (
             <p className="mt-3 text-foreground/70" role="status" aria-live="polite">
               The good news is on its way.
@@ -612,6 +617,13 @@ function SolvedWord({ word, dropping }: { word: string; dropping: boolean }) {
       </span>
     </>
   )
+}
+
+/** The day's good news as a clipping to keep, with the word inked into its gap. */
+function Clipping({ reveal }: { reveal: Reveal }) {
+  const [day] = useState(() => new Date())
+  const plan = useMemo(() => optimistKeepsake({ reveal, day }), [reveal, day])
+  return <Keepsake plan={plan} label="Today’s clipping, to keep" className="mt-6 pt-5 border-t border-card-border" />
 }
 
 interface EndingStoryProps {

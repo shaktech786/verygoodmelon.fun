@@ -4,6 +4,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { SHOWCASE_GROUPS } from '@/lib/games/config'
 import { PICK_REASONS, dailyPick } from '@/lib/games/daily-pick'
 import { gamesForMood } from '@/lib/games/moods'
+import { axeViolations } from './helpers/writing-game'
 
 /**
  * The shared shell every page sits in: accessibility settings, the feedback
@@ -436,6 +437,112 @@ test.describe('Finding your way', () => {
     await secondTab.goto('/games')
     await expect(secondTab.getByRole('region', { name: 'Something gentle, if it helps' })).toBeVisible()
     await secondTab.close()
+  })
+})
+
+test.describe('Care and support', () => {
+  const enterCare = async (page: Page) => {
+    await page.goto('/')
+    await page.evaluate(() => localStorage.setItem('verygoodmelon:care', JSON.stringify({ until: Date.now() + 60 * 60 * 1000 })))
+  }
+  const wisdom = async (page: Page, line: string) => {
+    await page.route('**/api/daily-wisdom', (route) => route.fulfill({ json: { wisdom: line } }))
+    await page.addInitScript(() => localStorage.removeItem('verygoodmelon:daily-wisdom'))
+  }
+
+  test('every page offers a quiet "Need to talk?" link that leads by keyboard to calm support lines', async ({ page }) => {
+    for (const path of ['/', '/games/quiet-grove', '/privacy', '/no-such-page']) {
+      await page.goto(path)
+      await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Need to talk?' })).toHaveAttribute('href', '/support')
+    }
+    await page.getByRole('contentinfo').getByRole('link', { name: 'Need to talk?' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page).toHaveURL(/\/support$/)
+    await expect(page.getByRole('heading', { level: 1, name: 'Need to talk?' })).toBeVisible()
+    const main = page.locator('main')
+    await expect(main.getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+    await expect(main.getByRole('link', { name: '116 123' })).toHaveAttribute('href', 'tel:116123')
+    await expect(main.getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
+    await expect(main).not.toContainText(/emergency|crisis line|danger|urgent/i)
+    // The page fades in; contrast is measured once it has settled
+    await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))))
+    expect(await axeViolations(page)).toEqual([])
+  })
+
+  test('in care mode every gentle row comes with the helpline sentence: on a game page and on the lost page', async ({ page }) => {
+    await enterCare(page)
+    await page.goto('/games/quiet-grove')
+    const gentle = page.getByRole('region', { name: 'Something gentle, if it helps' })
+    await expect(gentle.getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+
+    await page.goto('/no-such-page')
+    const calm = page.getByRole('region', { name: 'Or slow down for a minute' })
+    await expect(calm.getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+    await expect(calm.getByRole('link', { name: 'findahelpline.com' })).toBeVisible()
+  })
+
+  test('the lost page offers no helpline outside care mode', async ({ page }) => {
+    await page.goto('/no-such-page')
+    await expect(page.getByRole('region', { name: 'Or slow down for a minute' })).toBeVisible()
+    await expect(page.locator('main').getByRole('link', { name: '988' })).toHaveCount(0)
+  })
+
+  test("in care mode the homepage's daily line steps aside when it touches loss, surrender or endings", async ({ page }) => {
+    const heavy = 'Surrender is not defeat; it is the river finally trusting the sea.'
+    await wisdom(page, heavy)
+    await enterCare(page)
+    await page.goto('/')
+    await expect(page.getByText('There is no hurry here. You are welcome to rest a while, just as you are.')).toBeVisible()
+    await expect(page.getByText(heavy)).toHaveCount(0)
+  })
+
+  test('in care mode a light daily line is kept, and outside care any line is shown as written', async ({ page }) => {
+    const light = 'The kindest thing you can do for your future self is to rest without guilt right now.'
+    await wisdom(page, light)
+    await enterCare(page)
+    await page.goto('/')
+    await expect(page.getByText(light)).toBeVisible()
+
+    await page.evaluate(() => localStorage.removeItem('verygoodmelon:care'))
+    const heavy = 'Every ending is a door you have not walked through yet.'
+    await page.unroute('**/api/daily-wisdom')
+    await wisdom(page, heavy)
+    await page.goto('/')
+    await expect(page.getByText(heavy)).toBeVisible()
+  })
+})
+
+test.describe('Homepage and header', () => {
+  test('"lighter" is rind green or the text colour, never the red kept for actions, in both themes', async ({ page }) => {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme })
+      await page.goto('/')
+      const lighter = page.getByRole('heading', { level: 1 }).locator('span')
+      await expect(lighter).toHaveText('lighter')
+      const [colour, green, red] = await lighter.evaluate((el) => {
+        const probe = (value: string) => {
+          const span = document.createElement('span')
+          span.style.color = value
+          document.body.appendChild(span)
+          const result = getComputedStyle(span).color
+          span.remove()
+          return result
+        }
+        return [getComputedStyle(el).color, probe('var(--melon-green)'), probe('var(--accent)')]
+      })
+      expect(colour).toBe(green)
+      expect(colour).not.toBe(red)
+    }
+  })
+
+  test('on desktop the logo sits at the left edge of the header row, the nav at the right', async ({ page }) => {
+    await page.setViewportSize(DESKTOP)
+    await page.goto('/')
+    const nav = page.getByRole('navigation', { name: 'Main navigation' })
+    const logo = await nav.getByRole('link', { name: 'VeryGoodMelon.Fun home' }).boundingBox()
+    const games = await nav.getByRole('link', { name: 'Games', exact: true }).boundingBox()
+    expect(logo!.x).toBeLessThan(DESKTOP.width * 0.2)
+    expect(games!.x).toBeGreaterThan(DESKTOP.width * 0.5)
   })
 })
 

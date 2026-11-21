@@ -111,7 +111,7 @@ function Candle({ lit }: { lit: boolean }) {
       />
       {!lit && <Smoke reduceMotion={reduceMotion} />}
       <div className="absolute left-1/2 top-[2.6rem] h-2 w-0.5 -translate-x-1/2 bg-foreground/60" />
-      <div className="absolute bottom-0 left-1/2 h-12 w-8 -translate-x-1/2 rounded-t-sm border border-card-border bg-accent-soft" />
+      <div className="absolute bottom-0 left-1/2 h-12 w-8 -translate-x-1/2 rounded-t-sm final-word-wax" />
     </div>
   )
 }
@@ -188,11 +188,7 @@ export default function LastWords() {
         <div
           aria-hidden="true"
           data-testid="dusk"
-          className={`pointer-events-none absolute inset-0 rounded-lg transition-opacity duration-[2000ms] ease-in-out ${candleOut ? 'opacity-100' : 'opacity-0'}`}
-          style={{
-            background:
-              'linear-gradient(to bottom, color-mix(in srgb, var(--melon-indigo) 14%, transparent), color-mix(in srgb, var(--melon-purple) 6%, transparent) 70%, transparent)',
-          }}
+          className={`final-word-dusk pointer-events-none absolute inset-0 rounded-lg transition-opacity duration-[2000ms] ease-in-out ${candleOut ? 'opacity-100' : 'opacity-0'}`}
         />
         {/* A flame beside words that may come from real danger is the wrong picture, lit or put out */}
         {!care && <Candle lit={!candleOut} />}
@@ -236,6 +232,11 @@ export default function LastWords() {
             <blockquote className="mt-5 text-lg sm:text-xl text-foreground whitespace-pre-wrap break-words leading-relaxed">
               &ldquo;{submitted}&rdquo;
             </blockquote>
+            {judgedSafe && !candleOut && (
+              <Button variant="primary" onClick={() => setCandleOut(true)} className="mt-6">
+                Blow out the candle
+              </Button>
+            )}
             {candleOut && judgedSafe && <Goodnight words={submitted} prompt={prompt} lineRef={goodnightRef} />}
           </div>
         )}
@@ -278,17 +279,10 @@ export default function LastWords() {
             </section>
           )}
 
-          <div className="text-center space-y-4">
-            {judgedSafe && !candleOut && (
-              <Button variant="primary" onClick={() => setCandleOut(true)}>
-                Blow out the candle
-              </Button>
-            )}
-            <div>
-              <Button variant="secondary" onClick={writeAnother}>
-                Write another
-              </Button>
-            </div>
+          <div className="text-center">
+            <Button variant="secondary" onClick={writeAnother}>
+              Write another
+            </Button>
           </div>
         </>
       )}

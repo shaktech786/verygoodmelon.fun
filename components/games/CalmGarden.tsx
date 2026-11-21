@@ -46,6 +46,9 @@ import {
   returnCamera,
   visitorKindAt,
 } from '@/lib/games/calm-garden/moments'
+import { gardenerKeepsake } from '@/lib/keepsake/gardener'
+import type { KeepsakePlan } from '@/lib/keepsake/plan'
+import { Keepsake } from '@/components/games/Keepsake'
 import { drawGround, drawMarker, drawNewGrowth, drawPlant, drawSitLight, drawSky, drawVisitor } from './calm-garden/draw'
 
 const SUGGEST_EVERY = 3
@@ -145,11 +148,14 @@ export default function CalmGarden() {
   const [returnLine, setReturnLine] = useState<string | null>(null)
   const [arrivals, setArrivals] = useState<ArrivalPlan>({ before: 0, times: [] })
   const [arrived, setArrived] = useState(0)
+  const [postcard, setPostcard] = useState<KeepsakePlan | null>(null)
   const still = useReducedMotion()
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sitButtonRef = useRef<HTMLButtonElement>(null)
   const standButtonRef = useRef<HTMLButtonElement>(null)
+  const postcardRef = useRef<HTMLDivElement>(null)
+  const showPostcardRef = useRef(false)
   const listRef = useRef<HTMLUListElement>(null)
   const listSummaryRef = useRef<HTMLElement>(null)
   const pointerRef = useRef<PointerTrack | null>(null)
@@ -377,19 +383,13 @@ export default function CalmGarden() {
     setSelectedId(null)
     setCursor(null)
     setSitDone(false)
+    setPostcard(null)
     const before = visitorCount(plants, false)
     setArrivals({ before, times: arrivalTimes(before, visitorCount(plants, true)) })
     setArrived(0)
     sitStartRef.current = performance.now()
     setSitAt(Date.now())
   }, [moving, cancelMove, plants])
-
-  const standUp = useCallback(() => {
-    setSitAt(null)
-    setSitDone(false)
-    setAnnouncement('You stand up. The garden is still here.')
-    requestAnimationFrame(() => sitButtonRef.current?.focus())
-  }, [])
 
   useEffect(() => {
     if (!sitting) return
@@ -425,6 +425,27 @@ export default function CalmGarden() {
       now: sitAt,
     })
   }, [plants, sitVisitors, sitKind, visitors, visitorKind, clock.season, sitAt])
+
+  const standUp = useCallback(() => {
+    setSitAt(null)
+    setSitDone(false)
+    if (sitDone && sitAt !== null) {
+      showPostcardRef.current = true
+      setPostcard(gardenerKeepsake({ plants, season: clock.season, timeOfDay: clock.tod, visitors: sitVisitors, visitorKind: sitKind, line: closingLine, day: new Date(sitAt) }))
+      setAnnouncement('You stand up. The garden is still here, and a postcard of it is ready to keep.')
+      return
+    }
+    setAnnouncement('You stand up. The garden is still here.')
+    requestAnimationFrame(() => sitButtonRef.current?.focus())
+  }, [sitDone, sitAt, plants, clock.season, clock.tod, sitVisitors, sitKind, closingLine])
+
+  // A finished sit ends on the postcard of it, brought into view under the garden.
+  useEffect(() => {
+    if (!postcard || !showPostcardRef.current) return
+    showPostcardRef.current = false
+    postcardRef.current?.focus({ preventScroll: true })
+    postcardRef.current?.scrollIntoView({ block: 'start', behavior: still ? 'auto' : 'smooth' })
+  }, [postcard, still])
 
   const handleSitKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Escape') {
@@ -872,6 +893,12 @@ export default function CalmGarden() {
         {status && !sitting && (
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-b-lg border border-t-0 border-card-border bg-success/15 px-3 py-2 text-sm text-foreground">
             {status}
+          </div>
+        )}
+
+        {postcard && !sitting && (
+          <div ref={postcardRef} tabIndex={-1} className="mt-6 scroll-mt-24 rounded-lg focus:outline-none" data-testid="garden-postcard">
+            <Keepsake plan={postcard} label="A postcard of your garden" />
           </div>
         )}
       </div>

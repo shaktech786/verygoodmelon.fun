@@ -10,8 +10,17 @@ const ADDRESSEE_BY_PROMPT: Record<string, string> = {
 }
 
 const NAMED_OPENING = /^\s*dear\s+([^,.!?;:\n]{1,32})\s*[,.!:]\s*/i
-const KIN_OPENING =
-  /^\s*((?:my\s+)?(?:mum|mom|mummy|mommy|mama|dad|daddy|papa|mother|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|sister|brother|son|daughter|kids|children|love|darling|sweetheart|friends?|everyone|everybody|world))\s*[,!:]\s*/i
+const KIN =
+  'mum|mom|mummy|mommy|mama|dad|daddy|papa|mother|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|sister|brother|son|daughter|kids|children|darling|sweetheart|friends?|everyone|everybody|world'
+// "Love" on its own is more often a sign-off ("Love, always") than a name, so only "my love" counts
+const KIN_OPENING = new RegExp(String.raw`^\s*((?:my\s+)?(?:${KIN})|my\s+love)\s*[,!:]\s*`, 'i')
+// Words that carry on a list rather than start a sentence: "My kids, and the sea at dawn."
+const CARRIES_ON = /^(?:and|or|but|nor|plus|with|the|a|an|too|also|always|forever|then|&)(?=\s|$)/i
+
+/** Whether what follows a kin word reads as a sentence said to them, not more of a list. */
+function isSentence(rest: string): boolean {
+  return rest.split(/\s+/).length >= 2 && !CARRIES_ON.test(rest)
+}
 
 export interface Letter {
   /** Who the words are for, as the card's opening: "To the people I love,". */
@@ -21,14 +30,15 @@ export interface Letter {
 }
 
 /**
- * Who the words are written to: a greeting the player wrote themselves ("Mum, …", "Dear Sam,"),
+ * Who the words are written to: a greeting the player wrote themselves ("Mum, you were…", "Dear Sam,"),
  * else the person the question asked about, else anyone who might need them.
  */
 export function letterOf({ words, prompt }: { words: string; prompt: string }): Letter {
   const text = words.trim()
-  const opening = text.match(NAMED_OPENING) ?? text.match(KIN_OPENING)
+  const named = text.match(NAMED_OPENING)
+  const opening = named ?? text.match(KIN_OPENING)
   const rest = opening ? text.slice(opening[0].length).trim() : ''
-  if (opening && rest) {
+  if (opening && rest && (named || isSentence(rest))) {
     const name = opening[1].trim().replace(/\s+/g, ' ')
     const addressee = /^my\s/i.test(name) ? name.toLowerCase() : `${name.charAt(0).toUpperCase()}${name.slice(1)}`
     return { to: `To ${addressee},`, body: `${rest.charAt(0).toUpperCase()}${rest.slice(1)}` }

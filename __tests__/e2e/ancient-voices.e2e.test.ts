@@ -341,6 +341,34 @@ test('saying goodbye asks first, can be cancelled with Escape, and ends with par
   await expect(input(page)).toBeFocused()
 })
 
+test('after a few exchanges, saying goodbye is one tap away without opening the menu', async ({ page }) => {
+  await setUpBrowser(page)
+  await stubChat(page)
+  await stubFarewell(page)
+  await openGame(page)
+  const quietGoodbye = page.getByRole('button', { name: 'Say goodbye to Socrates' })
+
+  for (let i = 1; i <= 2; i++) {
+    await send(page, `Thought ${i}`)
+    await expect(bubbles(page).nth(i * 2)).toContainText(`Reply ${i}`)
+  }
+  await expect(quietGoodbye).toHaveCount(0)
+  await send(page, 'Thought 3')
+  await expect(bubbles(page).nth(6)).toContainText('Reply 3')
+  await expect(quietGoodbye).toBeVisible()
+  await expect(menuButton(page)).toHaveAttribute('aria-expanded', 'false')
+
+  await quietGoodbye.click()
+  const dialog = page.getByRole('dialog', { name: 'Say goodbye to Socrates?' })
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(quietGoodbye).toBeFocused()
+
+  await quietGoodbye.click()
+  await dialog.getByRole('button', { name: 'Say goodbye' }).click()
+  await expect(page.getByRole('dialog', { name: 'Parting words from Socrates' })).toContainText('Carry your question gently')
+})
+
 test('parting words still arrive when they cannot be fetched, and the directory can choose who is next', async ({ page }) => {
   await setUpBrowser(page)
   await stubChat(page)

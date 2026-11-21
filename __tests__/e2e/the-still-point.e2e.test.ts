@@ -113,7 +113,8 @@ test.describe('The Harmonist', () => {
     await page.keyboard.press(' ')
     await expect(phase(page)).toHaveText('Inhale')
     await expect(sessionTime(page)).toHaveText('0:00')
-    await expect(guide(page)).toContainText('0 seeds so far')
+    // A calm clock is the only thing that moves while breathing: no tally of seeds, no countdown to the end
+    await expect(guide(page)).not.toContainText(/so far|\bof \d+:\d\d/)
 
     // Box breathing: 4s inhale, 4s hold, 4s exhale, 4s hold, then again.
     const expected: [number, string][] = [[2000, 'Inhale'], [4000, 'Hold'], [4000, 'Exhale'], [4000, 'Hold'], [4000, 'Inhale'], [4000, 'Hold'], [4000, 'Exhale']]
@@ -122,7 +123,6 @@ test.describe('The Harmonist', () => {
       await expect(phase(page)).toHaveText(label)
     }
     await expect(sessionTime(page)).toHaveText('0:26')
-    await expect(guide(page)).toContainText('1 seed so far')
     await expect(page.getByTestId('phase-progress')).toHaveAttribute('style', /width: 5\d(\.\d+)?%/)
 
     await page.keyboard.press(' ')
@@ -141,8 +141,11 @@ test.describe('The Harmonist', () => {
     await expect(guide(page)).toContainText('You spent 28 seconds breathing.')
     await expect(guide(page)).toContainText('Each seed is a breath you finished. Its shape comes from the rhythm')
     await expect(guide(page)).toContainText('Pattern: Box Breathing')
-    await expect(guide(page).getByRole('img', { name: 'A melon cut open along a square, one seed for each breath' })).toBeVisible()
+    await expect(guide(page).getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/cut open along a square/)
     await expect(openedMelon(page).locator('[data-seed]')).toHaveCount(1)
+    // The melon is drawn once: the picture to keep, with the opening played over it rather than beside it
+    await expect(guide(page).getByRole('img')).toHaveCount(1)
+    await expect(openedMelon(page)).toHaveAttribute('aria-hidden', 'true')
     // The seeds are the record; the words never tally them
     await expect(guide(page)).not.toContainText(/\d+ (in all|seeds?|breaths?)\b/)
     await expect(guide(page)).not.toContainText('Well done')
@@ -176,7 +179,6 @@ test.describe('The Harmonist', () => {
         await advance(page, ms)
         await expect(phase(page)).toHaveText(label)
       }
-      await expect(guide(page)).toContainText('1 seed so far')
       await page.getByRole('button', { name: 'End session' }).click()
       await expect(guide(page)).toContainText('Each seed is a breath you finished.')
       await expect(openedMelon(page).locator('[data-seed]')).toHaveCount(1)
@@ -205,7 +207,6 @@ test.describe('The Harmonist', () => {
     await expect(guide(page)).toContainText('Coherent Breathing')
     await expect(phase(page)).toHaveText('Inhale')
     await expect(sessionTime(page)).toHaveText('0:00')
-    await expect(guide(page)).toContainText('0 seeds so far')
     await advance(page, 6000)
     await expect(phase(page)).toHaveText('Exhale')
   })
@@ -214,7 +215,6 @@ test.describe('The Harmonist', () => {
     await openGame(page)
     await startPattern(page, /Box Breathing/)
     await advance(page, 17_000)
-    await expect(guide(page)).toContainText('1 seed so far')
 
     // While breathing the rhythms are out of reach, so a stray tap never cuts a breath short
     const rhythm = page.getByRole('radiogroup', { name: 'Change rhythm' })
@@ -232,7 +232,6 @@ test.describe('The Harmonist', () => {
     await expect(phase(page)).toHaveText('Exhale')
     await expect(sessionTime(page)).toHaveText('0:23')
     await advance(page, 5100)
-    await expect(guide(page)).toContainText('2 seeds so far')
 
     // Arrow keys move through the rhythms too.
     await page.getByRole('button', { name: 'Change rhythm' }).click()
@@ -253,7 +252,7 @@ test.describe('The Harmonist', () => {
     await openGame(page)
     await page.getByRole('radio', { name: '1 min' }).click()
     await startPattern(page, /Box Breathing/)
-    await expect(guide(page)).toContainText('0:00 of 1:00')
+    await expect(sessionTime(page)).toHaveText('0:00')
 
     await advance(page, 61_000)
     await expect(phase(page)).toHaveText('Hold')
@@ -264,7 +263,7 @@ test.describe('The Harmonist', () => {
     await expect(guide(page).getByRole('heading', { name: 'Your breaths, gathered' })).toBeVisible()
     await expect(guide(page)).toContainText('You spent 1 minute and 4 seconds breathing.')
     await expect(guide(page)).toContainText('Each seed is a breath you finished.')
-    await expect(guide(page).getByRole('img', { name: 'A melon cut open along a square, one seed for each breath' })).toBeVisible()
+    await expect(guide(page).getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/cut open along a square/)
     await expect(openedMelon(page).locator('[data-seed]')).toHaveCount(4)
 
     await page.getByRole('button', { name: 'Still tense' }).click()
@@ -273,7 +272,7 @@ test.describe('The Harmonist', () => {
     await page.getByRole('button', { name: 'One minute of sighs' }).click()
     await expect(phase(page)).toHaveText('Inhale')
     await expect(guide(page)).toContainText('Physiological Sigh')
-    await expect(guide(page)).toContainText('0:00 of 1:00')
+    await expect(sessionTime(page)).toHaveText('0:00')
   })
 
   test('an open session keeps going until you end it', async ({ page }) => {
@@ -387,7 +386,7 @@ test.describe('The Harmonist', () => {
     await page.keyboard.press('Enter')
     await expect(phase(page)).toBeFocused()
     await expect(guide(page)).toContainText('Coherent Breathing')
-    await expect(guide(page)).toContainText('0:00 of 1:00')
+    await expect(sessionTime(page)).toHaveText('0:00')
     await expect(phase(page)).toHaveText('Inhale')
     await expect(page.getByText('Space pauses. Escape ends.')).toBeVisible()
 
@@ -416,7 +415,6 @@ test.describe('The Harmonist', () => {
     await expect(page.getByText('Breath tones let you follow along with your eyes closed.')).toBeVisible()
     await startPattern(page, /Box Breathing/)
     for (let i = 0; i < 8; i++) await advance(page, 2000)
-    await expect(guide(page)).toContainText('1 seed so far')
     expect(await tones(page)).toEqual([])
   })
 
@@ -488,9 +486,9 @@ test.describe('The Harmonist', () => {
     for (let i = 0; i < 9; i++) await advance(page, 4000)
     await page.getByRole('button', { name: 'End session' }).click()
     await expect(guide(page)).toContainText('Its shape comes from the rhythm, and longer breaths grew longer seeds.')
-    const seedShapes = (name: RegExp) =>
-      guide(page).getByRole('img', { name }).locator('[data-seed]').evaluateAll((els) => els.map((e) => `${e.getAttribute('rx')}x${e.getAttribute('ry')}`))
-    const boxSeeds = await seedShapes(/^A melon cut open along/)
+    const seedShapes = () =>
+      openedMelon(page).locator('[data-seed]').evaluateAll((els) => els.map((e) => `${e.getAttribute('rx')}x${e.getAttribute('ry')}`))
+    const boxSeeds = await seedShapes()
     expect(boxSeeds).toHaveLength(2)
 
     await page.getByRole('button', { name: 'Breathe again' }).click()
@@ -502,7 +500,7 @@ test.describe('The Harmonist', () => {
     await startPattern(page, /4-7-8/)
     for (let i = 0; i < 10; i++) await advance(page, 4000)
     await page.getByRole('button', { name: 'End session' }).click()
-    expect(await seedShapes(/^A melon cut open along/)).not.toEqual(boxSeeds)
+    expect(await seedShapes()).not.toEqual(boxSeeds)
   })
 
   test('the melon opens along the shape that was breathed, and the opened melon can be saved', async ({ page }) => {
@@ -514,6 +512,10 @@ test.describe('The Harmonist', () => {
     await expect(openedMelon(page)).toHaveAttribute('data-shape', 'triangle')
     await expect(openedMelon(page).locator('[data-seed]')).toHaveCount(2)
     await expect(page.getByRole('button', { name: 'Breathe again' })).toBeFocused()
+    // The opening plays exactly over the picture to keep, then fades to show it
+    const [opening, picture] = await Promise.all([openedMelon(page).boundingBox(), guide(page).getByTestId('keepsake-canvas').boundingBox()])
+    for (const key of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(opening![key] - picture![key])).toBeLessThanOrEqual(1)
+    await expect.poll(() => openedMelon(page).evaluate((svg) => Number(getComputedStyle(svg).opacity)), { timeout: 6000 }).toBe(0)
     await expectKeepsakeSaves(page, {
       within: guide(page),
       fileName: /^the-harmonist-2026-11-21\.png$/,
@@ -596,6 +598,17 @@ test.describe('The Harmonist on a phone with reduced motion', () => {
     await advance(page, 20_000)
     await expect(phase(page)).toHaveText('Exhale')
     await expect(page.getByRole('img', { name: /Breathing visualization/ }).locator('ellipse')).toHaveCount(1)
+    // Red is kept for actions, so the guide's dot is never red, not even on the out-breath
+    const dot = page.getByRole('img', { name: 'Breathing visualization - Exhale' }).locator('circle').last()
+    const accent = await page.evaluate(() => {
+      const probe = document.createElement('i')
+      probe.style.color = 'var(--accent)'
+      document.body.append(probe)
+      const colour = getComputedStyle(probe).color
+      probe.remove()
+      return colour
+    })
+    expect(await dot.evaluate((circle) => getComputedStyle(circle).fill)).not.toBe(accent)
 
     await page.getByRole('button', { name: 'End session' }).tap()
     await expect(guide(page)).toContainText('You spent 26 seconds breathing.')
@@ -630,12 +643,14 @@ test.describe('The Harmonist on a phone with reduced motion', () => {
     await page.getByRole('button', { name: 'Begin breathing' }).tap()
     await advance(page, 33_000)
     await page.getByRole('button', { name: 'End session' }).tap()
-    await expect(openedMelon(page)).toHaveAttribute('data-shape', 'square')
-    expect(await openedMelon(page).evaluate((svg) => svg.getAnimations({ subtree: true }).length)).toBe(0)
-    // The cut piece already rests aside: its final turn is applied without any animation
-    const lid = openedMelon(page).locator('g').first()
-    expect(await lid.evaluate((g) => getComputedStyle(g).transform)).not.toBe('none')
-    const box = await openedMelon(page).boundingBox()
+    // Nothing plays: the picture to keep is simply already open, at the top of the screen
+    await expect(openedMelon(page)).toHaveCount(0)
+    const picture = guide(page).getByTestId('keepsake-canvas')
+    await expect(picture).toHaveAccessibleDescription(/cut open along a square/)
+    expect(await guide(page).evaluate((el) => el.getAnimations({ subtree: true }).length)).toBe(0)
+    await expect(picture).toBeInViewport({ ratio: 1 })
+    await expect(page.getByRole('button', { name: 'Breathe again' })).toBeFocused()
+    const box = await picture.boundingBox()
     expect(box!.x).toBeGreaterThanOrEqual(0)
     expect(box!.x + box!.width).toBeLessThanOrEqual(390)
     await expectKeepsakeSaves(page, { within: guide(page), fileName: /^the-harmonist-2026-11-21\.png$/ })

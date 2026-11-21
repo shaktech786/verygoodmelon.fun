@@ -104,6 +104,11 @@ export function withMoment(records: readonly MomentRecord[], record: MomentRecor
   return next.slice(-MAX_CARDS)
 }
 
+/** The strip as shown: the moment just finished leads, so a phone never hides it off the edge. */
+export function newestFirst(records: readonly MomentRecord[]): MomentRecord[] {
+  return [...records].reverse()
+}
+
 export function joinNaturally(words: readonly string[]): string {
   if (words.length <= 1) return words.join('')
   return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`

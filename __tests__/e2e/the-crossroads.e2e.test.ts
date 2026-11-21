@@ -30,6 +30,8 @@ const nextButton = (page: Page) => page.getByRole('button', { name: 'Next Dilemm
 const progress = (page: Page, n: number) => page.getByText(`Dilemma ${n} of ${DILEMMA_COUNT}`)
 const answerList = (page: Page) => page.getByRole('list', { name: 'The two answers' })
 /** The card around a choice: its button, then the perspective and counts shown after choosing. */
+// The keepsake's heading names it once; the picture inside is described rather than titled again
+const sky = (page: Page) => page.locator('section').filter({ has: page.getByRole('heading', { name: SKY }) }).getByRole('img', { name: 'Picture' })
 const card = (page: Page, choice: Locator) => page.getByRole('listitem').filter({ has: choice })
 
 async function axeViolations(page: Page): Promise<string[]> {
@@ -160,16 +162,16 @@ test.describe('database unreachable (the current reality)', () => {
 
     await expect(page.getByRole('heading', { name: ENDING })).toBeFocused()
     // Odd dilemmas were answered A, even ones B: one star per value, gathered by theme, under one reading line
-    const sky = page.getByRole('img', { name: SKY })
+    const chart = sky(page)
     for (const group of [
       'Feeling settled: Joy.',
       'Stretching further: Purpose, Challenge, Making.',
       'The people around you: Friendship, Openness, Encouragement, Closeness, Roots.',
       'Your own footing: Selfhood, Self-respect, Self-kindness.',
     ]) {
-      await expect(sky).toHaveAccessibleDescription(new RegExp(group))
+      await expect(chart).toHaveAccessibleDescription(new RegExp(group))
     }
-    await expect(sky).toHaveAccessibleDescription(/What kept returning today was the people around you\.$/)
+    await expect(chart).toHaveAccessibleDescription(/What kept returning today was the people around you\.$/)
     await expectKeepsakeSaves(page, { fileName: /^the-dilemma-\d{4}-\d{2}-\d{2}\.png$/ })
     await expect(page.getByRole('heading', { name: FIRST_SCENARIO })).toHaveCount(0)
     await expect(page.locator('main [role="alert"]')).toHaveCount(0)
@@ -376,11 +378,59 @@ test.describe('reading it with a screen reader, and how it looks', () => {
       await page.evaluate((ids) => localStorage.setItem('hardChoicesVotes',
         JSON.stringify(Object.fromEntries(ids.map((id, i) => [id, i % 3 ? 'A' : 'B'])))), IDS)
       await page.reload()
-      await expect(page.getByRole('img', { name: SKY })).toBeVisible()
+      await expect(sky(page)).toBeVisible()
       await page.getByText('See or change each answer').click()
       expect(await axeViolations(page)).toEqual([])
     })
   }
+})
+
+test.describe('the ending on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  const expectEndingAtTop = async (page: Page) => {
+    const ending = page.getByRole('heading', { name: ENDING })
+    await expect(ending).toBeFocused()
+    await expect(async () => {
+      const headerBottom = await page.locator('header[role="banner"]').evaluate((el) => el.getBoundingClientRect().bottom)
+      const top = (await ending.boundingBox())!.y
+      expect(top).toBeGreaterThanOrEqual(headerBottom - 1)
+      expect(top).toBeLessThanOrEqual(headerBottom + 50)
+    }).toPass()
+  }
+
+  test('the ending opens at the top of the screen, on reaching it and after a reload', async ({ page }) => {
+    await databaseDown(page)
+    await page.goto('/games/the-crossroads')
+    await page.evaluate((ids) => localStorage.setItem('hardChoicesVotes',
+      JSON.stringify(Object.fromEntries(ids.slice(0, -1).map((id) => [id, 'A'])))), IDS)
+    await page.reload()
+    await expect(progress(page, DILEMMA_COUNT)).toBeVisible()
+    await expect(async () => {
+      await page.getByRole('button', { name: 'Let this one pass' }).click({ timeout: 500 })
+      await expect(page.getByRole('heading', { name: ENDING })).toBeVisible({ timeout: 500 })
+    }).toPass()
+    await expectEndingAtTop(page)
+
+    await page.reload()
+    await expectEndingAtTop(page)
+  })
+
+  test('the themes and values under the sky are written out at a readable size', async ({ page }) => {
+    await databaseDown(page)
+    await page.goto('/games/the-crossroads')
+    await page.evaluate((ids) => localStorage.setItem('hardChoicesVotes',
+      JSON.stringify(Object.fromEntries(ids.map((id, i) => [id, i % 2 ? 'B' : 'A'])))), IDS)
+    await page.reload()
+    await expect(sky(page)).toBeVisible()
+    const legend = page.getByTestId('sky-legend')
+    await expect(legend).toBeVisible()
+    await expect(legend.getByText('The people around you')).toBeVisible()
+    await expect(legend.getByText(/Friendship/)).toBeVisible()
+    for (const size of await legend.locator('dt, dd').evaluateAll((els) => els.map((el) => parseFloat(getComputedStyle(el).fontSize)))) {
+      expect(size).toBeGreaterThanOrEqual(16)
+    }
+  })
 })
 
 test.describe('choosing at your own pace', () => {
@@ -407,7 +457,7 @@ test.describe('choosing at your own pace', () => {
       await page.getByRole('button', { name: 'Let this one pass' }).click()
     }
     await expect(page.getByRole('heading', { name: ENDING })).toBeFocused()
-    await expect(page.getByRole('img', { name: SKY })).toHaveAccessibleDescription(/Feeling settled: Joy\. Beneath it: A glimpse rather than a pattern/)
+    await expect(sky(page)).toHaveAccessibleDescription(/Feeling settled: Joy\. Beneath it: A glimpse rather than a pattern/)
     await expect(page.getByText('You let 11 questions pass, and that is allowed too.')).toBeVisible()
     expect(api.posts).toHaveLength(1)
   })

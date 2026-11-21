@@ -9,7 +9,7 @@ import { useRealtimeVotes } from '@/lib/hooks/useRealtimeVotes'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { DILEMMAS, type Choice, type ChoiceId } from '@/lib/games/hard-choices/dilemmas'
 import { keepKnownAnswers, keepKnownIds, type Answer, type Answers } from '@/lib/games/hard-choices/answers'
-import { dilemmaKeepsake } from '@/lib/keepsake/dilemma'
+import { dilemmaConstellation, dilemmaKeepsake } from '@/lib/keepsake/dilemma'
 import { Keepsake } from './Keepsake'
 
 const ANSWERS_KEY = 'hardChoicesVotes'
@@ -82,10 +82,23 @@ function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index:
   const passed = DILEMMAS.length - chosen.length
   const [day] = useState(() => new Date())
   const plan = useMemo(() => dilemmaKeepsake({ chosen, day }), [chosen, day])
+  const clusters = useMemo(() => dilemmaConstellation(chosen), [chosen])
 
   return (
     <div className="space-y-5 text-left">
       <Keepsake plan={plan} label="Tonight's sky of what you reached for" hideLabel />
+
+      {/* The chart's own labels shrink to a few pixels on a phone, so the same names are written out here; the picture's description already reads them */}
+      {clusters.length > 0 && (
+        <dl data-testid="sky-legend" aria-hidden="true" className="sm:hidden mx-auto max-w-[22rem] grid grid-cols-2 gap-x-4 gap-y-3 text-base">
+          {clusters.map((cluster) => (
+            <div key={cluster.theme}>
+              <dt className="font-semibold text-foreground">{cluster.title}</dt>
+              <dd className="text-foreground/80">{cluster.stars.map((star) => star.value).join(', ')}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
 
       <p className="text-foreground/85 text-center leading-relaxed">
         {chosen.length > 0 && passed > 0 && `You let ${passed === 1 ? 'one question' : `${passed} questions`} pass, and that is allowed too. `}
@@ -135,6 +148,7 @@ export default function HardChoices() {
   const firstChoiceRef = useRef<HTMLButtonElement>(null)
   const moveFocusToHeading = useRef(false)
   const moveFocusToChoices = useRef(false)
+  const resumedAtEnd = useRef(false)
   const hasChosen = useRef(false)
   const revealResult = useRef(false)
   const resultEndRef = useRef<HTMLDivElement>(null)
@@ -210,6 +224,8 @@ export default function HardChoices() {
     // A choice made while the page was still hydrating keeps the player where they are
     if (hasChosen.current) return
     if (resumeIndex === -1) {
+      // Returning to a finished game opens on the ending itself, not the intro above it
+      resumedAtEnd.current = true
       setCurrentDilemmaIndex(DILEMMAS.length - 1)
       setFinished(true)
     } else {
@@ -220,8 +236,9 @@ export default function HardChoices() {
   // Keep keyboard and screen-reader users oriented when the card changes, and land every new card the same way:
   // its top just below the site header
   useEffect(() => {
-    if (moveFocusToHeading.current) {
+    if (moveFocusToHeading.current || (finished && resumedAtEnd.current)) {
       moveFocusToHeading.current = false
+      resumedAtEnd.current = false
       const heading = headingRef.current
       if (!heading) return
       heading.focus({ preventScroll: true })

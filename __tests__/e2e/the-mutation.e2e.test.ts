@@ -189,6 +189,8 @@ test.describe('The Shapeshifter', () => {
     await page.keyboard.press('Enter')
     await expect(page.getByText('Click the orb, or press Space.')).toBeVisible()
     await expect(page.getByText('No rules yet', { exact: true })).toBeVisible()
+    // Light still gathers, but no running count of it is shown while playing
+    await expect(page.getByText(/^light$/)).toHaveCount(0)
 
     for (let i = 1; i <= 3; i++) {
       await page.keyboard.press(' ')
@@ -222,7 +224,7 @@ test.describe('The Shapeshifter', () => {
     await expect(page.getByRole('status')).toHaveText('Your game is finished.')
     await expect(finale.getByText('Six rules arrived without asking.', { exact: false })).toBeVisible()
     // The run is a picture of the path it took, not a tally of what it scored
-    await expect(finale.getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/WAVE 1 ARROW_KEYS \(blue circle\).*WAVE 6 SCORE_RUSH \(green flower\)/)
+    await expect(finale.getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/WAVE 1 ARROW_KEYS \(blue circle\).*WAVE 6 SCORE_RUSH \(pink flower\)/)
     await expect(finale.getByText(/longest rhythm|lights gathered|^time$/)).toHaveCount(0)
     await expect(finale.getByText('Play again and its rules will arrive in a different order.')).toBeVisible()
     await expect(finale.getByText(/no one else/i)).toHaveCount(0)
@@ -437,6 +439,10 @@ test.describe('The Shapeshifter', () => {
     await expect(finale.getByRole('button', { name: 'PLAY AGAIN' })).toBeInViewport({ ratio: 1 })
     await expect(finale.getByRole('heading', { name: /ORBIT GARDEN DELUXE/ })).toBeInViewport({ ratio: 1 })
     expect(await page.evaluate(() => window.scrollY)).toBe(0)
+    // The map is drawn wide enough that its legend can be read, and still fits beside the name
+    const map = await finale.getByTestId('keepsake-canvas').boundingBox()
+    expect(map?.width ?? 0).toBeGreaterThanOrEqual(400)
+    expect((map?.y ?? 0) + (map?.height ?? 0)).toBeLessThanOrEqual(800 + 50)
 
     // Away from the game, the arrow keys scroll the page as usual.
     await page.getByRole('link', { name: /VeryGoodMelon/ }).first().focus()
@@ -505,7 +511,7 @@ test.describe('The Shapeshifter', () => {
     await expectKeepsakeSaves(page, {
       within: finale,
       fileName: /^the-shapeshifter-\d{4}-\d{2}-\d{2}\.png$/,
-      describedAs: /path your orb took.*\(blue circle\), then .*\(gold star\).*\(green flower\)/,
+      describedAs: /path your orb took.*\(blue circle\), then .*\(gold star\).*\(pink flower\)/,
     })
     // Saving keeps the finale open: Enter on its buttons never starts a new run
     await finale.getByRole('button', { name: 'Save image' }).press('Enter')
@@ -576,6 +582,10 @@ test.describe('The Shapeshifter', () => {
       await expect(finale.getByTestId('keepsake-canvas')).toBeVisible()
       await expect(finale.getByRole('button', { name: 'PLAY AGAIN' })).toBeVisible()
       await expect(finale.locator('.animate-fade')).toHaveCount(0)
+      // The tall phone field is drawn tall, across nearly the whole width of the screen
+      const map = await finale.getByTestId('keepsake-canvas').boundingBox()
+      expect(map?.width ?? 0).toBeGreaterThanOrEqual(320)
+      expect(map?.height ?? 0).toBeGreaterThan((map?.width ?? 0) * 1.4)
       await expectKeepsakeSaves(page, { within: finale, fileName: /^the-shapeshifter-.*\.png$/ })
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
       expect(overflow).toBeLessThanOrEqual(0)

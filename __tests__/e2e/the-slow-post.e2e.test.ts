@@ -230,6 +230,22 @@ test.describe('The Keeper', () => {
     expect(at('settle')!.end).toBeLessThanOrEqual(4000)
   })
 
+  test('while it seals on a phone, the card holds the jar and no empty room beneath it', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await openKeeper(page)
+    await page.getByLabel('Your worry').fill(WORRY)
+    await page.getByRole('button', { name: 'Fold it up' }).click()
+    await page.getByRole('button', { name: 'Seal it' }).click()
+    const sealed = page.getByRole('heading', { name: 'Sealed.' })
+    await expect(sealed).toBeFocused()
+    const cardHeight = () => sealed.evaluate((h) => h.closest('.text-center')!.getBoundingClientRect().height)
+    const whileSealing = await cardHeight()
+    // The jar is 224px tall and the card's padding 64px
+    expect(whileSealing).toBeLessThan(340)
+    await expect(page.getByRole('button', { name: 'Done' })).toBeInViewport({ timeout: 6000 })
+    expect(await cardHeight()).toBeGreaterThan(whileSealing + 150)
+  })
+
   test('jars on the shelf say when each was sealed, never what it says', async ({ page }) => {
     await openKeeper(page)
     await seed(page, [
@@ -356,7 +372,9 @@ test.describe('The Keeper', () => {
       await expect(page.getByRole('button', { name: 'Close the capsule' })).toBeDisabled()
       // The question asks how it went, and leaving is never mistaken for an answer
       await expect(page.getByRole('group', { name: 'How did it turn out?' })).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Close for now' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Back to the shelf' })).toBeVisible()
+      // Only one button speaks of closing, so leaving is never confused with answering
+      await expect(page.getByRole('button', { name: /close/i })).toHaveCount(1)
       await expect(page.getByRole('button', { name: 'Not now' })).toHaveCount(0)
 
       await page.getByRole('radio', { name: answer, exact: true }).locator('..').click()

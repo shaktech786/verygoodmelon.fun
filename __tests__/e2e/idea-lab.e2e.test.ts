@@ -59,7 +59,9 @@ const asDiscoveries = (names: string[]) =>
 
 const concept = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const announcement = (page: Page) => page.getByRole('status')
-const counter = (page: Page) => page.getByText(/^\d+ discover(y|ies)$/)
+const BASE_CONCEPTS = 16
+// The lab shows no tally; what the player owns is the concepts row itself.
+const owned = (page: Page) => page.getByRole('toolbar', { name: 'Your Concepts' }).getByRole('button')
 const shelf = (page: Page) => page.getByRole('region', { name: /golds|is complete/ })
 const letter = (page: Page) => page.getByRole('region', { name: /^The (Great|Second) Work$/ })
 
@@ -95,33 +97,33 @@ test('a first-time player discovers, goes deeper, and keeps it all after a reloa
   await expect(page.getByText('each hidden behind a riddle', { exact: false })).toBeVisible()
   await page.getByRole('button', { name: 'Begin Exploring' }).click()
 
-  await expect(counter(page)).toHaveText('0 discoveries')
+  await expect(owned(page)).toHaveCount(BASE_CONCEPTS)
 
   await combine(page, 'Love', 'Fear')
   await expect(announcement(page)).toHaveText('New discovery: Jealousy. When love fears loss, it curdles into possession.')
   await expect(concept(page, 'Jealousy')).toBeVisible()
-  await expect(counter(page)).toHaveText('1 discovery')
+  await expect(owned(page)).toHaveCount(BASE_CONCEPTS + 1)
 
   // A discovery is an ingredient too.
   await combine(page, 'Jealousy', 'Time')
   await expect(announcement(page)).toContainText('New discovery: Loyalty.')
   await combine(page, 'Time', 'Death')
   await expect(announcement(page)).toContainText('New discovery: Legacy.')
-  await expect(counter(page)).toHaveText('3 discoveries')
-  await expect(page.getByText('19 total')).toBeVisible()
+  await expect(owned(page)).toHaveCount(BASE_CONCEPTS + 3)
+  await expect(page.getByText(/\d+ (total|discover(y|ies))$/)).toHaveCount(0)
 
   await page.reload()
   // A returning player goes straight to the lab.
   await expect(concept(page, 'Loyalty')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Begin Exploring' })).toHaveCount(0)
-  await expect(counter(page)).toHaveText('3 discoveries')
+  await expect(owned(page)).toHaveCount(BASE_CONCEPTS + 3)
 
   // A remembered pair answers instantly, in either order, without asking again.
   await combine(page, 'Fear', 'Love')
   await expect(announcement(page)).toHaveText('Jealousy, already in your concepts. When love fears loss, it curdles into possession.')
   // Only the open-ended mix needed the service; curated pairs are answered in the page
   expect(calls).toEqual(['jealousy+time'])
-  await expect(counter(page)).toHaveText('3 discoveries')
+  await expect(owned(page)).toHaveCount(BASE_CONCEPTS + 3)
 })
 
 test('on a flaky connection the curated pairs still mix, and only open-ended pairs wait for the service', async ({ page }) => {
@@ -183,11 +185,11 @@ test('when a pair cannot be combined right now, nothing is saved and it can be t
   const calls = await mockCombine(page, ['jealousy+justice'])
   await startLab(page)
   await combine(page, 'Love', 'Fear')
-  await expect(counter(page)).toHaveText('1 discovery')
+  await expect(owned(page)).toHaveCount(BASE_CONCEPTS + 1)
 
   await combine(page, 'Justice', 'Jealousy')
   await expect(announcement(page)).toHaveText(/^These two are keeping their secret for now\./)
-  await expect(counter(page)).toHaveText('1 discovery')
+  await expect(owned(page)).toHaveCount(BASE_CONCEPTS + 1)
   await expect(concept(page, 'Mystery')).toHaveCount(0)
 
   await combine(page, 'Justice', 'Jealousy')
@@ -204,7 +206,7 @@ test('a result that matches a concept the player already has is not counted twic
   await combine(page, 'Love', 'Fear')
   await combine(page, 'Jealousy', 'Nature')
   await expect(announcement(page)).toContainText('Love, already in your concepts.')
-  await expect(counter(page)).toHaveText('1 discovery')
+  await expect(owned(page)).toHaveCount(BASE_CONCEPTS + 1)
   await expect(concept(page, 'Love')).toHaveCount(1)
 
   await combine(page, 'Nature', 'Jealousy')
@@ -258,7 +260,7 @@ test('reset asks first, can be cancelled from the keyboard, and clears everythin
   await resetButton.click()
   await dialog.getByRole('button', { name: 'Reset' }).click()
   await expect(concept(page, 'Jealousy')).toHaveCount(0)
-  await expect(counter(page)).toHaveText('0 discoveries')
+  await expect(owned(page)).toHaveCount(BASE_CONCEPTS)
   expect(await page.evaluate(() => localStorage.getItem('ideaLab_progress'))).toBeNull()
 
   await page.reload()
@@ -349,7 +351,7 @@ test('damaged saved data does not stop the lab from opening', async ({ page }) =
 
   await combine(page, 'Love', 'Fear')
   await expect(announcement(page)).toContainText('New discovery: Jealousy.')
-  await expect(counter(page)).toHaveText('1 discovery')
+  await expect(owned(page)).toHaveCount(BASE_CONCEPTS + 1)
   await expect(shelf(page)).toContainText('0 of 7 found')
 })
 
@@ -390,8 +392,10 @@ test('a gold is celebrated with the riddle it answers, and the shelf keeps the r
   await expect(golds.getByText('Plainer:', { exact: true })).toHaveCount(0)
 
   await combine(page, 'Hope', 'Fear')
-  await expect(announcement(page)).toHaveText('Gold: Courage, one of the seven. 1 of 7 found. It answers: A trembling that keeps walking toward the morning. Acting despite fear because something matters more.')
+  await expect(announcement(page)).toHaveText('Gold: Courage. It answers: A trembling that keeps walking toward the morning. Acting despite fear because something matters more.')
   await expect(page.locator('[aria-hidden="true"]').getByText('It answers:', { exact: false }).filter({ visible: true })).toBeVisible()
+  // The shelf alone keeps the tally; the bench does not repeat it.
+  await expect(page.getByText(/One of the seven golds|Gold, \d+ of \d+/)).toHaveCount(0)
   await expect(golds).toContainText('1 of 7 found')
   await expect(golds).toContainText('Acting despite fear because something matters more.')
   await expect(golds.getByText('Not yet found. Riddle:', { exact: false })).toHaveCount(6)
@@ -406,7 +410,7 @@ test('riddles grow plainer one at a time, oldest first, and never take a clue ba
   const bases = ['Love', 'Time', 'Death', 'Knowledge', 'Power', 'Freedom', 'Truth', 'Beauty', 'Justice', 'Chaos', 'Order', 'Nature', 'Self']
 
   for (let i = 0; i < 4; i++) await combine(page, bases[i], bases[i + 1])
-  await expect(counter(page)).toHaveText('4 discoveries')
+  await expect(owned(page)).toHaveCount(BASE_CONCEPTS + 4)
   await expect(plainer).toHaveCount(0)
 
   await combine(page, bases[4], bases[5])
@@ -486,7 +490,7 @@ test('the seventh gold ends the Work with a letter that takes focus, then the Se
 
   // Golds of the second Work are made from what the player already knows.
   await combine(page, 'Wisdom', 'Self')
-  await expect(announcement(page)).toContainText('Gold: Humility, one of the seven. 1 of 7 found.')
+  await expect(announcement(page)).toContainText('Gold: Humility. It answers:')
 
   await page.reload()
   await expect(page.getByRole('heading', { name: 'The Second Work: seven new golds' })).toBeVisible()
@@ -637,6 +641,16 @@ test.describe('on a phone', () => {
     await expect(announcement(page)).toContainText('A riddle has grown plainer')
     await expect(bench).toBeInViewport()
     await expect(bench).toContainText('Plainer: Let love meet its ending, then let the dawn sit beside it.')
+  })
+
+  test('a gold found on a phone brings its riddle on the shelf into view', async ({ page }) => {
+    await mockCombine(page)
+    await startLab(page)
+    await concept(page, 'Hope').tap()
+    await concept(page, 'Fear').tap()
+    await expect(announcement(page)).toContainText('Gold: Courage.')
+    const turning = shelf(page).getByRole('listitem').filter({ hasText: 'Just found. Riddle:' })
+    await expect(turning).toBeInViewport({ ratio: 1 })
   })
 
   test('the lab fits without sideways scrolling and concepts are easy to tap', async ({ page }) => {

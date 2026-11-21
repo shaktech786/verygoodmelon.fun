@@ -62,6 +62,42 @@ test.describe('The Final Word', () => {
     await expect(page.getByRole('button', { name: 'Write another' })).toBeVisible()
   })
 
+  test.describe('on a phone', () => {
+    test.use({ viewport: { width: 390, height: 844 } })
+
+    test('the candle is blown out from under the quote, inside the card, without scrolling past everything else', async ({ page }) => {
+      await leaveWords(page, 'Be kinder to yourself than I was to me.')
+      const quote = page.locator('blockquote')
+      const blow = page.getByRole('button', { name: 'Blow out the candle' })
+      const [quoteBox, blowBox] = [await quote.boundingBox(), await blow.boundingBox()]
+      expect(blowBox!.y).toBeGreaterThan(quoteBox!.y + quoteBox!.height)
+      expect(blowBox!.y - (quoteBox!.y + quoteBox!.height)).toBeLessThan(120)
+      await expect(page.getByTestId('dusk').locator('..')).toContainText('Blow out the candle')
+    })
+  })
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`the dusk visibly dims the card in ${colorScheme} mode`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+      await leaveWords(page, 'Look after each other.')
+      await page.getByRole('button', { name: 'Blow out the candle' }).click()
+      await expect(page.getByTestId('dusk')).toHaveCSS('opacity', '1')
+      // Sample the card behind the words with and without the dusk: it should fall clearly darker
+      const [lit, dusk] = await page.getByTestId('dusk').evaluate((el) => {
+        const luminance = () => {
+          const card = el.parentElement!
+          const bg = getComputedStyle(card).backgroundColor.match(/\d+/g)!.map(Number)
+          const top = getComputedStyle(el).backgroundImage.match(/rgba?\([^)]*\)/)![0].match(/[\d.]+/g)!.map(Number)
+          const a = top[3] ?? 1
+          return bg.slice(0, 3).map((c, i) => c * (1 - a) + top[i] * a).reduce((s, c) => s + c, 0) / 3
+        }
+        const before = getComputedStyle(el.parentElement!).backgroundColor.match(/\d+/g)!.map(Number).slice(0, 3).reduce((s, c) => s + c, 0) / 3
+        return [before, luminance()]
+      })
+      expect(lit - dusk).toBeGreaterThan(colorScheme === 'light' ? 25 : 12)
+    })
+  }
+
   test('the card is written to whoever the question was about', async ({ page }) => {
     await page.route('**/api/last-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
     await page.route('**/api/last-words/reflect', (route) => route.fulfill({ json: { reflection: 'Say it soon.' } }))

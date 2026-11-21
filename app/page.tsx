@@ -11,6 +11,7 @@ import { TodaysPick } from '@/components/home/TodaysPick'
 import { dailyPick } from '@/lib/games/daily-pick'
 import { usePresence } from '@/lib/hooks/usePresence'
 import { useDailyWisdom } from '@/lib/hooks/useDailyWisdom'
+import { lineForCare } from '@/lib/care/gentle-line'
 
 const fadeIn = (mounted: boolean, delayMs: number) => ({
   className: `transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`,
@@ -44,7 +45,7 @@ export default function Home() {
           Think deeply
         </p>
         <h1 className="text-3xl sm:text-4xl font-light text-foreground">
-          Feel <span className="text-accent font-medium">lighter</span>
+          Feel <span className="text-melon-green font-medium">lighter</span>
         </h1>
         <p className="mt-4 max-w-md mx-auto text-base sm:text-lg text-primary-light leading-relaxed">
           Small, quiet games for a busy mind. Play one for a few minutes and leave a little lighter than you came.
@@ -55,7 +56,7 @@ export default function Home() {
         {/* After words of danger the gentle games and the helplines take the pick's place */}
         <div className={hero.className} style={hero.style}>
           {care ? (
-            <GentleGames helplines />
+            <GentleGames />
           ) : (
             <section aria-label="Today's pick" className="min-h-[166px] sm:min-h-[222px]">
               {pick && <TodaysPick pick={pick} />}
@@ -90,7 +91,7 @@ export default function Home() {
       {wisdomLoaded && wisdom && (
         <div className="mt-10 sm:mt-14 max-w-lg text-center px-6 animate-fade">
           <div className="border-t border-card-border pt-6">
-            <p className="text-primary-light text-sm italic leading-relaxed">{wisdom}</p>
+            <p className="text-primary-light text-sm italic leading-relaxed">{care ? lineForCare(wisdom) : wisdom}</p>
           </div>
         </div>
       )}

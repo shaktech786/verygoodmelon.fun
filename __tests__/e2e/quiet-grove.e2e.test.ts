@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Route } from '@playwright/test'
+import { expectKeepsakeSaves } from './helpers/keepsake'
 
 /**
  * The Gardener (/games/quiet-grove): place plants on a canvas garden that persists in
@@ -445,6 +446,8 @@ test.describe('The Gardener', () => {
   })
 
   test('sit with your garden: the tools step away, the light changes, and you are left with one line', async ({ page }) => {
+    // A whole sit, a saved postcard and a second sit: more than the default half minute on a busy dev server
+    test.slow()
     await page.clock.install({ time: new Date('2026-11-21T13:00:00') })
     const bodies = await mockSuggestion(page)
     await openGarden(page)
@@ -494,8 +497,42 @@ test.describe('The Gardener', () => {
 
     await page.keyboard.press('Escape')
     await expect(dialog).toBeHidden()
-    await expect(sit).toBeFocused()
+    // A finished sit ends on a postcard of this garden, drawn from this sit
+    const postcard = page.getByTestId('garden-postcard')
+    await expect(postcard).toBeFocused()
+    await expect(postcard.getByRole('heading', { name: 'A postcard of your garden' })).toBeVisible()
+    await expect(announcer(page)).toContainText('a postcard of it is ready to keep')
+    await expectKeepsakeSaves(page, {
+      within: postcard,
+      fileName: /^the-gardener-2026-11-21\.png$/,
+      describedAs: /^A postcard of your autumn garden in late afternoon gold: three round stones, two poppies and a willow, with 2 butterflies among the plants\. A stamp in the corner says autumn\. Written beneath: “An autumn garden: two flowers/,
+    })
     expect(await stored(page)).toHaveLength(6)
+
+    // Standing up before the light has finished changing goes straight back, with no postcard
+    await sit.click()
+    await expect(postcard).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(sit).toBeFocused()
+    await expect(postcard).toHaveCount(0)
+  })
+
+  test('on a phone, the postcard after a sit is the first thing on screen, with readable controls', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.clock.install({ time: new Date('2026-11-21T21:30:00') })
+    await mockSuggestion(page)
+    await openGarden(page)
+    await page.getByRole('radio', { name: 'Daisy' }).click()
+    for (let i = 0; i < 4; i++) await plantAt(page, 0.15 + i * 0.22, 0.7)
+    await page.getByRole('button', { name: 'Sit with your garden' }).click()
+    await page.clock.fastForward(SIT_MS + 1000)
+    await expect(page.locator('#sit-words')).toContainText('You planted all of it today.')
+    await page.getByRole('button', { name: 'Stand up' }).click()
+    const postcard = page.getByTestId('garden-postcard')
+    await expect(postcard).toBeFocused()
+    await expect(postcard.getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/garden in moonlight: .+, with \d fireflies among the plants/)
+    await expect(postcard.getByTestId('keepsake-canvas')).toBeInViewport({ ratio: 1 })
+    expect(parseFloat(await postcard.getByRole('button', { name: 'Save image' }).evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(14)
   })
 
   test('coming back after a few days, the garden has grown and a flower has seeded itself', async ({ page }) => {

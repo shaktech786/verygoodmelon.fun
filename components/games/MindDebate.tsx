@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Button, buttonClassName } from '@/components/ui/Button'
 import { StickyActionBar } from '@/components/ui/StickyActionBar'
 import { MessagesSquare, RotateCcw, Loader2, Square, Play, Shuffle, UserRound, HelpCircle, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
-import { PAIRINGS, pairingIndexOf } from '@/lib/games/arena-pairings'
-import { ARENA_VOICES_CSS, OWN_CARD, PairingDeck, VOICE, VoiceMarker, voiceTint } from '@/components/games/ArenaPairingDeck'
+import { PAIRINGS, pairingIndexOf, type EmblemId } from '@/lib/games/arena-pairings'
+import { ARENA_VOICES_CSS, Emblem, OWN_CARD, PairingDeck, VOICE, VoiceMarker, voiceTint } from '@/components/games/ArenaPairingDeck'
+import { Keepsake } from '@/components/games/Keepsake'
+import { arenaKeepsake } from '@/lib/keepsake/arena'
 
 interface DebateEntry {
   speaker: string
@@ -169,9 +171,11 @@ export default function MindDebate() {
     else if (phase === 'closing' || phase === 'declined') {
       // An ending the reader would otherwise have to go looking for
       if (focusLost() || regionRef.current?.contains(document.activeElement)) {
-        if (phase === 'closing') closingHeadingRef.current?.focus()
+        if (phase === 'closing') closingHeadingRef.current?.focus({ preventScroll: true })
         else declineActionRef.current?.focus()
       }
+      // The closing is the ending: it opens at the top of the screen, not under the controls at its foot
+      if (phase === 'closing') closingHeadingRef.current?.closest('section')?.scrollIntoView({ block: 'start' })
     } else if (focusLost()) {
       if (phase === 'debating') stopRef.current?.focus()
       else if (phase === 'stopped') continueRef.current?.focus()
@@ -215,6 +219,7 @@ export default function MindDebate() {
   const pairingIndex = pairingIndexOf(person1, person2, topic)
   const selectedCard =
     pairingIndex !== -1 ? pairingIndex : writingOwn || person1 || person2 || topic ? OWN_CARD : null
+  const emblems = pairingIndex !== -1 ? PAIRINGS[pairingIndex].emblems : null
 
   const typeText = useCallback(
     (text: string, signal: AbortSignal): Promise<void> => {
@@ -559,9 +564,9 @@ export default function MindDebate() {
           {phase === 'declined' && declineReason === 'topic' ? 'A question set aside' : <>&ldquo;{topicName}&rdquo;</>}
         </h2>
         <div className="mt-2 sm:mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 sm:gap-6">
-          <Speaker name={person1Name} side="left" state={activeSide === 'left' ? activeState : null} reducedMotion={reducedMotion} />
+          <Speaker name={person1Name} side="left" emblem={emblems?.[0]} state={activeSide === 'left' ? activeState : null} reducedMotion={reducedMotion} />
           <span className="self-center pb-6 sm:pb-8 text-xl sm:text-2xl font-semibold text-foreground/60" aria-hidden="true">&amp;</span>
-          <Speaker name={person2Name} side="right" state={activeSide === 'right' ? activeState : null} reducedMotion={reducedMotion} />
+          <Speaker name={person2Name} side="right" emblem={emblems?.[1]} state={activeSide === 'right' ? activeState : null} reducedMotion={reducedMotion} />
         </div>
         <p className="mt-1 sm:mt-3 text-sm text-foreground/75 text-center">Imagined voices, not real quotes.</p>
       </section>
@@ -646,10 +651,17 @@ export default function MindDebate() {
       )}
 
       {phase === 'closing' && closing && (
-        <ClosingThoughts closing={closing} first={person1Name} second={person2Name} headingRef={closingHeadingRef} />
+        <ClosingThoughts
+          closing={closing}
+          first={person1Name}
+          second={person2Name}
+          topic={topicName}
+          emblems={emblems}
+          headingRef={closingHeadingRef}
+        />
       )}
 
-      <StickyActionBar ref={barRef} className="mt-2 sm:mt-3 flex flex-wrap justify-center gap-3">
+      <StickyActionBar ref={barRef} pinned={phase !== 'closing'} className="mt-2 sm:mt-3 flex flex-wrap justify-center gap-3">
         {phase === 'debating' && (turnByTurn || awaitingReader) && (
           <button
             type="button"
@@ -690,13 +702,13 @@ export default function MindDebate() {
             ref={phase === 'declined' && declineReason === null ? declineActionRef : undefined}
             type="button"
             onClick={handleSurprise}
-            className={buttonClassName(phase === 'declined' && declineReason !== null ? 'secondary' : 'primary', 'md', ACTION)}
+            className={buttonClassName(phase === 'declined' && declineReason === null ? 'primary' : 'secondary', 'md', ACTION)}
           >
             <Shuffle size={16} aria-hidden="true" />
             Surprise me
           </button>
         )}
-        <Button onClick={() => backToSetup()} variant="secondary" className={ACTION}>
+        <Button onClick={() => backToSetup()} variant={phase === 'closing' ? 'primary' : 'secondary'} className={ACTION}>
           <RotateCcw size={16} aria-hidden="true" />
           New debate
         </Button>
@@ -780,11 +792,14 @@ function Medallion({ side, speaking }: { side: Side; speaking: boolean }) {
 function Speaker({
   name,
   side,
+  emblem,
   state,
   reducedMotion,
 }: {
   name: string
   side: Side
+  /** The picture from the pairing's card; a pairing written by hand gets the melon. */
+  emblem?: EmblemId
   state: 'speaking' | 'thinking' | null
   reducedMotion: boolean
 }) {
@@ -798,7 +813,11 @@ function Speaker({
         }`}
         style={{ borderColor: active ? voice : 'transparent', background: voiceTint(voice, active ? 16 : 8) }}
       >
-        <Medallion side={side} speaking={state === 'speaking'} />
+        {emblem ? (
+          <Emblem id={emblem} color={voice} className="w-12 h-12 sm:w-24 sm:h-24" />
+        ) : (
+          <Medallion side={side} speaking={state === 'speaking'} />
+        )}
       </div>
       <p className="mt-1 sm:mt-2 flex items-center justify-center gap-2 text-base sm:text-lg font-medium text-foreground break-words max-w-full">
         <VoiceMarker second={side === 'right'} />
@@ -815,17 +834,26 @@ function ClosingThoughts({
   closing,
   first,
   second,
+  topic,
+  emblems,
   headingRef,
 }: {
   closing: Closing
   first: string
   second: string
+  topic: string
+  emblems: readonly [EmblemId, EmblemId] | null
   headingRef: React.RefObject<HTMLHeadingElement | null>
 }) {
+  const [day] = useState(() => new Date())
+  const plan = useMemo(
+    () => arenaKeepsake({ first, second, topic, question: closing.question, emblems, day }),
+    [first, second, topic, closing.question, emblems, day],
+  )
   return (
     <section
       aria-labelledby="closing-heading"
-      className="mt-6 bg-card-bg border border-card-border rounded-xl px-4 py-6 sm:px-8 sm:py-8 space-y-6 animate-fade"
+      className="mt-6 scroll-mt-20 bg-card-bg border border-card-border rounded-xl px-4 py-6 sm:px-8 sm:py-8 space-y-6 animate-fade"
     >
       <h2
         id="closing-heading"
@@ -853,6 +881,8 @@ function ClosingThoughts({
         <h3 className="text-base font-semibold text-foreground/80 mb-2">To take with you</h3>
         <p className="text-lg text-foreground italic leading-relaxed break-words">{closing.question}</p>
       </div>
+
+      <Keepsake plan={plan} label="A keepsake of this debate" />
     </section>
   )
 }
@@ -864,7 +894,7 @@ function Insight({ name, insight, second }: { name: string; insight: string; sec
       className="rounded-lg border px-4 py-3 min-w-0"
       style={{ borderColor: voiceTint(voice, 40), background: voiceTint(voice, 7) }}
     >
-      <p className="flex items-center gap-2 text-sm font-semibold break-words mb-1">
+      <p className="flex items-center gap-2 text-base font-semibold break-words mb-1">
         <VoiceMarker second={second} />
         <span className="min-w-0 break-words" style={{ color: voice }}>{name}</span>
       </p>

@@ -39,6 +39,10 @@ export function Footer() {
             </a>
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-1 sm:gap-x-3">
+            <Link href="/support" className={FOOTER_LINK}>
+              Need to talk?
+            </Link>
+            <span className="text-foreground/20" aria-hidden="true">|</span>
             <Link href="/privacy" className={FOOTER_LINK}>
               Privacy
             </Link>

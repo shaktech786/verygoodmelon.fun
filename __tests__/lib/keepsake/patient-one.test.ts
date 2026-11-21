@@ -18,13 +18,44 @@ const words = (plan: Plan) => plan.ops.flatMap((op) => (op.kind === 'text' ? [op
 const seeds = (plan: Plan) => plan.ops.filter((op) => op.kind === 'ellipse' && op.ry >= 20 && op.rx < op.ry && op.ink === 'ink')
 
 describe('patientOneKeepsake', () => {
-  it('lays the eight settled seeds in a row on every moment, left to right', () => {
+  it('lays the eight settled seeds in a row, left to right, only for the moment that had seeds', () => {
     const row = seedRow('a', 400, 600, 22)
     expect(row).toHaveLength(8)
     expect(row.map((s) => s.x)).toEqual([...row.map((s) => s.x)].sort((a, b) => a - b))
-    for (const id of ['watch', 'listen', 'look', 'reflect', 'appreciate'] as const) {
-      expect(seeds(patientOneKeepsake({ record: record({ id }) }))).toHaveLength(8)
+    expect(seeds(patientOneKeepsake({ record: record({ id: 'watch' }) }))).toHaveLength(8)
+    for (const id of ['listen', 'look', 'reflect', 'appreciate'] as const) {
+      const plan = patientOneKeepsake({ record: record({ id }) })
+      expect(seeds(plan)).toHaveLength(0)
+      expect(plan.alt).not.toMatch(/seed/i)
     }
+  })
+
+  it('gives every moment a picture of its own', () => {
+    const shapes = (['watch', 'listen', 'look', 'reflect', 'appreciate'] as const).map((id) =>
+      JSON.stringify(patientOneKeepsake({ record: record({ id }) }).ops.filter((op) => op.kind !== 'text')),
+    )
+    expect(new Set(shapes).size).toBe(shapes.length)
+  })
+
+  it('draws the sky as it was when the moment was noticed', () => {
+    const morning = patientOneKeepsake({ record: record({ id: 'reflect', at: new Date(2026, 10, 21, 8).toISOString() }) })
+    const night = patientOneKeepsake({ record: record({ id: 'reflect', at: new Date(2026, 10, 21, 22).toISOString() }) })
+    expect(morning.alt).toMatch(/morning sky/)
+    expect(night.alt).toMatch(/night sky/)
+    expect(morning.ops.some((op) => op.kind === 'disc' && op.ink === 'gold')).toBe(true)
+    expect(night.ops.some((op) => op.kind === 'disc' && op.ink === 'gold')).toBe(false)
+  })
+
+  it('grows one sprout for each good thing written, and one when none were', () => {
+    const sprouts = (plan: Plan) => plan.ops.filter((op) => op.kind === 'ellipse' && op.ink === 'rindLight').length / 2
+    expect(sprouts(patientOneKeepsake({ record: record({ id: 'appreciate', things: ['Rain', 'Tea', 'Socks'] }) }))).toBe(3)
+    expect(sprouts(patientOneKeepsake({ record: record({ id: 'appreciate', things: ['Rain'] }) }))).toBe(1)
+    expect(sprouts(patientOneKeepsake({ record: record({ id: 'appreciate' }) }))).toBe(1)
+  })
+
+  it('rests an open eye on the one thing looked at', () => {
+    const plan = patientOneKeepsake({ record: record({ id: 'look', lookedAt: 'the blue mug' }) })
+    expect(plan.alt).toMatch(/^An open eye/)
   })
 
   it('sets the three things in a quiet serif, in the order they were written', () => {

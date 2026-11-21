@@ -16,7 +16,9 @@ import {
   readLastMelon,
   writeLastMelon,
 } from '@/lib/games/breathing-patterns/melon'
-import { SHAPE_WORDS, cutBand, harmonistKeepsake, openedMelon, restingLid } from '@/lib/keepsake/harmonist'
+import { cutBand, harmonistKeepsake, keepsakeMelon, restingLid } from '@/lib/keepsake/harmonist'
+import { KEEPSAKE_HEIGHT, KEEPSAKE_WIDTH } from '@/lib/keepsake/plan'
+import { inkColour } from '@/lib/keepsake/render'
 import { Keepsake } from '@/components/games/Keepsake'
 
 // ---------------------------------------------------------------------------
@@ -226,7 +228,8 @@ function readPalette(): Palette {
     seed: '#1a1a1a',
     in: v('--success', '#74c69d'),
     hold: v('--warm', '#f6ad55'),
-    out: v('--accent', '#d32f3f'),
+    // Not red: red is kept for the one main action on a screen.
+    out: v('--melon-blue', '#3b82f6'),
     faint: v('--card-border', '#e8e8e8'),
   }
 }
@@ -372,8 +375,8 @@ function renderFree(
 // Static guide for reduced motion: changes once per phase, never animates.
 // ---------------------------------------------------------------------------
 
-const KIND_STROKE: Record<PhaseKind, string> = { in: 'stroke-success', hold: 'stroke-warm', out: 'stroke-accent' }
-const KIND_FILL: Record<PhaseKind, string> = { in: 'fill-success', hold: 'fill-warm', out: 'fill-accent' }
+const KIND_STROKE: Record<PhaseKind, string> = { in: 'stroke-success', hold: 'stroke-warm', out: 'stroke-[var(--melon-blue)]' }
+const KIND_FILL: Record<PhaseKind, string> = { in: 'fill-success', hold: 'fill-warm', out: 'fill-[var(--melon-blue)]' }
 
 function sidePath(sides: number, k: number, c: number, r: number): string {
   if (sides === 2) {
@@ -415,6 +418,7 @@ function pointsOf(points: [number, number][]): string {
   return points.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')
 }
 
+// The opening covers the picture's already-open melon with the keepsake's own paper until it fades away.
 const OPENING_STYLES = `
 @keyframes harmonist-cut { from { stroke-dashoffset: 1 } to { stroke-dashoffset: 0 } }
 @keyframes harmonist-lift {
@@ -425,24 +429,28 @@ const OPENING_STYLES = `
 @keyframes harmonist-shadow { from { opacity: 0 } to { opacity: 0.1 } }
 @keyframes harmonist-face-out { from { opacity: 1 } to { opacity: 0 } }
 @keyframes harmonist-face-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes harmonist-reveal { from { opacity: 1 } to { opacity: 0 } }
+.harmonist-paper { fill: ${inkColour('paper', 'light')} }
+:root[data-theme="dark"] .harmonist-paper { fill: ${inkColour('paper', 'dark')} }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .harmonist-paper { fill: ${inkColour('paper', 'dark')} } }
 `
 
 // The ending: the melon is cut along the shape the breath followed, and the cut piece lifts
-// aside, turning over to show its cut face, and the seeds are there. The same geometry draws the keepsake. With reduced motion it is
-// simply already open.
-function OpeningMelon({ breaths, still }: { breaths: Breath[]; still: boolean }) {
-  const melon = useMemo(() => openedMelon(breaths, [100, 150], 80), [breaths])
+// aside, turning over to show its cut face, and the seeds are there. It plays exactly over the
+// picture to keep, drawn from the same geometry, then fades to leave that one picture.
+function OpeningMelon({ breaths }: { breaths: Breath[] }) {
+  const melon = useMemo(() => keepsakeMelon(breaths), [breaths])
   const [cx, cy] = melon.centre
   const r = melon.radius
+  // The game's first drawing of this was 80 units across; its small offsets grow with the melon.
+  const k = r / 80
   const lid = pointsOf(melon.cut)
-  const resting = restingLid(melon, 9)
+  const resting = restingLid(melon, 18)
   const lifted = [...restingLid(melon), ...resting]
-  const xs = [cx - r, cx + r, ...lifted.map(([x]) => x)]
-  const ys = [cy - r, cy + r, ...lifted.map(([, y]) => y)]
-  const left = Math.min(...xs) - 6
-  const top = Math.min(...ys) - 6
-  const width = Math.max(...xs) + 6 - left
-  const height = Math.max(...ys) + 6 - top
+  const left = Math.min(cx - r, ...lifted.map(([x]) => x)) - 12
+  const right = Math.max(cx + r, ...lifted.map(([x]) => x)) + 12
+  const top = Math.min(cy - r, ...lifted.map(([, y]) => y)) - 12
+  const bottom = Math.max(cy + r + 30, ...lifted.map(([, y]) => y)) + 12
   const deg = (melon.lid.angle * 180) / Math.PI
   const rest = `translate(${melon.lid.dx}px, ${melon.lid.dy}px) rotate(${deg}deg)`
   const lidStyle = {
@@ -450,21 +458,23 @@ function OpeningMelon({ breaths, still }: { breaths: Breath[]; still: boolean })
     transformBox: 'view-box',
     transform: rest,
     // Half way, the piece is edge-on as it turns over.
-    '--lid-mid': `translate(${melon.lid.dx * 0.45}px, ${melon.lid.dy * 0.45 - 12}px) rotate(${deg * 0.45}deg) scale(1.04, 0.12)`,
+    '--lid-mid': `translate(${melon.lid.dx * 0.45}px, ${melon.lid.dy * 0.45 - 12 * k}px) rotate(${deg * 0.45}deg) scale(1.04, 0.12)`,
     '--lid-rest': rest,
-    animation: still ? undefined : 'harmonist-lift 1.1s cubic-bezier(0.33, 0, 0.2, 1) 0.9s both',
+    animation: 'harmonist-lift 1.1s cubic-bezier(0.33, 0, 0.2, 1) 0.9s both',
   } as React.CSSProperties
 
   return (
     <svg
-      viewBox={`${left} ${top} ${width} ${height}`}
-      className="w-56 sm:w-64 h-auto mx-auto mb-4"
-      role="img"
-      aria-label={`A melon cut open along ${SHAPE_WORDS[melon.shape]}, one seed for each breath`}
+      viewBox={`0 0 ${KEEPSAKE_WIDTH} ${KEEPSAKE_HEIGHT}`}
+      className="absolute inset-x-0 top-0 mx-auto w-full max-w-[22rem] h-auto pointer-events-none"
+      style={{ animation: 'harmonist-reveal 0.6s ease-in-out 2.4s both' }}
+      aria-hidden="true"
       data-testid="opened-melon"
       data-shape={melon.shape}
     >
-      {!still && <style>{OPENING_STYLES}</style>}
+      <style>{OPENING_STYLES}</style>
+      <rect x={left} y={top} width={right - left} height={bottom - top} className="harmonist-paper" />
+      <ellipse cx={cx + 16} cy={cy + r - 6} rx={r * 0.92} ry={30} className="fill-foreground" opacity={0.08} />
       <circle cx={cx} cy={cy} r={r} className="fill-melon-green" />
       {melon.stripes.map((s, n) => (
         <ellipse key={n} cx={s.x} cy={s.y} rx={s.rx} ry={s.ry} className="fill-melon-green-light" opacity={0.3} />
@@ -486,25 +496,23 @@ function OpeningMelon({ breaths, still }: { breaths: Breath[]; still: boolean })
       <polygon
         points={pointsOf(resting)}
         className="fill-foreground"
-        style={{ opacity: 0.1, animation: still ? undefined : 'harmonist-shadow 0.6s ease-out 1.4s both' }}
+        style={{ opacity: 0.1, animation: 'harmonist-shadow 0.6s ease-out 1.4s both' }}
       />
       <g style={lidStyle}>
-        {!still && (
-          <g style={{ opacity: 0, animation: 'harmonist-face-out 0.12s linear 1.34s both' }}>
-            <polygon points={lid} className="fill-melon-green" />
-            <polygon
-              points={lid}
-              pathLength={1}
-              className="fill-none stroke-melon-green-light"
-              strokeWidth={1.5}
-              strokeLinejoin="round"
-              strokeDasharray="1 1"
-              style={{ animation: 'harmonist-cut 0.9s ease-in-out both' }}
-            />
-          </g>
-        )}
-        <g data-cut-face="" style={{ animation: still ? undefined : 'harmonist-face-in 0.12s linear 1.4s both' }}>
-          <polygon points={lid} transform="translate(0 2.5)" className="fill-melon-green" />
+        <g style={{ opacity: 0, animation: 'harmonist-face-out 0.12s linear 1.34s both' }}>
+          <polygon points={lid} className="fill-melon-green" />
+          <polygon
+            points={lid}
+            pathLength={1}
+            className="fill-none stroke-melon-green-light"
+            strokeWidth={1.5 * k}
+            strokeLinejoin="round"
+            strokeDasharray="1 1"
+            style={{ animation: 'harmonist-cut 0.9s ease-in-out both' }}
+          />
+        </g>
+        <g data-cut-face="" style={{ animation: 'harmonist-face-in 0.12s linear 1.4s both' }}>
+          <polygon points={lid} transform="translate(0 8)" className="fill-melon-green" />
           <polygon points={lid} className="fill-melon-green" />
           <polygon points={pointsOf(cutBand(melon))} className="fill-melon-green-light" />
           <polygon points={pointsOf(melon.flesh)} className="fill-melon-red" />
@@ -514,10 +522,16 @@ function OpeningMelon({ breaths, still }: { breaths: Breath[]; still: boolean })
   )
 }
 
-function MelonKeepsake({ breaths }: { breaths: Breath[] }) {
+/** The melon, shown once: the picture to keep, with its opening played over it unless motion is reduced. */
+function MelonEnding({ breaths, still }: { breaths: Breath[]; still: boolean }) {
   const [day] = useState(() => new Date())
   const plan = useMemo(() => harmonistKeepsake({ breaths, day }), [breaths, day])
-  return <Keepsake plan={plan} label="Keep this melon" className="mt-10 pt-8 border-t border-card-border" />
+  return (
+    <div className="relative mb-6">
+      <Keepsake plan={plan} label="Keep this melon" hideLabel />
+      {!still && <OpeningMelon breaths={breaths} />}
+    </div>
+  )
 }
 
 function StillGuide({ phases, phaseIndex, breaths }: { phases: BreathingPhase[]; phaseIndex: number; breaths: Breath[] }) {
@@ -645,6 +659,7 @@ export default function BreathingPatterns() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const guideCardRef = useRef<HTMLDivElement>(null)
+  const endingRef = useRef<HTMLElement>(null)
   const phaseHeadingRef = useRef<HTMLHeadingElement>(null)
   const justStartedRef = useRef(false)
   // performance.now() at which a never-paused session would have started
@@ -888,6 +903,19 @@ export default function BreathingPatterns() {
     })
   }, [sessionState, prefersReducedMotion])
 
+  // The ending opens with the melon, so it is brought to the top of the screen; focus waits on
+  // Breathe again without scrolling there, which on a phone would push the melon off the top.
+  useEffect(() => {
+    if (sessionState !== 'complete') return
+    const ending = endingRef.current
+    if (!ending) return
+    ending.querySelector<HTMLButtonElement>('[data-breathe-again]')?.focus({ preventScroll: true })
+    const { top } = ending.getBoundingClientRect()
+    if (top < 0 || top > window.innerHeight / 3) {
+      ending.scrollIntoView({ block: 'start', behavior: prefersReducedMotion ? 'instant' : 'smooth' })
+    }
+  }, [sessionState, prefersReducedMotion])
+
   // The sea's fixed swell would compete with the breath, so it rests during a session.
   useEffect(() => {
     if (sessionState !== 'active' && sessionState !== 'paused') return
@@ -987,11 +1015,11 @@ export default function BreathingPatterns() {
     const onlyFree = isFreeMode && breathed.every((id) => id === 'free')
 
     return (
-      <section className="max-w-2xl mx-auto" aria-label="Breathing guide">
-        <div className="bg-card-bg border border-card-border rounded-lg px-6 py-10 sm:p-12 text-center min-h-[400px] flex flex-col justify-center">
+      <section ref={endingRef} className="max-w-2xl mx-auto scroll-mt-20" aria-label="Breathing guide">
+        <div className="bg-card-bg border border-card-border rounded-lg px-4 py-6 sm:p-12 text-center min-h-[400px] flex flex-col justify-center">
           <div className="animate-fade">
             {seeds > 0 ? (
-              <OpeningMelon breaths={breaths} still={prefersReducedMotion} />
+              <MelonEnding breaths={breaths} still={prefersReducedMotion} />
             ) : (
               <svg viewBox="0 0 200 200" className="w-36 h-36 mx-auto mb-4" role="img" aria-label="A whole melon, waiting">
                 <MelonSvg c={100} r={92} breaths={breaths} />
@@ -1036,11 +1064,10 @@ export default function BreathingPatterns() {
                 One minute of sighs
               </Button>
             )}
-            <Button variant="primary" onClick={resetSession} autoFocus>
+            <Button variant="primary" onClick={resetSession} data-breathe-again="">
               Breathe again
             </Button>
           </div>
-          {seeds > 0 && <MelonKeepsake breaths={breaths} />}
         </div>
       </section>
     )
@@ -1113,19 +1140,16 @@ export default function BreathingPatterns() {
             </div>
           )}
 
-          <p className="text-sm text-foreground/70 mb-3" aria-live={isFreeMode ? 'polite' : 'off'}>
-            {isFreeMode
-              ? `${plural(freeBreathCount, 'breath')} marked`
-              : `${plural(seeds, 'seed')} so far`}
-          </p>
+          {isFreeMode && (
+            <p className="text-sm text-foreground/70 mb-3" aria-live="polite">
+              {`${plural(freeBreathCount, 'breath')} marked`}
+            </p>
+          )}
 
+          {/* Only the time spent, for orientation: the seeds gather in the melon, and no countdown hurries the end. */}
           <p className="text-sm text-foreground/70 mb-5">
             <span className="tabular-nums" role="timer" aria-label="Session time">{formatTime(sessionElapsed)}</span>
-            {lengthMinutes !== null && (
-              <span>
-                {' '}of {lengthMinutes}:00{finishing && !isFreeMode ? ' · finishing this breath' : ''}
-              </span>
-            )}
+            {finishing && !isFreeMode && <span> · finishing this breath</span>}
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3">

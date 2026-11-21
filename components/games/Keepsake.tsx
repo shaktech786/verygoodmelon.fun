@@ -68,7 +68,6 @@ interface KeepsakeProps {
 export function Keepsake({ plan, label = 'A keepsake of this visit', hideLabel = false, className }: KeepsakeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const descriptionId = useId()
-  const headingId = useId()
   const theme = useSyncExternalStore(subscribeTheme, themeSnapshot, () => 'light' as const)
   const shareable = useSyncExternalStore(noSubscription, canShareImages, () => false)
   const [status, setStatus] = useState('')
@@ -123,17 +122,16 @@ export function Keepsake({ plan, label = 'A keepsake of this visit', hideLabel =
   const action = buttonClassName('secondary', 'sm', 'inline-flex items-center gap-2 min-h-11')
 
   return (
-    <section aria-labelledby={headingId} className={cn('flex flex-col items-center', className)}>
-      <h3 id={headingId} className={hideLabel ? 'sr-only' : 'text-sm text-foreground/70 mb-3'}>
-        {label}
-      </h3>
+    // The heading alone carries the title; naming the section and the picture after it too made screen readers say it three times.
+    <section className={cn('flex flex-col items-center', className)}>
+      <h3 className={hideLabel ? 'sr-only' : 'text-sm text-foreground/70 mb-3'}>{label}</h3>
       <canvas
         ref={canvasRef}
         width={plan.width}
         height={plan.height}
         role="img"
         aria-describedby={descriptionId}
-        aria-label={label}
+        aria-label="Picture"
         data-testid="keepsake-canvas"
         className="w-full max-w-[22rem] h-auto rounded-lg soft-shadow-md bg-card-bg"
         style={{ aspectRatio: `${plan.width} / ${plan.height}` }}

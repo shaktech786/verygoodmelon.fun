@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { CareHelpline } from '@/components/games/CareHelpline'
 import { GameCardShowcase } from '@/components/games/GameCardShowcase'
 import { SHOWCASE_GAMES } from '@/lib/games/config'
 
@@ -40,6 +41,7 @@ export default function NotFound() {
         <h2 id="calm-games-heading" className="text-sm font-semibold uppercase tracking-wider text-foreground mb-4">
           Or slow down for a minute
         </h2>
+        <CareHelpline className="-mt-2 mb-4" />
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           {CALM_GAMES.map((game) => (
             <li key={game.id}>

@@ -183,7 +183,7 @@ const SimliAvatar = forwardRef<AvatarHandle, AvatarComponentProps>(
         {isConnecting && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="text-center">
-              <div className="w-12 h-12 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-3" />
+              <div className="w-12 h-12 border-2 border-white/30 border-t-white rounded-full animate-spin motion-reduce:animate-none mx-auto mb-3" />
               <p className="text-white/80 text-sm">Connecting video...</p>
             </div>
           </div>

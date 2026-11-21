@@ -21,7 +21,6 @@ interface GameCanvasProps {
   activeMechanics: Array<{ id: string; params: Record<string, number> }>
   onMutationReady: () => void
   onGameComplete: () => void
-  onScoreChange: (score: number) => void
   gameStateRef: React.MutableRefObject<GameState | null>
   reducedMotion: boolean
 }
@@ -39,19 +38,18 @@ export default function GameCanvas({
   activeMechanics,
   onMutationReady,
   onGameComplete,
-  onScoreChange,
   gameStateRef,
   reducedMotion,
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stateRef = useRef<GameState | null>(null)
   const playingRef = useRef(false)
-  const callbacksRef = useRef({ onMutationReady, onGameComplete, onScoreChange })
+  const callbacksRef = useRef({ onMutationReady, onGameComplete })
   const palette = usePalette()
   const paletteRef = useRef(palette)
 
   useEffect(() => {
-    callbacksRef.current = { onMutationReady, onGameComplete, onScoreChange }
+    callbacksRef.current = { onMutationReady, onGameComplete }
   })
 
   // A theme change while the game is paused or between waves still repaints the frozen frame
@@ -177,7 +175,6 @@ export default function GameCanvas({
 
     let frame = 0
     let lastTime = performance.now()
-    let lastScore = -1
 
     const loop = (time: number) => {
       const s = stateRef.current
@@ -190,12 +187,6 @@ export default function GameCanvas({
       renderEngine(ctx, s, paletteRef.current, reducedMotion)
 
       const cb = callbacksRef.current
-      const score = Math.floor(s.score)
-      if (score !== lastScore) {
-        lastScore = score
-        cb.onScoreChange(score)
-      }
-
       if (shouldMutate(s)) {
         advanceWave(s)
         cb.onMutationReady()

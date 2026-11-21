@@ -93,7 +93,6 @@ export default function CascadeGame() {
   const [phase, setPhase] = useState<GamePhase>('title')
   const [runId, setRunId] = useState(0)
   const [currentWave, setCurrentWave] = useState(0)
-  const [score, setScore] = useState(0)
   const [currentMutation, setCurrentMutation] = useState<MutationResult | null>(null)
   const [allMutations, setAllMutations] = useState<MutationRecord[]>([])
   const [activeMechanics, setActiveMechanics] = useState<ActiveMechanic[]>([])
@@ -203,10 +202,9 @@ export default function CascadeGame() {
 
   const handleGameComplete = useCallback(async () => {
     const s = gameStateRef.current
-    const finalScore = s ? Math.floor(s.score) : score
+    const finalScore = s ? Math.floor(s.score) : 0
     const run = runRef.current
     const style: PlayStyle = s ? getProfileSummary(s).playStyle : 'gentle'
-    setScore(finalScore)
     setFinale({
       path: s ? [...s.path] : [],
       field: { w: s?.w ?? GAME_W, h: s?.h ?? GAME_H },
@@ -248,14 +246,13 @@ export default function CascadeGame() {
     if (runRef.current !== run) return
     setGameName(name)
     setTagline(line)
-  }, [score, allMutations])
+  }, [allMutations])
 
   const handlePlayAgain = useCallback(() => {
     runRef.current += 1
     setRunId(runRef.current)
     setPhase('title')
     setCurrentWave(0)
-    setScore(0)
     setCurrentMutation(null)
     setAllMutations([])
     setActiveMechanics([])
@@ -307,11 +304,13 @@ export default function CascadeGame() {
   const hudLabel = rulesLabel(currentWave)
 
   return (
-    <div className="w-full max-w-[640px] mx-auto" onKeyDown={keepKeysInGame}>
+    // The finished game takes the page's width, so its map and legend are drawn large enough to read
+    <div className={`w-full mx-auto ${phase === 'finale' ? 'max-w-3xl' : 'max-w-[640px]'}`} onKeyDown={keepKeysInGame}>
       <h1 className="sr-only">The Shapeshifter</h1>
       {/* Overlays share the canvas's grid cell so a tall screen grows the box instead of being clipped */}
       <div ref={boxRef} className="grid rounded-xl overflow-hidden border border-card-border bg-card-bg scroll-mt-20">
-        <div className="col-start-1 row-start-1">
+        {/* Hidden under the finale, so the box takes the finale's height rather than the field's */}
+        <div className={`col-start-1 row-start-1 ${phase === 'finale' ? 'hidden' : ''}`}>
           <GameCanvas
             key={`${runId}-${fieldW}`}
             width={fieldW}
@@ -320,7 +319,6 @@ export default function CascadeGame() {
             activeMechanics={activeMechanics}
             onMutationReady={handleMutationReady}
             onGameComplete={handleGameComplete}
-            onScoreChange={setScore}
             gameStateRef={gameStateRef}
             reducedMotion={reducedMotion}
           />
@@ -332,11 +330,6 @@ export default function CascadeGame() {
             style={{ aspectRatio: `${fieldW} / ${fieldH}` }}
           >
             <p className="absolute top-2 left-3 text-xs text-foreground/80">{hudLabel}</p>
-
-            <p className="absolute top-2 right-3 text-right text-foreground">
-              <span className="text-xs text-foreground/80 mr-1.5">light</span>
-              <span className="text-sm sm:text-base font-semibold tabular-nums">{score}</span>
-            </p>
 
             {phase === 'playing' && currentWave === 0 && (
               <p className="absolute bottom-6 sm:bottom-10 inset-x-0 text-center text-sm text-foreground/80">

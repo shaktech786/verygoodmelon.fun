@@ -98,8 +98,13 @@ describe('HardChoices', () => {
     render(<HardChoices />)
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'What you chose to protect' })).toBeInTheDocument())
-    const sky = screen.getByRole('img', { name: "Tonight's sky of what you reached for" })
+    expect(screen.getByRole('heading', { name: "Tonight's sky of what you reached for" })).toBeInTheDocument()
+    const sky = screen.getByRole('img', { name: 'Picture' })
     expect(sky).toHaveAccessibleDescription(/one star for each value you reached for.*What kept returning today was the people around you\./)
+    // The chart's small labels are also written out as real text, readable on a phone
+    const legend = screen.getByTestId('sky-legend')
+    expect(legend).toHaveTextContent(/The people around you/)
+    expect(legend).toHaveTextContent(/Friendship/)
     expect(screen.getByRole('button', { name: 'Save image' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Copy as text' })).toBeInTheDocument()
   })

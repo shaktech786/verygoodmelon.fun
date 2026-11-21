@@ -35,6 +35,8 @@ const IMAGINED_NOTE = 'Imagined conversations, not real quotes from the person.'
 const CARE_FAREWELL = 'Thank you for staying with me. Please let one of the people below hear you too; you deserve that kind of company.'
 const KEYBOARD_SETTLE_MS = 1000
 const MENU_ID = 'sage-room-menu'
+// By then a goodbye is a natural next step, so it waits beside the conversation instead of inside the menu
+const GOODBYE_AFTER_EXCHANGES = 3
 
 // A warm sitting room in place of a video call: linen wall, a framed portrait, a paper page for the words.
 const SAGE_ROOM_CSS = `
@@ -166,6 +168,8 @@ export default function TimelessMinds() {
   const [keepNote, setKeepNote] = useState('')
   const [showKeptLines, setShowKeptLines] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const goodbyeButtonRef = useRef<HTMLButtonElement>(null)
+  const endCallOpenerRef = useRef<React.RefObject<HTMLButtonElement | null>>(menuButtonRef)
   const menuWrapRef = useRef<HTMLDivElement>(null)
   const inputRowRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -443,7 +447,8 @@ export default function TimelessMinds() {
     }
   }
 
-  const handleEndCall = () => {
+  const handleEndCall = (opener: React.RefObject<HTMLButtonElement | null>) => {
+    endCallOpenerRef.current = opener
     setShowEndCallDialog(true)
   }
 
@@ -539,6 +544,11 @@ export default function TimelessMinds() {
     action()
   }
 
+  const endCallFromMenu = () => {
+    setMenuOpen(false)
+    handleEndCall(menuButtonRef)
+  }
+
   const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'Escape' || !menuOpen) return
     e.stopPropagation()
@@ -588,7 +598,7 @@ export default function TimelessMinds() {
 
   const cancelEndCall = () => {
     setShowEndCallDialog(false)
-    menuButtonRef.current?.focus()
+    endCallOpenerRef.current.current?.focus()
   }
 
   const handleEndCallDialogKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
@@ -673,7 +683,7 @@ export default function TimelessMinds() {
   if (!thinker) {
     return (
       <div className="flex items-center justify-center min-h-screen" role="status" aria-label="Loading conversation">
-        <Loader2 className="animate-spin text-foreground/50" size={48} />
+        <Loader2 className={`${reducedMotion ? '' : 'animate-spin'} text-foreground/50`} size={48} aria-hidden="true" />
       </div>
     )
   }
@@ -682,6 +692,7 @@ export default function TimelessMinds() {
   const menuItem = 'w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-left text-sm sage-ink hover:bg-[var(--sage-paper)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
   const menuIcon = 'shrink-0 sage-ink-soft'
   const userHasSpoken = messages.some((m) => m.role === 'user')
+  const offerGoodbye = messages.filter((m) => m.role === 'user').length >= GOODBYE_AFTER_EXCHANGES && !farewell
 
   return (
     <div className="sage-room sage-wall max-w-[1024px] mx-auto h-[calc(100dvh-12rem)] min-h-[36rem] sm:h-[calc(100dvh-10rem)] flex flex-col rounded-2xl border sage-line shadow-sm">
@@ -769,7 +780,7 @@ export default function TimelessMinds() {
                   </button>
                 )}
                 <div className="my-1 border-t sage-line" />
-                <button type="button" className={menuItem} onClick={fromMenu(handleEndCall)}>
+                <button type="button" className={menuItem} onClick={endCallFromMenu}>
                   <Hand size={18} className={menuIcon} aria-hidden="true" />
                   Say goodbye
                 </button>
@@ -915,6 +926,17 @@ export default function TimelessMinds() {
 
       {/* Disclaimer */}
       <div className="shrink-0 px-3 sm:px-5 pb-1 text-center text-[11px] sm:text-xs sage-ink-soft">
+        {offerGoodbye && (
+          <button
+            ref={goodbyeButtonRef}
+            type="button"
+            onClick={() => handleEndCall(goodbyeButtonRef)}
+            className="inline-flex items-center gap-1.5 min-h-11 px-3 text-sm sage-ink underline underline-offset-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
+            <Hand size={16} aria-hidden="true" />
+            Say goodbye<span className="sr-only"> to {thinker.name}</span>
+          </button>
+        )}
         <p>
           {IMAGINED_NOTE} Inspired by their life and writing, for reflection only.{' '}
           {/* Same tab, unless leaving would end a conversation the visitor is in the middle of */}

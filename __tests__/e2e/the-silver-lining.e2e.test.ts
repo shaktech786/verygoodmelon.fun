@@ -5,6 +5,7 @@ import { getWordOfDay, wordList } from '../../lib/games/hope-daily/words'
 import { puzzleFor, revealFor } from '../../lib/games/hope-daily/daily'
 import { fallbackCommentary } from '../../lib/games/hope-daily/commentary'
 import { buildLadder, lettersInPlace, nextLetter, storyText } from '../../lib/games/hope-daily/puzzle'
+import { expectKeepsakeSaves } from './helpers/keepsake'
 
 /**
  * The Optimist: a true piece of good news with one word missing. The story unfolds a part
@@ -79,9 +80,9 @@ async function guess(page: Page, word: string) {
 }
 
 async function expectFinished(page: Page) {
-  await expect(page.getByText(FACT.slice(0, 30))).toBeVisible()
+  await expect(page.getByTestId('good-news')).toContainText(FACT.slice(0, 30))
   await expect(page.getByRole('link', { name: /en\.wikipedia\.org/ })).toHaveAttribute('href', ENTRY.source)
-  await expect(page.getByText(REVEAL.reflection)).toBeVisible()
+  await expect(page.getByText(REVEAL.reflection, { exact: true })).toBeVisible()
   await expect(page.getByText("That is today's puzzle, complete.")).toBeVisible()
   await expect(input(page)).toHaveCount(0)
   await expect(page.getByRole('button', { name: /Read on|Show a letter|Start over/ })).toHaveCount(0)
@@ -107,6 +108,19 @@ test('a first-time player reads the first part of the good news and finds the wo
   await expect(page.getByTestId('good-news')).toHaveText(FACT)
   await expect(page.getByTestId('good-news').locator('strong')).toHaveText('solar')
   await expectFinished(page)
+
+  // The faint focus mark around the word keeps clear of the label above it
+  const label = (await ending(page).getByText('You found it', { exact: true }).boundingBox())!
+  const word = (await page.getByRole('heading', { name: 'SOLAR' }).boundingBox())!
+  expect(word.y - (label.y + label.height)).toBeGreaterThanOrEqual(8)
+
+  // The day's clipping to keep, with the word inked into its gap
+  await expect(ending(page).getByRole('heading', { name: 'Today’s clipping, to keep' })).toBeVisible()
+  await expectKeepsakeSaves(page, {
+    within: ending(page),
+    fileName: /^the-optimist-\d{4}-\d{2}-\d{2}\.png$/,
+    describedAs: /^A newspaper clipping of today’s good news.*The missing word, SOLAR, is inked into its place by hand\..*SOLAR/,
+  })
 })
 
 test('a wrong guess is summed up in the words the page uses, and the story unfolds', async ({ page }) => {
@@ -480,7 +494,7 @@ test("plays today's real word against the real routes, and a returning player se
 
   await guess(page, today.word)
   await expect(page.getByTestId('good-news')).toHaveText(today.fact)
-  await expect(page.getByText(todayReveal.reflection)).toBeVisible()
+  await expect(page.getByText(todayReveal.reflection, { exact: true })).toBeVisible()
 
   await page.reload()
   await expect(page.getByTestId('good-news')).toHaveText(today.fact)

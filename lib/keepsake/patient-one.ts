@@ -2,8 +2,9 @@ import { MOMENT_TITLES, joinNaturally, type Heard, type MomentRecord } from '@/l
 import { KEEPSAKE_WIDTH, framedKeepsake, hashString, keepsakeDay, keepsakeFileName, seededRandom, type KeepsakeOp, type KeepsakePlan } from './plan'
 
 /**
- * A keepsake of one moment from The Patient One: the eight settled seeds in a row, and
- * whatever the player noticed in that moment, set quietly beneath them.
+ * A keepsake of one moment from The Patient One: a small picture of that moment (the eight
+ * settled seeds only for the moment that had them), and whatever the player noticed in it,
+ * set quietly beneath.
  */
 
 const MID = KEEPSAKE_WIDTH / 2
@@ -102,9 +103,7 @@ function listenOps(heard: Heard[]): { ops: KeepsakeOp[]; words: string[] } {
   if (heard.length === 0) {
     return {
       ops: [
-        ...[60, 44, 28].map((r, i): KeepsakeOp => ({ kind: 'disc', x: MID, y: 640, r, ink: i % 2 === 0 ? 'line' : 'paper' })),
-        { kind: 'disc', x: MID, y: 640, r: 10, ink: 'inkSoft' },
-        text(840, 'A minute of listening to what was already here.', 44, { italic: true, lineHeight: 58, maxLines: 3 }),
+        text(640, 'A minute of listening to what was already here.', 44, { italic: true, lineHeight: 58, maxLines: 3 }),
       ],
       words: ['A minute of listening to what was already here.'],
     }
@@ -182,10 +181,7 @@ function momentContent(record: MomentRecord): { ops: KeepsakeOp[]; words: string
       const ops: KeepsakeOp[] = [text(top - 120, 'Today I noticed', 30, quiet)]
       record.things.forEach((thing, i) => {
         const y = top + i * gap
-        ops.push(
-          { kind: 'ellipse', x: MID, y: y - 58, rx: 5, ry: 9, angle: 0, ink: 'flesh', alpha: 0.7 },
-          text(y, thing, 40, { lineHeight: 50, maxLines: 2 }),
-        )
+        ops.push(text(y, thing, 40, { lineHeight: 50, maxLines: 2 }))
       })
       return { ops, words: ['Today I noticed', ...record.things] }
     }
@@ -230,6 +226,128 @@ function centred(ops: KeepsakeOp[]): KeepsakeOp[] {
   return ops.map((op) => shifted(op, dy))
 }
 
+const PICTURE_Y = 420
+// The sky keeps its own colours in both themes, so a morning never reads as night on dark paper
+const DAY_SKY = '#cfe3ee'
+const NIGHT_SKY = '#1f2a44'
+const GROUND = '#3f7d4f'
+const MOON = '#f4ecd2'
+const EYE_WHITE = '#f6f1e7'
+const PUPIL = '#1a1a1a'
+
+/** Rings of sound reaching a still point from both sides. */
+function listenPicture(): KeepsakeOp[] {
+  const arc = (r: number, side: 1 | -1): KeepsakeOp => ({
+    kind: 'line',
+    points: Array.from({ length: 9 }, (_, i) => {
+      const a = ((i - 4) / 4) * 0.8
+      return [MID + side * Math.cos(a) * r, PICTURE_Y + Math.sin(a) * r] as const
+    }),
+    ink: 'inkSoft',
+    width: 8,
+    alpha: 1 - r / 160,
+  })
+  return [{ kind: 'disc', x: MID, y: PICTURE_Y, r: 12, ink: 'ink' }, ...[40, 75, 110].flatMap((r) => [arc(r, 1), arc(r, -1)])]
+}
+
+/** An open eye resting on one thing. */
+function lookPicture(): KeepsakeOp[] {
+  const lid = (open: number, side: 1 | -1) =>
+    Array.from({ length: 17 }, (_, i) => {
+      const t = i / 16
+      return [MID - 120 + t * 240, PICTURE_Y - side * Math.sin(t * Math.PI) * open] as const
+    })
+  return [
+    { kind: 'poly', points: [...lid(66, 1), ...lid(66, -1).reverse()], ink: 'inkSoft' },
+    { kind: 'poly', points: [...lid(56, 1), ...lid(56, -1).reverse()], ink: EYE_WHITE },
+    { kind: 'disc', x: MID, y: PICTURE_Y, r: 38, ink: 'blue' },
+    { kind: 'disc', x: MID, y: PICTURE_Y, r: 17, ink: PUPIL },
+    { kind: 'disc', x: MID + 12, y: PICTURE_Y - 12, r: 6, ink: EYE_WHITE },
+  ]
+}
+
+type PartOfDay = 'morning' | 'midday' | 'afternoon' | 'evening' | 'night'
+
+function partOfDay(hour: number): PartOfDay {
+  if (hour >= 5 && hour < 11) return 'morning'
+  if (hour >= 11 && hour < 14) return 'midday'
+  if (hour >= 14 && hour < 17) return 'afternoon'
+  if (hour >= 17 && hour < 20) return 'evening'
+  return 'night'
+}
+
+/** The sky at the hour the moment was noticed: the sun along its arc by day, the moon and a few stars by night. */
+function skyPicture(at: Date): { ops: KeepsakeOp[]; words: string } {
+  const hour = at.getHours() + at.getMinutes() / 60
+  const part = partOfDay(hour)
+  const [left, top, w, h] = [MID - 220, PICTURE_Y - 90, 440, 180]
+  const ground: KeepsakeOp = { kind: 'rect', x: left, y: top + h - 24, w, h: 24, ink: GROUND }
+  if (part === 'night') {
+    const stars: Array<[number, number]> = [[-150, -50], [-60, -66], [90, -40], [170, -60], [-110, 0]]
+    return {
+      ops: [
+        { kind: 'rect', x: left, y: top, w, h, ink: NIGHT_SKY },
+        ...stars.map(([dx, dy]): KeepsakeOp => ({ kind: 'rect', x: MID + dx, y: PICTURE_Y + dy, w: 6, h: 6, ink: MOON })),
+        { kind: 'disc', x: MID + 40, y: PICTURE_Y - 20, r: 30, ink: MOON },
+        { kind: 'disc', x: MID + 54, y: PICTURE_Y - 30, r: 26, ink: NIGHT_SKY },
+        ground,
+      ],
+      words: 'The night sky as it was, with the moon out',
+    }
+  }
+  const p = Math.min(1, Math.max(0, (hour - 5) / 15))
+  return {
+    ops: [
+      { kind: 'rect', x: left, y: top, w, h, ink: DAY_SKY },
+      { kind: 'disc', x: left + 40 + p * (w - 80), y: top + h - 50 - Math.sin(p * Math.PI) * 90, r: 26, ink: 'gold' },
+      ground,
+    ],
+    words: `The ${part} sky as it was, with the sun where it stood`,
+  }
+}
+
+/** A small sprout for each good thing written down, or one for the time given. */
+function sproutPicture(count: number): KeepsakeOp[] {
+  const step = 150
+  const ops: KeepsakeOp[] = [{ kind: 'ellipse', x: MID, y: PICTURE_Y + 56, rx: 90 + ((count - 1) * step) / 2, ry: 14, angle: 0, ink: 'paperDeep' }]
+  for (let i = 0; i < count; i++) {
+    const x = MID + (i - (count - 1) / 2) * step
+    ops.push(
+      { kind: 'line', points: [[x, PICTURE_Y + 54], [x, PICTURE_Y - 20]], ink: 'rind', width: 8 },
+      { kind: 'ellipse', x: x - 22, y: PICTURE_Y - 4, rx: 24, ry: 11, angle: -0.5, ink: 'rindLight' },
+      { kind: 'ellipse', x: x + 22, y: PICTURE_Y - 22, rx: 24, ry: 11, angle: 0.5, ink: 'rindLight' },
+    )
+  }
+  return ops
+}
+
+/** The moment's own picture, and how it is described to someone who cannot see it. */
+function momentPicture(record: MomentRecord, title: string): { ops: KeepsakeOp[]; alt: string } {
+  switch (record.id) {
+    case 'watch': {
+      const bedY = 480
+      const bedWidth = 760
+      return {
+        ops: seedOps(seedRow(record.key, bedY - 40, bedWidth - 60, 34), bedY, bedWidth),
+        alt: `Eight seeds resting in a row, settled while you stayed still, for ${title}.`,
+      }
+    }
+    case 'listen':
+      return { ops: listenPicture(), alt: `Soft rings of sound around a still point, for ${title}.` }
+    case 'look':
+      return { ops: lookPicture(), alt: `An open eye resting on one thing, for ${title}.` }
+    case 'reflect': {
+      const sky = skyPicture(new Date(record.at))
+      return { ops: sky.ops, alt: `${sky.words}, for ${title}.` }
+    }
+    case 'appreciate':
+      return {
+        ops: sproutPicture(Math.max(1, record.things.length)),
+        alt: `${record.things.length > 1 ? 'Small green sprouts, one for each good thing you wrote' : 'A small green sprout'}, for ${title}.`,
+      }
+  }
+}
+
 export interface PatientKeepsakeInput {
   record: MomentRecord
 }
@@ -237,24 +355,20 @@ export interface PatientKeepsakeInput {
 export function patientOneKeepsake({ record }: PatientKeepsakeInput): KeepsakePlan {
   const day = new Date(record.at)
   const title = MOMENT_TITLES[record.id]
-  const hero = record.id === 'watch'
-  const bedY = hero ? 480 : 400
-  const bedWidth = hero ? 760 : 560
-  const seeds = seedRow(record.key, bedY - (hero ? 40 : 22), bedWidth - 60, hero ? 34 : 22)
+  const picture = momentPicture(record, title)
   const content = momentContent(record)
 
   const art = centred([
     { kind: 'text', x: MID, y: 290, text: title, size: 36, ink: 'ink', font: 'sans', align: 'center', weight: 600 },
-    ...seedOps(seeds, bedY, bedWidth),
+    ...picture.ops,
     ...content.ops,
   ])
 
-  const alt = `Eight seeds resting in a row${hero ? ', settled while you stayed still' : ''}, for ${title}. ${content.words.join(' ')}`
   return framedKeepsake({
     title: 'The Patient One',
     subtitle: keepsakeDay(day),
     art,
-    alt,
+    alt: `${picture.alt} ${content.words.join(' ')}`,
     text: [`${title}, ${keepsakeDay(day)}`, '', ...content.words].join('\n'),
     fileName: keepsakeFileName(`The Patient One ${title}`, day),
   })

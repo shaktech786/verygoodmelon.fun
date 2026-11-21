@@ -29,10 +29,16 @@ export const GoldShelf = forwardRef<HTMLHeadingElement, GoldShelfProps>(function
   const freshRef = useRef<HTMLLIElement>(null)
 
   // In the wide layout the riddles scroll in their own column; bring the one turning gold into view there.
+  // On a phone the shelf sits below the concepts, so the page itself scrolls down to the gold.
   useEffect(() => {
     const card = freshRef.current
     const column = card?.closest<HTMLElement>('[data-shelf-scroll]')
-    if (!card || !column || column.scrollHeight <= column.clientHeight) return
+    if (!card || !column) return
+    if (column.scrollHeight <= column.clientHeight) {
+      const box = card.getBoundingClientRect()
+      if (box.top < 0 || box.bottom > window.innerHeight) card.scrollIntoView({ block: 'center', behavior: reducedMotion ? 'auto' : 'smooth' })
+      return
+    }
     const cardBox = card.getBoundingClientRect()
     const columnBox = column.getBoundingClientRect()
     // The column can reach past the bottom of the window while the page is still scrolled to the top.

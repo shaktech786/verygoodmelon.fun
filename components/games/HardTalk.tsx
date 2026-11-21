@@ -522,24 +522,34 @@ function HardTalkGame() {
             <>
               {heading('One line to carry in')}
               {notes.ownWords && sub('In your own words.')}
-              {notes.begin && (
-                <div className="mt-5 text-left">
-                  <p className="text-sm font-medium text-foreground/75">Begin with</p>
-                  <p className="mt-1 text-lg text-foreground"><Quote>{notes.begin}</Quote></p>
-                </div>
-              )}
-              <figure className="mt-6 overflow-hidden rounded-lg border-2 border-card-border bg-background text-center soft-shadow">
-                <div aria-hidden="true" className="h-2 bg-melon-green" />
+              {/* The pocket card itself, the same one the saved picture shows: what to say first, the line, and the door */}
+              <figure className="mt-5 overflow-hidden rounded-lg border-2 border-card-border bg-background text-center soft-shadow">
+                {notes.begin ? (
+                  <div className="bg-melon-green px-5 py-4 text-background">
+                    <p className="text-sm font-semibold uppercase tracking-wider">Begin with</p>
+                    <p className="mt-1 font-serif text-lg italic leading-snug"><Quote>{notes.begin}</Quote></p>
+                  </div>
+                ) : (
+                  <div aria-hidden="true" className="h-2 bg-melon-green" />
+                )}
                 <div aria-hidden="true" className="h-1.5 bg-success" />
-                <blockquote className="px-5 py-6 text-2xl sm:text-3xl font-semibold leading-snug text-foreground [overflow-wrap:anywhere]">
+                <blockquote className="px-5 pt-6 pb-2 text-2xl sm:text-3xl font-semibold leading-snug text-foreground [overflow-wrap:anywhere]">
                   {notes.line}
                 </blockquote>
+                <div className="px-6 pb-3 [&_svg]:max-w-[11rem]">
+                  <ThresholdArt progress={1} reducedMotion={reducedMotion} />
+                </div>
               </figure>
               {keepOnScreenButton}
-              <Keepsake plan={pocketCard} label="A pocket card to keep" className="mt-8" />
-              <Button size="lg" variant="secondary" onClick={stepOut} className="mt-2 w-full">
+              <Button variant="secondary" onClick={stepOut} className="mt-3 w-full">
                 I’m going in
               </Button>
+              <details className="mt-4 text-left">
+                <summary className="mx-auto w-fit cursor-pointer rounded px-2 py-2 text-base text-foreground/80 underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+                  Save the card as a picture
+                </summary>
+                <Keepsake plan={pocketCard} label="A pocket card to keep" hideLabel className="mt-4" />
+              </details>
             </>
           ),
         }
@@ -654,7 +664,7 @@ function HardTalkGame() {
 
       {confirmingStartOver === 'top' && startOverPanel}
 
-      {view !== 'step-out' && !(view === 'steps' && session.step === 'breath') && (
+      {view !== 'step-out' && !(view === 'steps' && (session.step === 'breath' || session.step === 'carry')) && (
         <div className="mt-2 mb-4"><ThresholdArt progress={progress} reducedMotion={reducedMotion} /></div>
       )}
 
@@ -676,10 +686,10 @@ function HardTalkGame() {
 
       {view === 'steps' && (
         <div className="mt-8 flex items-center gap-3">
-          {hasBack && <Button variant="secondary" size="lg" onClick={back}>Back</Button>}
+          {hasBack && <Button variant={session.step === 'carry' ? 'ghost' : 'secondary'} size={session.step === 'carry' ? 'md' : 'lg'} onClick={back}>Back</Button>}
           {step?.nextLabel && <Button size="lg" onClick={next} className="flex-1">{step.nextLabel}</Button>}
           {session.step === 'carry' && !confirmingStartOver && (
-            <Button variant="secondary" size="lg" onClick={() => setConfirmingStartOver('bottom')} className="flex-1">Start over</Button>
+            <Button variant="ghost" onClick={() => setConfirmingStartOver('bottom')} className="ml-auto">Start over</Button>
           )}
         </div>
       )}
