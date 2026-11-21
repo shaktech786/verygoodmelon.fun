@@ -15,18 +15,18 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient()
 
-    // Get vote counts for both choices
-    const { count: countA, error: errorA } = await supabase
-      .from('hard_choices_votes')
-      .select('*', { count: 'exact', head: true })
-      .eq('dilemma_id', dilemmaId)
-      .eq('choice', 'A')
+    // The game shows its perspectives without these counts, so an unreachable
+    // database should fail fast rather than sit through the client's retries.
+    const countChoice = (choice: 'A' | 'B') =>
+      supabase
+        .from('hard_choices_votes')
+        .select('*', { count: 'exact', head: true })
+        .eq('dilemma_id', dilemmaId)
+        .eq('choice', choice)
+        .retry(false)
 
-    const { count: countB, error: errorB } = await supabase
-      .from('hard_choices_votes')
-      .select('*', { count: 'exact', head: true })
-      .eq('dilemma_id', dilemmaId)
-      .eq('choice', 'B')
+    const [{ count: countA, error: errorA }, { count: countB, error: errorB }] =
+      await Promise.all([countChoice('A'), countChoice('B')])
 
     if (errorA || errorB) {
       console.error('Error fetching vote counts:', errorA || errorB)

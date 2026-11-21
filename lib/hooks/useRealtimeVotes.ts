@@ -2,41 +2,51 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { RealtimeChannel } from '@supabase/supabase-js'
 
-interface VoteCounts {
-  optionA: number
-  optionB: number
+export interface VoteCounts {
+  choiceA: number
+  choiceB: number
 }
 
+type Choice = 'A' | 'B'
+
 interface UseRealtimeVotesReturn {
+  /** Vote counts by dilemma ID, for every dilemma seeded so far. */
   votes: Record<string, VoteCounts>
   isConnected: boolean
   /** Dilemma IDs that received a realtime update recently (choice that changed). */
-  recentlyUpdated: Record<string, 'A' | 'B'>
+  recentlyUpdated: Record<string, Choice>
   clearUpdated: (dilemmaId: string) => void
   /** Seed vote counts from REST. Call this after fetching initial data. */
   seedVotes: (dilemmaId: string, choiceA: number, choiceB: number) => void
+  /** Call before posting the player's own vote, so its realtime echo is not counted twice. */
+  expectOwnVote: (dilemmaId: string, choice: Choice) => void
+  /** Call when the player's own vote could not be posted. */
+  cancelOwnVote: (dilemmaId: string, choice: Choice) => void
 }
 
+const POLL_INTERVAL_MS = 10_000
+
+let channelCount = 0
+
 /**
- * Subscribes to Supabase Realtime for live vote updates on the hard_choices_votes table.
+ * Keeps vote counts for the hard_choices_votes table fresh.
  *
- * - Call `seedVotes` after loading REST data so realtime increments start from the correct base.
- * - On INSERT events, increments the local vote count for the relevant dilemma/choice.
- * - Falls back to REST polling (every 10s) when Supabase env vars are missing.
- * - Cleans up subscription on unmount.
+ * - Nothing connects until `seedVotes` has been called once: a successful REST
+ *   read proves the backend is reachable, so an unreachable one costs no socket.
+ * - On INSERT events, increments the count of dilemmas that have been seeded.
+ * - If live updates are unavailable, polls only `watchedDilemmaId`, and stops
+ *   for good on the first failure rather than retrying a broken backend.
  */
-export function useRealtimeVotes(
-  dilemmaIds: string[]
-): UseRealtimeVotesReturn {
+export function useRealtimeVotes(watchedDilemmaId: string | null): UseRealtimeVotesReturn {
   const [votes, setVotes] = useState<Record<string, VoteCounts>>({})
   const [isConnected, setIsConnected] = useState(false)
-  const [recentlyUpdated, setRecentlyUpdated] = useState<Record<string, 'A' | 'B'>>({})
-  const channelRef = useRef<RealtimeChannel | null>(null)
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const dilemmaIdsRef = useRef(dilemmaIds)
-  useEffect(() => { dilemmaIdsRef.current = dilemmaIds }, [dilemmaIds])
+  const [backendReachable, setBackendReachable] = useState(false)
+  const [recentlyUpdated, setRecentlyUpdated] = useState<Record<string, Choice>>({})
+  const seededIds = useRef(new Set<string>())
+  const ownVotes = useRef(new Map<string, number>())
+  const watchedIdRef = useRef(watchedDilemmaId)
+  useEffect(() => { watchedIdRef.current = watchedDilemmaId }, [watchedDilemmaId])
 
   const clearUpdated = useCallback((dilemmaId: string) => {
     setRecentlyUpdated((prev) => {
@@ -47,127 +57,115 @@ export function useRealtimeVotes(
   }, [])
 
   const seedVotes = useCallback((dilemmaId: string, choiceA: number, choiceB: number) => {
-    setVotes((prev) => ({
-      ...prev,
-      [dilemmaId]: { optionA: choiceA, optionB: choiceB },
-    }))
+    seededIds.current.add(dilemmaId)
+    setVotes((prev) => ({ ...prev, [dilemmaId]: { choiceA, choiceB } }))
+    setBackendReachable(true)
   }, [])
 
-  const startPolling = useCallback(() => {
-    if (pollingRef.current) return
-    pollingRef.current = setInterval(async () => {
-      for (const id of dilemmaIdsRef.current) {
-        try {
-          const res = await fetch(`/api/hard-choices/votes?dilemmaId=${id}`)
-          if (res.ok) {
-            const data = await res.json()
-            setVotes((prev) => ({
-              ...prev,
-              [id]: { optionA: data.choiceA ?? 0, optionB: data.choiceB ?? 0 },
-            }))
-          }
-        } catch {
-          // Silently fail -- polling is best-effort
-        }
-      }
-    }, 10_000)
+  const expectOwnVote = useCallback((dilemmaId: string, choice: Choice) => {
+    const key = `${dilemmaId}:${choice}`
+    ownVotes.current.set(key, (ownVotes.current.get(key) ?? 0) + 1)
   }, [])
 
-  const stopPolling = useCallback(() => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current)
-      pollingRef.current = null
-    }
+  const cancelOwnVote = useCallback((dilemmaId: string, choice: Choice) => {
+    const key = `${dilemmaId}:${choice}`
+    const pending = ownVotes.current.get(key) ?? 0
+    if (pending > 0) ownVotes.current.set(key, pending - 1)
   }, [])
 
   useEffect(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!backendReachable) return
 
-    // If Supabase is not configured, fall back to REST polling
-    if (!supabaseUrl || !supabaseAnonKey) {
+    let polling: ReturnType<typeof setInterval> | null = null
+
+    const stopPolling = () => {
+      if (polling) clearInterval(polling)
+      polling = null
+    }
+
+    const startPolling = () => {
+      if (polling) return
+      polling = setInterval(async () => {
+        const id = watchedIdRef.current
+        if (!id) return
+        try {
+          const res = await fetch(`/api/hard-choices/votes?dilemmaId=${id}`)
+          if (!res.ok) throw new Error(`Failed to refresh votes: ${res.status}`)
+          const data: VoteCounts = await res.json()
+          setVotes((prev) => ({ ...prev, [id]: { choiceA: data.choiceA, choiceB: data.choiceB } }))
+        } catch {
+          stopPolling()
+        }
+      }, POLL_INTERVAL_MS)
+    }
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       startPolling()
-      return () => stopPolling()
+      return stopPolling
     }
 
     const supabase = createClient()
+    let closed = false
+
+    const closeChannel = (socketFailed: boolean) => {
+      if (closed) return
+      closed = true
+      setIsConnected(false)
+      void supabase.removeChannel(channel)
+      // Otherwise the client keeps retrying the socket for as long as the page is open.
+      if (socketFailed) void supabase.realtime.disconnect()
+    }
 
     const channel = supabase
-      .channel('hard-choices-votes-realtime')
+      // A removed channel lingers until its leave completes, and asking for the same
+      // name again in that window (a quick remount) returns the dead channel.
+      .channel(`hard-choices-votes-${++channelCount}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'hard_choices_votes',
-        },
+        { event: 'INSERT', schema: 'public', table: 'hard_choices_votes' },
         (payload) => {
-          const newRow = payload.new as {
-            id: string
-            dilemma_id: string
-            choice: string
-            created_at: string | null
+          const { dilemma_id, choice } = payload.new as { dilemma_id: string; choice: string }
+          if (choice !== 'A' && choice !== 'B') return
+
+          const ownKey = `${dilemma_id}:${choice}`
+          const pendingOwn = ownVotes.current.get(ownKey) ?? 0
+          if (pendingOwn > 0) {
+            ownVotes.current.set(ownKey, pendingOwn - 1)
+            return
           }
 
-          const { dilemma_id, choice } = newRow
+          if (!seededIds.current.has(dilemma_id)) return
 
           setVotes((prev) => {
-            const current = prev[dilemma_id] || { optionA: 0, optionB: 0 }
+            const current = prev[dilemma_id]
+            if (!current) return prev
             return {
               ...prev,
               [dilemma_id]: {
-                optionA: current.optionA + (choice === 'A' ? 1 : 0),
-                optionB: current.optionB + (choice === 'B' ? 1 : 0),
+                choiceA: current.choiceA + (choice === 'A' ? 1 : 0),
+                choiceB: current.choiceB + (choice === 'B' ? 1 : 0),
               },
             }
           })
-
-          // Mark as recently updated for pulse animation
-          if (choice === 'A' || choice === 'B') {
-            setRecentlyUpdated((prev) => ({
-              ...prev,
-              [dilemma_id]: choice as 'A' | 'B',
-            }))
-          }
+          setRecentlyUpdated((prev) => ({ ...prev, [dilemma_id]: choice }))
         }
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          setIsConnected(true)
-        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          setIsConnected(false)
-          startPolling()
-        }
-      })
 
-    channelRef.current = channel
+    channel.subscribe((status) => {
+      if (closed) return
+      if (status === 'SUBSCRIBED') {
+        setIsConnected(true)
+      } else {
+        closeChannel(true)
+        startPolling()
+      }
+    })
 
     return () => {
-      setIsConnected(false)
       stopPolling()
-      supabase.removeChannel(channel)
-      channelRef.current = null
+      closeChannel(false)
     }
-  }, [startPolling, stopPolling])
+  }, [backendReachable])
 
-  return { votes, isConnected, recentlyUpdated, clearUpdated, seedVotes }
-}
-
-/**
- * Merges realtime vote data with REST-fetched data.
- * When realtime data exists for a dilemma, it is authoritative
- * (seeded from REST, then incremented by realtime events).
- */
-export function mergeVotes(
-  restChoiceA: number,
-  restChoiceB: number,
-  realtimeVotes: VoteCounts | undefined
-): { choiceA: number; choiceB: number } {
-  if (!realtimeVotes) {
-    return { choiceA: restChoiceA, choiceB: restChoiceB }
-  }
-  return {
-    choiceA: realtimeVotes.optionA,
-    choiceB: realtimeVotes.optionB,
-  }
+  return { votes, isConnected, recentlyUpdated, clearUpdated, seedVotes, expectOwnVote, cancelOwnVote }
 }

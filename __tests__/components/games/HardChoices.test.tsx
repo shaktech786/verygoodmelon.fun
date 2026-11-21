@@ -116,6 +116,12 @@ describe('HardChoices', () => {
 
     render(<HardChoices />)
 
+    // The game resumes at the first unanswered dilemma; step back to the answered one
+    await waitFor(() => {
+      expect(screen.getByText('Dilemma 2 of 12')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Previous/i }))
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Next Dilemma/i })).toBeInTheDocument()
     })

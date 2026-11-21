@@ -3,10 +3,12 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
-import { useRealtimeVotes, mergeVotes } from '@/lib/hooks/useRealtimeVotes'
+import { useRealtimeVotes } from '@/lib/hooks/useRealtimeVotes'
+
+type ChoiceId = 'A' | 'B'
 
 interface Choice {
-  id: string
+  id: ChoiceId
   text: string
   perspective?: string
 }
@@ -18,11 +20,6 @@ interface Dilemma {
   choiceA: Choice
   choiceB: Choice
   category?: string
-}
-
-interface VoteResults {
-  choiceA: number
-  choiceB: number
 }
 
 const DILEMMAS: Dilemma[] = [
@@ -225,28 +222,56 @@ const DILEMMAS: Dilemma[] = [
   }
 ]
 
-const DILEMMA_IDS = DILEMMAS.map((d) => d.id)
+const ANSWERS_KEY = 'hardChoicesVotes'
+const COUNTED_KEY = 'hardChoicesCounted'
+
+type Answers = Record<string, ChoiceId>
+
+function readStored<T>(key: string, fallback: T): T {
+  try {
+    const stored = localStorage.getItem(key)
+    return stored ? JSON.parse(stored) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function firstUnansweredIndex(answers: Answers): number {
+  return DILEMMAS.findIndex((dilemma) => !answers[dilemma.id])
+}
+
+const CHOICE_STYLES: Record<ChoiceId, { bar: string; glow: string; pulse: string }> = {
+  A: { bar: 'bg-accent', glow: 'shadow-[0_0_8px_rgba(230,57,70,0.4)]', pulse: 'text-accent font-medium' },
+  B: { bar: 'bg-success', glow: 'shadow-[0_0_8px_rgba(116,198,157,0.4)]', pulse: 'text-melon-green font-medium' },
+}
 
 export default function HardChoices() {
   const [currentDilemmaIndex, setCurrentDilemmaIndex] = useState(0)
-  const [selectedChoice, setSelectedChoice] = useState<string | null>(null)
-  const [showResults, setShowResults] = useState(false)
-  const [voteResults, setVoteResults] = useState<VoteResults | null>(null)
-  const [hasVoted, setHasVoted] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [pulseChoice, setPulseChoice] = useState<'A' | 'B' | null>(null)
+  const [answers, setAnswers] = useState<Answers>({})
+  const [finished, setFinished] = useState(false)
+  const [pulseChoice, setPulseChoice] = useState<ChoiceId | null>(null)
   const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const moveFocusToHeading = useRef(false)
+  const hasChosen = useRef(false)
 
   const currentDilemma = DILEMMAS[currentDilemmaIndex]
+  const selectedChoice = answers[currentDilemma.id] ?? null
+  const hasVoted = selectedChoice !== null
+  // Perspectives never wait on the crowd counts, which arrive (or not) on their own
+  const showResults = hasVoted
 
-  // Realtime votes subscription
   const {
-    votes: realtimeVotes,
+    votes,
     isConnected: isRealtimeConnected,
     recentlyUpdated,
     clearUpdated,
     seedVotes,
-  } = useRealtimeVotes(DILEMMA_IDS)
+    expectOwnVote,
+    cancelOwnVote,
+  } = useRealtimeVotes(showResults && !finished ? currentDilemma.id : null)
+
+  const displayResults = votes[currentDilemma.id] ?? null
 
   // Trigger pulse animation when a realtime update arrives for the current dilemma
   useEffect(() => {
@@ -268,113 +293,122 @@ export default function HardChoices() {
     }
   }, [])
 
-  // Compute merged vote results: REST data + realtime overlay
-  const displayResults = (() => {
-    const rtVotes = realtimeVotes[currentDilemma.id]
-    if (rtVotes) {
-      return mergeVotes(
-        voteResults?.choiceA ?? 0,
-        voteResults?.choiceB ?? 0,
-        rtVotes
-      )
-    }
-    return voteResults ? { choiceA: voteResults.choiceA, choiceB: voteResults.choiceB } : null
-  })()
-
-  useEffect(() => {
-    const checkVoteStatus = async () => {
-      // Check if user has already voted on this dilemma
-      const votedDilemmas = JSON.parse(localStorage.getItem('hardChoicesVotes') || '{}')
-      if (votedDilemmas[currentDilemma.id]) {
-        setHasVoted(true)
-        setSelectedChoice(votedDilemmas[currentDilemma.id])
-        await loadResults()
-      } else {
-        setHasVoted(false)
-        setSelectedChoice(null)
-        setShowResults(false)
-        setVoteResults(null)
-      }
-    }
-    checkVoteStatus()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentDilemmaIndex, currentDilemma.id]) // loadResults is stable, doesn't need to be in deps
-
   // The reflection never depends on the crowd counts: if they can't be
   // reached, the choice and both perspectives are still shown without them.
-  const loadResults = async () => {
-    setLoading(true)
+  const loadResults = async (dilemmaId: string) => {
     try {
-      const response = await fetch(`/api/hard-choices/votes?dilemmaId=${currentDilemma.id}`)
-      if (!response.ok) {
-        throw new Error(`Failed to load results: ${response.status}`)
+      const response = await fetch(`/api/hard-choices/votes?dilemmaId=${dilemmaId}`)
+      if (response.ok) {
+        const data = await response.json()
+        seedVotes(dilemmaId, data.choiceA, data.choiceB)
       }
-      const data = await response.json()
-      setVoteResults(data)
-      seedVotes(currentDilemma.id, data.choiceA, data.choiceB)
-    } catch (err) {
-      console.error('Error loading results:', err)
-      setVoteResults(null)
-    } finally {
-      setShowResults(true)
-      setLoading(false)
+    } catch {
+      // Shown without crowd counts
     }
   }
 
-  const handleChoice = async (choiceId: string) => {
+  const showDilemma = (index: number, knownAnswers: Answers) => {
+    const dilemma = DILEMMAS[index]
+    setFinished(false)
+    setCurrentDilemmaIndex(index)
+    if (knownAnswers[dilemma.id] && !votes[dilemma.id]) {
+      loadResults(dilemma.id)
+    }
+  }
+
+  // Pick up where the player left off
+  useEffect(() => {
+    const stored = readStored<Answers>(ANSWERS_KEY, {})
+    const resumeIndex = firstUnansweredIndex(stored)
+    setAnswers((current) => ({ ...stored, ...current }))
+    // A choice made while the page was still hydrating keeps the player where they are
+    if (hasChosen.current) return
+    if (resumeIndex === -1) {
+      setCurrentDilemmaIndex(DILEMMAS.length - 1)
+      setFinished(true)
+    } else {
+      setCurrentDilemmaIndex(resumeIndex)
+    }
+  }, [])
+
+  // Keep keyboard and screen-reader users oriented when the card changes
+  useEffect(() => {
+    if (moveFocusToHeading.current) {
+      moveFocusToHeading.current = false
+      headingRef.current?.focus()
+    }
+  }, [currentDilemmaIndex, finished])
+
+  const handleChoice = async (choiceId: ChoiceId) => {
     if (hasVoted) return
+    hasChosen.current = true
 
-    setSelectedChoice(choiceId)
-    setHasVoted(true)
-    setLoading(true)
+    const dilemmaId = currentDilemma.id
+    const nextAnswers = { ...answers, [dilemmaId]: choiceId }
+    setAnswers(nextAnswers)
+    localStorage.setItem(ANSWERS_KEY, JSON.stringify(nextAnswers))
 
-    const votedDilemmas = JSON.parse(localStorage.getItem('hardChoicesVotes') || '{}')
-    votedDilemmas[currentDilemma.id] = choiceId
-    localStorage.setItem('hardChoicesVotes', JSON.stringify(votedDilemmas))
+    // A dilemma answered again after starting fresh is not counted twice.
+    const counted = readStored<string[]>(COUNTED_KEY, [])
+    if (counted.includes(dilemmaId)) {
+      await loadResults(dilemmaId)
+      return
+    }
 
+    expectOwnVote(dilemmaId, choiceId)
     try {
       const response = await fetch('/api/hard-choices/vote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dilemmaId: currentDilemma.id,
-          choice: choiceId
-        })
+        body: JSON.stringify({ dilemmaId, choice: choiceId })
       })
 
       if (!response.ok) {
         throw new Error(`Failed to submit vote: ${response.status}`)
       }
       const data = await response.json()
-      setVoteResults(data.results)
-      seedVotes(currentDilemma.id, data.results.choiceA, data.results.choiceB)
-    } catch (err) {
-      console.error('Error submitting vote:', err)
-    } finally {
-      setShowResults(true)
-      setLoading(false)
+      seedVotes(dilemmaId, data.results.choiceA, data.results.choiceB)
+      localStorage.setItem(COUNTED_KEY, JSON.stringify([...counted, dilemmaId]))
+    } catch {
+      cancelOwnVote(dilemmaId, choiceId)
     }
+  }
+
+  const navigate = (index: number) => {
+    moveFocusToHeading.current = true
+    showDilemma(index, answers)
   }
 
   const handleNext = () => {
-    const nextIndex = (currentDilemmaIndex + 1) % DILEMMAS.length
-    setCurrentDilemmaIndex(nextIndex)
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent, choiceId: string) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      handleChoice(choiceId)
+    if (currentDilemmaIndex === DILEMMAS.length - 1) {
+      moveFocusToHeading.current = true
+      setFinished(true)
+    } else {
+      navigate(currentDilemmaIndex + 1)
     }
   }
 
-  const getPercentage = (choice: 'A' | 'B') => {
+  const handleStartFresh = () => {
+    localStorage.removeItem(ANSWERS_KEY)
+    setAnswers({})
+    moveFocusToHeading.current = true
+    showDilemma(0, {})
+  }
+
+  const percentA = (() => {
     if (!displayResults) return 0
     const total = displayResults.choiceA + displayResults.choiceB
-    if (total === 0) return 50
-    const count = choice === 'A' ? displayResults.choiceA : displayResults.choiceB
-    return Math.round((count / total) * 100)
+    return total === 0 ? 50 : Math.round((displayResults.choiceA / total) * 100)
+  })()
+  const percentages: Record<ChoiceId, number> = { A: percentA, B: 100 - percentA }
+  const counts: Record<ChoiceId, number> = {
+    A: displayResults?.choiceA ?? 0,
+    B: displayResults?.choiceB ?? 0,
   }
+  const choices: Array<{ id: ChoiceId; choice: Choice }> = [
+    { id: 'A', choice: currentDilemma.choiceA },
+    { id: 'B', choice: currentDilemma.choiceB },
+  ]
 
   return (
     <div className="min-h-screen bg-background">
@@ -392,15 +426,22 @@ export default function HardChoices() {
           <div className="mb-8">
             <div className="flex items-center justify-between text-sm text-foreground/60 mb-2">
               <div className="flex items-center gap-2">
-                <span>Dilemma {currentDilemmaIndex + 1} of {DILEMMAS.length}</span>
-                {isRealtimeConnected && (
-                  <span className="inline-flex items-center gap-1 text-xs text-success/60" aria-label="Live updates active">
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-success/60 animate-pulse" aria-hidden="true" />
+                <span>
+                  {finished
+                    ? `All ${DILEMMAS.length} dilemmas`
+                    : `Dilemma ${currentDilemmaIndex + 1} of ${DILEMMAS.length}`}
+                </span>
+                {isRealtimeConnected && showResults && !finished && (
+                  <span className="inline-flex items-center gap-1 text-xs">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse" aria-hidden="true" />
                     Live
+                    <span className="sr-only"> updates active</span>
                   </span>
                 )}
               </div>
-              <span className="text-xs uppercase tracking-wide">{currentDilemma.category}</span>
+              {!finished && (
+                <span className="text-xs uppercase tracking-wide">{currentDilemma.category}</span>
+              )}
             </div>
             <div className="h-1 bg-foreground/10 rounded-full overflow-hidden">
               <div
@@ -410,187 +451,170 @@ export default function HardChoices() {
             </div>
           </div>
 
-          {/* Dilemma card */}
-          <div className="bg-card-bg border border-card-border rounded-lg p-4 sm:p-8 mb-6">
-            {currentDilemma.context && (
-              <p className="text-foreground/60 mb-4 text-sm uppercase tracking-wide">
-                {currentDilemma.context}
+          {finished ? (
+            <div className="bg-card-bg border border-card-border rounded-lg p-6 sm:p-8 mb-6 text-center">
+              <h2
+                ref={headingRef}
+                tabIndex={-1}
+                className="text-xl sm:text-2xl font-medium mb-3 focus:outline-none"
+              >
+                You&apos;ve sat with all {DILEMMAS.length} dilemmas
+              </h2>
+              <p className="text-foreground/60 mb-6">
+                There were no right answers, only yours. They may change with time, and that&apos;s part of it.
               </p>
-            )}
-            <h2 className="text-xl sm:text-2xl font-medium mb-6 sm:mb-8">
-              {currentDilemma.scenario}
-            </h2>
-
-            {/* Choices */}
-            <div className="space-y-4">
-              {/* Choice A */}
-              <button
-                onClick={() => handleChoice('A')}
-                onKeyDown={(e) => handleKeyDown(e, 'A')}
-                disabled={hasVoted || loading}
-                className={`
-                  w-full text-left p-4 sm:p-6 rounded-lg border-2 transition-all
-                  ${hasVoted
-                    ? 'cursor-default'
-                    : 'hover:border-accent hover:bg-accent/5 focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer'
-                  }
-                  ${selectedChoice === 'A'
-                    ? 'border-accent bg-accent/5'
-                    : 'border-foreground/10'
-                  }
-                `}
-                aria-label={`Choice A: ${currentDilemma.choiceA.text}`}
-                aria-pressed={selectedChoice === 'A'}
-              >
-                <div className="flex items-start gap-4">
-                  <div className={`
-                    flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-semibold
-                    ${selectedChoice === 'A'
-                      ? 'border-accent bg-accent text-white'
-                      : 'border-foreground/20 text-foreground/60'
-                    }
-                  `}>
-                    A
-                  </div>
-                  <div className="flex-1 pt-1">
-                    <p className="text-lg mb-2">{currentDilemma.choiceA.text}</p>
-                    {showResults && currentDilemma.choiceA.perspective && (
-                      <p className="text-sm text-foreground/60 mb-3 italic">
-                        {currentDilemma.choiceA.perspective}
-                      </p>
-                    )}
-                    {showResults && displayResults && (
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between text-sm mb-1">
-                          <span className="text-foreground/60">
-                            {getPercentage('A')}% chose this
-                          </span>
-                          <span
-                            className={`text-foreground/40 transition-all duration-300 ${
-                              pulseChoice === 'A' ? 'text-accent scale-110 font-medium' : ''
-                            }`}
-                          >
-                            {displayResults?.choiceA || 0} votes
-                          </span>
-                        </div>
-                        <div className="h-2 bg-foreground/5 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full bg-accent transition-all duration-300 ${
-                              pulseChoice === 'A' ? 'shadow-[0_0_8px_rgba(230,57,70,0.4)]' : ''
-                            }`}
-                            style={{ width: `${getPercentage('A')}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </button>
-
-              {/* Choice B */}
-              <button
-                onClick={() => handleChoice('B')}
-                onKeyDown={(e) => handleKeyDown(e, 'B')}
-                disabled={hasVoted || loading}
-                className={`
-                  w-full text-left p-4 sm:p-6 rounded-lg border-2 transition-all
-                  ${hasVoted
-                    ? 'cursor-default'
-                    : 'hover:border-accent hover:bg-accent/5 focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer'
-                  }
-                  ${selectedChoice === 'B'
-                    ? 'border-accent bg-accent/5'
-                    : 'border-foreground/10'
-                  }
-                `}
-                aria-label={`Choice B: ${currentDilemma.choiceB.text}`}
-                aria-pressed={selectedChoice === 'B'}
-              >
-                <div className="flex items-start gap-4">
-                  <div className={`
-                    flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-semibold
-                    ${selectedChoice === 'B'
-                      ? 'border-accent bg-accent text-white'
-                      : 'border-foreground/20 text-foreground/60'
-                    }
-                  `}>
-                    B
-                  </div>
-                  <div className="flex-1 pt-1">
-                    <p className="text-lg mb-2">{currentDilemma.choiceB.text}</p>
-                    {showResults && currentDilemma.choiceB.perspective && (
-                      <p className="text-sm text-foreground/60 mb-3 italic">
-                        {currentDilemma.choiceB.perspective}
-                      </p>
-                    )}
-                    {showResults && displayResults && (
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between text-sm mb-1">
-                          <span className="text-foreground/60">
-                            {getPercentage('B')}% chose this
-                          </span>
-                          <span
-                            className={`text-foreground/40 transition-all duration-300 ${
-                              pulseChoice === 'B' ? 'text-success scale-110 font-medium' : ''
-                            }`}
-                          >
-                            {displayResults?.choiceB || 0} votes
-                          </span>
-                        </div>
-                        <div className="h-2 bg-foreground/5 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full bg-success transition-all duration-300 ${
-                              pulseChoice === 'B' ? 'shadow-[0_0_8px_rgba(116,198,157,0.4)]' : ''
-                            }`}
-                            style={{ width: `${getPercentage('B')}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button onClick={() => navigate(0)} variant="primary">
+                  Revisit your answers
+                </Button>
+                <Button onClick={handleStartFresh} variant="secondary">
+                  Clear my answers and start fresh
+                </Button>
+              </div>
             </div>
-
-            {/* Results message - deeper reflection */}
-            {showResults && (
-              <div className="mt-6 p-5 bg-gradient-to-br from-accent/5 to-transparent border border-accent/10 rounded-lg">
-                {displayResults && (
-                  <p className="text-sm text-foreground/80 text-center leading-relaxed mb-2">
-                    {getPercentage('A') > 60 || getPercentage('B') > 60 ? (
-                      <>
-                        <span className="font-medium">Interesting.</span> Most people lean one way here—but the minority perspective often holds wisdom worth considering.
-                      </>
-                    ) : (
-                      <>
-                        <span className="font-medium">A true dilemma.</span> Humanity is genuinely split on this one. That&apos;s what makes it worth thinking about.
-                      </>
-                    )}
+          ) : (
+            <>
+              {/* Dilemma card */}
+              <div className="bg-card-bg border border-card-border rounded-lg p-4 sm:p-8 mb-6">
+                {currentDilemma.context && (
+                  <p className="text-foreground/60 mb-4 text-sm uppercase tracking-wide">
+                    {currentDilemma.context}
                   </p>
                 )}
-                <p className="text-xs text-foreground/50 text-center italic">
-                  Your answer reveals something about your values. Neither choice is wrong.
-                </p>
+                <h2
+                  ref={headingRef}
+                  tabIndex={-1}
+                  className="text-xl sm:text-2xl font-medium mb-6 sm:mb-8 focus:outline-none"
+                >
+                  {currentDilemma.scenario}
+                </h2>
+
+                {/* Choices */}
+                <div className="space-y-4">
+                  {choices.map(({ id, choice }) => (
+                    <button
+                      key={id}
+                      onClick={() => handleChoice(id)}
+                      aria-disabled={hasVoted}
+                      className={`
+                        w-full text-left p-4 sm:p-6 rounded-lg border-2 transition-all
+                        focus:outline-none focus:ring-2 focus:ring-accent
+                        ${hasVoted ? 'cursor-default' : 'hover:border-accent hover:bg-accent/5 cursor-pointer'}
+                        ${selectedChoice === id ? 'border-accent bg-accent/5' : 'border-foreground/10'}
+                      `}
+                      aria-label={`Choice ${id}: ${choice.text}`}
+                      aria-pressed={selectedChoice === id}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className={`
+                          flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-semibold
+                          ${selectedChoice === id
+                            ? 'border-accent bg-accent text-white'
+                            : 'border-foreground/20 text-foreground/60'
+                          }
+                        `}>
+                          {id}
+                        </div>
+                        <div className="flex-1 pt-1">
+                          <p className="text-lg mb-2">
+                            {choice.text}
+                            {selectedChoice === id && (
+                              <span className="ml-2 text-xs uppercase tracking-wide text-foreground/60">Your choice</span>
+                            )}
+                          </p>
+                          {showResults && choice.perspective && (
+                            <p className="text-sm text-foreground/60 mb-3 italic">
+                              {choice.perspective}
+                            </p>
+                          )}
+                          {showResults && displayResults && (
+                            <div className="mt-3">
+                              <div className="flex items-center justify-between text-sm mb-1">
+                                <span className="text-foreground/60">
+                                  {percentages[id]}% chose this
+                                </span>
+                                <span
+                                  className={`transition-colors duration-300 ${
+                                    pulseChoice === id ? CHOICE_STYLES[id].pulse : 'text-foreground/60'
+                                  }`}
+                                >
+                                  {counts[id]} {counts[id] === 1 ? 'vote' : 'votes'}
+                                </span>
+                              </div>
+                              <div className="h-2 bg-foreground/5 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full transition-all duration-300 ${CHOICE_STYLES[id].bar} ${
+                                    pulseChoice === id ? CHOICE_STYLES[id].glow : ''
+                                  }`}
+                                  style={{ width: `${percentages[id]}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div role="status">
+
+                  {/* Results message - deeper reflection */}
+                  {showResults && (
+                    <div className="mt-6 p-5 bg-gradient-to-br from-accent/5 to-transparent border border-accent/10 rounded-lg">
+                      <p className="sr-only">
+                        You chose {selectedChoice}.
+                        {displayResults && ` ${percentages.A}% chose A, ${percentages.B}% chose B.`}
+                      </p>
+                      {displayResults && (
+                        <p className="text-sm text-foreground/80 text-center leading-relaxed mb-2">
+                          {percentages.A > 60 || percentages.B > 60 ? (
+                            <>
+                              <span className="font-medium">Interesting.</span> Most people lean one way here—but the minority perspective often holds wisdom worth considering.
+                            </>
+                          ) : (
+                            <>
+                              <span className="font-medium">A true dilemma.</span> Humanity is genuinely split on this one. That&apos;s what makes it worth thinking about.
+                            </>
+                          )}
+                        </p>
+                      )}
+                      <p className="text-xs text-foreground/60 text-center italic">
+                        Your answer reveals something about your values. Neither choice is wrong.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Next button */}
-          {showResults && (
-            <Button
-              onClick={handleNext}
-              variant="primary"
-              className="w-full py-4"
-            >
-              Next Dilemma
-            </Button>
-          )}
+              <div className="flex gap-3">
+                {currentDilemmaIndex > 0 && (
+                  <Button
+                    onClick={() => navigate(currentDilemmaIndex - 1)}
+                    variant="secondary"
+                    className="py-4"
+                  >
+                    Previous
+                  </Button>
+                )}
+                {showResults && (
+                  <Button
+                    onClick={handleNext}
+                    variant="primary"
+                    className="flex-1 py-4"
+                  >
+                    {currentDilemmaIndex === DILEMMAS.length - 1 ? 'Finish' : 'Next Dilemma'}
+                  </Button>
+                )}
+              </div>
 
-          {/* Instructions */}
-          {!hasVoted && (
-            <div className="mt-8 text-center text-sm text-foreground/60">
-              <p>Choose the option that resonates with you. There&apos;s no judgment—just reflection.</p>
-            </div>
+              {/* Instructions */}
+              {!hasVoted && (
+                <div className="mt-8 text-center text-sm text-foreground/60">
+                  <p>Choose the option that resonates with you. There&apos;s no judgment—just reflection.</p>
+                </div>
+              )}
+            </>
           )}
 
           {/* Back Home Button */}

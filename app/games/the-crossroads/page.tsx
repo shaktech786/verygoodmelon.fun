@@ -3,7 +3,7 @@ import HardChoices from '@/components/games/HardChoices'
 import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 
 export const metadata: Metadata = {
-  title: 'Hard Choices - VeryGoodMelon.Fun',
+  title: 'The Dilemma | VeryGoodMelon.Fun',
   description: 'Practice critical thinking through thoughtful life dilemmas. See what others chose and build your decision-making skills.',
 }
 
