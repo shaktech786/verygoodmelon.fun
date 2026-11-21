@@ -9,15 +9,16 @@ import { usePresence } from '@/lib/hooks/usePresence'
 import { useDailyWisdom } from '@/lib/hooks/useDailyWisdom'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
-/**
- * Get today's featured game index (rotates daily, deterministic)
- */
-function getDailyFeaturedIndex(): number {
+// Someone arriving anxious should be pointed at something calming, never at a game about death
+const FEATURABLE_GAMES = SHOWCASE_GAMES.filter((game) => game.category === 'Calm')
+
+/** Today's featured game id (rotates daily, deterministic). */
+function getDailyFeaturedId(): string | undefined {
   const today = new Date()
   const dayOfYear = Math.floor(
     (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24)
   )
-  return dayOfYear % SHOWCASE_GAMES.length
+  return FEATURABLE_GAMES[dayOfYear % FEATURABLE_GAMES.length]?.id
 }
 
 const CATEGORY_ORDER: GameConfig['category'][] = ['Calm', 'Reflect', 'Play']
@@ -45,8 +46,7 @@ export default function Home() {
   const reduceMotion = useReducedMotion()
   const { count: presenceCount, isLoaded: presenceLoaded } = usePresence()
   const { wisdom, isLoaded: wisdomLoaded } = useDailyWisdom()
-  const dailyFeaturedIndex = getDailyFeaturedIndex()
-  const featuredGameId = SHOWCASE_GAMES[dailyFeaturedIndex]?.id
+  const featuredGameId = getDailyFeaturedId()
 
   useEffect(() => {
     queueMicrotask(() => setMounted(true))
