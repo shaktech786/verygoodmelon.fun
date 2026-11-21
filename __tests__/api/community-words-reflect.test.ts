@@ -46,7 +46,7 @@ describe('reflection routes', () => {
 
     const [last, first] = generateContent.mock.calls.map((call) => String(call[0].contents))
     expect(last).not.toEqual(first)
-    expect(first).toMatch(/arriv/i)
+    expect(first).toMatch(/waking back up/i)
   })
 
   it('answers words that sound like someone may be in danger with care, never with improvisation', async () => {
@@ -54,6 +54,29 @@ describe('reflection routes', () => {
 
     expect(body).toEqual({ reflection: CARE_REFLECTION, care: true })
     expect(generateContent).not.toHaveBeenCalled()
+  })
+
+  it('answers with care when the reply itself judges the words to carry risk', async () => {
+    generateContent.mockResolvedValue({ text: JSON.stringify({ risk: true, reply: 'You can rest here now.' }) })
+    const { body } = await reflect(firstWordsReflect, 'Everything feels heavy lately and I am done')
+
+    expect(body).toEqual({ reflection: CARE_REFLECTION, care: true })
+  })
+
+  it('passes on the reply when the judgement finds no risk', async () => {
+    generateContent.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: 'Carry that laugh back into today.' }) })
+    const { body } = await reflect(firstWordsReflect, 'Where did everyone go? I want to tell them a joke.')
+
+    expect(body).toEqual({ reflection: 'Carry that laugh back into today.' })
+  })
+
+  it('asks for a risk judgement and, for the arrival, a reply that turns back toward life', async () => {
+    generateContent.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: 'Welcome back.' }) })
+    await reflect(firstWordsReflect, 'Hello?')
+
+    const prompt = String(generateContent.mock.calls[0][0].contents)
+    expect(prompt).toMatch(/risk/i)
+    expect(prompt).toMatch(/never (?:suggest|say|imply)[^.]*(?:stay|no need to (?:go|return))/i)
   })
 
   it('never passes on a reply that fails the same filter as the shared cloud', async () => {

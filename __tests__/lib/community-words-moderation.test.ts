@@ -100,6 +100,23 @@ describe('soundsLikeDistress', () => {
     }
   })
 
+  it('notices danger said indirectly, as people in crisis often say it', () => {
+    for (const words of [
+      "Finally. I'm so tired. I hope it's over for good this time, I don't want to go back.",
+      "Honestly nobody would even notice if I was gone. I can't keep doing this.",
+      'I wish I had never been born',
+      "I can't go on anymore",
+      'there is no way out for me',
+      'I am tired of living',
+      'everyone would be better off if I disappeared',
+      'nobody would miss me',
+      'I just want it all to be over',
+      'I wish I could sleep and never wake up',
+    ]) {
+      expect(soundsLikeDistress(words)).toBe(true)
+    }
+  })
+
   it('stays quiet for ordinary reflections on death', () => {
     for (const words of [
       'I want to die surrounded by the people I love',

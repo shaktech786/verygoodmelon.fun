@@ -37,6 +37,19 @@ const DISTRESS_PATTERNS = [
   /\bno (?:reason|point) (?:to|in) (?:live|living|go on|going on|being here)\b/,
   /\bself[- ]?harm/,
   /\boverdos/,
+  // People in crisis often say it sideways; a gentle false alarm costs far less than a miss
+  /\b(?:don'?t|do not|never) want to (?:go|come) back\b/,
+  /\bover for good\b/,
+  /\b(?:want|wish|need) (?:it|this|everything)(?: all)? to (?:be )?(?:over|end|stop)\b/,
+  /\bnobody (?:would|will|'?d)(?: even)? (?:notice|care|miss me)\b/,
+  /\bif i (?:was|were) gone\b/,
+  /\bcan(?:'?t|not) (?:keep doing this|go on|do this anymore|take (?:it|this) anymore)\b/,
+  /\b(?:never|not) (?:been |have been )?born\b/,
+  /\bno way out\b/,
+  /\btired of (?:living|life|being alive|everything|it all)\b/,
+  /\bbetter off (?:if i (?:disappeared|was gone|were gone|wasn'?t here)|dead)\b/,
+  /\bnever wake up\b/,
+  /\bdisappear (?:forever|for good)\b/,
 ]
 
 function fold(text: string): string {

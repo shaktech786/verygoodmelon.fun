@@ -177,6 +177,23 @@ export function describeWritingGame(config: WritingGameConfig) {
       await expect(support(page).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
       await expect(page.getByRole('button', { name: config.againLabel })).toBeVisible()
     })
+
+    test('regression: in care mode the suggestions offer calm games, never the games about death', async ({ page }) => {
+      await databaseDown(page, config)
+      await page.route('**/reflect', (route) =>
+        route.fulfill({ json: { reflection: 'Thank you for trusting this page.', care: true } })
+      )
+      await page.goto(`/games/${config.slug}`)
+
+      // Indirect enough that only the reply's own judgement recognises it
+      await write(page, config, 'Everything feels heavy and I am done with all of it.')
+
+      await expect(support(page)).toBeVisible()
+      const related = page.getByRole('region', { name: 'Something gentle, if it helps' })
+      await expect(related).toBeVisible()
+      await expect(related.locator('a[href="/games/the-still-point"]')).toBeVisible()
+      await expect(related.locator('a[href="/games/first-breath"], a[href="/games/final-breath"]')).toHaveCount(0)
+    })
   })
 
   test.describe('database reachable', () => {

@@ -27,6 +27,28 @@ function pick(options: readonly string[]): string {
   return options[Math.floor(Math.random() * options.length)]
 }
 
+// Phrase matching misses danger said sideways, so every reply also carries the model's own judgement.
+const RISK_INSTRUCTION = `Before writing, judge whether their words suggest they may be at risk of harming themselves or no longer wanting to live, including indirect signs such as being tired of everything, wanting it all to be over, not wanting to go back, or feeling nobody would notice if they were gone.
+
+Return only JSON, with no other text: {"risk": true or false, "reply": "your two sentences"}`
+
+interface JudgedReply {
+  risk: boolean
+  reply: string
+}
+
+function parseJudgedReply(text: string): JudgedReply {
+  const trimmed = text.trim().replace(/^```(?:json)?\s*|\s*```$/g, '')
+  try {
+    const parsed: unknown = JSON.parse(trimmed)
+    if (parsed && typeof parsed === 'object') {
+      const { risk, reply } = parsed as Record<string, unknown>
+      return { risk: risk === true, reply: typeof reply === 'string' ? reply : '' }
+    }
+  } catch {}
+  return { risk: false, reply: text }
+}
+
 /** A reflection is only passed on if it would be fit for the shared cloud and never gives itself away. */
 function usable(text: string): string | null {
   const reflection = text.trim().replace(/^["“]+|["”]+$/g, '').trim()
@@ -54,10 +76,14 @@ export function createReflectHandler(voice: ReflectionVoice) {
     try {
       const result = await getGemini().models.generateContent({
         model: GEMINI_MODEL,
-        contents: voice.prompt(words),
-        config: { temperature: 0.8, topP: 0.9, maxOutputTokens: 120, ...MINIMAL_THINKING },
+        contents: `${voice.prompt(words)}\n\n${RISK_INSTRUCTION}`,
+        config: { temperature: 0.8, topP: 0.9, maxOutputTokens: 200, ...MINIMAL_THINKING },
       })
-      const reflection = usable(result.text ?? '')
+      const judged = parseJudgedReply(result.text ?? '')
+      if (judged.risk) {
+        return NextResponse.json({ reflection: CARE_REFLECTION, care: true })
+      }
+      const reflection = usable(judged.reply)
       if (reflection) return NextResponse.json({ reflection })
     } catch (error) {
       console.error(`${voice.logLabel} reflect error:`, error)

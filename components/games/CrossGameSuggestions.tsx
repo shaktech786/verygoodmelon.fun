@@ -1,4 +1,7 @@
+'use client'
+
 import { ALL_GAMES, type GameConfig } from '@/lib/games/config'
+import { useCareMode } from '@/components/games/CareMode'
 import { GameCardShowcase } from '@/components/games/GameCardShowcase'
 
 /** Thematic neighbours: every game suggests two others and is suggested by at least one. */
@@ -19,12 +22,16 @@ const RELATED_GAMES: Record<string, [string, string]> = {
   'hard-talk': ['breathing-patterns', 'worry-capsule'],
 }
 
+// After words that suggest someone may be in danger, never point them toward games about death
+const CARE_GAMES: [string, string] = ['breathing-patterns', 'calm-garden']
+
 interface CrossGameSuggestionsProps {
   currentGameId: string
 }
 
 export function CrossGameSuggestions({ currentGameId }: CrossGameSuggestionsProps) {
-  const suggestions = (RELATED_GAMES[currentGameId] ?? [])
+  const { care } = useCareMode()
+  const suggestions = (care ? CARE_GAMES : RELATED_GAMES[currentGameId] ?? [])
     .map((id) => ALL_GAMES.find((game) => game.id === id))
     .filter((game): game is GameConfig => game !== undefined)
 
@@ -35,7 +42,7 @@ export function CrossGameSuggestions({ currentGameId }: CrossGameSuggestionsProp
   return (
     <section aria-labelledby="related-games-heading" className="mt-12 pt-8 border-t border-card-border">
       <h2 id="related-games-heading" className="text-sm font-semibold uppercase tracking-wider text-foreground mb-4">
-        Continue your journey
+        {care ? 'Something gentle, if it helps' : 'Continue your journey'}
       </h2>
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {suggestions.map((game) => (

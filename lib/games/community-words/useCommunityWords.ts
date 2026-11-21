@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useCareMode } from '@/components/games/CareMode'
 import type { WordFrequency } from '@/lib/games/wordFrequency'
 import { MAX_SUBMISSION_LENGTH, soundsLikeDistress } from './moderation'
 
@@ -27,6 +28,7 @@ export function useCommunityWords(game: CommunityWordsGame) {
   const [cloud, setCloud] = useState<CloudState>({ status: 'hidden' })
   const [reflection, setReflection] = useState<Reflection>({ text: '', pending: false })
   const [care, setCare] = useState(false)
+  const { enterCareMode } = useCareMode()
   const session = useRef(0)
   // A double click lands before the first click's render, so state alone cannot guard it
   const hasSubmitted = useRef(false)
@@ -64,7 +66,10 @@ export function useCommunityWords(game: CommunityWordsGame) {
       })
       const data: { reflection?: string; care?: boolean } = response.ok ? await response.json() : {}
       if (!isCurrent(id)) return
-      if (data.care) setCare(true)
+      if (data.care) {
+        setCare(true)
+        enterCareMode()
+      }
       setReflection({ text: data.reflection ?? '', pending: false })
     } catch {
       if (isCurrent(id)) setReflection({ text: '', pending: false })
@@ -77,7 +82,9 @@ export function useCommunityWords(game: CommunityWordsGame) {
     hasSubmitted.current = true
     const id = ++session.current
     setSubmitted(words)
-    setCare(soundsLikeDistress(words))
+    const distressed = soundsLikeDistress(words)
+    setCare(distressed)
+    if (distressed) enterCareMode()
     void share(words, id)
     void reflect(words, id)
   }
