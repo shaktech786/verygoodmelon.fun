@@ -126,7 +126,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     slug: 'thought-pockets', // Direct: evokes the deckbuilder mechanic
     title: 'The Philosopher',
     description: 'Build arguments, defeat cognitive biases',
-    hook: 'Collect thought cards and battle logical fallacies',
+    hook: 'Out-think cognitive biases, one argument at a time',
     cardImage: '/games/thought-pockets/card.svg',
     cardAlt: 'The Philosopher - Thought Pockets Joker Card',
     category: 'Play',

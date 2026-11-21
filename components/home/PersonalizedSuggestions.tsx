@@ -1,25 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { ALL_GAMES, type GameConfig } from '@/lib/games/config'
 import { useGameHistory } from '@/lib/stores/game-history'
-
-/** Emoji hints per game for compact display */
-const GAME_EMOJI: Record<string, string> = {
-  'last-words': '🕯️',
-  'first-words': '✨',
-  'timeless-minds': '🦉',
-  'hard-choices': '⚖️',
-  'the-unrusher': '🌿',
-  'hope-daily': '🌅',
-  'idea-lab': '🔮',
-  'thought-pockets': '🃏',
-  'breathing-patterns': '🫁',
-  'calm-garden': '🌱',
-  'cascade': '🎮',
-  'mind-debate': '🎭',
-}
 
 function GameLink({ game }: { game: GameConfig }) {
   return (
@@ -31,13 +16,18 @@ function GameLink({ game }: { game: GameConfig }) {
         bg-card-bg border border-card-border
         hover:border-foreground/20 hover:bg-card-bg/80
         transition-colors duration-75
-        focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2
       "
-      aria-label={`Play ${game.title}: ${game.description}`}
+      aria-label={`Play ${game.title}: ${game.hook}`}
     >
-      <span className="text-base flex-shrink-0" aria-hidden="true">
-        {GAME_EMOJI[game.id] ?? '🎮'}
-      </span>
+      <Image
+        src={game.cardImage}
+        alt=""
+        width={16}
+        height={24}
+        className="flex-shrink-0 rounded-sm"
+        aria-hidden="true"
+      />
       <span className="text-sm text-foreground group-hover:text-foreground/90">
         {game.title}
       </span>
@@ -51,25 +41,18 @@ function GameLink({ game }: { game: GameConfig }) {
  * Renders nothing for brand-new users.
  */
 export function PersonalizedSuggestions() {
-  const [visible, setVisible] = useState(false)
-  const [hydrated] = useState(() => typeof window !== 'undefined')
+  // Play history lives in this browser only, so nothing renders until after hydration.
+  const [mounted, setMounted] = useState(false)
 
   const visits = useGameHistory((s) => s.visits)
   const getMostPlayed = useGameHistory((s) => s.getMostPlayed)
   const getNeverPlayed = useGameHistory((s) => s.getNeverPlayed)
 
-  // Delayed fade-in, respecting reduced motion
   useEffect(() => {
-    if (!hydrated) return
+    queueMicrotask(() => setMounted(true))
+  }, [])
 
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const delay = prefersReducedMotion ? 0 : 1000
-
-    const timer = setTimeout(() => setVisible(true), delay)
-    return () => clearTimeout(timer)
-  }, [hydrated])
-
-  if (!hydrated) return null
+  if (!mounted) return null
 
   // Unique games visited
   const visitedGameIds = new Set(visits.map((v) => v.gameId))
@@ -132,11 +115,8 @@ export function PersonalizedSuggestions() {
     <section
       aria-label="Personalized game suggestions"
       className={`
-        w-full max-w-md mx-auto mt-10 sm:mt-14 px-4
-        transition-opacity duration-700 ease-out
-        ${visible ? 'opacity-100' : 'opacity-0'}
+        w-full max-w-md mx-auto mt-10 sm:mt-14 px-4 animate-fade
       `}
-      style={{ transitionProperty: 'opacity' }}
     >
       <p className="text-xs text-primary-light text-center mb-3">
         {heading}
