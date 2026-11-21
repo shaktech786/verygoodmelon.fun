@@ -14,17 +14,20 @@ import {
   migrateRun,
   newRun,
   pickCard,
+  RUN_VERSION,
   restAmount,
+  restHeal,
   skipCards,
   startRestRemoval,
+  startRestUpgrade,
 } from '@/lib/games/thought-pockets/engine/run'
 import { CARD_PRICES, FIGHT_GOLD, START_GOLD, TEA_HEAL, shopPrice } from '@/lib/games/thought-pockets/engine/economy'
-import { endTurn, playCard } from '@/lib/games/thought-pockets/engine/battle'
+import { endTurn, enemyRuleText, enemyRules, playCard, undoPlay } from '@/lib/games/thought-pockets/engine/battle'
 import { EVENTS } from '@/lib/games/thought-pockets/data/events'
-import { RIGOR_LEVELS, RIGOROUS_HEALTH } from '@/lib/games/thought-pockets/data/pace'
-import { TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { MAX_RIGOR, RIGOR_LEVELS, RIGOROUS_HEALTH } from '@/lib/games/thought-pockets/data/pace'
+import { ENEMIES, TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { canUpgrade } from '@/lib/games/thought-pockets/data/cards'
-import { MapNode, RunState } from '@/types/thought-pockets'
+import { BattleState, MapNode, RunState } from '@/types/thought-pockets'
 
 function withPosition(run: RunState, nodeId: string): RunState {
   const node = run.map.find((n) => n.id === nodeId) as MapNode
@@ -118,8 +121,9 @@ describe('rest offers a third choice', () => {
 })
 
 describe('the Rigorous ladder', () => {
-  it('has five levels, each adding exactly one constraint', () => {
-    expect(RIGOR_LEVELS.map((l) => l.level)).toEqual([1, 2, 3, 4, 5])
+  it('has seven levels, each adding exactly one constraint', () => {
+    expect(RIGOR_LEVELS.map((l) => l.level)).toEqual([1, 2, 3, 4, 5, 6, 7])
+    expect(MAX_RIGOR).toBe(7)
     const fight = (level: number, tier: 'battle' | 'boss' = 'battle') => {
       const run = newRun('empiricist', 9, 'rigorous', [], level)
       return tier === 'battle' ? chooseNode(run, availableNodes(run)[0].id).battle : enterFirst(run, 'boss').battle
@@ -141,6 +145,41 @@ describe('the Rigorous ladder', () => {
     expect(newRun('empiricist', 9).reconsiders).toBe(1)
     expect(newRun('empiricist', 9, 'rigorous').rigor).toBe(3)
   })
+
+  it('level 6: every stubborn bias plays by a second rule, shown with its first', () => {
+    for (const elite of ENEMIES.filter((e) => e.tier === 'elite')) {
+      const fight = (level: number) => {
+        const run = newRun('empiricist', 9, 'rigorous', [], level)
+        const node = { ...(run.map.find((n) => n.type === 'elite') as MapNode), enemyId: elite.id }
+        const map = run.map.map((n) => (n.id === node.id ? node : n))
+        return enterFirst({ ...run, map }, 'elite').battle as BattleState
+      }
+      const second = elite.secondRule
+      expect(second, elite.id).toBeDefined()
+      expect(enemyRules(fight(5))).toEqual([elite.rule])
+      expect(enemyRules(fight(6))).toEqual([elite.rule, second?.rule])
+      expect(enemyRuleText(fight(6))).toContain(second?.ruleText)
+      expect(enemyRuleText(fight(5))).not.toContain(second?.ruleText)
+    }
+  })
+
+  it('level 6: Confirmation Bias also grows each time it acts', () => {
+    const run = newRun('empiricist', 9, 'rigorous', [], 6)
+    const elite = enterFirst(run, 'elite').battle as BattleState
+    expect(elite.enemy.id).toBe('confirmation_bias')
+    const after = endTurn({ ...elite, hand: [], focus: 0 })
+    expect(after.enemy.strength).toBeGreaterThan(elite.enemy.strength)
+  })
+
+  it('level 7: rests no longer restore Resolve, but you can still study or let go', () => {
+    const rest = (level: number) => ({ ...newRun('empiricist', 9, 'rigorous', [], level), screen: 'rest' as const, resolve: 20 })
+    expect(restAmount(rest(6))).toBeGreaterThan(0)
+    expect(restAmount(rest(7))).toBe(0)
+    const tired = rest(7)
+    expect(restHeal(tired)).toBe(tired)
+    expect(startRestUpgrade(rest(7)).pick).toBe('upgrade')
+    expect(startRestRemoval(rest(7)).pick).toBe('remove')
+  })
 })
 
 describe('the run remembers its best argument', () => {
@@ -156,11 +195,34 @@ describe('the run remembers its best argument', () => {
   })
 })
 
-describe('saved runs from the previous version keep loading', () => {
+describe('saved runs from earlier versions keep loading', () => {
+  it('a version 4 save, mid-battle with a played card and a last round, is migrated and plays on', () => {
+    const saved = JSON.parse(readFileSync(path.join(__dirname, 'fixtures/run-v4.json'), 'utf8'))
+    expect(saved.version).toBe(4)
+    const run = migrateRun(saved.state.run, saved.version) as RunState
+    expect(run.version).toBe(RUN_VERSION)
+    expect(run.rigor).toBe(saved.state.run.rigor)
+    expect(run.battle?.hand).toEqual(saved.state.run.battle.hand)
+    expect(run.battle?.played).toEqual(saved.state.run.battle.played)
+    expect(run.battle?.evidencePlayed).toBe(0)
+    expect(run.battle?.lastingRestore).toBe(0)
+    expect(run.battle?.unsettleLasts).toBe(false)
+    expect(run.battle?.enemy.secondRule).toBe(false)
+    expect(run.battle?.lastRound).toBeNull()
+    expect(run.battle?.undo).toHaveLength(1)
+    const undone = battleAction(run, undoPlay)
+    expect(undone.battle?.played).toHaveLength(0)
+    expect(undone.battle?.evidencePlayed).toBe(0)
+    let next = battleAction(run, endTurn)
+    expect(next.battle?.lastRound?.steps.every((s) => s.times >= 1)).toBe(true)
+    for (let i = 0; i < 30 && next.screen === 'battle'; i++) next = battleAction(next, endTurn)
+    expect(['reward', 'defeat']).toContain(next.screen)
+  })
+
   it('a version 3 save, mid-battle in Rigorous, is migrated and plays on', () => {
     const saved = JSON.parse(readFileSync(path.join(__dirname, 'fixtures/run-v3.json'), 'utf8'))
     const run = migrateRun(saved.state.run, saved.version) as RunState
-    expect(run.version).toBe(4)
+    expect(run.version).toBe(RUN_VERSION)
     expect(run.rigor).toBe(3)
     expect(run.stats.best).toBe(0)
     expect(run.battle?.enemy.phase).toBe(1)

@@ -277,8 +277,8 @@ export function RestScreen({ run }: { run: RunState }) {
       </h2>
       <p className="mt-1 text-sm">Choose one.</p>
       <div className="mt-4 flex flex-wrap gap-3">
-        <button type="button" className={primaryButton} onClick={() => act(restHeal)} data-testid="rest-heal">
-          Rest: restore {Math.min(heal, run.maxResolve - run.resolve)} Resolve
+        <button type="button" className={primaryButton} onClick={() => act(restHeal)} disabled={heal === 0} data-testid="rest-heal">
+          {heal === 0 ? `Rest: no Resolve back at Rigorous ${run.rigor}` : `Rest: restore ${Math.min(heal, run.maxResolve - run.resolve)} Resolve`}
         </button>
         <button type="button" className={quietButton} onClick={() => act(startRestUpgrade)} disabled={!run.deck.some(canUpgrade)} data-testid="rest-upgrade">
           Study: improve one card

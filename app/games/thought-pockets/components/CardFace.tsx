@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import { CardDef, CardType } from '@/types/thought-pockets'
 import { TYPE_LABELS, describeCard, summarizeCard } from '@/lib/games/thought-pockets/data/cards'
+import { getSchoolDef } from '@/lib/games/thought-pockets/data/schools'
 import { KEYWORDS, Keyword } from '@/lib/games/thought-pockets/data/keywords'
 import { TypeGlyph } from './Glyphs'
 
@@ -44,6 +45,7 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
   const hand = size === 'hand'
   const color = TYPE_COLORS[card.type]
   const unplayable = card.type === 'doubt'
+  const school = card.school ? getSchoolDef(card.school).name : null
 
   const clearTimer = () => {
     if (timer.current !== null) window.clearTimeout(timer.current)
@@ -80,7 +82,7 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
       aria-disabled={disabled || undefined}
       aria-label={
         label ??
-        `${card.name}. ${TYPE_LABELS[card.type]}${unplayable ? '' : `, costs ${card.cost} Focus${freeNote ? `, ${freeNote.toLowerCase()}` : ''}`}. ${lines.join(' ')}`
+        `${card.name}. ${TYPE_LABELS[card.type]}${school ? `, ${school} card` : ''}${card.rarity === 'rare' ? ', rare' : ''}${unplayable ? '' : `, costs ${card.cost} Focus${freeNote ? `, ${freeNote.toLowerCase()}` : ''}`}. ${lines.join(' ')}`
       }
       className={`relative flex flex-col overflow-hidden rounded-md border-2 bg-[var(--tp-paper)] text-left text-[var(--tp-paper-ink)] shadow-[3px_3px_0_0_var(--tp-shadow)] motion-safe:transition-transform motion-safe:duration-75 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] ${
         hand
@@ -110,6 +112,11 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
       <span className={`hyphens-auto px-1.5 pt-1 font-serif font-semibold leading-tight sm:px-2 sm:text-[0.95rem] ${hand ? 'text-[0.82rem]' : 'text-[0.9rem]'}`} lang="en">
         {card.name}
       </span>
+      {!hand && (school || card.rarity === 'rare') && (
+        <span className="px-1.5 text-[0.66rem] font-semibold uppercase tracking-wide text-[var(--tp-paper-muted)] sm:px-2" aria-hidden="true" data-testid="card-school">
+          {[school, card.rarity === 'rare' ? 'Rare' : null].filter(Boolean).join(' · ')}
+        </span>
+      )}
       {freeNote && (
         <span className="mx-1.5 mt-1 self-start rounded-sm bg-[var(--tp-accent)] px-1 text-[0.66rem] font-semibold text-[var(--tp-on-accent)] sm:mx-2" aria-hidden="true">
           {freeNote}

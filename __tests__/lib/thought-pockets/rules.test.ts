@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { COMPOSURE_GUARD, currentMove, endTurn, playCard, previewArgument } from '@/lib/games/thought-pockets/engine/battle'
-import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { MEANING_ANSWER, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { CARDS, describeCard, getCardDef, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { KEYWORDS } from '@/lib/games/thought-pockets/data/keywords'
 import { BattleState, CardEffects } from '@/types/thought-pockets'
@@ -100,6 +100,17 @@ describe('every text matches what happens', () => {
       ['exhaust', /^Once\.$/],
       ['lastingMultiplier', /^For the rest of this fight, every argument gets \+[\d.]+ Multiplier\.$/],
       ['nextTurnFocus', /^Next turn, gain \d+ Focus\.$/],
+      ['weightPerEarlierEvidence', /^\+\d+ Weight for each Evidence you played earlier in this fight\.$/],
+      ['conclusionBonus', /^While this is in your argument, your Conclusion counts (one more time|\d+ more times)\.$/],
+      ['guardPerEvidence', /^\+\d+ Guard for each Evidence in this argument\.$/],
+      ['weightPerGuard', /^\+1 Weight for (every \d+|each) Guard your cards give in this argument\.$/],
+      ['lastingRestore', /^For the rest of this fight, restore \d+ Resolve after each round in which you lose none\.$/],
+      ['multiplierPerEarlierCard', /^\+[\d.]+ Multiplier for each card played before it in this argument\.$/],
+      ['multiplierPerDoubtInHand', /^\+[\d.]+ Multiplier for each Doubt in your hand\.$/],
+      ['unsettleLasts', /^For the rest of this fight, the enemy’s Unsettle no longer halves\.$/],
+      ['weightPerUnsettle', /^\+\d+ Weight for each Unsettle on the enemy, this argument’s included\.$/],
+      ['weightPerMissingResolve', /^\+1 Weight for every \d+ Resolve you are missing\.$/],
+      ['guardPerDoubtInHand', /^\+\d+ Guard for each Doubt in your hand\.$/],
     ]
     for (const def of CARDS.flatMap((c) => [resolveCard({ cardId: c.id, upgraded: false }), resolveCard({ cardId: c.id, upgraded: true })])) {
       const lines = describeCard(def)
@@ -173,7 +184,50 @@ describe('bosses change at half Resolve, after the round they were in', () => {
     const asks = currentMove(phased).asks ?? []
     expect(asks).toEqual(['evidence', 'logic'])
     expect(previewArgument(playCard(phased, 100)).raw).toBe(8)
-    expect(previewArgument(playAll(phased, [100, 101])).raw).toBe(16)
+    expect(previewArgument(playAll(phased, [100, 101])).raw).toBe(8 + MEANING_ANSWER)
+  })
+})
+
+describe('a philosophical problem cannot be argued past half Resolve in one round', () => {
+  const half = (enemyId: string) => Math.floor(getEnemyDef(enemyId).health / 2)
+
+  it('an argument that would carry it past half stops there, says so, and the problem changes', () => {
+    const start = battleWith({ enemyId: 'meaning_of_life', hand: ['smoking_gun'], school: 'skeptic' })
+    const battle = playCard({ ...start, focus: 3, enemy: { ...start.enemy, health: half('meaning_of_life') + 10 } }, 100)
+    const preview = previewArgument(battle)
+    expect(preview.raw).toBeGreaterThan(10)
+    expect(preview.damage).toBe(10)
+    expect(preview.modifiers.some((m) => m.includes('half'))).toBe(true)
+    const after = endTurn(battle)
+    expect(after.enemy.health).toBe(half('meaning_of_life'))
+    expect(after.enemy.phase).toBe(2)
+  })
+
+  it('Unsettle stops at half too, and in its second phase nothing is held back', () => {
+    const start = battleWith({ enemyId: 'problem_of_induction', hand: [] })
+    const unsettled = { ...start, focus: 0, enemy: { ...start.enemy, health: half('problem_of_induction') + 3, unsettle: 12 } }
+    expect(previewArgument(unsettled).unsettleTick).toBe(3)
+    const landed = playCard({ ...battleWith({ enemyId: 'meaning_of_life', hand: ['smoking_gun'], school: 'skeptic' }), focus: 3 }, 100)
+    const atEdge = { ...landed, enemy: { ...landed.enemy, health: half('meaning_of_life') + 5, unsettle: 40 } }
+    expect(previewArgument(atEdge).unsettleTick).toBe(0)
+    expect(endTurn(atEdge).enemy.health).toBe(half('meaning_of_life'))
+    const phased = playCard({ ...battleWith({ enemyId: 'meaning_of_life', hand: ['smoking_gun'], school: 'skeptic' }), focus: 3 }, 100)
+    const second = { ...phased, enemy: { ...phased.enemy, phase: 2 as const, health: 30 } }
+    expect(previewArgument(second).damage).toBe(previewArgument(second).raw)
+  })
+
+  it('the review’s combo (Rationalist, Ockham’s Razor, Syllogism+ then Observation+) needs at least four rounds for The Meaning of Life', () => {
+    const start = battleWith({ enemyId: 'meaning_of_life', school: 'rationalist', relics: ['ockhams_razor'], resolve: 999 })
+    const combo = [card('syllogism', 300, true), card('observation', 301, true)]
+    let battle: BattleState = start
+    let rounds = 0
+    while (battle.outcome === 'ongoing' && rounds < 12) {
+      const turn = { ...battle, hand: combo, focus: 3 }
+      battle = endTurn(playAll(turn, [300, 301]))
+      rounds++
+    }
+    expect(battle.outcome).toBe('won')
+    expect(rounds).toBeGreaterThanOrEqual(4)
   })
 })
 

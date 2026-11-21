@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   COMPOSURE_GUARD,
+  DOUBT_WEIGHT,
   MAX_TURNS,
+  OCKHAM_MULTIPLIER,
   SORITES_CAP,
+  WORRY_STONE_GUARD,
   canPlay,
   endTurn,
   incomingDamage,
@@ -11,7 +14,9 @@ import {
   undoPlay,
 } from '@/lib/games/thought-pockets/engine/battle'
 import { BattleState } from '@/types/thought-pockets'
-import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { MEANING_ANSWER, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
+import { getSchoolDef } from '@/lib/games/thought-pockets/data/schools'
 import { battleWith, card, deepFreeze } from './helpers'
 
 const START = getEnemyDef('jumping_to_conclusions').health
@@ -235,9 +240,11 @@ describe('school passives', () => {
     expect(previewArgument(battle).unsettle).toBe(3)
   })
 
-  it('Absurdist: each Doubt in hand adds 3 Weight', () => {
+  it(`Absurdist: each Doubt in hand adds ${DOUBT_WEIGHT} Weight, as the passive says`, () => {
+    expect(DOUBT_WEIGHT).toBe(4)
+    expect(getSchoolDef('absurdist').passive).toContain(`adds ${DOUBT_WEIGHT} Weight`)
     const battle = playCard(battleWith({ hand: ['observation', 'doubt', 'doubt'], school: 'absurdist' }), 100)
-    expect(previewArgument(battle).weight).toBe(8 + 6)
+    expect(previewArgument(battle).weight).toBe(8 + 2 * DOUBT_WEIGHT)
   })
 })
 
@@ -331,19 +338,19 @@ describe('enemy rules are real', () => {
     expect(previewArgument(full).healedBack).toBe(0)
   })
 
-  it('The Meaning of Life doubles an argument that answers its question', () => {
+  it(`The Meaning of Life gives an argument that answers its question +${MEANING_ANSWER} damage, so small arguments gain the most`, () => {
     const answered = playCard(battleWith({ enemyId: 'meaning_of_life', hand: ['observation'], school: 'skeptic' }), 100)
-    expect(previewArgument(answered).damage).toBe(16)
+    expect(previewArgument(answered).damage).toBe(8 + MEANING_ANSWER)
     const unanswered = playCard(battleWith({ enemyId: 'meaning_of_life', hand: ['therefore'], school: 'skeptic' }), 100)
     expect(previewArgument(unanswered).damage).toBe(0)
-    expect(previewArgument(unanswered).modifiers).toContain('Not answered: include an Evidence card to double')
+    expect(previewArgument(unanswered).modifiers).toContain(`Not answered: include an Evidence card for +${MEANING_ANSWER}`)
   })
 })
 
 describe('relics bend the rules', () => {
-  it("Ockham's Razor: exactly 2 cards gets +1 Multiplier", () => {
+  it(`Ockham's Razor: exactly 2 cards gets +${OCKHAM_MULTIPLIER} Multiplier`, () => {
     const battle = playAll(battleWith({ hand: ['observation', 'observation'], relics: ['ockhams_razor'], school: 'skeptic' }), [100, 101])
-    expect(previewArgument(battle).multiplier).toBe(2)
+    expect(previewArgument(battle).multiplier).toBe(1 + OCKHAM_MULTIPLIER)
   })
 
   it('Footnotes: 4+ cards makes the Conclusion count three times', () => {
@@ -354,15 +361,30 @@ describe('relics bend the rules', () => {
     expect(previewArgument(battle).weight).toBe(6 + 12)
   })
 
-  it('Worry Stone: unspent Focus gives 3 more Guard each', () => {
-    const battle = battleWith({ hand: [], relics: ['worry_stone'] })
-    expect(previewArgument(battle).guard).toBe(3 * (COMPOSURE_GUARD + 3))
+  it(`Worry Stone: leaving any Focus unspent gives ${WORRY_STONE_GUARD} more Guard once, not per Focus (regression: 15 Guard for playing nothing)`, () => {
+    const held = previewArgument(battleWith({ hand: [], relics: ['worry_stone'] }))
+    expect(held.guard).toBe(3 * COMPOSURE_GUARD + WORRY_STONE_GUARD)
+    expect(held.guard).toBeLessThanOrEqual(10)
+    const one = previewArgument(playAll(battleWith({ hand: ['observation', 'observation'], relics: ['worry_stone'], school: 'skeptic' }), [100, 101]))
+    expect(one.guard).toBe(COMPOSURE_GUARD + WORRY_STONE_GUARD)
+    const none = previewArgument(playAll({ ...battleWith({ hand: ['observation', 'observation', 'observation'], relics: ['worry_stone'], school: 'skeptic' }) }, [100, 101, 102]))
+    expect(none.guard).toBe(0)
   })
 
   it('Lantern: the first argument pierces', () => {
     const start = battleWith({ hand: ['observation'], relics: ['lantern'], school: 'skeptic' })
     const battle = playCard({ ...start, enemy: { ...start.enemy, guard: 5 } }, 100)
     expect(previewArgument(battle).damage).toBe(8)
+  })
+
+  it('Lantern is used up only by an argument with Weight, as its text says (regression: holding a turn spent it)', () => {
+    expect(getRelicDef('lantern').text).toMatch(/first argument with any Weight/)
+    const held = endTurn(battleWith({ hand: [], relics: ['lantern'] }))
+    const next = playCard({ ...held, hand: [card('observation', 400)], enemy: { ...held.enemy, guard: 5 } }, 400)
+    expect(previewArgument(next).pierce).toBe(true)
+    const argued = endTurn(next)
+    const after = playCard({ ...argued, hand: [card('observation', 401)], enemy: { ...argued.enemy, guard: 5 } }, 401)
+    expect(previewArgument(after).pierce).toBe(false)
   })
 
   it('Stoic Pebble caps one enemy action at 12', () => {

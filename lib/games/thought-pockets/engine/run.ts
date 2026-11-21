@@ -55,7 +55,7 @@ import {
 import { generateFloor } from './map'
 import { pick, roll, rollInt, seedRng, shuffle } from './rng'
 
-export const RUN_VERSION = 4
+export const RUN_VERSION = 5
 export const START_RESOLVE = 60
 export const FLOORS = 3
 const DEFAULT_RIGOR = RIGOR.harder
@@ -140,7 +140,7 @@ function rollRarity(rng: number, source: RewardState['source'] | 'shop'): { rari
   return { rarity, rng: r.rng }
 }
 
-/** The first offer leans toward your school so a build can form; the rest come from everything. */
+/** On the first floor the first offer leans toward your school so a build can start; after that every offer comes from everything. */
 function rollCards(run: RunState, count: number, source: RewardState['source'] | 'shop'): { cards: string[]; rng: number } {
   let state = run.rng
   const cards: string[] = []
@@ -149,7 +149,7 @@ function rollCards(run: RunState, count: number, source: RewardState['source'] |
     state = rarity.rng
     let pool = cardPool(run, rarity.rarity).filter((c) => !cards.includes(c.id))
     const ownSchool = pool.filter((c) => c.school === run.school)
-    if (i === 0 && ownSchool.length > 0) pool = ownSchool
+    if (i === 0 && run.floor === 1 && ownSchool.length > 0) pool = ownSchool
     if (pool.length === 0) pool = CARDS.filter((c) => c.rarity === 'common' && !cards.includes(c.id))
     const choice = pick(pool, state)
     state = choice.rng
@@ -379,12 +379,13 @@ export function leaveReward(run: RunState): RunState {
 }
 
 export function restAmount(run: RunState): number {
+  if (run.rigor >= RIGOR.noRestHeal) return 0
   const percent = run.rigor >= RIGOR.noMercy ? REST_HEAL_PERCENT.rigorous : REST_HEAL_PERCENT.gentle
   return Math.floor((run.maxResolve * percent) / 100)
 }
 
 export function restHeal(run: RunState): RunState {
-  if (run.screen !== 'rest' || run.pick) return run
+  if (run.screen !== 'rest' || run.pick || restAmount(run) === 0) return run
   const heal = restAmount(run)
   return { ...run, resolve: Math.min(run.maxResolve, run.resolve + heal), screen: 'map' }
 }
@@ -592,40 +593,57 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-/** Fills what version 4 added to a battle saved by version 3; its last-round summary is dropped because it lacks the new fields. */
-function migrateBattle(battle: Record<string, unknown>): Record<string, unknown> {
-  const core = (value: unknown) => {
-    const saved = value as Record<string, unknown>
-    const enemy = saved.enemy as Record<string, unknown>
-    return {
-      ...saved,
-      exhausted: [],
-      lastingMultiplier: 0,
-      lastRound: null,
-      enemy: { ...enemy, phase: 1, gambleHit: false, misses: 0 },
-    }
+type Saved = Record<string, unknown>
+
+/** Applies `change` to a saved battle and to every undo step inside it. */
+function eachCore(battle: Saved, change: (core: Saved) => Saved): Saved {
+  return { ...change(battle), undo: Array.isArray(battle.undo) ? battle.undo.map((core) => change(core as Saved)) : [] }
+}
+
+/** Version 4 added Once, lasting Multipliers and boss phases; the last-round summary is dropped because it lacks the new fields. */
+function fromVersion3(saved: Saved): Saved {
+  const stats = isRecord(saved.stats) ? saved.stats : {}
+  const event = isRecord(saved.event) ? saved.event : null
+  const battle = isRecord(saved.battle)
+    ? eachCore(saved.battle, (core) => ({
+        ...core,
+        exhausted: [],
+        lastingMultiplier: 0,
+        lastRound: null,
+        enemy: { ...(core.enemy as Saved), phase: 1, gambleHit: false, misses: 0 },
+      }))
+    : null
+  return {
+    ...saved,
+    rigor: saved.mode === 'rigorous' ? DEFAULT_RIGOR : 0,
+    eventsSeen: event ? [event.eventId] : [],
+    stats: { turns: 0, fights: 0, nodes: 0, ...stats, best: 0 },
+    shop: isRecord(saved.shop) ? { ...saved.shop, teaPrice: TEA_PRICE, teaTaken: false } : null,
+    battle,
+    reward: isRecord(saved.reward) ? { ...saved.reward, finalRound: null } : null,
   }
-  return { ...core(battle), undo: Array.isArray(battle.undo) ? battle.undo.map(core) : [] }
+}
+
+/** Version 5 added the build-around rares' lasting effects and second rules; round summaries are dropped because their steps lack a count. */
+function fromVersion4(saved: Saved): Saved {
+  const battle = isRecord(saved.battle)
+    ? eachCore(saved.battle, (core) => ({
+        ...core,
+        evidencePlayed: 0,
+        lastingRestore: 0,
+        unsettleLasts: false,
+        lastRound: null,
+        enemy: { ...(core.enemy as Saved), secondRule: false },
+      }))
+    : null
+  return { ...saved, battle, reward: isRecord(saved.reward) ? { ...saved.reward, finalRound: null } : null }
 }
 
 /** Loads a saved run from any earlier version this game shipped, or returns null if it cannot be read. */
 export function migrateRun(saved: unknown, version: number): RunState | null {
   if (!isRecord(saved)) return null
   if (version === RUN_VERSION) return saved as unknown as RunState
-  if (version !== 3) return null
-  const stats = isRecord(saved.stats) ? saved.stats : {}
-  const shop = isRecord(saved.shop) ? { ...saved.shop, teaPrice: TEA_PRICE, teaTaken: false } : null
-  const battle = isRecord(saved.battle) ? migrateBattle(saved.battle) : null
-  const event = isRecord(saved.event) ? saved.event : null
-  const reward = isRecord(saved.reward) ? { ...saved.reward, finalRound: null } : null
-  return {
-    ...saved,
-    version: RUN_VERSION,
-    rigor: saved.mode === 'rigorous' ? DEFAULT_RIGOR : 0,
-    eventsSeen: event ? [event.eventId] : [],
-    stats: { turns: 0, fights: 0, nodes: 0, ...stats, best: 0 },
-    shop,
-    battle,
-    reward,
-  } as unknown as RunState
+  if (version !== 3 && version !== 4) return null
+  const v4 = version === 3 ? fromVersion3(saved) : saved
+  return { ...fromVersion4(v4), version: RUN_VERSION } as unknown as RunState
 }

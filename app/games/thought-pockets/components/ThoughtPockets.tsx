@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { CardInstance, RunState } from '@/types/thought-pockets'
+import { CardInstance, RunState, School } from '@/types/thought-pockets'
 import { TYPE_LABELS, describeCard, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
 import { getSchoolDef } from '@/lib/games/thought-pockets/data/schools'
-import { KEYWORDS, Keyword } from '@/lib/games/thought-pockets/data/keywords'
+import { KEYWORDS, Keyword, keywordText } from '@/lib/games/thought-pockets/data/keywords'
+import { conclusionLine } from '@/lib/games/thought-pockets/data/conclusion'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { COMPOSURE_GUARD } from '@/lib/games/thought-pockets/engine/battle'
 import { SoundToggle } from '@/components/ui/SoundToggle'
@@ -80,7 +81,8 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
   )
 }
 
-function HowToPlay() {
+/** The rules, stated for the school you are playing (or every school, from the menu). */
+function HowToPlay({ school }: { school: School | null }) {
   return (
     <>
       <ol className="list-decimal space-y-1.5 pl-5">
@@ -89,7 +91,7 @@ function HowToPlay() {
           <strong>Evidence</strong> adds Weight. <strong>Logic</strong> raises the Multiplier, which starts at ×1. Your argument deals Weight × Multiplier.
         </li>
         <li>
-          The last card you play is your <strong>Conclusion</strong>: its Weight or Multiplier counts twice. Which card to finish on is up to you.
+          The last card you play is your <strong>Conclusion</strong>. {conclusionLine(school)} Which card to finish on is up to you.
         </li>
         <li>
           <strong>Guard</strong> cards absorb the enemy&apos;s attack this round. Guard is used up by damage, and wears off at its owner&apos;s next turn. Enemy Guard works the same way.
@@ -121,7 +123,7 @@ function HowToPlay() {
         {(Object.keys(KEYWORDS) as Keyword[]).map((word) => (
           <div key={word} className="contents">
             <dt className="font-semibold">{word}</dt>
-            <dd>{KEYWORDS[word]}</dd>
+            <dd>{keywordText(word, school)}</dd>
           </div>
         ))}
       </dl>
@@ -273,7 +275,7 @@ export function ThoughtPockets() {
         )}
       </div>
       <Modal open={dialog === 'help'} onClose={() => setDialog(null)} title="How to play">
-        <HowToPlay />
+        <HowToPlay school={runInProgress(run) ? run.school : null} />
       </Modal>
       <Modal open={dialog === 'deck' && Boolean(run)} onClose={() => setDialog(null)} title="Your deck">
         {run && <DeckList run={run} />}

@@ -1,7 +1,7 @@
 'use client'
 
 import { MapNode, RunState } from '@/types/thought-pockets'
-import { availableNodes, chooseNode } from '@/lib/games/thought-pockets/engine/run'
+import { availableNodes, chooseNode, restAmount } from '@/lib/games/thought-pockets/engine/run'
 import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { FLOOR_ROWS } from '@/lib/games/thought-pockets/engine/map'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
@@ -13,6 +13,15 @@ export const FLOOR_NAMES = { 1: 'First Impressions', 2: 'Habits of Mind', 3: 'Th
 const WIDTH = 520
 const ROW_HEIGHT = 92
 const TOP = 46
+
+function isFight(node: MapNode): boolean {
+  return node.type === 'battle' || node.type === 'elite'
+}
+
+/** Every bias you could meet before the boss, in map order, so a route can be chosen by who waits on it. */
+function fightsOnFloor(run: RunState): MapNode[] {
+  return run.map.filter(isFight).sort((a, b) => a.row - b.row || a.lane - b.lane)
+}
 
 /** Everything still ahead of you: what the next steps lead to, as far as the boss. */
 function ahead(run: RunState): Set<string> {
@@ -42,7 +51,9 @@ export function MapScreen({ run }: { run: RunState }) {
   const bossDef = getEnemyDef(boss.enemyId as string)
   const height = TOP * 2 + (FLOOR_ROWS - 1) * ROW_HEIGHT
   const reachable = ahead(run)
-  const name = (node: MapNode) => (node.type === 'boss' ? `${bossDef.name} (boss)` : NODE_LABELS[node.type])
+  const name = (node: MapNode) =>
+    node.type === 'boss' ? `${bossDef.name} (boss)` : isFight(node) && node.enemyId ? `${NODE_LABELS[node.type]}: ${getEnemyDef(node.enemyId).name}` : NODE_LABELS[node.type]
+  const heals = restAmount(run) > 0
   const leadsTo = (node: MapNode) => {
     const next = node.next.map((id) => run.map.find((n) => n.id === id) as MapNode).map(name)
     return next.length === 0 ? '' : `, leads to ${next.length === 1 ? next[0] : `${next.slice(0, -1).join(', ')} or ${next.at(-1)}`}`
@@ -91,7 +102,7 @@ export function MapScreen({ run }: { run: RunState }) {
                     aria-label={`Step ${node.row + 1}: ${name(node)}, ${state}${past ? '' : leadsTo(node)}`}
                     data-testid={`node-${node.type}`}
                     data-available={available || undefined}
-                    className={`flex h-11 w-11 items-center justify-center rounded-md border-2 sm:h-12 sm:w-12 ${
+                    className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-md border-2 sm:h-12 sm:w-12 ${isFight(node) ? 'p-0.5' : ''} ${
                       available
                         ? 'cursor-pointer border-[var(--tp-accent)] bg-[var(--tp-paper)] text-[var(--tp-paper-ink)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--tp-accent)_25%,transparent)] motion-safe:hover:scale-105'
                         : here
@@ -101,11 +112,20 @@ export function MapScreen({ run }: { run: RunState }) {
                             : 'border-[var(--tp-line)] bg-[var(--tp-ink)] text-[var(--tp-muted)]'
                     } focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]`}
                   >
-                    <NodeGlyph type={node.type} className="h-6 w-6" />
+                    {isFight(node) && node.enemyId ? (
+                      <BiasPortrait enemyId={node.enemyId} tier={getEnemyDef(node.enemyId).tier} className="h-full w-full" />
+                    ) : (
+                      <NodeGlyph type={node.type} className="h-6 w-6" />
+                    )}
                   </button>
                   <span className={`mt-0.5 whitespace-nowrap text-[0.7rem] sm:text-xs ${available ? 'font-semibold text-[var(--tp-text)]' : 'text-[var(--tp-muted)]'}`} aria-hidden="true">
                     {node.type === 'boss' ? 'Boss' : NODE_LABELS[node.type]}
                   </span>
+                  {isFight(node) && node.enemyId && (
+                    <span className="max-w-[6.5rem] text-center text-[0.65rem] leading-tight text-[var(--tp-text)] sm:text-[0.7rem]" aria-hidden="true" data-testid="node-bias">
+                      {getEnemyDef(node.enemyId).name}
+                    </span>
+                  )}
                 </li>
               )
             })}
@@ -121,13 +141,35 @@ export function MapScreen({ run }: { run: RunState }) {
             <p className="mt-1 leading-snug">{bossDef.ruleText}</p>
           </div>
         </div>
+        <section aria-labelledby="floor-biases" className="rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3">
+          <h2 id="floor-biases" className="text-xs uppercase tracking-wider text-[var(--tp-muted)]">
+            Biases on this floor
+          </h2>
+          <ul className="mt-1.5 space-y-2" data-testid="floor-biases">
+            {fightsOnFloor(run).map((node) => {
+              const foe = getEnemyDef(node.enemyId as string)
+              return (
+                <li key={node.id} className={`flex gap-2 ${reachable.has(node.id) ? '' : 'opacity-60'}`}>
+                  <BiasPortrait enemyId={foe.id} tier={foe.tier} className="h-9 w-9 shrink-0" />
+                  <p className="text-xs leading-snug">
+                    <span className="font-semibold">
+                      Step {node.row + 1}, {NODE_LABELS[node.type].toLowerCase()}: {foe.name}.
+                    </span>{' '}
+                    {foe.ruleText}
+                    {!reachable.has(node.id) && <span className="text-[var(--tp-muted)]"> Not on your path.</span>}
+                  </p>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
         <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3 text-xs leading-snug">
           <dt className="font-semibold">Fight</dt>
           <dd>A bias. Win a card.</dd>
           <dt className="font-semibold">Hard fight</dt>
           <dd>Tougher. Win a relic and a better card.</dd>
           <dt className="font-semibold">Rest</dt>
-          <dd>Recover Resolve, improve one card, or let one go.</dd>
+          <dd>{heals ? 'Recover Resolve, improve one card, or let one go.' : 'Improve one card, or let one go. At this level it does not restore Resolve.'}</dd>
           <dt className="font-semibold">Shop</dt>
           <dd>Spend gold on cards, relics, tea, or removing a card.</dd>
           <dt className="font-semibold">Encounter</dt>

@@ -5,6 +5,7 @@ import {
   BattleState,
   CardDef,
   CardInstance,
+  CardType,
   EnemyMove,
   EnemyRule,
   RelicId,
@@ -13,7 +14,8 @@ import {
   StepView,
 } from '@/types/thought-pockets'
 import { isDoubt, resolveCard } from '../data/cards'
-import { TUTORIAL_ENEMY, getEnemyDef } from '../data/enemies'
+import { CONCLUSION_TIMES, EMPIRICIST_EVIDENCE_TIMES, FOOTNOTES_TIMES, timesWord } from '../data/conclusion'
+import { INDUCTION_BONUS, MEANING_ANSWER, TUTORIAL_ENEMY, getEnemyDef } from '../data/enemies'
 import { RIGOR, RIGOROUS_ATTACK, RIGOROUS_HEALTH } from '../data/pace'
 import { roll, rollInt, shuffle } from './rng'
 
@@ -22,10 +24,9 @@ export const HAND_SIZE = 5
 export const MAX_HAND = 10
 export const MAX_TURNS = 30
 
-const DOUBT_WEIGHT = 3
+export const DOUBT_WEIGHT = 4
 const OVERCONFIDENT_BONUS = 4
 const SKEPTIC_BONUS = 2
-const INDUCTION_BONUS = 1.5
 const MOTIVATED_CARDS = 3
 const GROWTH_PER_ACTION = 2
 const BANDWAGON_GROWTH = 1
@@ -33,6 +34,7 @@ export const SORITES_CAP = 15
 const SORITES_GRAIN = 5
 export const COMPOSURE_GUARD = 2
 export const WORRY_STONE_GUARD = 3
+export const OCKHAM_MULTIPLIER = 0.5
 export const MARGINALIA_WEIGHT = 2
 export const LONG_VIEW_MAX = 2
 export const HOURGLASS_FOCUS = 2
@@ -76,15 +78,26 @@ function inSecondPhase(core: BattleCore): boolean {
   return core.enemy.phase === 2 && getEnemyDef(core.enemy.id).phase2 !== undefined
 }
 
-/** The rule in force right now: a boss past half Resolve plays by its second rule. */
-export function enemyRule(core: BattleCore): EnemyRule {
+/** The rules in force right now: a boss past half Resolve plays by its changed rule, and a stubborn bias on a high Rigorous level adds a second. */
+export function enemyRules(core: BattleCore): EnemyRule[] {
   const def = getEnemyDef(core.enemy.id)
-  return inSecondPhase(core) && def.phase2 ? def.phase2.rule : def.rule
+  const main = inSecondPhase(core) && def.phase2 ? def.phase2.rule : def.rule
+  return core.enemy.secondRule && def.secondRule ? [main, def.secondRule.rule] : [main]
+}
+
+function hasRule(core: BattleCore, rule: EnemyRule): boolean {
+  return enemyRules(core).includes(rule)
 }
 
 export function enemyRuleText(core: BattleCore): string {
   const def = getEnemyDef(core.enemy.id)
-  return inSecondPhase(core) && def.phase2 ? def.phase2.ruleText : def.ruleText
+  const main = inSecondPhase(core) && def.phase2 ? def.phase2.ruleText : def.ruleText
+  return core.enemy.secondRule && def.secondRule ? `${main} ${def.secondRule.ruleText}` : main
+}
+
+/** Where a philosophical problem changes; until it has, no round can take it lower. */
+export function phaseThreshold(core: BattleCore): number | null {
+  return getEnemyDef(core.enemy.id).phase2 && core.enemy.phase === 1 ? Math.floor(core.enemy.maxHealth / 2) : null
 }
 
 function enemyMoves(core: BattleCore): EnemyMove[] {
@@ -104,7 +117,7 @@ function bigMove(core: BattleCore): EnemyMove | null {
 
 function attackAgainst(core: BattleCore, move: EnemyMove, guard: number, enemyHealth: number, strength: number): Incoming {
   if (!move.attack) return { perHit: 0, hits: 0, total: 0, afterGuard: 0 }
-  const overconfident = enemyRule(core) === 'overconfident' && enemyHealth * 2 > core.enemy.maxHealth
+  const overconfident = hasRule(core, 'overconfident') && enemyHealth * 2 > core.enemy.maxHealth
   const perHit = move.attack + strength + (overconfident ? OVERCONFIDENT_BONUS : 0)
   const hits = move.hits ?? 1
   const total = perHit * hits
@@ -192,6 +205,7 @@ export function createBattle(setup: BattleSetup): BattleState {
       phase: 1,
       gambleHit: false,
       misses: 0,
+      secondRule: setup.rigor >= RIGOR.secondRule && def.secondRule !== undefined,
     },
     player: { resolve: setup.resolve, maxResolve: setup.maxResolve, guard: 0 },
     relics: setup.relics,
@@ -204,6 +218,9 @@ export function createBattle(setup: BattleSetup): BattleState {
     played: [],
     exhausted: [],
     lastingMultiplier: 0,
+    evidencePlayed: 0,
+    lastingRestore: 0,
+    unsettleLasts: false,
     firstLogicDiscountUsed: false,
     carriedWeight: 0,
     carriedFocus: 0,
@@ -245,6 +262,8 @@ export function playCard(battle: BattleState, uid: number): BattleState {
     focus: snapshot.focus - cardCost(snapshot, instance) + (def.focus ?? 0),
     carriedFocus: snapshot.carriedFocus + (def.nextTurnFocus ?? 0),
     lastingMultiplier: snapshot.lastingMultiplier + (def.lastingMultiplier ?? 0),
+    lastingRestore: snapshot.lastingRestore + (def.lastingRestore ?? 0),
+    unsettleLasts: snapshot.unsettleLasts || Boolean(def.unsettleLasts),
     firstLogicDiscountUsed: snapshot.firstLogicDiscountUsed || logicIsFree(snapshot, def),
     player: {
       ...snapshot.player,
@@ -266,16 +285,45 @@ export function undoPlay(battle: BattleState): BattleState {
 
 function conclusionIndex(core: BattleCore): number {
   if (core.played.length === 0) return -1
-  return enemyRule(core) === 'anchoring' ? 0 : core.played.length - 1
+  return hasRule(core, 'anchoring') ? 0 : core.played.length - 1
 }
 
-function baseEvidenceWeight(def: CardDef, evidenceCount: number, doubts: number, lowResolve: boolean): number {
+/** How many times a Conclusion of this type counts for this school, before cards and relics change it. */
+export function conclusionTimes(school: School, type: CardType): number {
+  return school === 'empiricist' && type === 'evidence' ? EMPIRICIST_EVIDENCE_TIMES : CONCLUSION_TIMES
+}
+
+/** What the rest of the argument, your hand and the fight so far give the cards that count them. */
+interface Context {
+  evidenceCount: number
+  doubts: number
+  lowResolve: boolean
+  earlierEvidence: number
+  unsettle: number
+  missingResolve: number
+  cardGuard: number
+}
+
+function cardWeight(def: CardDef, ctx: Context): number {
   return (
     (def.weight ?? 0) +
-    (def.weightPerOtherEvidence ?? 0) * (evidenceCount - 1) +
-    (lowResolve ? def.weightIfLowResolve ?? 0 : 0) +
-    (def.weightPerDoubtInHand ?? 0) * doubts
+    (def.weightPerOtherEvidence ?? 0) * (ctx.evidenceCount - 1) +
+    (ctx.lowResolve ? def.weightIfLowResolve ?? 0 : 0) +
+    (def.weightPerDoubtInHand ?? 0) * ctx.doubts +
+    (def.weightPerEarlierEvidence ?? 0) * ctx.earlierEvidence +
+    (def.weightPerUnsettle ?? 0) * ctx.unsettle +
+    Math.floor((def.weightPerMissingResolve ?? 0) * ctx.missingResolve) +
+    Math.floor((def.weightPerGuard ?? 0) * ctx.cardGuard)
   )
+}
+
+function cardGuard(def: CardDef, evidenceCount: number, doubts: number): number {
+  return (def.guard ?? 0) + (def.guardPerEvidence ?? 0) * evidenceCount + (def.guardPerDoubtInHand ?? 0) * doubts
+}
+
+function cardUnsettle(def: CardDef, cards: number, school: School): number {
+  const unsettle = (def.unsettle ?? 0) + (def.unsettlePerCard ?? 0) * cards
+  return unsettle > 0 && school === 'skeptic' ? unsettle + SKEPTIC_BONUS : unsettle
 }
 
 const ASK_NAMES: Record<Ask, string> = { evidence: 'an Evidence card', logic: 'a Logic card', guard: 'a Guard card' }
@@ -285,20 +333,29 @@ function longViewCarry(core: BattleCore): number {
 }
 
 export function previewArgument(core: BattleCore): ArgumentPreview {
-  const rule = enemyRule(core)
   const defs = core.played.map(resolveCard)
   const evidenceCount = defs.filter((d) => d.type === 'evidence').length
   const logicCount = defs.filter((d) => d.type === 'logic').length
   const doubts = core.hand.filter(isDoubt).length
-  const lowResolve = core.player.resolve * 2 <= core.player.maxResolve
+  const unsettleCards = defs.map((d) => cardUnsettle(d, defs.length, core.school))
+  const ctx: Context = {
+    evidenceCount,
+    doubts,
+    lowResolve: core.player.resolve * 2 <= core.player.maxResolve,
+    earlierEvidence: core.evidencePlayed,
+    unsettle: core.enemy.unsettle + unsettleCards.reduce((a, b) => a + b, 0),
+    missingResolve: core.player.maxResolve - core.player.resolve,
+    cardGuard: defs.reduce((sum, d) => sum + cardGuard(d, evidenceCount, doubts), 0),
+  }
   const conclusion = conclusionIndex(core)
+  const conclusionBonus = defs.reduce((sum, d) => sum + (d.conclusionBonus ?? 0), 0)
 
   let haloIndex = -1
-  if (rule === 'halo') {
+  if (hasRule(core, 'halo')) {
     let best = -1
     defs.forEach((def, i) => {
       if (def.type !== 'evidence') return
-      const weight = baseEvidenceWeight(def, evidenceCount, doubts, lowResolve)
+      const weight = cardWeight(def, ctx)
       if (weight > best) {
         best = weight
         haloIndex = i
@@ -312,7 +369,7 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   const steps: StepView[] = defs.map((def, i) => {
     const notes: string[] = []
     const isEvidence = def.type === 'evidence'
-    let weight = isEvidence ? baseEvidenceWeight(def, evidenceCount, doubts, lowResolve) : def.weight ?? 0
+    let weight = cardWeight(def, ctx)
     if (def.type === 'guard' && has(core, 'marginalia')) {
       weight += MARGINALIA_WEIGHT
       notes.push(`Marginalia +${MARGINALIA_WEIGHT}`)
@@ -320,20 +377,20 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
     let multiplier =
       (def.multiplier ?? 0) +
       (def.multiplierPerEvidence ?? 0) * evidenceCount +
-      (def.multiplierPerOtherLogic ?? 0) * (logicCount - 1)
-    const guard = def.guard ?? 0
-    let unsettle = (def.unsettle ?? 0) + (def.unsettlePerCard ?? 0) * defs.length
-    if (unsettle > 0 && core.school === 'skeptic') unsettle += SKEPTIC_BONUS
+      (def.multiplierPerOtherLogic ?? 0) * (logicCount - 1) +
+      (def.multiplierPerEarlierCard ?? 0) * i +
+      (def.multiplierPerDoubtInHand ?? 0) * doubts
+    const guard = cardGuard(def, evidenceCount, doubts)
 
-    if (rule === 'confirmation' && isEvidence && core.enemy.seen.includes(core.played[i].cardId)) {
+    if (hasRule(core, 'confirmation') && isEvidence && core.enemy.seen.includes(core.played[i].cardId)) {
       weight = Math.floor(weight / 2)
       notes.push('Already seen: half')
     }
-    if (rule === 'halo' && isEvidence && i !== haloIndex) {
+    if (hasRule(core, 'halo') && isEvidence && i !== haloIndex) {
       weight = Math.floor(weight / 2)
       notes.push('Outshone: half')
     }
-    if (rule === 'bandwagon') {
+    if (hasRule(core, 'bandwagon')) {
       if (seenNames.has(def.id)) {
         growth += BANDWAGON_GROWTH
         notes.push('Repeated: its attacks +1')
@@ -342,19 +399,21 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
     }
 
     const isConclusion = i === conclusion
+    let times = 1
     if (isConclusion) {
       if (weight === 0 && multiplier === 0) {
         conclusionEmpty = true
         notes.push('Conclusion: nothing to double')
       } else {
-        let times = def.conclusionTimes ?? (core.school === 'empiricist' && isEvidence ? 3 : 2)
-        if (has(core, 'footnotes') && defs.length >= FOOTNOTES_CARDS) times = Math.max(times, 3)
+        times = def.conclusionTimes ?? conclusionTimes(core.school, def.type)
+        if (has(core, 'footnotes') && defs.length >= FOOTNOTES_CARDS) times = Math.max(times, FOOTNOTES_TIMES)
+        times += conclusionBonus
         weight *= times
         multiplier *= times
-        notes.push(times === 2 ? 'Conclusion: counts twice' : `Conclusion: counts ${times} times`)
+        notes.push(`Conclusion: counts ${timesWord(times)}`)
       }
     }
-    return { uid: core.played[i].uid, name: def.name, type: def.type, weight, multiplier, guard, unsettle, conclusion: isConclusion, notes }
+    return { uid: core.played[i].uid, name: def.name, type: def.type, weight, multiplier, guard, unsettle: unsettleCards[i], conclusion: isConclusion, times, notes }
   })
 
   const doubtWeight = core.school === 'absurdist' ? doubts * DOUBT_WEIGHT : 0
@@ -362,47 +421,55 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   let multiplier = 1 + core.lastingMultiplier + steps.reduce((sum, s) => sum + s.multiplier, 0)
   const modifiers: string[] = []
   if (has(core, 'ockhams_razor') && defs.length === 2) {
-    multiplier += 1
-    modifiers.push("Ockham's Razor: +1 Multiplier")
+    multiplier += OCKHAM_MULTIPLIER
+    modifiers.push(`Ockham's Razor: +${OCKHAM_MULTIPLIER} Multiplier`)
   }
 
   const product = Math.floor(weight * multiplier + 1e-9)
   let raw = product
   const move = currentMove(core)
-  if (rule === 'meaning' && move.asks) {
+  if (hasRule(core, 'meaning') && move.asks) {
     if (move.asks.every((type) => defs.some((d) => d.type === type))) {
-      raw *= 2
-      modifiers.push('You answered its question: double')
+      raw += MEANING_ANSWER
+      modifiers.push(`You answered its question: +${MEANING_ANSWER}`)
     } else {
-      modifiers.push(`Not answered: include ${move.asks.map((type) => ASK_NAMES[type]).join(' and ')} to double`)
+      modifiers.push(`Not answered: include ${move.asks.map((type) => ASK_NAMES[type]).join(' and ')} for +${MEANING_ANSWER}`)
     }
   }
-  if (rule === 'induction' && conclusion >= 0 && core.lastConclusionType && defs[conclusion].type !== core.lastConclusionType) {
+  if (hasRule(core, 'induction') && conclusion >= 0 && core.lastConclusionType && defs[conclusion].type !== core.lastConclusionType) {
     raw = Math.floor(raw * INDUCTION_BONUS)
-    modifiers.push('A different Conclusion from last turn: +50%')
+    modifiers.push(`A different Conclusion from last turn: +${Math.round((INDUCTION_BONUS - 1) * 100)}%`)
   }
 
   const pierce = defs.some((d) => d.pierce) || (has(core, 'lantern') && !core.piercedOnce)
   const blocked = pierce ? 0 : Math.min(core.enemy.guard, raw)
   let damage = raw - blocked
   let grains = 0
-  if (rule === 'sorites' && damage > SORITES_CAP) {
+  if (hasRule(core, 'sorites') && damage > SORITES_CAP) {
     grains = Math.floor((damage - SORITES_CAP) / SORITES_GRAIN)
     damage = SORITES_CAP
     modifiers.push(`Capped at ${SORITES_CAP}${grains > 0 ? `, the rest becomes Unsettle ${grains}` : ''}`)
   }
-  const healedBack = rule === 'motivated' && defs.length < MOTIVATED_CARDS ? Math.floor(damage / 2) : 0
+  const threshold = phaseThreshold(core)
+  const room = threshold !== null && core.enemy.health > threshold ? core.enemy.health - threshold : null
+  if (room !== null && damage > room) {
+    modifiers.push(`It changes at half (${threshold}): ${damage - room} of this argument is lost`)
+    damage = room
+  }
+  const healedBack = hasRule(core, 'motivated') && defs.length < MOTIVATED_CARDS ? Math.floor(damage / 2) : 0
   if (healedBack > 0) modifiers.push('Fewer than 3 cards: it explains half away')
-  const selfLoss = rule === 'backfire' && damage > 0 ? defs.length : 0
+  const selfLoss = hasRule(core, 'backfire') && damage > 0 ? defs.length : 0
 
-  const composure = (core.focus - longViewCarry(core)) * (COMPOSURE_GUARD + (has(core, 'worry_stone') ? WORRY_STONE_GUARD : 0))
+  const heldFocus = core.focus - longViewCarry(core)
+  const composure = heldFocus * COMPOSURE_GUARD + (heldFocus > 0 && has(core, 'worry_stone') ? WORRY_STONE_GUARD : 0)
   const guard = steps.reduce((sum, s) => sum + s.guard, 0) + composure
   const unsettle = steps.reduce((sum, s) => sum + s.unsettle, 0) + grains
   const postpone = defs.some((d) => d.postpone)
 
   const healthAfterArgument = Math.max(0, core.enemy.health - damage + healedBack)
   const argumentFinishes = healthAfterArgument === 0
-  const unsettleTick = argumentFinishes ? 0 : Math.min(core.enemy.unsettle + unsettle, healthAfterArgument)
+  const unsettleRoom = room !== null && threshold !== null ? Math.max(0, healthAfterArgument - threshold) : healthAfterArgument
+  const unsettleTick = argumentFinishes ? 0 : Math.min(core.enemy.unsettle + unsettle, unsettleRoom)
   const enemyFalls = argumentFinishes ? 'argument' : healthAfterArgument - unsettleTick <= 0 ? 'unsettle' : null
   const acts = !postpone && enemyFalls === null
   const healthWhenActing = healthAfterArgument - unsettleTick
@@ -429,6 +496,7 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
     selfLoss,
     guard,
     composure,
+    heldFocus,
     unsettle,
     unsettleTick,
     enemyFalls,
@@ -462,7 +530,6 @@ export function endTurn(battle: BattleState): BattleState {
   const core = strip(battle)
   const preview = previewArgument(core)
   const def = getEnemyDef(core.enemy.id)
-  const rule = enemyRule(core)
   const conclusion = conclusionIndex(core)
   const playedDefs = core.played.map(resolveCard)
   const keeps = (c: CardInstance) => Boolean(resolveCard(c).retain)
@@ -494,6 +561,7 @@ export function endTurn(battle: BattleState): BattleState {
     growth: preview.growth,
     phaseChanged: false,
     gamble: null,
+    restored: 0,
   }
 
   const unsettle = core.enemy.unsettle + preview.unsettle
@@ -502,7 +570,7 @@ export function endTurn(battle: BattleState): BattleState {
     guard: core.enemy.guard - preview.blocked,
     health: Math.max(0, core.enemy.health - preview.damage + preview.healedBack) - preview.unsettleTick,
     strength: core.enemy.strength + preview.growth,
-    unsettle: preview.enemyFalls === 'argument' ? unsettle : Math.floor(unsettle / 2),
+    unsettle: preview.enemyFalls === 'argument' || core.unsettleLasts ? unsettle : Math.floor(unsettle / 2),
     seen: [...new Set([...core.enemy.seen, ...playedDefs.filter((d) => d.type === 'evidence').map((d) => d.id)])],
   }
   const player = { ...core.player, resolve: Math.max(0, core.player.resolve - preview.selfLoss), guard: preview.guard }
@@ -518,7 +586,8 @@ export function endTurn(battle: BattleState): BattleState {
     carriedWeight: 0,
     carriedFocus: core.carriedFocus + longViewCarry(core),
     lastConclusionType: conclusion >= 0 ? playedDefs[conclusion].type : null,
-    piercedOnce: true,
+    piercedOnce: core.piercedOnce || preview.weight > 0,
+    evidencePlayed: core.evidencePlayed + playedDefs.filter((d) => d.type === 'evidence').length,
   }
 
   const won = (state: BattleCore): BattleState => ({
@@ -535,7 +604,7 @@ export function endTurn(battle: BattleState): BattleState {
     const gambled = def.gamble !== undefined && core.enemy.gambleHit
     const move = gambled ? (bigMove(core) as EnemyMove) : currentMove(next)
     const actingEnemy = { ...next.enemy }
-    if (rule !== 'status_quo') actingEnemy.guard = 0
+    if (!hasRule(core, 'status_quo')) actingEnemy.guard = 0
     const actingPlayer = { ...next.player }
     if (move.attack) {
       const hit = attackAgainst(next, move, actingPlayer.guard, actingEnemy.health, actingEnemy.strength)
@@ -553,13 +622,19 @@ export function endTurn(battle: BattleState): BattleState {
       report.gamble = gambled ? 'hit' : 'miss'
       actingEnemy.misses = gambled ? 0 : actingEnemy.misses + 1
     }
-    if (rule === 'grows') actingEnemy.strength += GROWTH_PER_ACTION
+    if (hasRule(core, 'grows')) actingEnemy.strength += GROWTH_PER_ACTION
     actingEnemy.moveIndex += 1
     next = { ...next, enemy: actingEnemy, player: actingPlayer }
     if (move.addDoubt) {
       next = addDoubtsToDrawPile(next, move.addDoubt)
       report.doubtsAdded = move.addDoubt
     }
+  }
+
+  if (next.lastingRestore > 0 && report.playerLoss + report.selfLoss === 0) {
+    const resolve = Math.min(next.player.maxResolve, next.player.resolve + next.lastingRestore)
+    report.restored = resolve - next.player.resolve
+    next = { ...next, player: { ...next.player, resolve } }
   }
 
   if (next.school === 'pragmatist') next = { ...next, carriedWeight: next.player.guard }

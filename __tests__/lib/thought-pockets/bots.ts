@@ -304,18 +304,30 @@ function cardValue(def: CardDef, run: RunState): number {
   const evidence = defs.filter((d) => d.type === 'evidence').length
   const logic = defs.filter((d) => d.type === 'logic').length
   const doubtShare = defs.filter((d) => d.type === 'doubt').length / Math.max(1, defs.length)
+  const guardCards = defs.filter((d) => d.guard).length
+  const unsettlers = defs.filter((d) => d.unsettle || d.unsettlePerCard).length
   const cost = Math.max(def.cost, 0.5)
   let value = 0
   const weight =
     (def.weight ?? 0) +
     (def.weightPerOtherEvidence ?? 0) * 2 +
     (def.weightIfLowResolve ?? 0) * 0.4 +
-    (def.weightPerDoubtInHand ?? 0) * doubtShare * 5
+    (def.weightPerDoubtInHand ?? 0) * doubtShare * 5 +
+    (def.weightPerEarlierEvidence ?? 0) * 4 +
+    (def.weightPerUnsettle ?? 0) * Math.min(12, 2 + unsettlers * 3) +
+    (def.weightPerMissingResolve ?? 0) * 16 +
+    (def.weightPerGuard ?? 0) * Math.min(14, 2 + guardCards * 2)
   value += weight / cost / 4
-  const multiplier = (def.multiplier ?? 0) + (def.multiplierPerEvidence ?? 0) * 2 + (def.multiplierPerOtherLogic ?? 0) * 0.7
+  const multiplier =
+    (def.multiplier ?? 0) +
+    (def.multiplierPerEvidence ?? 0) * 2 +
+    (def.multiplierPerOtherLogic ?? 0) * 0.7 +
+    (def.multiplierPerEarlierCard ?? 0) * 1.5 +
+    (def.multiplierPerDoubtInHand ?? 0) * (1 + doubtShare * 5)
   const logicNeed = Math.min(1.5, Math.max(0.4, evidence / (2 * (logic + 1))))
   value += (multiplier / cost / 0.5) * logicNeed
-  value += ((def.guard ?? 0) / cost / 5) * 0.8
+  const guard = (def.guard ?? 0) + (def.guardPerEvidence ?? 0) * 1.5 + (def.guardPerDoubtInHand ?? 0) * doubtShare * 5
+  value += (guard / cost / 5) * 0.8
   value += (def.draw ?? 0) * (def.cost === 0 ? 0.8 : 0.35)
   value += (def.focus ?? 0) * 1.2
   value += (((def.unsettle ?? 0) + (def.unsettlePerCard ?? 0) * 3) * 1.5) / cost / 4
@@ -323,6 +335,9 @@ function cardValue(def: CardDef, run: RunState): number {
   if (def.pierce) value += 0.3
   if (def.postpone) value += 1
   if (def.conclusionTimes) value += 0.5
+  if (def.conclusionBonus) value += 0.8 * def.conclusionBonus
+  value += ((def.lastingRestore ?? 0) * 0.3) / cost
+  if (def.unsettleLasts) value += unsettlers > 2 || run.school === 'skeptic' ? 1 : 0.3
   value += ((def.lastingMultiplier ?? 0) * 2.5) / cost
   value += (def.nextTurnFocus ?? 0) * 0.9
   if (def.retain) value += 0.15
@@ -524,14 +539,15 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
         break
       }
       case 'rest': {
-        if (habits === 'naive' || run.resolve < run.maxResolve * (habits === 'casual' ? 0.7 : 0.6)) run = restHeal(run)
+        const healed = restHeal(run)
+        if (healed !== run && (habits === 'naive' || run.resolve < run.maxResolve * (habits === 'casual' ? 0.7 : 0.6))) run = healed
         else if (habits === 'careful' && run.deck.some(isDoubt)) {
           const started = startRestRemoval(run)
           run = pickCard(started, (removalTarget(started) as CardInstance).uid)
         } else {
           const started = startRestUpgrade(run)
           const target = upgradeTarget(started)
-          run = started.pick && target ? pickCard(started, target.uid) : restHeal(run)
+          run = started.pick && target ? pickCard(started, target.uid) : healed !== run ? healed : pickCard(startRestRemoval(run), (removalTarget(run) as CardInstance).uid)
         }
         break
       }

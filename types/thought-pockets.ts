@@ -39,6 +39,23 @@ export interface CardEffects {
   exhaust?: boolean
   lastingMultiplier?: number
   nextTurnFocus?: number
+  /** Weight for each Evidence played in earlier turns of this fight. */
+  weightPerEarlierEvidence?: number
+  /** While in the argument, the Conclusion counts this many more times. */
+  conclusionBonus?: number
+  guardPerEvidence?: number
+  /** Weight for each point of Guard the argument's cards give, rounded down. */
+  weightPerGuard?: number
+  /** For the rest of the fight, Resolve restored after each round in which you lose none. */
+  lastingRestore?: number
+  multiplierPerEarlierCard?: number
+  multiplierPerDoubtInHand?: number
+  /** For the rest of the fight, the enemy's Unsettle no longer halves. */
+  unsettleLasts?: boolean
+  weightPerUnsettle?: number
+  /** Weight for each point of Resolve you are missing, rounded down. */
+  weightPerMissingResolve?: number
+  guardPerDoubtInHand?: number
 }
 
 export interface CardDef extends CardEffects {
@@ -126,6 +143,8 @@ export interface EnemyDef {
   health: number
   rule: EnemyRule
   ruleText: string
+  /** A stubborn bias's extra rule at the higher Rigorous levels. */
+  secondRule?: { rule: EnemyRule; ruleText: string }
   intro: string
   insight: string
   moves: EnemyMove[]
@@ -148,6 +167,8 @@ export interface EnemyState {
   gambleHit: boolean
   /** Rounds in a row without its big hit. */
   misses: number
+  /** Plays by its second rule as well as its first. */
+  secondRule: boolean
 }
 
 export interface PlayerState {
@@ -167,6 +188,8 @@ export interface StepView {
   guard: number
   unsettle: number
   conclusion: boolean
+  /** How many times this step counted: more than 1 only for a Conclusion with something to count. */
+  times: number
   notes: string[]
 }
 
@@ -187,6 +210,8 @@ export interface ArgumentPreview {
   selfLoss: number
   guard: number
   composure: number
+  /** Focus left unspent that becomes Guard (Focus The Long View carries is not counted). */
+  heldFocus: number
   unsettle: number
   /** What Unsettle takes before it acts, after this argument lands. */
   unsettleTick: number
@@ -229,6 +254,8 @@ export interface RoundReport {
   growth: number
   phaseChanged: boolean
   gamble: 'hit' | 'miss' | null
+  /** Resolve restored at the end of the round by a lasting effect. */
+  restored: number
 }
 
 export interface BattleCore {
@@ -244,6 +271,10 @@ export interface BattleCore {
   played: CardInstance[]
   exhausted: CardInstance[]
   lastingMultiplier: number
+  /** Evidence cards played in earlier turns of this fight. */
+  evidencePlayed: number
+  lastingRestore: number
+  unsettleLasts: boolean
   firstLogicDiscountUsed: boolean
   carriedWeight: number
   carriedFocus: number
@@ -331,12 +362,12 @@ export interface RunStats {
 }
 
 export interface RunState {
-  version: 4
+  version: 5
   seed: number
   rng: number
   school: School
   mode: Mode
-  /** 0 in Gentle; in Rigorous, the level from 1 to 5, each adding one constraint. */
+  /** 0 in Gentle; in Rigorous, the level from 1 to MAX_RIGOR, each adding one constraint. */
   rigor: number
   reconsiders: number
   known: string[]

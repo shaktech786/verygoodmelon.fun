@@ -2,7 +2,9 @@ import { readFileSync } from 'fs'
 import path from 'path'
 import { test, expect, Page } from '@playwright/test'
 import { RUN_VERSION, availableNodes, chooseNode, newRun } from '@/lib/games/thought-pockets/engine/run'
-import { KNOWN_UNSETTLE, endTurn, playCard } from '@/lib/games/thought-pockets/engine/battle'
+import { COMPOSURE_GUARD, KNOWN_UNSETTLE, endTurn, playCard } from '@/lib/games/thought-pockets/engine/battle'
+import { CONCLUSION_TIMES, EMPIRICIST_EVIDENCE_TIMES, timesWord } from '@/lib/games/thought-pockets/data/conclusion'
+import { MAX_RIGOR } from '@/lib/games/thought-pockets/data/pace'
 import { TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { BattleState, CardInstance, MapNode, RunState, School } from '@/types/thought-pockets'
 import { playRun, planning } from '../lib/thought-pockets/bots'
@@ -32,12 +34,13 @@ async function fresh(page: Page, seed: number, tutorialDone = false, beaten: str
 }
 
 async function load(page: Page, run: RunState | unknown, version = RUN_VERSION) {
-  await page.goto(URL)
+  await page.goto(URL, { waitUntil: 'domcontentloaded' })
   await page.evaluate(
     ([key, value]) => localStorage.setItem(key, value),
     [RUN_KEY, JSON.stringify({ state: { run }, version })],
   )
-  await page.reload()
+  // The dev server can hold the full load event; the Continue button below is the real readiness signal.
+  await page.reload({ waitUntil: 'domcontentloaded' })
   await page.getByTestId('continue-run').click()
 }
 
@@ -492,6 +495,108 @@ test.describe('The Philosopher', () => {
     await page.getByTestId('shop-tea').click()
     await expect(page.getByTestId('player-resolve')).toContainText('Resolve 45/60')
     await expect(page.getByTestId('shop-tea')).toBeDisabled()
+  })
+
+  test('the Conclusion is described with the count the engine uses: three times for an Empiricist’s Evidence, twice otherwise', async ({ page }) => {
+    await fresh(page, 130)
+    await load(page, inFirstBattle(130, (b) => ({ ...b, turn: 2 })))
+    await expect(page.getByTestId('hint')).toContainText(`Evidence Conclusion counts ${timesWord(EMPIRICIST_EVIDENCE_TIMES)}`)
+    await page.getByRole('button', { name: 'How to play' }).click()
+    const help = page.getByRole('dialog')
+    await expect(help).toContainText(`an Evidence Conclusion counts ${timesWord(EMPIRICIST_EVIDENCE_TIMES)}`)
+    await expect(help).toContainText(`counts ${timesWord(CONCLUSION_TIMES)}`)
+    await help.getByRole('button', { name: 'Close' }).click()
+    await load(page, inFirstBattle(130, (b) => ({ ...b, turn: 2 }), 'skeptic'))
+    await expect(page.getByTestId('hint')).not.toContainText(timesWord(EMPIRICIST_EVIDENCE_TIMES))
+    await page.getByRole('button', { name: 'How to play' }).click()
+    await expect(page.getByRole('dialog')).not.toContainText(timesWord(EMPIRICIST_EVIDENCE_TIMES))
+  })
+
+  test('the replay shows a Conclusion as a product, not a sum: ×3 → 12 Weight', async ({ page }) => {
+    const run = inFirstBattle(131, (b) => ({ ...b, hand: cards(['therefore', 'observation']) }))
+    await fresh(page, 131, true)
+    await load(page, run)
+    await hand(page).filter({ hasText: 'Therefore' }).click()
+    await hand(page).filter({ hasText: 'Observation' }).click()
+    await expect(page.getByLabel('Cards in your argument, in order')).toContainText('+4 Weight ×3 → 12 Weight')
+    await page.getByTestId('end-turn').click()
+    await page.getByTestId('skip-show').click()
+    await expect(page.getByTestId('last-round').getByTestId('conclusion-count')).toHaveText('Conclusion ×3 → 12 Weight')
+    await expect(page.getByTestId('last-round')).not.toContainText('= +')
+  })
+
+  test('before any card is played, the preview says the Guard comes from unspent Focus', async ({ page }) => {
+    await fresh(page, 132, true)
+    await page.getByTestId('school-empiricist').click()
+    await page.locator('button[data-available]').first().click()
+    const attack = getEnemyDef(TUTORIAL_ENEMY).moves[0].attack as number
+    await expect(page.getByTestId('incoming')).toHaveText(`If you play nothing, your 3 unspent Focus become ${3 * COMPOSURE_GUARD} Guard and block all ${attack}.`)
+    await hand(page).filter({ hasText: 'Observation' }).first().click()
+    await expect(page.getByTestId('incoming')).toContainText(`${2 * COMPOSURE_GUARD} of it from 2 unspent Focus`)
+  })
+
+  test('keyboard: after E ends the turn, focus lands on the first card of the new hand, not the page', async ({ page }) => {
+    await fresh(page, 133, true)
+    await load(page, inFirstBattle(133))
+    await page.keyboard.press('1')
+    await page.keyboard.press('e')
+    await expect(page.getByTestId('last-round')).toBeVisible()
+    await expect(hand(page).first()).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('argument').locator('li')).toHaveCount(1)
+  })
+
+  test('the map shows which bias waits at each fight, and lists them with their rules', async ({ page }) => {
+    await fresh(page, 134, true)
+    await page.getByTestId('school-empiricist').click()
+    const run = newRun('empiricist', 134)
+    const fights = run.map.filter((n) => n.type === 'battle' || n.type === 'elite')
+    await expect(page.getByTestId('node-bias')).toHaveCount(fights.length)
+    await expect(page.locator('button[data-available]').first()).toHaveAttribute('aria-label', new RegExp(`Fight: ${getEnemyDef(TUTORIAL_ENEMY).name}`))
+    for (const node of fights) await expect(page.getByTestId('floor-biases')).toContainText(getEnemyDef(node.enemyId as string).ruleText)
+    await page.setViewportSize({ width: 390, height: 844 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  })
+
+  test('Rigorous 6 and 7: a hard fight states its second rule, and a rest no longer heals', async ({ page }) => {
+    await fresh(page, 135, true, [], MAX_RIGOR - 1)
+    await page.getByTestId('mode-rigorous').check()
+    await page.getByTestId(`rigor-${MAX_RIGOR}`).check()
+    await expect(page.getByTestId('rigor-rules').locator('li')).toHaveCount(MAX_RIGOR)
+    const six = newRun('empiricist', 135, 'rigorous', [], 6)
+    const elite = standingBefore(six, 'elite')
+    await load(page, elite.run)
+    await page.locator('button[data-available]').and(page.getByTestId('node-elite')).first().click()
+    const second = getEnemyDef(elite.node.enemyId as string).secondRule
+    await expect(page.getByTestId('enemy-rule')).toContainText(second?.ruleText as string)
+    const rest = standingBefore(newRun('empiricist', 135, 'rigorous', [], MAX_RIGOR), 'rest')
+    await load(page, { ...rest.run, resolve: 20 })
+    await page.locator('button[data-available]').and(page.getByTestId('node-rest')).first().click()
+    await expect(page.getByTestId('rest-heal')).toBeDisabled()
+    await expect(page.getByTestId('rest-upgrade')).toBeEnabled()
+  })
+
+  test('reward cards say which school they belong to, so other schools’ cards are an informed choice', async ({ page }) => {
+    const won = inFirstBattle(136, (b) => ({ ...b, enemy: { ...b.enemy, health: 1 } }))
+    await fresh(page, 136, true)
+    await load(page, won)
+    await hand(page).filter({ hasText: 'Evidence' }).first().click()
+    await page.getByTestId('end-turn').click()
+    const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).state.run as RunState, RUN_KEY)
+    await load(page, { ...saved, reward: { ...(saved.reward as NonNullable<RunState['reward']>), cardChoices: ['statistic', 'reductio', 'anecdote'] } })
+    const choices = page.getByTestId('card-choices')
+    await expect(choices.getByTestId('card-school')).toHaveText(['Empiricist', 'Rationalist · Rare'])
+    await expect(choices.getByRole('button', { name: 'Take Reductio' })).toBeEnabled()
+  })
+
+  test('a run saved by version 4 still loads mid-battle and plays on', async ({ page }) => {
+    const saved = JSON.parse(readFileSync(path.join(process.cwd(), '__tests__/lib/thought-pockets/fixtures/run-v4.json'), 'utf8'))
+    await fresh(page, 137, true)
+    await load(page, saved.state.run, saved.version)
+    await expect(page.getByTestId('screen-battle')).toBeVisible()
+    await expect(page.getByTestId('argument').locator('li')).toHaveCount(saved.state.run.battle.played.length)
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByTestId('last-round')).toBeVisible()
   })
 
   test('a run saved by the previous version still loads and plays on', async ({ page }) => {

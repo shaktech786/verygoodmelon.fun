@@ -4,20 +4,22 @@ import {
   HOURGLASS_FOCUS,
   LONG_VIEW_MAX,
   MARGINALIA_WEIGHT,
+  OCKHAM_MULTIPLIER,
   SECOND_OPINION_DRAW,
   SEED_UNSETTLE,
   STOIC_CAP,
   WORRY_STONE_GUARD,
 } from '../engine/battle'
 import { LIBRARY_DISCOUNT, TEA_FLASK_HEAL } from '../engine/economy'
+import { FOOTNOTES_TIMES, timesWord } from './conclusion'
 
 export const RELICS: RelicDef[] = [
-  { id: 'ockhams_razor', name: "Ockham's Razor", text: 'An argument of exactly 2 cards gets +1 Multiplier.', flavor: 'Do not multiply things without need.' },
+  { id: 'ockhams_razor', name: "Ockham's Razor", text: `An argument of exactly 2 cards gets +${OCKHAM_MULTIPLIER} Multiplier.`, flavor: 'Do not multiply things without need.' },
   { id: 'marginalia', name: 'Marginalia', text: `Each Guard card in your argument also adds ${MARGINALIA_WEIGHT} Weight.`, flavor: 'The best ideas are in the margins.' },
-  { id: 'footnotes', name: 'Footnotes', text: `If your argument has ${FOOTNOTES_CARDS} or more cards, your Conclusion counts three times.`, flavor: 'See note 14, and also note 15.' },
-  { id: 'worry_stone', name: 'Worry Stone', text: `Each Focus you leave unspent gives ${WORRY_STONE_GUARD} more Guard.`, flavor: 'Smooth from years of thumbs.' },
+  { id: 'footnotes', name: 'Footnotes', text: `If your argument has ${FOOTNOTES_CARDS} or more cards, your Conclusion counts at least ${timesWord(FOOTNOTES_TIMES)}.`, flavor: 'See note 14, and also note 15.' },
+  { id: 'worry_stone', name: 'Worry Stone', text: `Leaving any Focus unspent gives ${WORRY_STONE_GUARD} more Guard, once per turn.`, flavor: 'Smooth from years of thumbs.' },
   { id: 'hourglass', name: 'Hourglass', text: `Every third turn of a fight, gain ${HOURGLASS_FOCUS} extra Focus.`, flavor: 'Patience is also an argument.' },
-  { id: 'lantern', name: 'Lantern', text: 'Your first argument in each fight has Pierce.', flavor: 'It does not argue with the dark.' },
+  { id: 'lantern', name: 'Lantern', text: 'Your first argument with any Weight in each fight has Pierce.', flavor: 'It does not argue with the dark.' },
   { id: 'seed_of_doubt', name: 'Seed of Doubt', text: `Every fight starts with the enemy Unsettled ${SEED_UNSETTLE}.`, flavor: 'Small, and it grows.' },
   { id: 'stoic_pebble', name: 'Stoic Pebble', text: `You never lose more than ${STOIC_CAP} Resolve to one enemy action.`, flavor: 'What is in your control, and what is not.' },
   { id: 'pocket_notebook', name: 'Pocket Notebook', text: 'Card rewards offer 1 more card.', flavor: 'Write it down before it goes.' },

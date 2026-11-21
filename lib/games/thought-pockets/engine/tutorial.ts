@@ -1,5 +1,6 @@
 import { BattleState } from '@/types/thought-pockets'
 import { resolveCard } from '../data/cards'
+import { conclusionLine } from '../data/conclusion'
 import { COMPOSURE_GUARD, canPlay, playCard, previewArgument } from './battle'
 
 /**
@@ -27,7 +28,7 @@ export function tutorialHint(battle: BattleState): string | null {
     }
     if (battle.focus > 0) return `It will hit you for ${preview.incoming}. Each Focus you leave unspent becomes ${COMPOSURE_GUARD} Guard, so holding back is a choice too.`
   }
-  if (battle.turn === 2 && played.length === 0) return 'Your last card is your Conclusion: its number counts twice. Finish with your strongest card.'
+  if (battle.turn === 2 && played.length === 0) return `Your last card is your Conclusion. ${conclusionLine(battle.school)} Finish with your strongest card.`
   if (playable.length === 0 || battle.focus === 0) return 'Press End turn. Your argument lands, then it acts.'
   return null
 }

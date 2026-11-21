@@ -69,12 +69,6 @@ function soundFor(beat: Beat, index: number, report: RoundReport) {
   if (beat === 'shift') playTones([{ hz: 262, toHz: 220, seconds: 0.6 }], LOUDNESS)
 }
 
-function conclusionTimes(notes: string[]): number | null {
-  const note = notes.find((n) => n.startsWith('Conclusion: counts'))
-  if (!note) return null
-  return note === 'Conclusion: counts twice' ? 2 : Number(note.replace(/\D/g, ''))
-}
-
 export interface RoundShowState {
   /** How many beats have played. */
   stage: number
@@ -161,7 +155,7 @@ export function RoundShow({ report, show, reduced, aftermath, title, testId = 'l
             {report.steps.map((step, i) => {
               const on = i < lit
               const now = !show.done && i === lit - 1
-              const times = conclusionTimes(step.notes)
+              const times = step.times
               return (
                 <li
                   key={step.uid}
@@ -169,16 +163,16 @@ export function RoundShow({ report, show, reduced, aftermath, title, testId = 'l
                   style={{ borderLeftColor: TYPE_COLORS[step.type] }}
                 >
                   <span className="font-semibold">{step.name}</span>
-                  {step.weight > 0 && <span> +{format(step.weight / (times ?? 1))} Weight</span>}
-                  {step.multiplier > 0 && <span> +{format(step.multiplier / (times ?? 1))} Mult</span>}
+                  {step.weight > 0 && <span> +{format(step.weight / times)} Weight</span>}
+                  {step.multiplier > 0 && <span> +{format(step.multiplier / times)} Mult</span>}
                   {step.guard > 0 && <span> {step.guard} Guard</span>}
                   {step.unsettle > 0 && <span> Unsettle {step.unsettle}</span>}
-                  {on && step.weight > 0 && <span className="text-[var(--tp-paper-muted)]"> (Weight {running[i]})</span>}
-                  {on && times && (
-                    <strong className={`ml-1 rounded-sm bg-[var(--tp-accent)] px-1 text-[var(--tp-on-accent)] ${now && !reduced ? 'tp-pop' : ''}`}>
-                      Conclusion ×{times} = +{step.weight > 0 ? `${step.weight} Weight` : `${format(step.multiplier)} Mult`}
+                  {on && times > 1 && (
+                    <strong className={`ml-1 rounded-sm bg-[var(--tp-accent)] px-1 text-[var(--tp-on-accent)] ${now && !reduced ? 'tp-pop' : ''}`} data-testid="conclusion-count">
+                      Conclusion ×{times} → {step.weight > 0 ? `${step.weight} Weight` : `${format(step.multiplier)} Mult`}
                     </strong>
                   )}
+                  {on && step.weight > 0 && <span className="text-[var(--tp-paper-muted)]"> (Weight so far {running[i]})</span>}
                 </li>
               )
             })}

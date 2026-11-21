@@ -1,12 +1,14 @@
 'use client'
 
 import { useId, useState } from 'react'
-import { KEYWORDS, Keyword } from '@/lib/games/thought-pockets/data/keywords'
+import { Keyword, keywordText } from '@/lib/games/thought-pockets/data/keywords'
+import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 
 /** A keyword you can hover, focus or tap to have explained. */
 export function Term({ word, children }: { word: Keyword; children?: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const id = useId()
+  const school = useRunStore((s) => s.run?.school ?? null)
   return (
     <span className="group relative inline-block">
       <button
@@ -27,7 +29,7 @@ export function Term({ word, children }: { word: Keyword; children?: React.React
         id={id}
         className={`pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-56 -translate-x-1/2 rounded-md border border-[var(--tp-line)] bg-[var(--tp-ink)] px-3 py-2 text-left text-xs font-normal leading-snug text-[var(--tp-text)] shadow-lg group-hover:visible group-focus-within:visible ${open ? 'visible' : 'invisible'}`}
       >
-        <strong className="text-[var(--tp-accent)]">{word}.</strong> {KEYWORDS[word]}
+        <strong className="text-[var(--tp-accent)]">{word}.</strong> {keywordText(word, school)}
       </span>
     </span>
   )

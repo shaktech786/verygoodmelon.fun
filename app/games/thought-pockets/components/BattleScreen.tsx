@@ -10,6 +10,7 @@ import {
   endTurn,
   enemyRuleText,
   incomingDamage,
+  phaseThreshold,
   playCard,
   previewArgument,
   undoPlay,
@@ -18,7 +19,7 @@ import { battleAction } from '@/lib/games/thought-pockets/engine/run'
 import { tutorialHint } from '@/lib/games/thought-pockets/engine/tutorial'
 import { describeCard, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
-import { KEYWORDS } from '@/lib/games/thought-pockets/data/keywords'
+import { keywordText } from '@/lib/games/thought-pockets/data/keywords'
 import { useInsightStore, useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { wakeTones } from '@/components/games/gentleCues'
@@ -67,10 +68,13 @@ function intentText(move: EnemyMove, battle: BattleState): string[] {
   return parts
 }
 
+/** A Conclusion shows what it brought and what counting it again made of that: "+4 Weight ×3 → 12 Weight". */
 function stepValue(step: StepView): string {
   const parts: string[] = []
-  if (step.weight) parts.push(`+${step.weight} Weight`)
-  if (step.multiplier) parts.push(`+${format(step.multiplier)} Mult`)
+  const counted = (value: number, unit: string) =>
+    step.times > 1 ? `+${format(value / step.times)} ${unit} ×${step.times} → ${format(value)} ${unit}` : `+${format(value)} ${unit}`
+  if (step.weight) parts.push(counted(step.weight, 'Weight'))
+  if (step.multiplier) parts.push(counted(step.multiplier, 'Mult'))
   if (step.guard) parts.push(`${step.guard} Guard`)
   if (step.unsettle) parts.push(`Unsettle ${step.unsettle}`)
   return parts.join(' · ')
@@ -80,12 +84,18 @@ function incomingLine(preview: ArgumentPreview): string {
   if (preview.enemyFalls === 'argument') return 'Your argument will end this before it acts.'
   if (preview.enemyFalls === 'unsettle') return `Your argument, then Unsettle ${preview.unsettleTick}, will end this before it acts.`
   if (preview.postpone) return 'Postponed: it will not act this round.'
-  const usual =
-    preview.incoming === 0
-      ? 'No attack this round.'
-      : preview.incomingAfterGuard === 0
-        ? `As it stands, your Guard blocks all ${preview.incoming}.`
-        : `As it stands, you will lose ${preview.incomingAfterGuard}${preview.guard > 0 ? ` (Guard absorbs ${Math.min(preview.guard, preview.incoming)})` : ''}.`
+  const held = `your ${preview.heldFocus} unspent Focus ${preview.heldFocus === 1 ? 'becomes' : 'become'} ${preview.composure} Guard`
+  const fromFocus = preview.composure > 0 ? `, ${preview.composure} of it from ${preview.heldFocus} unspent Focus` : ''
+  let usual: string
+  if (preview.incoming === 0) usual = 'No attack this round.'
+  else if (preview.steps.length === 0 && preview.composure > 0 && preview.guard === preview.composure)
+    usual =
+      preview.incomingAfterGuard === 0
+        ? `If you play nothing, ${held} and block all ${preview.incoming}.`
+        : `If you play nothing, ${held}: you will lose ${preview.incomingAfterGuard} of ${preview.incoming}.`
+  else if (preview.incomingAfterGuard === 0) usual = `As it stands, your ${preview.guard} Guard${fromFocus} blocks all ${preview.incoming}.`
+  else
+    usual = `As it stands, you will lose ${preview.incomingAfterGuard}${preview.guard > 0 ? ` (your ${preview.guard} Guard${fromFocus} absorbs ${Math.min(preview.guard, preview.incoming)})` : ''}.`
   return preview.risk ? `${usual} If its gamble comes off, you lose ${preview.risk.afterGuard}.` : usual
 }
 
@@ -109,6 +119,7 @@ function aftermathLines(report: RoundReport, shift: string | null): string[] {
   if (report.gamble === 'miss') lines.push('Its gamble did not come off. The odds next round are exactly the same.')
   if (report.enemyGuardGained > 0) lines.push(`It raised ${report.enemyGuardGained} Guard.`)
   if (report.doubtsAdded > 0) lines.push('A Doubt went into your draw pile.')
+  if (report.restored > 0) lines.push(`You lost nothing this round, so you restored ${report.restored} Resolve.`)
   if (report.phaseChanged && shift) lines.push(shift)
   return lines
 }
@@ -164,6 +175,7 @@ function ThreatPanel({ battle, preview, known, show }: { battle: BattleState; pr
   const hit = landing && battle.lastRound ? battle.lastRound.damage : 0
   const health = shownHealth(battle, show)
   const gamble = def.gamble
+  const threshold = phaseThreshold(battle)
   return (
     <section aria-label="Opponent" className="grid gap-2 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-2.5 sm:grid-cols-[1fr_15rem] sm:gap-3 sm:p-4">
       <div className="flex gap-3">
@@ -189,9 +201,9 @@ function ThreatPanel({ battle, preview, known, show }: { battle: BattleState; pr
           <p className="mt-0.5 text-[0.8rem] leading-snug text-[var(--tp-text)] sm:text-sm" data-testid="enemy-rule">
             {enemyRuleText(battle)}
           </p>
-          {def.phase2 && battle.enemy.phase === 1 && (
+          {def.phase2 && threshold !== null && (
             <p className="mt-0.5 text-xs leading-snug text-[var(--tp-muted)]" data-testid="phase-warning">
-              At half Resolve ({Math.floor(battle.enemy.maxHealth / 2)}) it changes. {def.phase2.ruleText}
+              At half Resolve ({threshold}) it changes, and no round can take it lower until it has. {def.phase2.ruleText}
             </p>
           )}
           {gamble && battle.enemy.misses >= 2 && (
@@ -364,22 +376,11 @@ function useAnnouncement(battle: BattleState, preview: ArgumentPreview): string 
   return said.text
 }
 
-export function BattleScreen({ run }: { run: RunState }) {
-  const act = useRunStore((s) => s.act)
-  const tutorialDone = useInsightStore((s) => s.tutorialDone)
-  const reduced = useReducedMotion()
-  const [inspected, setInspected] = useState<number | null>(null)
+/** Where keyboard focus goes after a play or a round: the card now at that place, or End turn when the hand is empty. */
+function useRefocus(hand: BattleState['hand']) {
   const handRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLButtonElement>(null)
   const refocus = useRef<number | null>(null)
-  const battle = run.battle as BattleState
-  const preview = previewArgument(battle)
-  const hint = !tutorialDone && battle.enemy.id === TUTORIAL_ENEMY ? tutorialHint(battle) : null
-  const report = battle.lastRound
-  const show = useRoundShow(report ? `${run.stats.fights}-${report.turn}` : null, report)
-  const announcement = useAnnouncement(battle, preview)
-  const skipShow = show.skip
-
   useEffect(() => {
     if (refocus.current === null) return
     const index = refocus.current
@@ -387,7 +388,23 @@ export function BattleScreen({ run }: { run: RunState }) {
     const cards = handRef.current?.querySelectorAll<HTMLButtonElement>(':scope > button') ?? []
     const target = cards.length > 0 ? cards[Math.min(index, cards.length - 1)] : endRef.current
     target?.focus()
-  }, [battle.hand])
+  }, [hand])
+  return { handRef, endRef, refocus }
+}
+
+export function BattleScreen({ run }: { run: RunState }) {
+  const act = useRunStore((s) => s.act)
+  const tutorialDone = useInsightStore((s) => s.tutorialDone)
+  const reduced = useReducedMotion()
+  const [inspected, setInspected] = useState<number | null>(null)
+  const battle = run.battle as BattleState
+  const { handRef, endRef, refocus } = useRefocus(battle.hand)
+  const preview = previewArgument(battle)
+  const hint = !tutorialDone && battle.enemy.id === TUTORIAL_ENEMY ? tutorialHint(battle) : null
+  const report = battle.lastRound
+  const show = useRoundShow(report ? `${run.stats.fights}-${report.turn}` : null, report)
+  const announcement = useAnnouncement(battle, preview)
+  const skipShow = show.skip
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -404,6 +421,7 @@ export function BattleScreen({ run }: { run: RunState }) {
         if (card) {
           event.preventDefault()
           skipShow()
+          if (handRef.current?.contains(document.activeElement)) refocus.current = Number(key) - 1
           apply((r) => battleAction(r, (b) => playCard(b, card.uid)))
         }
       } else if (key === 'u' || key === 'backspace') {
@@ -412,6 +430,7 @@ export function BattleScreen({ run }: { run: RunState }) {
       } else if (key === 'e') {
         event.preventDefault()
         wakeTones()
+        refocus.current = 0
         apply((r) => battleAction(r, endTurn))
       } else if (key === 's' || key === 'escape') {
         skipShow()
@@ -419,7 +438,7 @@ export function BattleScreen({ run }: { run: RunState }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [skipShow])
+  }, [skipShow, refocus, handRef])
 
   const inspectedCard = battle.hand.find((c) => c.uid === inspected)
   const inspectedDef = inspectedCard ? resolveCard(inspectedCard) : null
@@ -468,7 +487,7 @@ export function BattleScreen({ run }: { run: RunState }) {
                 <strong>{inspectedDef.name}:</strong> {describeCard(inspectedDef).join(' ')}{' '}
               </span>
               {keywordsOnCard(inspectedDef)
-                .map((word) => `${word}: ${KEYWORDS[word]}`)
+                .map((word) => `${word}: ${keywordText(word, run.school)}`)
                 .join('  ')}
             </>
           ) : (

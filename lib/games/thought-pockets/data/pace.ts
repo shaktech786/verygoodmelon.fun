@@ -2,7 +2,7 @@ export const REST_HEAL_PERCENT = { gentle: 40, rigorous: 30 } as const
 export const RIGOROUS_FLOOR_HEAL = 20
 export const RIGOROUS_HEALTH = 1.25
 export const RIGOROUS_ATTACK = 2
-export const MAX_RIGOR = 5
+export const MAX_RIGOR = 7
 
 /** The level at which each Rigorous constraint begins. Every level adds exactly one. */
 export const RIGOR = {
@@ -11,6 +11,8 @@ export const RIGOR = {
   harder: 3,
   doubt: 4,
   bossesHarder: 5,
+  secondRule: 6,
+  noRestHeal: 7,
 } as const
 
 export const RIGOR_LEVELS: { level: number; text: string }[] = [
@@ -22,6 +24,8 @@ export const RIGOR_LEVELS: { level: number; text: string }[] = [
   { level: RIGOR.harder, text: `Biases hit ${RIGOROUS_ATTACK} harder.` },
   { level: RIGOR.doubt, text: 'You start with a Doubt in your deck.' },
   { level: RIGOR.bossesHarder, text: `Hard fights and philosophical problems hit ${RIGOROUS_ATTACK} harder again.` },
+  { level: RIGOR.secondRule, text: 'Every stubborn bias plays by a second rule as well as its first. Both are shown before you play.' },
+  { level: RIGOR.noRestHeal, text: 'Rests no longer restore Resolve: you can only study or let a card go. Tea, encounters and each new floor are how you recover.' },
 ]
 
 /** Every constraint in force at this level, in the order they were added. */

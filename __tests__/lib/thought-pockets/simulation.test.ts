@@ -9,7 +9,7 @@ import { Mode, School } from '@/types/thought-pockets'
 import { AWARE_HABITS, BotConfig, HABITS, RunRecord, careful, firstTimer, leftToRight, planning, playRun, uiDriver } from './bots'
 
 // Seeded, so the numbers are exact for a given RUNS. Set TP_SIM_RUNS for a fuller report.
-const RUNS = Number(process.env.TP_SIM_RUNS ?? 40)
+const RUNS = Number(process.env.TP_SIM_RUNS ?? 100)
 const SIM_TIMEOUT = 600_000
 
 const CONFIGS: Record<string, BotConfig> = {
@@ -34,6 +34,22 @@ function runMany(school: School, config: BotConfig, mode: Mode, rigor?: number):
 }
 
 const RIGOROUS = ['first-timer', 'careful', 'planner', 'planner-skip-all']
+/** The top of the ladder before levels 6 and 7 were added, kept in the report for comparison. */
+const OLD_TOP = 5
+
+/** The card a deck added most often beyond its starting cards; ties go to the rarer card. */
+function signatureCard(deck: string[], starting: string[]): string | null {
+  const added = [...deck]
+  for (const id of starting) {
+    const i = added.indexOf(id)
+    if (i >= 0) added.splice(i, 1)
+  }
+  const rank = { rare: 3, uncommon: 2, common: 1, starter: 0, doubt: -1 }
+  const counts = new Map<string, number>()
+  added.filter((id) => id !== 'doubt').forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1))
+  const rarity = (id: string) => rank[CARDS.find((c) => c.id === id)?.rarity ?? 'doubt']
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || rarity(b[0]) - rarity(a[0]) || a[0].localeCompare(b[0]))[0]?.[0] ?? null
+}
 
 describe('simulation', () => {
   const results = new Map<string, RunRecord[]>()
@@ -43,6 +59,7 @@ describe('simulation', () => {
       if (RIGOROUS.includes(name)) {
         results.set(`${school.id}/${name} rigorous`, runMany(school.id, config, 'rigorous'))
         results.set(`${school.id}/${name} rigorous ${MAX_RIGOR}`, runMany(school.id, config, 'rigorous', MAX_RIGOR))
+        if (name === 'planner') results.set(`${school.id}/${name} rigorous ${OLD_TOP}`, runMany(school.id, config, 'rigorous', OLD_TOP))
       }
     }
   }
@@ -100,6 +117,24 @@ describe('simulation', () => {
     expect(steady - newcomer).toBeGreaterThan(0.3)
   })
 
+  it(`the top Rigorous level is genuinely hard: a planner that peeks at its next draw wins 25-50%`, { timeout: SIM_TIMEOUT }, () => {
+    const top = rate(SCHOOLS.map((s) => `${s.id}/planner rigorous ${MAX_RIGOR}`), won)
+    const before = rate(SCHOOLS.map((s) => `${s.id}/planner rigorous ${OLD_TOP}`), won)
+    console.log(`planner at level ${OLD_TOP}: ${pct(before * 100, 100)}; at level ${MAX_RIGOR}: ${pct(top * 100, 100)}`)
+    expect(top).toBeGreaterThanOrEqual(0.25)
+    expect(top).toBeLessThanOrEqual(0.5)
+  })
+
+  it('philosophical problems are real fights: a planning deck needs about four to six turns for each', { timeout: SIM_TIMEOUT }, () => {
+    const fights = SCHOOLS.flatMap((s) => results.get(`${s.id}/planner`) ?? []).flatMap((r) => r.fights)
+    for (const boss of ENEMIES.filter((e) => e.tier === 'boss')) {
+      const turns = fights.filter((f) => f.enemyId === boss.id && f.won).map((f) => f.turns)
+      const mean = turns.reduce((a, b) => a + b, 0) / turns.length
+      expect(mean, boss.id).toBeGreaterThanOrEqual(3.8)
+      expect(mean, boss.id).toBeLessThanOrEqual(6.5)
+    }
+  })
+
   // At the default Rigorous level a planner that peeks at its next draw wins about 95% with the starter deck alone, so the top level is where cards can show their worth.
   it('card rewards are worth taking: drafting beats skipping every card for every school at the top Rigorous level', { timeout: SIM_TIMEOUT }, () => {
     for (const school of SCHOOLS) {
@@ -127,6 +162,32 @@ describe('simulation', () => {
     }
     console.log(lines.join('\n'))
     expect(runs.length).toBeGreaterThan(0)
+  })
+
+  it('reports how many turns each philosophical problem lasts', { timeout: SIM_TIMEOUT }, () => {
+    const bosses = ENEMIES.filter((e) => e.tier === 'boss')
+    const lines = ['policy | ' + bosses.map((b) => `${b.id} turns (won fights)`).join(' | ')]
+    for (const policy of ['first-timer', 'careful', 'planner', `planner rigorous ${OLD_TOP}`, `planner rigorous ${MAX_RIGOR}`]) {
+      const fights = SCHOOLS.flatMap((s) => results.get(`${s.id}/${policy}`) ?? []).flatMap((r) => r.fights)
+      lines.push(`${policy} | ${bosses.map((b) => avg(fights.filter((f) => f.enemyId === b.id && f.won).map((f) => f.turns))).join(' | ')}`)
+    }
+    console.log(lines.join('\n'))
+    expect(lines.length).toBeGreaterThan(1)
+  })
+
+  it('reports archetype diversity: the card each winning planner deck took most', { timeout: SIM_TIMEOUT }, () => {
+    const lines = ['school | winning decks | distinct signature cards | most common signature (share) | decks with a rare']
+    for (const school of SCHOOLS) {
+      const winners = (results.get(`${school.id}/planner`) ?? []).filter((r) => r.won)
+      const signatures = winners.map((r) => signatureCard(r.deck, school.deck)).filter((id): id is string => id !== null)
+      const counts = new Map<string, number>()
+      signatures.forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1))
+      const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]
+      const withRare = winners.filter((r) => r.deck.some((id) => CARDS.find((c) => c.id === id)?.rarity === 'rare')).length
+      lines.push(`${school.id} | ${winners.length} | ${counts.size} | ${top ? `${top[0]} (${pct(top[1], signatures.length)})` : '-'} | ${pct(withRare, winners.length)}`)
+    }
+    console.log(lines.join('\n'))
+    expect(lines.length).toBe(SCHOOLS.length + 1)
   })
 
   it('reports, per enemy, what reading its rule is worth over the best rule-blind habit', { timeout: SIM_TIMEOUT }, () => {

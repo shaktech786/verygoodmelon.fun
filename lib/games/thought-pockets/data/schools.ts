@@ -1,4 +1,6 @@
 import { School, SchoolDef } from '@/types/thought-pockets'
+import { DOUBT_WEIGHT } from '../engine/battle'
+import { CONCLUSION_TIMES, EMPIRICIST_EVIDENCE_TIMES, timesWord } from './conclusion'
 
 const CORE = ['observation', 'observation', 'observation', 'observation', 'caveat', 'caveat', 'caveat']
 
@@ -8,7 +10,7 @@ export const SCHOOLS: SchoolDef[] = [
     name: 'Empiricist',
     difficulty: 'Easy',
     tagline: 'Pile up Evidence until the Weight is undeniable.',
-    passive: 'When your Conclusion is Evidence, it counts three times instead of twice.',
+    passive: `When your Conclusion is Evidence, it counts ${timesWord(EMPIRICIST_EVIDENCE_TIMES)} instead of ${timesWord(CONCLUSION_TIMES)}.`,
     deck: [...CORE, 'therefore', 'statistic', 'corroboration'],
   },
   {
@@ -32,7 +34,7 @@ export const SCHOOLS: SchoolDef[] = [
     name: 'Absurdist',
     difficulty: 'Easy',
     tagline: 'Your deck starts with Doubt. Carry it anyway.',
-    passive: 'Each Doubt in your hand adds 3 Weight to your argument.',
+    passive: `Each Doubt in your hand adds ${DOUBT_WEIGHT} Weight to your argument.`,
     deck: ['observation', 'observation', 'observation', 'observation', 'caveat', 'caveat', 'therefore', 'therefore', 'amor_fati', 'doubt', 'doubt'],
   },
   {

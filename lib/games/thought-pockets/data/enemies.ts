@@ -3,6 +3,14 @@ import { EnemyDef, EnemyTier } from '@/types/thought-pockets'
 export const TUTORIAL_ENEMY = 'jumping_to_conclusions'
 
 const GAMBLE = { chance: 0.25, attack: 22 }
+/** The damage answering The Meaning of Life's question adds. Flat, so a small honest answer gains as much as a huge one. */
+export const MEANING_ANSWER = 10
+/** What varying your Conclusion does against The Problem of Induction. */
+export const INDUCTION_BONUS = 1.5
+
+function percentMore(factor: number): string {
+  return `+${Math.round((factor - 1) * 100)}%`
+}
 
 export const ENEMIES: EnemyDef[] = [
   {
@@ -49,6 +57,7 @@ export const ENEMIES: EnemyDef[] = [
     health: 56,
     rule: 'confirmation',
     ruleText: 'Evidence it has already seen in an earlier turn gives only half Weight.',
+    secondRule: { rule: 'grows', ruleText: 'Each time it acts, its attacks grow by 2: it only hears what makes it surer.' },
     intro: "I've seen all this before, and I was right.",
     insight: 'We notice what agrees with us. Look for the evidence that would change your mind.',
     moves: [{ guard: 10 }, { attack: 12 }, { attack: 5, hits: 2 }],
@@ -60,13 +69,13 @@ export const ENEMIES: EnemyDef[] = [
     floor: 1,
     health: 70,
     rule: 'induction',
-    ruleText: 'The future need not resemble the past: an argument whose Conclusion is a different type from last turn’s deals +50%.',
+    ruleText: `The future need not resemble the past: an argument whose Conclusion is a different type from last turn’s deals ${percentMore(INDUCTION_BONUS)}.`,
     intro: 'The sun rose yesterday. Why are you so sure it will rise tomorrow?',
     insight: 'No number of past cases proves the next one. We act on patterns anyway, and stay ready to be surprised.',
     moves: [{ attack: 8 }, { guard: 10 }, { attack: 13 }, { attack: 4, hits: 2 }],
     phase2: {
       rule: 'induction',
-      ruleText: 'The pattern does not hold: below half Resolve it starts a new sequence of actions. Varying your Conclusion still deals +50%.',
+      ruleText: `The pattern does not hold: below half Resolve it starts a new sequence of actions. Varying your Conclusion still deals ${percentMore(INDUCTION_BONUS)}.`,
       shift: 'The pattern broke. What it did before tells you nothing now: read its next action.',
       moves: [{ attack: 5, hits: 2 }, { attack: 14 }, { guard: 8 }],
     },
@@ -116,6 +125,7 @@ export const ENEMIES: EnemyDef[] = [
     health: 68,
     rule: 'backfire',
     ruleText: 'Correcting it stings: when your argument hurts it, you lose 1 Resolve for each card in that argument.',
+    secondRule: { rule: 'motivated', ruleText: 'It also explains away anything thin: it recovers half the damage from an argument of fewer than 3 cards.' },
     intro: 'Correct me and I will only believe it harder.',
     insight: 'Pushing harder can entrench a belief. Fewer, better points often land softer and go further.',
     moves: [{ attack: 12 }, { guard: 12 }, { attack: 7, hits: 2 }],
@@ -184,6 +194,7 @@ export const ENEMIES: EnemyDef[] = [
     health: 80,
     rule: 'motivated',
     ruleText: 'It explains away anything thin: it recovers half the damage from an argument of fewer than 3 cards.',
+    secondRule: { rule: 'status_quo', ruleText: 'And it will not budge: its Guard never wears off. Break through it or Pierce it.' },
     intro: 'I need this to be true, so it is.',
     insight: 'When we want a conclusion, we argue toward it. Ask what you would think if you wanted the opposite.',
     moves: [{ attack: 12 }, { guard: 10 }, { attack: 7, hits: 2 }],
@@ -195,23 +206,23 @@ export const ENEMIES: EnemyDef[] = [
     floor: 3,
     health: 130,
     rule: 'meaning',
-    ruleText: 'It asks a question every round: answer it with a card of the named type and your argument deals double.',
+    ruleText: `It asks a question every round: answer it with a card of the named type and your argument deals ${MEANING_ANSWER} more damage.`,
     intro: 'Why does any of it matter?',
     insight: 'Meaning is not found lying around. It is made, one answer at a time.',
     moves: [
-      { attack: 12, asks: ['evidence'] },
-      { attack: 16, asks: ['logic'] },
+      { attack: 10, asks: ['evidence'] },
+      { attack: 14, asks: ['logic'] },
       { guard: 14, asks: ['guard'] },
-      { attack: 20, asks: ['evidence'] },
+      { attack: 18, asks: ['evidence'] },
     ],
     phase2: {
       rule: 'meaning',
-      ruleText: 'Below half Resolve it asks two things at once: include both named types and your argument deals double.',
+      ruleText: `Below half Resolve it asks two things at once: include both named types and your argument deals ${MEANING_ANSWER} more damage.`,
       shift: 'One answer is not enough any more. It wants two at once.',
       moves: [
-        { attack: 14, asks: ['evidence', 'logic'] },
-        { guard: 12, attack: 6, asks: ['guard', 'evidence'] },
-        { attack: 20, asks: ['logic', 'guard'] },
+        { attack: 12, asks: ['evidence', 'logic'] },
+        { guard: 12, attack: 5, asks: ['guard', 'evidence'] },
+        { attack: 18, asks: ['logic', 'guard'] },
       ],
     },
   },
