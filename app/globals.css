@@ -7,6 +7,7 @@
   --primary: #2d3748;
   --primary-light: #4a5568;
   --accent: #d32f3f;
+  --accent-hover: #b8283a;
   --accent-soft: #ffe8e9;
   --success: #74c69d;
   --danger: #d32f3f;
@@ -37,6 +38,7 @@ html[data-theme="dark"] {
   --primary: #e8e8e8;
   --primary-light: #a0a0a0;
   --accent: #ff6b7a;
+  --accent-hover: #ff8a96;
   --accent-soft: #3a1f21;
   --success: #68b892;
   --danger: #ff6b7a;
@@ -110,6 +112,7 @@ html[data-theme="dark"] .text-gray-900 {
     --primary: #e8e8e8;
     --primary-light: #a0a0a0;
     --accent: #ff6b7a;
+    --accent-hover: #ff8a96;
     --accent-soft: #3a1f21;
     --success: #68b892;
     --danger: #ff6b7a;
@@ -181,6 +184,7 @@ html[data-theme="dark"] .text-gray-900 {
   --color-primary: var(--primary);
   --color-primary-light: var(--primary-light);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
   --color-success: var(--success);
   --color-danger: var(--danger);
@@ -894,47 +898,14 @@ html[data-colorblind-mode="monochrome"] {
    PHASE 0: CUSTOM FOCUS STATES
    ============================================ */
 
-/* Watermelon-themed focus indicator */
+/* Watermelon-themed focus indicator. Deliberately unlayered so no component utility (shadows included) can hide keyboard focus. */
 *:focus-visible {
   outline: none;
   box-shadow:
     0 0 0 3px var(--background),
-    0 0 0 6px var(--accent),
-    0 0 12px 6px rgba(230, 57, 70, 0.2);
-  border-radius: inherit;
-  transition: box-shadow 150ms ease-out;
+    0 0 0 6px var(--accent);
 }
 
-/* Animated focus ring pulse */
-@keyframes focus-pulse {
-  0%, 100% {
-    box-shadow:
-      0 0 0 3px var(--background),
-      0 0 0 6px var(--accent),
-      0 0 12px 6px rgba(230, 57, 70, 0.2);
-  }
-  50% {
-    box-shadow:
-      0 0 0 3px var(--background),
-      0 0 0 6px var(--accent),
-      0 0 16px 8px rgba(230, 57, 70, 0.3);
-  }
-}
-
-button:focus-visible,
-a:focus-visible {
-  animation: focus-pulse 2s ease-in-out infinite;
-}
-
-/* Reduced motion: remove pulse */
-@media (prefers-reduced-motion: reduce) {
-  button:focus-visible,
-  a:focus-visible {
-    animation: none;
-  }
-}
-
-/* High contrast mode: extra visible focus rings */
 html[data-contrast="extra-high"] *:focus-visible {
   box-shadow:
     0 0 0 3px var(--background),

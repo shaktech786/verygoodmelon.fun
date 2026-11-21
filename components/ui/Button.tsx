@@ -18,7 +18,7 @@ export function Button({
   const baseStyles = 'font-medium rounded-lg button-squeeze transition-all duration-75 ease-in-out disabled:bg-foreground/10 disabled:text-foreground/40 disabled:cursor-not-allowed disabled:shadow-none disabled:border-foreground/10 focus:outline-none focus:ring-2 focus:ring-offset-2 active:shadow-sm select-none'
 
   const variants = {
-    primary: 'bg-accent text-white hover:bg-accent/90 soft-shadow hover:soft-shadow-md focus:ring-accent',
+    primary: 'bg-accent text-white hover:bg-accent-hover soft-shadow hover:soft-shadow-md focus:ring-accent',
     secondary: 'bg-card-bg text-foreground border border-card-border hover:bg-hover-bg soft-shadow hover:soft-shadow-md focus:ring-accent',
     ghost: 'bg-transparent text-foreground hover:bg-hover-bg focus:ring-accent',
     danger: 'bg-danger text-white hover:bg-danger/90 soft-shadow hover:soft-shadow-md focus:ring-danger'
