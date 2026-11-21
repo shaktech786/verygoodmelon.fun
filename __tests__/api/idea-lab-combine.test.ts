@@ -87,6 +87,17 @@ describe('POST /api/idea-lab/combine', () => {
     expect(response.status).toBe(400)
   })
 
+  it('returns 400 without calling the model when a concept is too long to be a real concept', async () => {
+    const request = new Request('http://localhost/api/idea-lab/combine', {
+      method: 'POST',
+      body: JSON.stringify({ concept1: 'Love', concept2: 'x'.repeat(61) }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await POST(request as never)
+    expect(response.status).toBe(400)
+  })
+
   it('returns 400 for missing concept2', async () => {
     const request = new Request('http://localhost/api/idea-lab/combine', {
       method: 'POST',
@@ -109,7 +120,21 @@ describe('POST /api/idea-lab/combine', () => {
     expect(response.status).toBe(400)
   })
 
-  it('returns fallback on AI error', async () => {
+  it('returns curated combinations whose table key is not alphabetical', async () => {
+    const request = new Request('http://localhost/api/idea-lab/combine', {
+      method: 'POST',
+      body: JSON.stringify({ concept1: 'Love', concept2: 'Fear' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await POST(request as never)
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.name).toBe('Jealousy')
+  })
+
+  it('asks the game to try later instead of inventing a concept on AI error', async () => {
     // Remove env var so getGemini() throws
     delete process.env.GOOGLE_GEMINI_API_KEY
 
@@ -122,8 +147,7 @@ describe('POST /api/idea-lab/combine', () => {
     const response = await POST(request as never)
     const data = await response.json()
 
-    // Route catches errors and returns fallback
-    expect(data.name).toBe('Synthesis')
-    expect(data.description).toContain('unexpected combinations')
+    expect(response.status).toBe(503)
+    expect(data.name).toBeUndefined()
   })
 })

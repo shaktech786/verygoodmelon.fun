@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 
+// Concepts are short names; anything longer is not from the game and would only cost model tokens.
+const MAX_CONCEPT_LENGTH = 60
+
+interface Combination {
+  name: string
+  emoji: string
+  description: string
+}
+
 // Known combinations for consistency and instant responses
-const KNOWN_COMBINATIONS: Record<string, { name: string; emoji: string; description: string }> = {
+const KNOWN_COMBINATIONS: Record<string, Combination> = {
   // Classic philosophical combinations
   'love+fear': { name: 'Jealousy', emoji: '😒', description: 'When love fears loss, it curdles into possession.' },
   'love+death': { name: 'Grief', emoji: '💔', description: 'Love does not end where life does—it transforms into longing.' },
@@ -48,16 +57,13 @@ const KNOWN_COMBINATIONS: Record<string, { name: string; emoji: string; descript
   'truth+self': { name: 'Honesty', emoji: '🪞', description: 'Seeing yourself without filters.' },
   'truth+chaos': { name: 'Paradox', emoji: '♾️', description: 'Truths that contradict yet coexist.' },
 
-  'beauty+death': { name: 'Sublime', emoji: '🌌', description: 'Awe that touches terror.' },
   'beauty+chaos': { name: 'Creativity', emoji: '🌈', description: 'Order emerging from disorder.' },
   'beauty+order': { name: 'Harmony', emoji: '🎵', description: 'Elements in perfect relation.' },
 
   'justice+chaos': { name: 'Karma', emoji: '☯️', description: 'The universe balancing itself.' },
-  'justice+power': { name: 'Judgment', emoji: '⚡', description: 'Power exercised with discernment.' },
 
   'hope+chaos': { name: 'Faith', emoji: '🕊️', description: 'Trusting without certainty.' },
   'hope+fear': { name: 'Courage', emoji: '🦁', description: 'Acting despite fear because something matters more.' },
-  'hope+death': { name: 'Transcendence', emoji: '🌠', description: 'Believing in something beyond this life.' },
 
   'chaos+order': { name: 'Balance', emoji: '⚖️', description: 'The dance between structure and spontaneity.' },
   'chaos+nature': { name: 'Evolution', emoji: '🧬', description: 'Random change preserved by selection.' },
@@ -67,8 +73,6 @@ const KNOWN_COMBINATIONS: Record<string, { name: string; emoji: string; descript
   'nature+self': { name: 'Instinct', emoji: '🐾', description: 'The animal wisdom within.' },
 
   'self+other': { name: 'Relationship', emoji: '🔗', description: 'Where I end and you begin becomes unclear.' },
-  'self+truth': { name: 'Identity', emoji: '🪪', description: 'The story you tell about who you are.' },
-  'self+death': { name: 'Existentialism', emoji: '🤔', description: 'Confronting your own finite existence.' },
 
   // Some deeper combinations
   'wisdom+courage': { name: 'Virtue', emoji: '🏛️', description: 'Excellence of character through practice.' },
@@ -85,11 +89,23 @@ function getComboKey(concept1: string, concept2: string): string {
   return [concept1.toLowerCase(), concept2.toLowerCase()].sort().join('+')
 }
 
+// The table above is written in reading order ("love+fear"); lookups use the sorted key.
+const KNOWN_BY_SORTED_KEY = new Map<string, Combination>(
+  Object.entries(KNOWN_COMBINATIONS).map(([key, combination]) => {
+    const [first, second] = key.split('+')
+    return [getComboKey(first, second), combination]
+  })
+)
+
 export async function POST(request: NextRequest) {
   try {
     const { concept1, concept2 } = await request.json()
 
-    if (!concept1 || !concept2) {
+    if (
+      typeof concept1 !== 'string' || typeof concept2 !== 'string' ||
+      !concept1.trim() || !concept2.trim() ||
+      concept1.length > MAX_CONCEPT_LENGTH || concept2.length > MAX_CONCEPT_LENGTH
+    ) {
       return NextResponse.json(
         { error: 'Two concepts are required' },
         { status: 400 }
@@ -97,8 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check known combinations first
-    const comboKey = getComboKey(concept1, concept2)
-    const known = KNOWN_COMBINATIONS[comboKey]
+    const known = KNOWN_BY_SORTED_KEY.get(getComboKey(concept1.trim(), concept2.trim()))
     if (known) {
       return NextResponse.json(known)
     }
@@ -145,21 +160,26 @@ Only return the JSON, no other text.`
     }
 
     const parsed = JSON.parse(jsonMatch[0])
+    if (typeof parsed.name !== 'string' || !parsed.name.trim() || parsed.name.trim().length > MAX_CONCEPT_LENGTH) {
+      throw new Error('AI response has no usable concept name')
+    }
 
     return NextResponse.json({
-      name: parsed.name || 'Mystery',
-      emoji: parsed.emoji || '❓',
-      description: parsed.description || 'A concept beyond words.'
+      name: parsed.name.trim(),
+      emoji: typeof parsed.emoji === 'string' && parsed.emoji ? parsed.emoji : '🔮',
+      description: typeof parsed.description === 'string' && parsed.description
+        ? parsed.description
+        : 'A concept beyond words.'
     })
 
   } catch (error) {
     console.error('Idea Lab combine error:', error)
 
-    // Fallback response
-    return NextResponse.json({
-      name: 'Synthesis',
-      emoji: '🔮',
-      description: 'Something new emerges from unexpected combinations.'
-    })
+    // A stand-in concept would be saved in the player's collection for good,
+    // so the game is told to ask again later instead.
+    return NextResponse.json(
+      { error: 'Combination unavailable' },
+      { status: 503 }
+    )
   }
 }
