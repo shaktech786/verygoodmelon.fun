@@ -24,7 +24,8 @@ interface WritingFormProps {
   label: string
   placeholder: string
   submitLabel: string
-  onSubmit: (words: string) => void
+  /** Receives the words and the question that was showing as they were sent. */
+  onSubmit: (words: string, prompt: string) => void
   textareaRef: RefObject<HTMLTextAreaElement | null>
   /** Where the unsent words wait if the page reloads. */
   draftKey: string
@@ -50,7 +51,7 @@ export function WritingForm({ prompts, label, placeholder, submitLabel, onSubmit
     event.preventDefault()
     if (!canSend) return
     clearDraft(draftKey)
-    onSubmit(input)
+    onSubmit(input, prompts[promptIndex])
   }
 
   const write = (text: string) => {

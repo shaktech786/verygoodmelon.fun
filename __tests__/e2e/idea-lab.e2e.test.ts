@@ -390,8 +390,8 @@ test('a gold is celebrated with the riddle it answers, and the shelf keeps the r
   await expect(golds.getByText('Plainer:', { exact: true })).toHaveCount(0)
 
   await combine(page, 'Hope', 'Fear')
-  await expect(announcement(page)).toHaveText('Gold: Courage, one of the seven. 1 of 7 found. Acting despite fear because something matters more.')
-  await expect(page.getByText('It answers:', { exact: false }).filter({ visible: true })).toBeVisible()
+  await expect(announcement(page)).toHaveText('Gold: Courage, one of the seven. 1 of 7 found. It answers: A trembling that keeps walking toward the morning. Acting despite fear because something matters more.')
+  await expect(page.locator('[aria-hidden="true"]').getByText('It answers:', { exact: false }).filter({ visible: true })).toBeVisible()
   await expect(golds).toContainText('1 of 7 found')
   await expect(golds).toContainText('Acting despite fear because something matters more.')
   await expect(golds.getByText('Not yet found. Riddle:', { exact: false })).toHaveCount(6)
@@ -539,6 +539,82 @@ test('has no accessibility violations in light or dark, including the letter', a
   expect(await axeViolations(page)).toEqual([])
 })
 
+test('a found gold warms its riddle on the shelf, and what it answers arrives one beat later', async ({ page }) => {
+  await mockCombine(page)
+  await startLab(page)
+
+  await combine(page, 'Hope', 'Fear')
+  const turning = shelf(page).getByRole('listitem').filter({ hasText: 'Just found. Riddle:' })
+  await expect(turning).toHaveCount(1)
+  await expect(turning).toContainText('A trembling that keeps walking toward the morning.')
+  await expect(turning).toHaveClass(/alchemist-gold-turn/)
+  // The live region already read it out; the answer on the shelf starts hidden and settles in after the outline has turned gold.
+  const answer = turning.locator('.alchemist-gold-answer')
+  await expect(answer).toContainText('Courage')
+  await expect.poll(() => answer.evaluate(el => Number(getComputedStyle(el).opacity))).toBe(1)
+  await expect(turning).toHaveCSS('border-top-style', 'dashed')
+  await expect(turning).toBeInViewport()
+
+  // The next pair files it away with the other golds.
+  await concept(page, 'Love').click()
+  await expect(shelf(page).getByText('Just found. Riddle:', { exact: false })).toHaveCount(0)
+  await expect(shelf(page)).toContainText('Acting despite fear because something matters more.')
+})
+
+test('with reduced motion the gold moment is a still frame', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await mockCombine(page)
+  await startLab(page)
+
+  await combine(page, 'Hope', 'Fear')
+  const turning = shelf(page).getByRole('listitem').filter({ hasText: 'Just found. Riddle:' })
+  await expect(turning).not.toHaveClass(/alchemist-gold-turn/)
+  await expect(turning).toHaveClass(/alchemist-gold-settled/)
+  await expect(page.locator('.alchemist-gold-answer')).toHaveCount(0)
+  await expect(page.locator('[aria-hidden="true"]').getByText('It answers:', { exact: false }).filter({ visible: true })).toBeVisible()
+})
+
+test('the cabinet beside the concepts keeps every idea made, newest first, to be opened and read again', async ({ page }) => {
+  await mockCombine(page)
+  await startLab(page)
+  const cabinet = page.getByRole('region', { name: 'Your cabinet' })
+  await expect(cabinet).toContainText('Empty for now.')
+
+  await combine(page, 'Love', 'Fear')
+  await expect(announcement(page)).toContainText('New discovery: Jealousy.')
+  await combine(page, 'Love', 'Death')
+  await expect(announcement(page)).toContainText('New discovery: Grief.')
+
+  const drawers = cabinet.getByRole('button')
+  await expect(drawers).toHaveCount(2)
+  await expect(drawers.nth(0)).toHaveAccessibleName('Reread Grief')
+  await expect(drawers.nth(1)).toHaveAccessibleName('Reread Jealousy')
+  await expect(cabinet.locator('button[tabindex="0"]')).toHaveCount(1)
+
+  // Keyboard: arrows move between drawers, Enter opens one in place.
+  await drawers.first().focus()
+  await page.keyboard.press('ArrowDown')
+  await expect(cabinet.getByRole('button', { name: 'Reread Jealousy' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  const jealousy = cabinet.getByRole('button', { name: 'Reread Jealousy' })
+  await expect(jealousy).toHaveAttribute('aria-expanded', 'true')
+  const reading = page.locator(`#${await jealousy.getAttribute('aria-controls')}`)
+  await expect(reading).toBeVisible()
+  await expect(reading).toContainText('When love fears loss, it curdles into possession.')
+  await expect(reading).toContainText(/Made from .*Fear and .*Love/)
+
+  // Its place is the empty space under the concepts, not below the riddles.
+  const [conceptsBox, cabinetBox, riddlesBox] = await Promise.all([
+    page.getByRole('toolbar', { name: 'Your Concepts' }).boundingBox(), cabinet.boundingBox(), shelf(page).boundingBox(),
+  ])
+  expect(cabinetBox!.y).toBeGreaterThan(conceptsBox!.y + conceptsBox!.height)
+  expect(cabinetBox!.x + cabinetBox!.width).toBeLessThanOrEqual(riddlesBox!.x)
+
+  await page.keyboard.press('Enter')
+  await expect(reading).toBeHidden()
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => !key.startsWith('ideaLab_') && /cabinet/i.test(key)))).toEqual([])
+})
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: 'reduce' })
 
@@ -592,5 +668,22 @@ test.describe('on a phone', () => {
     expect(await spring.boundingBox()).toEqual(before)
     const benchBox = await bench.boundingBox()
     expect((benchBox?.y ?? 0) + (benchBox?.height ?? 0)).toBeLessThanOrEqual(before?.y ?? 0)
+  })
+
+  test('the cabinet waits behind a quiet toggle below the concepts, so the play area comes first', async ({ page }) => {
+    await mockCombine(page)
+    await seed(page, { ideaLab_discoveries: asDiscoveries(['Jealousy', 'Grief']), ideaLab_combinations: { 'fear+love': 'jealousy' } })
+    await page.goto('/games/idea-lab')
+    const toggle = page.getByRole('button', { name: 'Your cabinet' })
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.getByRole('button', { name: 'Reread Grief' })).toHaveCount(0)
+    const [loveBox, toggleBox] = [await concept(page, 'Love').boundingBox(), await toggle.boundingBox()]
+    expect(toggleBox!.y).toBeGreaterThan(loveBox!.y)
+
+    await toggle.tap()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await page.getByRole('button', { name: 'Reread Jealousy' }).tap()
+    await expect(page.getByText('Jealousy, found earlier.')).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   })
 })

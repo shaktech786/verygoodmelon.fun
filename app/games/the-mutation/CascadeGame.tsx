@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Press_Start_2P } from 'next/font/google'
 import { Pause } from 'lucide-react'
-import type { GameState, MutationResult, MutationRecord, PlayStyle } from './engine/types'
+import type { GameState, MutationResult, MutationRecord, PathPoint, PlayStyle } from './engine/types'
 import { MECHANIC_CATEGORIES, DEFAULT_PARAMS, GAME_W, GAME_H } from './engine/types'
 import { getProfileSummary } from './engine/engine'
 import { fallbackName, fallbackTagline, reflection } from './engine/naming'
@@ -21,6 +21,12 @@ const retroFont = Press_Start_2P({ weight: '400', subsets: ['latin'], display: '
 type GamePhase = 'title' | 'playing' | 'paused' | 'mutating' | 'finale'
 
 type ActiveMechanic = { id: string; params: Record<string, number> }
+
+interface Finale {
+  closingLine: string
+  path: PathPoint[]
+  field: { w: number; h: number }
+}
 
 const MUTATE_URL = '/api/cascade/mutate'
 const REQUEST_TIMEOUT_MS = 8000
@@ -93,7 +99,7 @@ export default function CascadeGame() {
   const [activeMechanics, setActiveMechanics] = useState<ActiveMechanic[]>([])
   const [gameName, setGameName] = useState('')
   const [tagline, setTagline] = useState('')
-  const [finale, setFinale] = useState({ statValue: 0, statLabel: '', totalTime: 0, closingLine: '' })
+  const [finale, setFinale] = useState<Finale>({ closingLine: '', path: [], field: { w: GAME_W, h: GAME_H } })
   const [lockedPortrait, setLockedPortrait] = useState<boolean | null>(null)
   const reducedMotion = useReducedMotion()
   // Arrow keys cannot be pressed on a phone, so touch players always get the follow control
@@ -202,9 +208,8 @@ export default function CascadeGame() {
     const style: PlayStyle = s ? getProfileSummary(s).playStyle : 'gentle'
     setScore(finalScore)
     setFinale({
-      statValue: s?.collectTotal ?? 0,
-      statLabel: 'lights gathered',
-      totalTime: s?.totalTime ?? 0,
+      path: s ? [...s.path] : [],
+      field: { w: s?.w ?? GAME_W, h: s?.h ?? GAME_H },
       closingLine: reflection({ transformed: s?.transformed ?? 0, bumps: s?.bumps ?? 0, carries: s?.carries ?? 0 }),
     })
     setGameName('')
@@ -215,7 +220,6 @@ export default function CascadeGame() {
     let line = fallbackTagline({
       mechanicIds: allMutations.map(m => m.id),
       style,
-      collected: s?.collectTotal ?? 0,
       transformed: s?.transformed ?? 0,
     })
     try {
@@ -392,14 +396,12 @@ export default function CascadeGame() {
 
         {phase === 'finale' && (
           <FinaleScreen
-            score={score}
-            statValue={finale.statValue}
-            statLabel={finale.statLabel}
             gameName={gameName}
             tagline={tagline}
             closingLine={finale.closingLine}
             mutations={allMutations}
-            totalTime={finale.totalTime}
+            path={finale.path}
+            field={finale.field}
             onPlayAgain={handlePlayAgain}
             retroFont={retroFont.className}
             reducedMotion={reducedMotion}

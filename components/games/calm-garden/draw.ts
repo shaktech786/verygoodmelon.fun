@@ -1,4 +1,4 @@
-import { GROUND_TOP, categoryOf, type Plant, type PlantType, type Season, type TimeOfDay } from '@/lib/games/calm-garden/garden'
+import { GROUND_TOP, categoryOf, type Plant, type PlantCategory, type PlantType, type Season, type TimeOfDay } from '@/lib/games/calm-garden/garden'
 import { depthFactor, sizeFactor } from '@/lib/games/calm-garden/geometry'
 
 type Ctx = CanvasRenderingContext2D
@@ -538,4 +538,29 @@ export function drawMarker(ctx: Ctx, x: number, y: number, rx: number, ry: numbe
   ctx.lineWidth = 1.5
   ctx.stroke()
   ctx.setLineDash([])
+}
+
+const GLOW_REACH: Record<PlantCategory, { lift: number; r: number }> = {
+  tree: { lift: 44, r: 58 },
+  flower: { lift: 24, r: 30 },
+  bush: { lift: 14, r: 30 },
+  mushroom: { lift: 10, r: 20 },
+  stone: { lift: 6, r: 18 },
+}
+
+/** The faint warm light around something that grew while the garden was left. */
+export function drawNewGrowth(ctx: Ctx, category: PlantCategory, x: number, y: number, s: number, amount: number, tod: TimeOfDay) {
+  if (amount <= 0) return
+  const { lift, r } = GLOW_REACH[category]
+  const cy = y - lift * s
+  const radius = r * s
+  const color = tod === 'night' ? '255, 238, 160' : '255, 248, 214'
+  const g = ctx.createRadialGradient(x, cy, 0, x, cy, radius)
+  g.addColorStop(0, `rgba(${color}, ${0.5 * amount})`)
+  g.addColorStop(0.55, `rgba(${color}, ${0.22 * amount})`)
+  g.addColorStop(1, `rgba(${color}, 0)`)
+  ctx.fillStyle = g
+  ctx.beginPath()
+  ctx.arc(x, cy, radius, 0, Math.PI * 2)
+  ctx.fill()
 }

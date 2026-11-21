@@ -19,20 +19,22 @@ describe('The Shapeshifter naming', () => {
 
   it('gives every play style a kind tagline, short enough for the finale', () => {
     for (const style of ['gentle', 'explorer', 'collector', 'bold'] as const) {
-      const line = fallbackTagline({ mechanicIds: RUN, style, collected: 42, transformed: 3 })
+      const line = fallbackTagline({ mechanicIds: RUN, style, transformed: 3 })
       expect(line).toMatch(/^A game for someone who .+\.$/)
+      expect(line).not.toMatch(/\d/)
       expect(line.length).toBeLessThanOrEqual(110)
       expect(line).not.toMatch(/lazy|fail|lose|lost/i)
     }
   })
 
   it('draws the tagline from the run itself, so different runs never share one line', () => {
-    const lanterns = fallbackTagline({ mechanicIds: ['arrow_keys', 'stars', 'chasers', 'blaster'], style: 'explorer', collected: 31, transformed: 0 })
-    const tides = fallbackTagline({ mechanicIds: ['mouse_follow', 'pulse_gems', 'sweepers'], style: 'explorer', collected: 12, transformed: 0 })
-    expect(lanterns).toBe('A game for someone who roamed the whole field and found 31 stars by lantern light.')
-    expect(tides).toBe('A game for someone who roamed the whole field and found 12 gems as the tides came and went.')
-    expect(fallbackTagline({ mechanicIds: RUN, style: 'bold', collected: 5, transformed: 1 })).toBe('A game for someone who turned 1 shadow into light in an easy rhythm.')
-    expect(fallbackTagline({ mechanicIds: [], style: 'gentle', collected: 1, transformed: 0 })).toBe('A game for someone who let 1 star drift their way.')
+    const lanterns = fallbackTagline({ mechanicIds: ['arrow_keys', 'stars', 'chasers', 'blaster'], style: 'explorer', transformed: 0 })
+    const tides = fallbackTagline({ mechanicIds: ['mouse_follow', 'pulse_gems', 'sweepers'], style: 'explorer', transformed: 0 })
+    expect(lanterns).toBe('A game for someone who roamed the whole field and found stars by lantern light.')
+    expect(tides).toBe('A game for someone who roamed the whole field and found gems as the tides came and went.')
+    expect(fallbackTagline({ mechanicIds: RUN, style: 'bold', transformed: 1 })).toBe('A game for someone who turned shadows into light in an easy rhythm.')
+    expect(fallbackTagline({ mechanicIds: RUN, style: 'collector', transformed: 0 })).toBe('A game for someone who gathered stars, one small light at a time in an easy rhythm.')
+    expect(fallbackTagline({ mechanicIds: [], style: 'gentle', transformed: 0 })).toBe('A game for someone who let the stars drift their way.')
   })
 
   it('closes with a line about meeting change, shaped by what the player did', () => {
@@ -66,8 +68,8 @@ describe('The Shapeshifter naming', () => {
   it('calls the pull rule by its card name, never by another word', () => {
     const ids = ['arrow_keys', 'stars', 'gravity_well']
     expect(fallbackName(ids, 'gentle')).toBe('QUIET STARS & GENTLE PULL')
-    const tagline = fallbackTagline({ mechanicIds: ids, style: 'gentle', collected: 3, transformed: 0 })
-    expect(tagline).toBe('A game for someone who let 3 stars drift their way in the gentle pull.')
+    const tagline = fallbackTagline({ mechanicIds: ids, style: 'gentle', transformed: 0 })
+    expect(tagline).toBe('A game for someone who let the stars drift their way in the gentle pull.')
     expect(`${fallbackName(ids, 'gentle')} ${tagline}`).not.toMatch(/orbit/i)
   })
 })

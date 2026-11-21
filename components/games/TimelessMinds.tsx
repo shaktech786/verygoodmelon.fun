@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { pickRandomThinker, thinkers as allThinkers, getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
-import { Hand, Send, Loader2, Mic, MicOff, VideoIcon, VideoOff, Volume2, VolumeX, Book, Plus } from 'lucide-react'
+import { Hand, Send, Loader2, Mic, MicOff, Image as ImageIcon, ImageOff, Volume2, VolumeX, Users, Plus, MoreHorizontal, BookmarkPlus, BookmarkCheck, Library } from 'lucide-react'
 import ThinkerPhoneBook from './ThinkerPhoneBook'
 import RequestThinkerModal from './RequestThinkerModal'
 import { Button } from '@/components/ui/Button'
@@ -20,6 +20,8 @@ import { useCareMode } from './CareMode'
 import { MAX_MESSAGE_LENGTH, farewellFallback } from '@/lib/games/timeless-minds/conversation'
 import { plainText } from '@/lib/games/timeless-minds/plain-text'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { isKept, keepLine, loadKeptLines, removeLine, saveKeptLines, type KeptLine } from '@/lib/games/timeless-minds/kept-lines'
+import TimelessMindsKeptLines from './TimelessMindsKeptLines'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -32,6 +34,66 @@ const VOICE_INPUT_UNAVAILABLE = 'Speaking is not available here, so please type 
 const IMAGINED_NOTE = 'Imagined conversations, not real quotes from the person.'
 const CARE_FAREWELL = 'Thank you for staying with me. Please let one of the people below hear you too; you deserve that kind of company.'
 const KEYBOARD_SETTLE_MS = 1000
+const MENU_ID = 'sage-room-menu'
+
+// A warm sitting room in place of a video call: linen wall, a framed portrait, a paper page for the words.
+const SAGE_ROOM_CSS = `
+.sage-room {
+  --sage-wall: #efe6d6;
+  --sage-paper: #fbf8f1;
+  --sage-note: #ffffff;
+  --sage-line: #e3d8c5;
+  --sage-ink: #2a241d;
+  --sage-ink-soft: #5b5045;
+  --sage-frame: #8a6644;
+  --sage-frame-edge: #5e4329;
+  --sage-mat: #f7f0e3;
+}
+html[data-theme="dark"] .sage-room {
+  --sage-wall: #211c17;
+  --sage-paper: #2b2520;
+  --sage-note: #352e28;
+  --sage-line: #463c33;
+  --sage-ink: #f2eadf;
+  --sage-ink-soft: #cbbda9;
+  --sage-frame: #7a5a3b;
+  --sage-frame-edge: #3a2a1b;
+  --sage-mat: #3b332b;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] .sage-room {
+    --sage-wall: #211c17;
+    --sage-paper: #2b2520;
+    --sage-note: #352e28;
+    --sage-line: #463c33;
+    --sage-ink: #f2eadf;
+    --sage-ink-soft: #cbbda9;
+    --sage-frame: #7a5a3b;
+    --sage-frame-edge: #3a2a1b;
+    --sage-mat: #3b332b;
+  }
+}
+html[data-contrast="high"] .sage-room,
+html[data-contrast="extra-high"] .sage-room {
+  --sage-wall: var(--background);
+  --sage-paper: var(--card-bg);
+  --sage-note: var(--card-bg);
+  --sage-line: var(--card-border);
+  --sage-ink: var(--foreground);
+  --sage-ink-soft: var(--foreground);
+}
+.sage-wall { background-color: var(--sage-wall); color: var(--sage-ink); }
+.sage-paper { background-color: var(--sage-paper); border-color: var(--sage-line); color: var(--sage-ink); }
+.sage-note { background-color: var(--sage-note); border-color: var(--sage-line); }
+.sage-line { border-color: var(--sage-line); }
+.sage-ink { color: var(--sage-ink); }
+.sage-ink-soft { color: var(--sage-ink-soft); }
+.sage-frame {
+  background: linear-gradient(145deg, var(--sage-frame), var(--sage-frame-edge));
+  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 6px 18px rgba(40, 25, 10, 0.25);
+}
+.sage-mat { background-color: var(--sage-mat); }
+`
 
 // Tab and Shift+Tab cycle within an open dialog instead of wandering to the page behind it.
 function keepTabInside(e: React.KeyboardEvent<HTMLElement>) {
@@ -99,11 +161,16 @@ export default function TimelessMinds() {
   const { care, enterCareMode } = useCareMode()
   const reducedMotion = useReducedMotion()
   const [showTopicSuggestions, setShowTopicSuggestions] = useState(true)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [keptLines, setKeptLines] = useState<KeptLine[]>([])
+  const [keepNote, setKeepNote] = useState('')
+  const [showKeptLines, setShowKeptLines] = useState(false)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const menuWrapRef = useRef<HTMLDivElement>(null)
   const inputRowRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const onlyGreetingRef = useRef(true)
   const inputRef = useRef<HTMLInputElement>(null)
-  const directoryButtonRef = useRef<HTMLButtonElement>(null)
   const endCallCancelRef = useRef<HTMLButtonElement>(null)
   // Bumped whenever a new conversation starts, so a reply still in flight for the
   // previous thinker is dropped instead of landing in the new conversation.
@@ -248,6 +315,20 @@ export default function TimelessMinds() {
     setThinker(selectedThinker)
     setMessages([openingMessage(selectedThinker)])
   }, [])
+
+  useEffect(() => {
+    const saved = loadKeptLines()
+    queueMicrotask(() => setKeptLines(saved))
+  }, [])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const closeOutside = (e: PointerEvent) => {
+      if (!menuWrapRef.current?.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOutside)
+    return () => document.removeEventListener('pointerdown', closeOutside)
+  }, [menuOpen])
 
   useEffect(() => {
     if (showEndCallDialog) endCallCancelRef.current?.focus()
@@ -427,6 +508,7 @@ export default function TimelessMinds() {
   const leaveFarewell = (openDirectory: boolean) => {
     const leaving = farewell?.thinker ?? thinker
     setFarewell(null)
+    setKeepNote('')
     if (!leaving) return
     startConversation(pickRandomThinker({ exclude: leaving, care }))
     if (openDirectory) setShowPhoneBook(true)
@@ -434,6 +516,7 @@ export default function TimelessMinds() {
 
   const stayInConversation = () => {
     setFarewell(null)
+    setKeepNote('')
     inputRef.current?.focus()
   }
 
@@ -448,7 +531,54 @@ export default function TimelessMinds() {
   const closeDirectory = () => {
     setShowPhoneBook(false)
     // Choosing someone has already put focus in the message box; otherwise it would fall to the page
-    if (document.activeElement !== inputRef.current) directoryButtonRef.current?.focus()
+    if (document.activeElement !== inputRef.current) menuButtonRef.current?.focus()
+  }
+
+  const fromMenu = (action: () => void) => () => {
+    setMenuOpen(false)
+    action()
+  }
+
+  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Escape' || !menuOpen) return
+    e.stopPropagation()
+    setMenuOpen(false)
+    menuButtonRef.current?.focus()
+  }
+
+  const handleMenuBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setMenuOpen(false)
+  }
+
+  const keepFarewell = () => {
+    if (!farewell?.text || isKept(keptLines, farewell.thinker.id, farewell.text)) return
+    const next = keepLine(keptLines, {
+      id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      text: farewell.text,
+      thinkerId: farewell.thinker.id,
+      thinkerName: farewell.thinker.name,
+      keptOn: new Date().toLocaleDateString('en-CA'),
+    })
+    setKeptLines(next)
+    setKeepNote(saveKeptLines(next)
+      ? 'You can read it again from Kept lines in the menu.'
+      : 'Kept for this visit. This device is not saving things just now, so it will be gone when you leave.')
+  }
+
+  const forgetLine = (id: string) => {
+    const next = removeLine(keptLines, id)
+    setKeptLines(next)
+    saveKeptLines(next)
+  }
+
+  const closeKeptLines = () => {
+    setShowKeptLines(false)
+    menuButtonRef.current?.focus()
+  }
+
+  const handleKeptLinesKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key === 'Escape') closeKeptLines()
+    keepTabInside(e)
   }
 
   const handleSelectThinker = (thinkerId: string) => {
@@ -458,6 +588,7 @@ export default function TimelessMinds() {
 
   const cancelEndCall = () => {
     setShowEndCallDialog(false)
+    menuButtonRef.current?.focus()
   }
 
   const handleEndCallDialogKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
@@ -547,63 +678,110 @@ export default function TimelessMinds() {
     )
   }
 
-  // On a phone the conversation needs the room once it has begun, so the portrait becomes a slim strip
-  const conversationStarted = messages.length > 1
-  const portraitHeight = conversationStarted ? 'h-16' : care ? 'h-20' : 'h-32'
   const statusLabel = isSpeaking ? 'Speaking' : isLoading ? 'Thinking' : isListening ? 'Listening' : 'Ready'
-  const toolbarButton = 'flex flex-col items-center gap-0.5 sm:gap-1 px-1 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group'
-  const toolbarLabel = 'text-white text-[11px] sm:text-xs whitespace-nowrap'
+  const menuItem = 'w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-left text-sm sage-ink hover:bg-[var(--sage-paper)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
+  const menuIcon = 'shrink-0 sage-ink-soft'
+  const userHasSpoken = messages.some((m) => m.role === 'user')
 
   return (
-    <div className="max-w-7xl mx-auto h-[calc(100dvh-12rem)] min-h-[36rem] sm:h-[calc(100dvh-10rem)] flex flex-col bg-black rounded-xl overflow-hidden shadow-2xl">
-      {/* Main Video Area. On wider screens its right edge leaves a rail for the site's floating buttons,
-          which would otherwise sit on Send at some sizes and text settings. */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3 sm:pr-[5.5rem] min-h-0">
-        {/* Video Window */}
-        <div className={`${portraitHeight} sm:h-auto sm:flex-[2] shrink-0 relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden sm:min-h-[200px] lg:min-h-0`}>
-          <div className="absolute inset-0">
-            {videoEnabled ? (
-              <div className="absolute inset-0">
-                {avatarId && (
-                  <AvatarRenderer
-                    ref={avatarRef}
-                    avatarId={avatarId}
-                    isActive={videoEnabled}
-                    audioMuted={!audioEnabled}
-                    emotion={currentEmotion}
-                    onSpeakingChange={handleAvatarSpeakingChange}
-                    onError={(err) => console.warn('Avatar error:', err)}
-                  />
+    <div className="sage-room sage-wall max-w-[1024px] mx-auto h-[calc(100dvh-12rem)] min-h-[36rem] sm:h-[calc(100dvh-10rem)] flex flex-col rounded-2xl border sage-line shadow-sm">
+      <style>{SAGE_ROOM_CSS}</style>
+      {/* At some widths the room reaches the site's floating buttons, so its right edge leaves them a rail there. */}
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-6 p-3 sm:p-5 sm:pr-[5.5rem] xl:pr-5">
+        {/* The portrait on the wall, with its name plaque and the room's one menu */}
+        <div className="shrink-0 flex items-center gap-3 lg:flex-col lg:items-stretch lg:w-64 xl:w-72">
+          <div className={`sage-frame shrink-0 rounded-md p-1.5 lg:p-2.5 ${care ? 'w-14 h-[4.5rem]' : 'w-16 h-20'} sm:w-20 sm:h-24 lg:w-full lg:h-auto lg:aspect-[4/5]`}>
+            <div className="sage-mat w-full h-full rounded-sm p-1 lg:p-2">
+              <div className="relative w-full h-full rounded-[2px] overflow-hidden">
+                {videoEnabled ? (
+                  avatarId && (
+                    <AvatarRenderer
+                      ref={avatarRef}
+                      avatarId={avatarId}
+                      isActive={videoEnabled}
+                      audioMuted={!audioEnabled}
+                      emotion={currentEmotion}
+                      onSpeakingChange={handleAvatarSpeakingChange}
+                      onError={(err) => console.warn('Avatar error:', err)}
+                    />
+                  )
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center sage-paper font-serif text-2xl lg:text-6xl sage-ink-soft" data-testid="portrait-hidden">
+                    <span aria-hidden="true">{thinker.name.charAt(0)}</span>
+                  </div>
                 )}
               </div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                <div className="text-6xl mb-4" aria-hidden="true">&#x1F399;&#xFE0F;</div>
-                <p className="text-white/80">Portrait hidden</p>
-                <p className="text-white/70 text-sm mt-2">Show the portrait to see {thinker?.name}</p>
+            </div>
+          </div>
+
+          <div className="flex-1 min-w-0 lg:flex-none lg:text-center lg:mt-1">
+            <p className="font-serif text-lg sm:text-xl lg:text-2xl leading-tight sage-ink line-clamp-2 lg:line-clamp-none">{thinker.name}</p>
+            <p className="text-xs sm:text-sm sage-ink-soft truncate lg:whitespace-normal">{thinker.era}<span className="hidden sm:inline"> · {thinker.field}</span></p>
+            <p className="mt-0.5 flex items-center lg:justify-center gap-1.5 text-xs sage-ink-soft">
+              <span className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? 'bg-warm' : isListening ? 'bg-melon-green' : 'bg-success'}`} aria-hidden="true" />
+              <span>{statusLabel}</span>
+            </p>
+          </div>
+
+          <div ref={menuWrapRef} className="relative shrink-0 lg:self-center" onKeyDown={handleMenuKeyDown} onBlur={handleMenuBlur}>
+            <button
+              ref={menuButtonRef}
+              type="button"
+              aria-expanded={menuOpen}
+              aria-controls={MENU_ID}
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="sage-paper flex items-center gap-1.5 px-3 min-h-[44px] rounded-full border text-sm hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            >
+              <MoreHorizontal size={18} aria-hidden="true" />
+              Menu
+            </button>
+            {menuOpen && (
+              <div
+                id={MENU_ID}
+                className="sage-note absolute right-0 lg:right-auto lg:left-1/2 lg:-translate-x-1/2 top-full mt-2 lg:top-auto lg:bottom-full lg:mt-0 lg:mb-2 z-30 w-64 rounded-xl border p-1.5 shadow-xl"
+              >
+                <button type="button" className={menuItem} onClick={fromMenu(() => setShowPhoneBook(true))}>
+                  <Users size={18} className={menuIcon} aria-hidden="true" />
+                  Choose who to talk with
+                </button>
+                <button
+                  type="button"
+                  className={menuItem}
+                  onClick={toggleAudio}
+                  aria-label={audioEnabled ? 'Turn off thinker voice' : 'Turn on thinker voice'}
+                  aria-pressed={audioEnabled}
+                >
+                  {audioEnabled ? <Volume2 size={18} className={menuIcon} aria-hidden="true" /> : <VolumeX size={18} className={menuIcon} aria-hidden="true" />}
+                  {audioEnabled ? 'Voice on' : 'Voice off'}
+                </button>
+                <button type="button" className={menuItem} onClick={toggleVideo}>
+                  {videoEnabled ? <ImageOff size={18} className={menuIcon} aria-hidden="true" /> : <ImageIcon size={18} className={menuIcon} aria-hidden="true" />}
+                  {videoEnabled ? 'Hide portrait' : 'Show portrait'}
+                </button>
+                <button type="button" className={menuItem} onClick={fromMenu(() => setShowKeptLines(true))}>
+                  <Library size={18} className={menuIcon} aria-hidden="true" />
+                  Kept lines
+                </button>
+                {requestsAvailable && (
+                  <button type="button" className={menuItem} onClick={fromMenu(() => setShowRequestModal(true))}>
+                    <Plus size={18} className={menuIcon} aria-hidden="true" />
+                    Request
+                  </button>
+                )}
+                <div className="my-1 border-t sage-line" />
+                <button type="button" className={menuItem} onClick={fromMenu(handleEndCall)}>
+                  <Hand size={18} className={menuIcon} aria-hidden="true" />
+                  Say goodbye
+                </button>
               </div>
             )}
           </div>
-
-          {/* Participant Name Tag */}
-          <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 bg-black/80 px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg backdrop-blur-sm">
-            <div className="text-white font-semibold text-xs sm:text-sm">{thinker.name}</div>
-            <div className="text-white/70 text-[10px] sm:text-xs">{thinker.era}</div>
-          </div>
-
-          {/* Status Indicator */}
-          <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex items-center gap-1.5 sm:gap-2 bg-black/60 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg backdrop-blur-sm">
-            <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isSpeaking ? 'bg-warm' : isListening ? 'bg-melon-green' : 'bg-success'}`} aria-hidden="true"></div>
-            <span className="text-white text-[11px] sm:text-xs font-medium">{statusLabel}</span>
-          </div>
         </div>
 
-        {/* Chat Sidebar */}
-        <div className="flex-1 min-h-0 w-full lg:flex-1 lg:max-w-md bg-card-bg rounded-lg flex flex-col shadow-xl">
-          {/* On a phone the portrait's name tag already names the thinker, so this header is only read aloud there */}
-          <div className="shrink-0 sr-only sm:not-sr-only sm:p-4 sm:border-b sm:border-card-border">
-            <h2 className="font-semibold text-foreground text-sm sm:text-base">Talking with {thinker.name}</h2>
-            <p className="text-xs text-foreground/70">{thinker.field} · {thinker.era}</p>
+        {/* The conversation, written on paper */}
+        <div className="sage-paper flex-1 min-h-0 w-full flex flex-col rounded-xl border shadow-sm overflow-hidden">
+          <div className="sr-only">
+            <h2>Talking with {thinker.name}</h2>
           </div>
 
           {/* Replies are announced once each, when they arrive whole. */}
@@ -613,12 +791,12 @@ export default function TimelessMinds() {
             aria-live="polite"
             aria-label="Conversation"
             tabIndex={0}
-            className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3 bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring"
+            className="flex-1 min-h-0 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5 space-y-3 sm:space-y-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring"
             style={{ scrollbarGutter: 'stable' }}
           >
             {messages.length === 1 && showTopicSuggestions && (
-              <div className="mb-3 p-3 bg-card-bg border border-card-border rounded-lg">
-                <p className="text-xs text-foreground/70 mb-2">Try asking about:</p>
+              <div className="mb-3">
+                <p className="text-xs sage-ink-soft mb-2">Try asking about:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {getTopicSuggestions(thinker, care).map(topic => (
                     <button
@@ -628,7 +806,7 @@ export default function TimelessMinds() {
                         setShowTopicSuggestions(false)
                         inputRef.current?.focus()
                       }}
-                      className="text-sm px-3 py-1.5 min-h-[44px] bg-background border border-card-border hover:border-chosen-line text-foreground rounded-full transition-colors"
+                      className="sage-note text-sm px-3 py-1.5 min-h-[44px] border hover:border-chosen-line sage-ink rounded-full transition-colors"
                     >
                       {topic}
                     </button>
@@ -642,18 +820,18 @@ export default function TimelessMinds() {
                 key={index}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className="max-w-[85%]">
-                  <div className="text-xs text-foreground/70 mb-1 px-1">
+                <div className="max-w-[88%] sm:max-w-[80%]">
+                  <div className={`text-xs sage-ink-soft mb-1 px-1 ${message.role === 'user' ? 'text-right' : ''}`}>
                     {message.role === 'user' ? 'You' : thinker.name}
                   </div>
                   <div
-                    className={`px-3 py-2 rounded-lg shadow-sm ${
+                    className={`px-3.5 py-2.5 rounded-2xl ${
                       message.role === 'user'
-                        ? 'bg-chosen border border-chosen-line/40 text-foreground rounded-br-none'
-                        : 'bg-card-bg border border-card-border text-foreground rounded-bl-none'
+                        ? 'bg-chosen border border-chosen-line/40 rounded-br-sm'
+                        : 'sage-note border rounded-bl-sm'
                     }`}
                   >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                    <p className={`leading-relaxed whitespace-pre-wrap sage-ink ${message.role === 'assistant' ? 'font-serif text-[0.95rem] sm:text-base' : 'text-sm'}`}>
                       {message.role === 'assistant' ? plainText(message.content) : message.content}
                     </p>
                   </div>
@@ -663,11 +841,11 @@ export default function TimelessMinds() {
 
             {isLoading && (
               <div className="flex justify-start" aria-hidden="true">
-                <div className="bg-card-bg border border-card-border px-3 py-2 rounded-lg shadow-sm">
+                <div className="sage-note border px-3 py-2.5 rounded-2xl rounded-bl-sm">
                   <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce motion-reduce:animate-none" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce motion-reduce:animate-none" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce motion-reduce:animate-none" style={{ animationDelay: '300ms' }}></div>
+                    <div className="w-2 h-2 bg-[var(--sage-ink-soft)] opacity-50 rounded-full animate-bounce motion-reduce:animate-none" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-[var(--sage-ink-soft)] opacity-50 rounded-full animate-bounce motion-reduce:animate-none" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-[var(--sage-ink-soft)] opacity-50 rounded-full animate-bounce motion-reduce:animate-none" style={{ animationDelay: '300ms' }}></div>
                   </div>
                 </div>
               </div>
@@ -677,21 +855,21 @@ export default function TimelessMinds() {
           {care && <TimelessMindsCarePanel className="shrink-0 px-3 py-2 border-x-0 border-b-0" />}
 
           {/* Chat Input */}
-          <div ref={inputRowRef} className="shrink-0 p-2 sm:p-3 border-t border-card-border bg-card-bg">
+          <div ref={inputRowRef} className="shrink-0 p-2 sm:p-3 border-t sage-line">
             {isListening && (
               <div className="mb-2 p-2 bg-chosen border border-chosen-line/40 rounded-lg">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-melon-green rounded-full" aria-hidden="true" />
-                  <span className="text-xs text-foreground font-medium">Listening...</span>
+                  <span className="text-xs sage-ink font-medium">Listening...</span>
                 </div>
                 {interimTranscript && (
-                  <p className="text-xs text-foreground/70 mt-1 italic">&quot;{interimTranscript}&quot;</p>
+                  <p className="text-xs sage-ink-soft mt-1 italic">&quot;{interimTranscript}&quot;</p>
                 )}
               </div>
             )}
 
             {voiceInputNote && (
-              <p className="mb-2 text-xs text-foreground/70" role="status">
+              <p className="mb-2 text-xs sage-ink-soft" role="status">
                 {voiceInputNote}
               </p>
             )}
@@ -706,10 +884,21 @@ export default function TimelessMinds() {
                 onFocus={keepInputInView}
                 placeholder={isListening ? 'Listening...' : 'Type a message...'}
                 maxLength={MAX_MESSAGE_LENGTH}
-                className="flex-1 min-w-0 px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg text-base sm:text-sm transition-colors placeholder:text-foreground/60"
+                className="sage-note flex-1 min-w-0 px-3 py-2 sage-ink border rounded-lg text-base sm:text-sm transition-colors placeholder:text-[var(--sage-ink-soft)]"
                 disabled={isLoading || isListening}
                 aria-label="Message input"
               />
+              <button
+                type="button"
+                onClick={toggleVoiceInput}
+                disabled={isLoading || isSpeaking}
+                aria-label={isListening ? 'Stop listening' : 'Start voice input'}
+                className={`shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
+                  isListening ? 'bg-melon-green border-melon-green text-background' : 'sage-note sage-ink-soft hover:border-chosen-line'
+                }`}
+              >
+                {isListening ? <MicOff size={18} aria-hidden="true" /> : <Mic size={18} aria-hidden="true" />}
+              </button>
               <Button
                 onClick={() => sendMessage()}
                 disabled={!inputMessage.trim() || isLoading || isListening}
@@ -717,7 +906,7 @@ export default function TimelessMinds() {
                 className="px-3 py-2 sm:px-4 min-w-[44px]"
                 aria-label="Send message"
               >
-                <Send size={14} className="sm:w-4 sm:h-4" aria-hidden="true" />
+                <Send size={16} aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -725,110 +914,19 @@ export default function TimelessMinds() {
       </div>
 
       {/* Disclaimer */}
-      <div className="shrink-0 bg-black/80 px-2 sm:px-4 py-1.5 sm:py-2 text-center text-[11px] sm:text-xs text-white/80 border-t border-gray-800/50">
+      <div className="shrink-0 px-3 sm:px-5 pb-1 text-center text-[11px] sm:text-xs sage-ink-soft">
         <p>
           {IMAGINED_NOTE} Inspired by their life and writing, for reflection only.{' '}
           {/* Same tab, unless leaving would end a conversation the visitor is in the middle of */}
           <a
             href="/games/ancient-voices/disclaimer"
-            {...(messages.some((m) => m.role === 'user') && { target: '_blank' })}
-            className="inline-flex items-center min-h-11 px-2 text-white underline"
+            {...(userHasSpoken && { target: '_blank' })}
+            className="inline-flex items-center min-h-11 px-2 sage-ink underline"
           >
             About these conversations
-            {messages.some((m) => m.role === 'user') && <span className="sr-only"> (opens in a new tab)</span>}
+            {userHasSpoken && <span className="sr-only"> (opens in a new tab)</span>}
           </a>
         </p>
-      </div>
-
-      {/* Bottom Toolbar */}
-      <div className="shrink-0 bg-gray-900 border-t border-gray-800 py-2 pl-1 pr-14 sm:p-4 flex items-center justify-between">
-        {/* Left Side */}
-        <div className="flex items-center gap-0.5 sm:gap-2">
-          <button ref={directoryButtonRef} onClick={() => setShowPhoneBook(true)} className={toolbarButton}>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-success/20 group-hover:bg-success/30">
-              <Book size={16} className="text-success sm:w-5 sm:h-5" aria-hidden="true" />
-            </div>
-            <span className={toolbarLabel}>Directory</span>
-          </button>
-
-          {requestsAvailable && (
-            <button onClick={() => setShowRequestModal(true)} className={toolbarButton}>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-accent/20 group-hover:bg-accent/30">
-                <Plus size={16} className="text-accent sm:w-5 sm:h-5" aria-hidden="true" />
-              </div>
-              <span className={toolbarLabel}>Request</span>
-            </button>
-          )}
-        </div>
-
-        {/* Center Controls */}
-        <div className="flex items-center justify-center gap-0.5 sm:gap-4">
-          {/* Voice Input */}
-          <button
-            onClick={toggleVoiceInput}
-            className={`${toolbarButton} ${isListening ? 'bg-melon-green/20' : ''}`}
-            aria-label={isListening ? 'Stop listening' : 'Start voice input'}
-            disabled={isLoading || isSpeaking}
-          >
-            <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
-              isListening ? 'bg-melon-green' : 'bg-gray-700 group-hover:bg-gray-600'
-            }`}>
-              {isListening ? (
-                <MicOff size={16} className="text-background sm:w-5 sm:h-5" aria-hidden="true" />
-              ) : (
-                <Mic size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
-              )}
-            </div>
-            <span className={toolbarLabel}>{isListening ? 'Stop' : 'Speak'}</span>
-          </button>
-
-          {/* Audio Toggle */}
-          <button
-            onClick={toggleAudio}
-            className={toolbarButton}
-            aria-label={audioEnabled ? 'Turn off thinker voice' : 'Turn on thinker voice'}
-            aria-pressed={audioEnabled}
-          >
-            <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
-              audioEnabled ? 'bg-success/30 group-hover:bg-success/40' : 'bg-gray-700 group-hover:bg-gray-600'
-            }`}>
-              {audioEnabled ? (
-                <Volume2 size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
-              ) : (
-                <VolumeX size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
-              )}
-            </div>
-            <span className={toolbarLabel}>{audioEnabled ? 'Voice on' : 'Voice off'}</span>
-          </button>
-
-          {/* Video Toggle */}
-          <button
-            onClick={toggleVideo}
-            className={toolbarButton}
-            aria-label={videoEnabled ? 'Hide portrait' : 'Show portrait'}
-          >
-            <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
-              videoEnabled ? 'bg-gray-700 group-hover:bg-gray-600' : 'bg-gray-600'
-            }`}>
-              {videoEnabled ? (
-                <VideoIcon size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
-              ) : (
-                <VideoOff size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
-              )}
-            </div>
-            <span className={toolbarLabel}>{videoEnabled ? 'Portrait' : 'Hidden'}</span>
-          </button>
-
-          {/* End Call */}
-          <button onClick={handleEndCall} className={toolbarButton} aria-label="Say goodbye">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-warm/30 group-hover:bg-warm/40">
-              <Hand size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
-            </div>
-            <span className={toolbarLabel}>Goodbye</span>
-          </button>
-        </div>
-
-        <div className="hidden sm:block w-20" aria-hidden="true"></div>
       </div>
 
       {/* End Call Dialog */}
@@ -875,24 +973,48 @@ export default function TimelessMinds() {
             aria-modal="true"
             aria-labelledby="farewell-title"
             onKeyDown={handleFarewellKeyDown}
-            className="bg-card-bg rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl animate-fade border border-card-border my-8"
+            className="sage-paper rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl animate-fade border my-8"
           >
             <h3
               id="farewell-title"
               ref={farewellHeadingRef}
               tabIndex={-1}
-              className="text-sm font-semibold uppercase tracking-wide text-foreground/70 focus-visible:shadow-none!"
+              className="text-sm font-semibold uppercase tracking-wide sage-ink-soft focus-visible:shadow-none!"
             >
               Parting words from {farewell.thinker.name}
             </h3>
             <div className="mt-4 min-h-[5rem]" role="status" aria-live="polite">
               {farewell.text ? (
-                <p className="text-lg sm:text-xl leading-relaxed text-foreground">{farewell.text}</p>
+                <p className="font-serif text-xl sm:text-2xl leading-relaxed sage-ink">{farewell.text}</p>
               ) : (
-                <p className="text-foreground/70">{farewell.thinker.name} is choosing what to leave you with...</p>
+                <p className="sage-ink-soft">{farewell.thinker.name} is choosing what to leave you with...</p>
               )}
             </div>
-            <p className="mt-4 text-xs text-foreground/70">{IMAGINED_NOTE}</p>
+            {!care && farewell.text && (
+              <div className="mt-3">
+                {isKept(keptLines, farewell.thinker.id, farewell.text) ? (
+                  <button
+                    type="button"
+                    aria-disabled="true"
+                    className="inline-flex items-center gap-2 px-3 min-h-[44px] -ml-3 rounded-lg text-sm sage-ink cursor-default"
+                  >
+                    <BookmarkCheck size={18} className="text-melon-green" aria-hidden="true" />
+                    Kept
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={keepFarewell}
+                    className="sage-note inline-flex items-center gap-2 px-3 min-h-[44px] rounded-lg border text-sm sage-ink hover:border-chosen-line transition-colors"
+                  >
+                    <BookmarkPlus size={18} className="sage-ink-soft" aria-hidden="true" />
+                    Keep this
+                  </button>
+                )}
+              </div>
+            )}
+            <p className="mt-1 text-sm sage-ink-soft min-h-0" aria-live="polite">{keepNote}</p>
+            <p className="mt-3 text-xs sage-ink-soft">{IMAGINED_NOTE}</p>
             {care && <TimelessMindsCarePanel className="mt-4 rounded-lg p-3" />}
             <div className="mt-5 flex flex-col sm:flex-row gap-2 sm:gap-3">
               {care ? (
@@ -914,7 +1036,7 @@ export default function TimelessMinds() {
               <button
                 onClick={() => leaveFarewell(true)}
                 disabled={!farewell.text}
-                className="flex-1 px-4 py-2 min-h-[44px] border border-foreground/20 text-foreground rounded-lg hover:bg-foreground/5 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2 min-h-[44px] border sage-line sage-ink rounded-lg hover:bg-[var(--sage-note)] transition-colors disabled:opacity-50"
               >
                 Choose who is next
               </button>
@@ -930,6 +1052,15 @@ export default function TimelessMinds() {
           onClose={closeDirectory}
           thinkers={allThinkers}
           onSelectThinker={handleSelectThinker}
+        />
+      )}
+
+      {showKeptLines && (
+        <TimelessMindsKeptLines
+          lines={keptLines}
+          onRemove={forgetLine}
+          onClose={closeKeptLines}
+          onKeyDown={handleKeptLinesKeyDown}
         />
       )}
 

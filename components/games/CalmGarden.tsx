@@ -11,6 +11,7 @@ import {
   STORAGE_KEY,
   categoryOf,
   createPlant,
+  growthFactor,
   livingCount,
   loadGarden,
   plantedSince,
@@ -31,7 +32,21 @@ import {
 import { countOf, describePlace, describeSpot, gardenSummary, nameOf, numberWord, sitLine } from '@/lib/games/calm-garden/describe'
 import { parseSuggestion, suggestLocally, type Suggestion } from '@/lib/games/calm-garden/suggest'
 import { plantAtPoint, plantSize, sizeFactor, depthFactor } from '@/lib/games/calm-garden/geometry'
-import { drawGround, drawMarker, drawPlant, drawSitLight, drawSky, drawVisitor } from './calm-garden/draw'
+import {
+  ARRIVAL_FLIGHT_MS,
+  RETURN_MS,
+  SETTLE_MS,
+  WHOLE,
+  arrivalLine,
+  arrivalTimes,
+  ease,
+  glowAt,
+  growthShown,
+  mixCamera,
+  returnCamera,
+  visitorKindAt,
+} from '@/lib/games/calm-garden/moments'
+import { drawGround, drawMarker, drawNewGrowth, drawPlant, drawSitLight, drawSky, drawVisitor } from './calm-garden/draw'
 
 const SUGGEST_EVERY = 3
 const MAX_SUGGESTIONS = 5
@@ -57,6 +72,21 @@ interface Scene {
   sitting: boolean
   sitStart: number
   still: boolean
+  arrivals: ArrivalPlan
+  arrived: number
+}
+
+/** Visitors already here when someone sat down, and when (fractions of the sit) each of the rest arrives. */
+interface ArrivalPlan {
+  before: number
+  times: number[]
+}
+
+/** The look across a garden that grew while it was left. `grew` maps each changed plant to its growth at the last visit. */
+interface ReturnLook {
+  start: number
+  skipAt: number | null
+  grew: Map<string, number>
 }
 
 interface PointerTrack {
@@ -112,6 +142,9 @@ export default function CalmGarden() {
   const [sitAt, setSitAt] = useState<number | null>(null)
   const [sitDone, setSitDone] = useState(false)
   const [history, setHistory] = useState<Plant[][]>([])
+  const [returnLine, setReturnLine] = useState<string | null>(null)
+  const [arrivals, setArrivals] = useState<ArrivalPlan>({ before: 0, times: [] })
+  const [arrived, setArrived] = useState(0)
   const still = useReducedMotion()
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -126,7 +159,8 @@ export default function CalmGarden() {
   const suggestPendingRef = useRef(false)
   const suggestCountRef = useRef(0)
   const sinceSuggestRef = useRef(0)
-  const sceneRef = useRef<Scene>({ plants: [], suggestion: null, cursor: null, selectedId: null, movingId: null, sitting: false, sitStart: 0, still: false })
+  const returnRef = useRef<ReturnLook | null>(null)
+  const sceneRef = useRef<Scene>({ plants: [], suggestion: null, cursor: null, selectedId: null, movingId: null, sitting: false, sitStart: 0, still: false, arrivals: { before: 0, times: [] }, arrived: 0 })
 
   const plants = useMemo(() => garden?.plants ?? [], [garden])
   const sitting = sitAt !== null
@@ -153,8 +187,34 @@ export default function CalmGarden() {
     if (back.note) {
       setNote(back.note)
       setAnnouncement(back.note)
+      returnRef.current = { start: performance.now(), skipAt: null, grew: new Map(back.grew.map((g) => [g.id, g.from])) }
+      setReturnLine(back.note)
     }
   }, [])
+
+  // Any key or tap ends the look early; the view eases back rather than cutting.
+  useEffect(() => {
+    if (!returnLine) return
+    const end = () => {
+      returnRef.current = null
+      setReturnLine(null)
+    }
+    let timer = window.setTimeout(end, RETURN_MS)
+    const skip = () => {
+      const look = returnRef.current
+      if (!look || look.skipAt !== null) return
+      look.skipAt = performance.now()
+      window.clearTimeout(timer)
+      timer = window.setTimeout(end, SETTLE_MS)
+    }
+    window.addEventListener('keydown', skip, true)
+    window.addEventListener('pointerdown', skip, true)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('keydown', skip, true)
+      window.removeEventListener('pointerdown', skip, true)
+    }
+  }, [returnLine])
 
   useEffect(() => {
     if (!garden) return
@@ -166,7 +226,7 @@ export default function CalmGarden() {
   }, [garden])
 
   useEffect(() => {
-    sceneRef.current = { plants, suggestion, cursor, selectedId, movingId: moving?.id ?? null, sitting, sitStart: sitStartRef.current, still }
+    sceneRef.current = { plants, suggestion, cursor, selectedId, movingId: moving?.id ?? null, sitting, sitStart: sitStartRef.current, still, arrivals, arrived }
   })
 
   // ---------------------------------------------------------------------------
@@ -317,9 +377,12 @@ export default function CalmGarden() {
     setSelectedId(null)
     setCursor(null)
     setSitDone(false)
+    const before = visitorCount(plants, false)
+    setArrivals({ before, times: arrivalTimes(before, visitorCount(plants, true)) })
+    setArrived(0)
     sitStartRef.current = performance.now()
     setSitAt(Date.now())
-  }, [moving, cancelMove])
+  }, [moving, cancelMove, plants])
 
   const standUp = useCallback(() => {
     setSitAt(null)
@@ -340,6 +403,12 @@ export default function CalmGarden() {
       root.style.overflow = overflow
     }
   }, [sitting])
+
+  useEffect(() => {
+    if (!sitting) return
+    const timers = arrivals.times.map((at, i) => window.setTimeout(() => setArrived(i + 1), at * SIT_MS))
+    return () => timers.forEach((t) => window.clearTimeout(t))
+  }, [sitting, arrivals])
 
   const sitVisitors = visitorCount(plants, true)
   const sitKind = clock.tod === 'night' || clock.tod === 'evening' ? 'firefly' : 'butterfly'
@@ -378,7 +447,8 @@ export default function CalmGarden() {
   }
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (sitting || e.button !== 0) return
+    // The tap that ends the look back over the garden does not also plant.
+    if (sitting || e.button !== 0 || returnRef.current) return
     const rect = e.currentTarget.getBoundingClientRect()
     const hit = moving ? null : plantAtPoint(e.clientX - rect.left, e.clientY - rect.top, plants, rect.width, rect.height, Date.now())
     pointerRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, hitId: hit?.id ?? null, dragging: false }
@@ -456,6 +526,7 @@ export default function CalmGarden() {
   }, [moving])
 
   const handleCanvasKeyDown = useCallback((e: React.KeyboardEvent<HTMLCanvasElement>) => {
+    if (returnRef.current) return
     const from = movingPlant ?? cursor ?? START
     const delta: Record<string, Point> = {
       ArrowUp: { x: 0, y: -STEP },
@@ -547,10 +618,35 @@ export default function CalmGarden() {
       const k = sizeFactor(w)
       const drag = dragAtRef.current
       const shown = drag ? scene.plants.map((p) => (p.id === drag.id ? { ...p, ...drag.at } : p)) : scene.plants
-      const light = scene.sitting ? Math.min(1, (performance.now() - scene.sitStart) / SIT_MS) : 0
+      const perf = performance.now()
+      const light = scene.sitting ? Math.min(1, (perf - scene.sitStart) / SIT_MS) : 0
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, w, h)
+
+      // Coming back: the view drifts across what grew while each plant grows from how it was left.
+      const look = returnRef.current
+      let glow = 0
+      let shownGrowth: (p: Plant) => number = () => 1
+      if (look) {
+        const at = Math.min(1, ((look.skipAt ?? perf) - look.start) / RETURN_MS)
+        const settle = look.skipAt === null ? 0 : ease((perf - look.skipAt) / SETTLE_MS)
+        if (scene.still) {
+          glow = look.skipAt === null ? 1 : 0
+        } else {
+          const camera = mixCamera(returnCamera(at, scene.plants.filter((p) => look.grew.has(p.id))), WHOLE, settle)
+          ctx.setTransform(dpr * camera.zoom, 0, 0, dpr * camera.zoom, dpr * (w / 2 - camera.zoom * camera.x * w), dpr * (h / 2 - camera.zoom * camera.y * h))
+          glow = glowAt(at) * (1 - settle)
+          shownGrowth = (p) => {
+            const from = look.grew.get(p.id)
+            if (from === undefined) return 1
+            const full = growthFactor(p, wallNow)
+            const shown = growthShown(at, p.x)
+            const k = shown + (1 - shown) * settle
+            return Math.max(0.05, (from + (full - from) * k) / full)
+          }
+        }
+      }
       drawSky(ctx, w, h, clock.tod, time, light)
       drawGround(ctx, w, h, clock.tod, clock.season, shown.filter((p) => categoryOf(p.type) === 'tree'), light)
 
@@ -568,9 +664,10 @@ export default function CalmGarden() {
           const age = (wallNow - p.plantedAt) / GROW_MS
           if (age >= 0 && age < 1) grow = Math.max(0.05, 1 + 2.4 * Math.pow(age - 1, 3) + 1.4 * Math.pow(age - 1, 2))
         }
-        const s = plantSize(p, w, wallNow) * grow
+        const s = plantSize(p, w, wallNow) * grow * shownGrowth(p)
         const x = p.x * w
         const y = p.y * h
+        if (glow > 0 && look?.grew.has(p.id)) drawNewGrowth(ctx, categoryOf(p.type), x, y, s, glow, clock.tod)
         ctx.beginPath()
         ctx.ellipse(x, y, 10 * s, 3 * s, 0, 0, Math.PI * 2)
         ctx.fillStyle = 'rgba(0, 0, 0, 0.13)'
@@ -597,13 +694,12 @@ export default function CalmGarden() {
 
       if (scene.sitting) drawSitLight(ctx, w, h, clock.tod, light)
 
-      const count = scene.sitting ? visitorCount(scene.plants, true) : visitorCount(scene.plants, false)
       const flowers = visitorHosts(shown)
       const hosts = flowers.length ? flowers : shown.filter((p) => categoryOf(p.type) !== 'stone')
-      // While sitting, visitors arrive one by one over the first part of the light.
-      const arrived = scene.sitting && !scene.still ? Math.min(count, Math.ceil(light * 4 * count)) : count
-      const kind = clock.tod === 'night' || (scene.sitting && clock.tod === 'evening' && light > 0.45) ? 'firefly' : 'butterfly'
-      for (let i = 0; i < arrived && hosts.length; i++) {
+      // While sitting, those already visiting stay and the rest arrive one at a time.
+      const here = scene.sitting ? scene.arrivals.before + scene.arrived : visitorCount(scene.plants, false)
+      const kind = visitorKindAt(clock.tod, scene.sitting, light)
+      for (let i = 0; i < here && hosts.length; i++) {
         const hop = time / 7000 + i * 0.41
         const step = Math.floor(hop)
         const t = Math.min(1, (hop - step) * 3)
@@ -611,9 +707,17 @@ export default function CalmGarden() {
         const a = scene.still ? hosts[i % hosts.length] : hosts[(step * 5 + i * 3) % hosts.length]
         const b = scene.still ? a : hosts[((step + 1) * 5 + i * 3) % hosts.length]
         const lift = (p: Plant) => p.y * h - 34 * k * depthFactor(p.y)
-        const ease = 0.5 - Math.cos(t * Math.PI) / 2
-        const vx = a.x * w + (b.x * w - a.x * w) * ease + Math.sin(time * 0.0009 + i) * 6
-        const vy = lift(a) + (lift(b) - lift(a)) * ease - Math.sin(t * Math.PI) * 30 + Math.cos(time * 0.0013 + i) * 4
+        const glide = ease(t)
+        let vx = a.x * w + (b.x * w - a.x * w) * glide + Math.sin(time * 0.0009 + i) * 6
+        let vy = lift(a) + (lift(b) - lift(a)) * glide - Math.sin(t * Math.PI) * 30 + Math.cos(time * 0.0013 + i) * 4
+        const late = i - scene.arrivals.before
+        if (scene.sitting && !scene.still && late >= 0) {
+          // A newcomer drifts in from the side of the garden and settles into the others' wandering.
+          const flight = ease((perf - scene.sitStart - scene.arrivals.times[late] * SIT_MS) / ARRIVAL_FLIGHT_MS)
+          const fromX = late % 2 ? w + 24 : -24
+          vx = fromX + (vx - fromX) * flight
+          vy = h * 0.18 + (vy - h * 0.18) * flight
+        }
         drawVisitor(ctx, kind, vx, vy, k, i, time, scene.still)
       }
 
@@ -670,7 +774,7 @@ export default function CalmGarden() {
         </span>
       </>
     )
-  } else if (note) {
+  } else if (note && !returnLine) {
     status = <p>{note}</p>
   }
 
@@ -725,6 +829,18 @@ export default function CalmGarden() {
                 ? `Arrow keys move the ${nameOf(movingPlant.type)}, Enter sets it down, Escape puts it back.`
                 : `Arrow keys move the planting spot and Enter plants ${countOf(1, selectedType)}. The list of what is planted is beside the garden.`}
             </p>
+            {returnLine && !sitting && (
+              // Heard through the announcer already, so it is only shown here.
+              <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 flex justify-center px-2.5 pt-2.5 select-none animate-fade sm:px-4 sm:pt-4">
+                <p className="max-w-[28rem] rounded-xl bg-black/60 px-3 py-1.5 text-center text-[13px] leading-snug text-white sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-base sm:leading-relaxed">
+                  {returnLine}
+                  <span className="mt-0.5 block text-[11px] text-white/90 sm:text-xs">
+                    <span className="pointer-fine:hidden">Tap to skip</span>
+                    <span className="hidden pointer-fine:inline">Press any key to skip</span>
+                  </span>
+                </p>
+              </div>
+            )}
             {garden && plants.length === 0 && !sitting && (
               <p className="absolute inset-x-0 bottom-6 mx-auto w-fit max-w-[85%] text-center text-sm text-white bg-black/55 rounded-full px-4 py-1.5 select-none pointer-events-none">
                 Choose a plant, then tap the grass.
@@ -735,7 +851,16 @@ export default function CalmGarden() {
           {sitting && (
             <>
               <p id="sit-words" aria-live="polite" className="min-h-[5.5rem] max-w-xl text-center text-base leading-relaxed text-foreground sm:text-lg">
-                {sitDone ? closingLine : <span className="text-foreground/70">The light is changing. Stay as long as you like.</span>}
+                {sitDone ? closingLine : (
+                  <>
+                    <span className="text-foreground/70">The light is changing. Stay as long as you like.</span>
+                    {arrived > 0 && (
+                      <span key={arrived} className="mt-2 block animate-fade text-foreground/85">
+                        {arrivalLine(arrived - 1, arrivals.before, visitorKindAt(clock.tod, true, arrivals.times[arrived - 1]))}
+                      </span>
+                    )}
+                  </>
+                )}
               </p>
               <button ref={standButtonRef} type="button" onClick={standUp} className={buttonClassName('secondary', 'md')}>
                 Stand up

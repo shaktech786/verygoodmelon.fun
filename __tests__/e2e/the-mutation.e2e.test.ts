@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
+import { expectKeepsakeSaves } from './helpers/keepsake'
 
 /**
  * The Shapeshifter (/games/the-mutation): a calm canvas arcade game that adds one rule per
@@ -220,8 +221,9 @@ test.describe('The Shapeshifter', () => {
     await expect(heading).toBeFocused()
     await expect(page.getByRole('status')).toHaveText('Your game is finished.')
     await expect(finale.getByText('Six rules arrived without asking.', { exact: false })).toBeVisible()
-    await expect(finale.getByRole('listitem')).toHaveCount(6)
-    await expect(finale.getByText('WAVE 6 SCORE_RUSH')).toBeVisible()
+    // The run is a picture of the path it took, not a tally of what it scored
+    await expect(finale.getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/WAVE 1 ARROW_KEYS \(blue circle\).*WAVE 6 SCORE_RUSH \(green flower\)/)
+    await expect(finale.getByText(/longest rhythm|lights gathered|^time$/)).toHaveCount(0)
     await expect(finale.getByText('Play again and its rules will arrive in a different order.')).toBeVisible()
     await expect(finale.getByText(/no one else/i)).toHaveCount(0)
 
@@ -259,7 +261,7 @@ test.describe('The Shapeshifter', () => {
     // Nobody moved, so the game is named for a gentle player, from the rules it grew and their order
     await expect(finale.getByRole('heading', { name: /QUIET (STARS|GEMS) & (SHADOWS|TIDES|LANTERNS|GLIDES|RHYTHMS|GENTLE PULL)$/ })).toBeFocused()
     // The tagline is drawn from this run: what was gathered, and the latest rule it grew
-    await expect(finale.getByText(/^A game for someone who let \d+ (stars?|gems?) drift their way (among the wandering shadows|as the tides came and went|by lantern light|in quick, quiet glides|in an easy rhythm|in the gentle pull)\.$/)).toBeVisible()
+    await expect(finale.getByText(/^A game for someone who let the (stars|gems) drift their way (among the wandering shadows|as the tides came and went|by lantern light|in quick, quiet glides|in an easy rhythm|in the gentle pull)\.$/)).toBeVisible()
     await expect(finale.getByText(/(error|failed|\bAI\b)/)).toHaveCount(0)
 
     await finale.getByRole('button', { name: 'PLAY AGAIN' }).click()
@@ -482,6 +484,35 @@ test.describe('The Shapeshifter', () => {
     expect(await axeViolations(page)).toEqual([])
   })
 
+  test('the finale draws the path the orb took, coloured and shaped by each rule, ready to save', async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', (e) => errors.push(e.message))
+    await mockMutations(page)
+    await openGame(page)
+    await page.keyboard.press('Enter')
+    for (let n = 1; n <= 6; n++) {
+      await mutate(page, n)
+      await page.keyboard.down(n % 2 ? 'ArrowRight' : 'ArrowUp')
+      await page.waitForTimeout(250)
+      await page.keyboard.up(n % 2 ? 'ArrowRight' : 'ArrowUp')
+    }
+    const recorded = await page.evaluate(() => (window as unknown as { __cascadeState: { path: { wave: number }[] } }).__cascadeState.path)
+    expect(new Set(recorded.map((p) => p.wave))).toEqual(new Set([0, 1, 2, 3, 4, 5, 6]))
+
+    await endWave(page)
+    const finale = finaleDialog(page)
+    await expect(finale.getByRole('heading', { name: new RegExp(NAME) })).toBeFocused()
+    await expectKeepsakeSaves(page, {
+      within: finale,
+      fileName: /^the-shapeshifter-\d{4}-\d{2}-\d{2}\.png$/,
+      describedAs: /path your orb took.*\(blue circle\), then .*\(gold star\).*\(green flower\)/,
+    })
+    // Saving keeps the finale open: Enter on its buttons never starts a new run
+    await finale.getByRole('button', { name: 'Save image' }).press('Enter')
+    await expect(finale).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
   test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: 'reduce' })
 
@@ -526,6 +557,26 @@ test.describe('The Shapeshifter', () => {
       await page.touchscreen.tap(box.x + box.width * 0.1, box.y + box.height * 0.5)
       await expect.poll(async () => (await engine(page)).px).toBeLessThan(250)
 
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+      expect(overflow).toBeLessThanOrEqual(0)
+    })
+
+    test('with reduced motion the finale and its picture are there at once, still, and fit the screen', async ({ page }) => {
+      await mockMutations(page)
+      await openGame(page)
+      await page.getByRole('button', { name: 'BEGIN' }).tap()
+      for (let n = 1; n <= 6; n++) {
+        await endWave(page)
+        const card = page.getByRole('dialog', { name: new RegExp(`^Rule ${n} of 6`) })
+        await card.getByRole('button', { name: 'Continue', exact: true }).tap()
+        await expect(card).toBeHidden()
+      }
+      await endWave(page)
+      const finale = finaleDialog(page)
+      await expect(finale.getByTestId('keepsake-canvas')).toBeVisible()
+      await expect(finale.getByRole('button', { name: 'PLAY AGAIN' })).toBeVisible()
+      await expect(finale.locator('.animate-fade')).toHaveCount(0)
+      await expectKeepsakeSaves(page, { within: finale, fileName: /^the-shapeshifter-.*\.png$/ })
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
       expect(overflow).toBeLessThanOrEqual(0)
     })

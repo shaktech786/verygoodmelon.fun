@@ -1,0 +1,183 @@
+'use client'
+
+import { useRef } from 'react'
+import { Check, PenLine } from 'lucide-react'
+import { PAIRINGS, deckStep, type EmblemId } from '@/lib/games/arena-pairings'
+
+/**
+ * The two speakers' colours: calm, told apart by more than hue (side, name, a round or a
+ * diamond marker), neither red nor green so neither side ever reads as right or wrong.
+ * Both pass 4.5:1 as text on the card background in light and dark.
+ */
+export const ARENA_VOICES_CSS = `
+.arena-voices { --voice-a: #35577f; --voice-b: #80541c; }
+html[data-theme="dark"] .arena-voices { --voice-a: #a8c2e8; --voice-b: #e6bd80; }
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] .arena-voices { --voice-a: #a8c2e8; --voice-b: #e6bd80; }
+}
+`
+
+export const VOICE = { a: 'var(--voice-a)', b: 'var(--voice-b)' } as const
+export const voiceTint = (voice: string, percent: number) => `color-mix(in srgb, ${voice} ${percent}%, var(--card-bg))`
+
+/** A round marker for the first voice and a diamond for the second, so the sides never rest on colour alone. */
+export function VoiceMarker({ second, className = '' }: { second: boolean; className?: string }) {
+  return (
+    <span
+      className={`inline-block w-2 h-2 shrink-0 ${second ? 'rotate-45 rounded-[1px]' : 'rounded-full'} ${className}`}
+      style={{ background: second ? VOICE.b : VOICE.a }}
+      aria-hidden="true"
+    />
+  )
+}
+
+const EMBLEMS: Record<EmblemId, readonly string[]> = {
+  laurel: ['..........', '.X......X.', 'XX......XX', '.XX....XX.', 'XX......XX', '.XX....XX.', '..XX..XX..', '...XXXX...', '....XX....', '..........'],
+  carnation: ['...X..X...', '..XXXXXX..', '.XXX..XXX.', '..XXXXXX..', '...XXXX...', '....X.....', '....X.XX..', '..XXX.....', '....X.....', '....X.....'],
+  cat: ['X........X', 'XX......XX', 'XXXXXXXXXX', 'XX.XXXX.XX', 'XXXXXXXXXX', 'XXXX..XXXX', '.XXXXXXXX.', '..XXXXXX..', '..........', '..........'],
+  dog: ['..XXXXXX..', 'XXXXXXXXXX', 'XXX.XX.XXX', 'XXXXXXXXXX', 'X.XXXXXX.X', 'X.XX..XX.X', '..XXXXXX..', '...XXXX...', '....XX....', '..........'],
+  moon: ['...XXXX...', '.XXXX.....', '.XXX......', 'XXX.......', 'XXX.......', 'XXX.......', 'XXX.......', '.XXX......', '.XXXX.....', '...XXXX...'],
+  sun: ['....XX....', '.X......X.', '...XXXX...', '..XXXXXX..', 'X.XXXXXX.X', 'X.XXXXXX.X', '..XXXXXX..', '...XXXX...', '.X......X.', '....XX....'],
+  column: ['XXXXXXXXXX', '.XXXXXXXX.', '..X.XX.X..', '..X.XX.X..', '..X.XX.X..', '..X.XX.X..', '..X.XX.X..', '..X.XX.X..', '.XXXXXXXX.', 'XXXXXXXXXX'],
+  mountain: ['..........', '....X.....', '...XXX....', '..XX.XX...', '..XXXXX.X.', '.XXXXXXXXX', 'XXXXXXXXXX', 'XXXXXXXXXX', '..........', '..........'],
+  quill: ['........XX', '.......XXX', '......XXX.', '.....XXX..', '....XXX...', '...XXX....', '...XX.....', '..X.......', '.X........', 'X.........'],
+  lens: ['.XXXX.....', 'X....X....', 'X....X....', 'X....X....', 'X....X....', '.XXXX.....', '.....XX...', '......XX..', '.......XX.', '........XX'],
+  drop: ['....X.....', '....X.....', '...XXX....', '...XXX....', '..XXXXX...', '.XXXXXXX..', '.XX.XXXX..', '.XX.XXXX..', '..XXXXX...', '...XXX....'],
+  kite: ['...X......', '..XXX.....', '.XXXXX....', 'XXXXXXX...', '.XXXXX....', '..XXX.....', '...X......', '....X..X..', '.....XX.X.', '.........X'],
+  tortoise: ['..........', '..........', '..XXXXX...', '.X.X.X.XXX', 'XXXXXXXXXX', 'XXXXXXXX..', '.XX..XX...', '..........', '..........', '..........'],
+  hare: ['..X.X.....', '..X.X.....', '..X.X.....', '..XXX.....', '.XXXXX....', '.X.XXXX...', '.XXXXXXX..', '..XXXXXXX.', '..XXXXXXXX', '.XX....XX.'],
+  gear: ['....XX....', '.X.XXXX.X.', '..XXXXXX..', '.XXX..XXX.', 'XXX....XXX', 'XXX....XXX', '.XXX..XXX.', '..XXXXXX..', '.X.XXXX.X.', '....XX....'],
+  bolt: ['.....XXX..', '....XXX...', '...XXX....', '..XXX.....', '.XXXXXXX..', '.....XXX..', '....XXX...', '...XX.....', '..XX......', '.X........'],
+  honey: ['..XXXXXX..', '...XXXX...', '.XXXXXXXX.', 'XXXXXXXXXX', 'XX......XX', 'XX.XXXX.XX', 'XX......XX', 'XXXXXXXXXX', '.XXXXXXXX.', '..........'],
+  scroll: ['XXXXXXXXXX', 'X........X', '.XXXXXXXX.', '.X......X.', '.X.XXXX.X.', '.X......X.', '.X.XXX..X.', '.X......X.', '.XXXXXXXX.', 'XXXXXXXXXX'],
+  oak: ['...XXXX...', '.XXXXXXXX.', 'XXXXXXXXXX', 'XXXXXXXXXX', '.XXXXXXXX.', '..XXXXXX..', '....XX....', '....XX....', '....XX....', '..XXXXXX..'],
+  mayfly: ['....XX....', 'XX..XX..XX', 'XXX.XX.XXX', '.XXXXXXXX.', '..XXXXXX..', '....XX....', '....XX....', '....XX....', '...X..X...', '..X....X..'],
+  star: ['....XX....', '....XX....', '...XXXX...', 'XXXXXXXXXX', '.XXXXXXXX.', '..XXXXXX..', '..XXXXXX..', '.XXX..XXX.', '.XX....XX.', 'X........X'],
+  planet: ['..........', '...XXXX...', '..XXXXXX..', 'XXXXXXXXXX', 'X........X', '.XXXXXXXX.', '..XXXXXX..', '...XXXX...', '..........', '..........'],
+  grapes: ['.....X....', '....X.....', '.XX.XX.XX.', '.XXXXXXXX.', '..XX.XX...', '..XXXXXX..', '...XX.X...', '...XXXX...', '....XX....', '..........'],
+  mug: ['..X.X.....', '.X.X......', '..........', 'XXXXXXX...', 'XXXXXXXXX.', 'XXXXXXX.X.', 'XXXXXXX.X.', 'XXXXXXXXX.', 'XXXXXXX...', '.XXXXX....'],
+}
+
+function emblemPath(rows: readonly string[]): string {
+  return rows
+    .flatMap((row, y) => Array.from(row, (cell, x) => (cell === 'X' ? `M${x} ${y}h1v1h-1z` : '')))
+    .join('')
+}
+
+const EMBLEM_PATHS = Object.fromEntries(
+  Object.entries(EMBLEMS).map(([id, rows]) => [id, emblemPath(rows)])
+) as Record<EmblemId, string>
+
+function Emblem({ id, color, className = '' }: { id: EmblemId; color: string; className?: string }) {
+  return (
+    <svg viewBox="0 0 10 10" shapeRendering="crispEdges" className={`w-8 h-8 ${className}`} aria-hidden="true">
+      <path d={EMBLEM_PATHS[id]} fill={color} />
+    </svg>
+  )
+}
+
+const CARD = `
+  relative shrink-0 snap-start flex flex-col w-[9.5rem] sm:w-auto text-left rounded-2xl border-2 bg-card-bg
+  border-card-border hover:border-foreground/25
+  aria-pressed:border-chosen-line aria-pressed:bg-chosen
+  transition-colors duration-150
+  focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background
+`
+
+/** Index of the "write your own" card, which always comes last. */
+export const OWN_CARD = PAIRINGS.length
+
+interface PairingDeckProps {
+  /** A pairing's index, OWN_CARD for "write your own", or null before anything is picked */
+  selected: number | null
+  onPick: (index: number) => void
+  onWriteOwn: () => void
+}
+
+/** Every ready-made pairing as a small illustrated card, with "Write your own" as the last card. */
+export function PairingDeck({ selected, onPick, onWriteOwn }: PairingDeckProps) {
+  const deckRef = useRef<HTMLDivElement>(null)
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const cards = Array.from(deckRef.current?.querySelectorAll<HTMLButtonElement>('[data-deck-card]') ?? [])
+    const index = cards.indexOf(document.activeElement as HTMLButtonElement)
+    if (index === -1) return
+    const columns = cards.filter((card) => card.offsetTop === cards[0].offsetTop).length
+    const next = deckStep(index, e.key, cards.length, columns)
+    if (next === null) return
+    e.preventDefault()
+    cards[next].focus()
+  }
+
+  return (
+    <div
+      ref={deckRef}
+      role="group"
+      aria-label="Pairings"
+      onKeyDown={handleKeyDown}
+      className="
+        -mx-4 px-4 pt-1 pb-3 flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-px-4
+        sm:mx-0 sm:px-0 sm:pb-1 sm:grid sm:grid-cols-3 lg:grid-cols-4 sm:overflow-visible
+      "
+    >
+      {PAIRINGS.map((pairing, index) => {
+        const chosen = selected === index
+        return (
+          <button
+            key={pairing.topic}
+            type="button"
+            data-deck-card
+            aria-pressed={chosen}
+            aria-label={`${pairing.first} and ${pairing.second}: ${pairing.topic}`}
+            onClick={() => onPick(index)}
+            className={CARD}
+          >
+            <span
+              className="flex items-center justify-center gap-2 h-16 rounded-t-[0.9rem] border-b border-card-border"
+              style={{ background: `linear-gradient(90deg, ${voiceTint(VOICE.a, 14)} 50%, ${voiceTint(VOICE.b, 14)} 50%)` }}
+              aria-hidden="true"
+            >
+              <Emblem id={pairing.emblems[0]} color={VOICE.a} />
+              <span className="text-sm font-semibold text-foreground/60">&amp;</span>
+              <Emblem id={pairing.emblems[1]} color={VOICE.b} />
+            </span>
+            <span className="block px-3 pt-2.5 pb-3" aria-hidden="true">
+              <span className="block text-sm font-semibold text-foreground leading-snug">
+                {pairing.first} <span className="font-normal text-foreground/70">&amp;</span> {pairing.second}
+              </span>
+              <span className="mt-1 block text-[13px] text-foreground/75 leading-snug">{pairing.topic}</span>
+            </span>
+            {chosen && (
+              <span
+                className="absolute -top-2 -right-2 flex items-center justify-center w-6 h-6 rounded-full bg-chosen-line text-background"
+                aria-hidden="true"
+              >
+                <Check size={14} strokeWidth={3} />
+              </span>
+            )}
+          </button>
+        )
+      })}
+
+      <button
+        type="button"
+        data-deck-card
+        aria-pressed={selected === OWN_CARD}
+        onClick={onWriteOwn}
+        className={`${CARD} border-dashed sm:col-span-full flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 px-3 py-4 text-center`}
+      >
+        <PenLine size={22} className="text-melon-green" aria-hidden="true" />
+        <span className="text-sm font-semibold text-foreground">Write your own</span>
+        <span className="text-[13px] text-foreground/75">any two minds, real or imagined</span>
+        {selected === OWN_CARD && (
+          <span
+            className="absolute -top-2 -right-2 flex items-center justify-center w-6 h-6 rounded-full bg-chosen-line text-background"
+            aria-hidden="true"
+          >
+            <Check size={14} strokeWidth={3} />
+          </span>
+        )}
+      </button>
+    </div>
+  )
+}

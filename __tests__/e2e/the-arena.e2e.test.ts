@@ -106,7 +106,7 @@ test.describe('The Arena', () => {
     const { turns, judged } = await mockDebate(page)
     await openArena(page)
 
-    const start = page.getByRole('button', { name: 'Start debate' })
+    const start = page.getByRole('button', { name: 'Begin' })
     await expect(start).toBeDisabled()
     await setUp(page, '   ', 'Nietzsche', 'Free will')
     await expect(start).toBeDisabled()
@@ -138,7 +138,7 @@ test.describe('The Arena', () => {
     await page.getByRole('button', { name: 'New debate' }).click()
     await expect(page.getByLabel('First debater')).toHaveValue('Socrates')
     await page.getByLabel('Topic').fill('Is music necessary?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
     await expect(closing(page)).toBeVisible()
     await expect(transcript(page).getByText(/Is free will an illusion/)).toHaveCount(0)
     await expect(transcript(page).getByText(/makes point/)).toHaveCount(6)
@@ -151,7 +151,7 @@ test.describe('The Arena', () => {
       await mockDebate(page)
       await openArena(page)
       await setUp(page, 'Ada Lovelace', 'Alan Turing', 'Can machines dream?')
-      await page.getByRole('button', { name: 'Start debate' }).click()
+      await page.getByRole('button', { name: 'Begin' }).click()
       await expect(page.getByText('Round 1/6')).toBeVisible()
       await expect(transcript(page).getByText(/makes point 1/)).toBeVisible()
       await expect(closing(page).getByText(CLOSING.question)).toBeVisible({ timeout: 45_000 })
@@ -163,7 +163,7 @@ test.describe('The Arena', () => {
       await openArena(page)
       await setUp(page, 'Ada Lovelace', 'Alan Turing', 'Can machines dream?')
       await expect(turnByTurn(page)).not.toBeChecked()
-      await page.getByRole('button', { name: 'Start debate' }).click()
+      await page.getByRole('button', { name: 'Begin' }).click()
       await expect(debate(page).getByText(/word1 /)).toBeVisible()
       const shownAt = Date.now()
       await expect(transcript(page).getByText(`${words} (1)`)).toBeVisible({ timeout: 15_000 })
@@ -178,7 +178,7 @@ test.describe('The Arena', () => {
       })
       await openArena(page)
       await setUp(page, 'Ada Lovelace', 'Alan Turing', 'Can machines dream?')
-      await page.getByRole('button', { name: 'Start debate' }).click()
+      await page.getByRole('button', { name: 'Begin' }).click()
       await expect(debate(page).getByText('speaking', { exact: true })).toBeVisible()
       await expect(transcript(page).getByText(`${long} (1)`)).toHaveCount(0)
       await page.getByRole('button', { name: 'Stop' }).click()
@@ -205,7 +205,7 @@ test.describe('The Arena', () => {
     })
     await openArena(page)
     await setUp(page, 'Plato', 'Aristotle', 'Are ideas real?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
 
     await expect(transcript(page).getByText(/makes point 2/)).toBeVisible()
     // Round 3 has been asked for and is still on its way
@@ -240,7 +240,7 @@ test.describe('The Arena', () => {
     })
     await openArena(page)
     await setUp(page, 'Plato', 'Aristotle', 'Are ideas real?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
     await expect(page.getByText('Aristotle is thinking...')).toBeVisible()
     await page.getByRole('button', { name: 'Stop' }).click()
     await page.getByRole('button', { name: 'Continue' }).click()
@@ -263,12 +263,12 @@ test.describe('The Arena', () => {
     })
     await openArena(page)
     await setUp(page, 'Kant', 'Hume', 'First topic')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
     await expect(page.getByText('Kant is thinking...')).toBeVisible()
 
     await page.getByRole('button', { name: 'New debate' }).click()
     await page.getByLabel('Topic').fill('Second topic')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
     release()
 
     await expect(closing(page)).toBeVisible()
@@ -289,7 +289,7 @@ test.describe('The Arena', () => {
     })
     await openArena(page)
     await setUp(page, 'Simone de Beauvoir', 'Sartre', 'Is freedom a burden?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
 
     await expect(transcript(page).getByText('Sartre lost their train of thought.')).toBeVisible()
     await expect(debate(page).getByText(/error|API|failed|generat/i)).toHaveCount(0)
@@ -305,7 +305,7 @@ test.describe('The Arena', () => {
     })
     await openArena(page)
     await setUp(page, 'Hypatia', 'Euclid', 'Is math discovered?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
     await expect(transcript(page).getByText('Hypatia lost their train of thought.')).toBeVisible()
     await expect(page.getByText('Round 1', { exact: true })).toHaveCount(0)
   })
@@ -314,7 +314,7 @@ test.describe('The Arena', () => {
     await mockDebate(page, { judgeStatus: 500 })
     await openArena(page)
     await setUp(page, 'Marie Curie', 'Batman', 'Should we fear the dark?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
     await expect(closing(page).getByText('Marie Curie held to what they believed and said it plainly.')).toBeVisible()
     await expect(closing(page).getByText('Batman kept pressing on the question underneath.')).toBeVisible()
     await expect(closing(page).getByText('If you had joined them, what would you have added?')).toBeVisible()
@@ -327,7 +327,7 @@ test.describe('The Arena', () => {
     })
     await openArena(page)
     await setUp(page, 'A notorious dictator', 'Gandhi', 'Is kindness a weakness?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
 
     await expect(transcript(page).getByText(/will not give voice to one of these speakers/)).toBeVisible()
     await expect(transcript(page).getByText(/will not hold/)).toHaveCount(0)
@@ -346,7 +346,7 @@ test.describe('The Arena', () => {
     })
     await openArena(page)
     await setUp(page, 'Socrates', 'Gandhi', 'Which people deserve less?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
 
     await expect(transcript(page).getByText(/a question The Arena will not hold, whoever is asking/)).toBeVisible()
     await expect(debate(page).getByText(/better left unspoken/)).toHaveCount(0)
@@ -363,7 +363,7 @@ test.describe('The Arena', () => {
     })
     await openArena(page)
     await setUp(page, 'A notorious dictator', 'Gandhi', 'Which people deserve less?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
 
     await expect(transcript(page).getByText(/The Arena will sit out/)).toBeVisible()
     await expect(transcript(page).getByText(/Round 1/)).toHaveCount(0)
@@ -375,7 +375,7 @@ test.describe('The Arena', () => {
     await debate(page).getByRole('button', { name: 'Surprise me' }).click()
     await expect(page.getByLabel('First debater')).not.toHaveValue('A notorious dictator')
     await expect(page.getByLabel('Topic')).not.toHaveValue('')
-    await expect(page.getByRole('button', { name: 'Start debate' })).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Begin' })).toBeEnabled()
   })
 
   test('a decline partway through keeps what was said and asks for nothing more', async ({ page }) => {
@@ -385,7 +385,7 @@ test.describe('The Arena', () => {
     })
     await openArena(page)
     await setUp(page, 'Kant', 'Hume', 'Is it ever right to lie?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
 
     await expect(transcript(page).getByText(/The Arena will sit out/)).toBeVisible()
     await expect(transcript(page).getByText(/makes point/)).toHaveCount(2)
@@ -405,7 +405,7 @@ test.describe('The Arena', () => {
     })
     await openArena(page)
     await setUp(page, 'Jane Austen', 'Sherlock Holmes', 'Can you reason your way into love?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
 
     const question = debate(page).getByRole('heading', { level: 2, name: /Can you reason your way into love\?/ })
     await expect(question).toBeVisible()
@@ -424,12 +424,112 @@ test.describe('The Arena', () => {
     await mockDebate(page)
     await openArena(page)
     await setUp(page, 'Kant', 'Hume', 'Is it ever right to lie?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
     await expect(closing(page)).toBeVisible()
 
     await debate(page).getByRole('button', { name: 'Surprise me' }).click()
     await expect(page.getByLabel('First debater')).not.toHaveValue('Kant')
-    await expect(page.getByRole('button', { name: 'Start debate' })).toBeFocused()
+    await expect(page.getByRole('button', { name: 'Begin' })).toBeFocused()
+  })
+
+  test('the setup is a deck of pairing cards: picking one fills the fields, marks it in rind green, and Write your own comes last', async ({ page }) => {
+    const { turns } = await mockDebate(page)
+    await openArena(page)
+    const deck = page.getByRole('group', { name: 'Pairings' })
+    const cards = deck.getByRole('button')
+    await expect(cards).toHaveCount(13)
+    await expect(cards.last()).toHaveText(/Write your own/)
+    await expect(deck.locator('[aria-pressed="true"]')).toHaveCount(0)
+
+    const pairing = deck.getByRole('button', { name: /^Jane Austen and Sherlock Holmes/ })
+    await pairing.click()
+    await expect(pairing).toHaveAttribute('aria-pressed', 'true')
+    await expect(deck.locator('[aria-pressed="true"]')).toHaveCount(1)
+    await expect(page.getByLabel('First debater')).toHaveValue('Jane Austen')
+    await expect(page.getByLabel('Second debater')).toHaveValue('Sherlock Holmes')
+    await expect(page.getByLabel('Topic')).toHaveValue('Can you reason your way into love?')
+    const colours = await pairing.evaluate((el) => {
+      const probe = document.createElement('span')
+      probe.style.color = 'var(--chosen-line)'
+      el.appendChild(probe)
+      const chosen = getComputedStyle(probe).color
+      probe.remove()
+      return { border: getComputedStyle(el).borderTopColor, chosen }
+    })
+    expect(colours.border).toBe(colours.chosen)
+
+    // Changing a field by hand turns it into your own pairing
+    await page.getByLabel('Topic').fill('Is love a kind of reasoning?')
+    await expect(pairing).toHaveAttribute('aria-pressed', 'false')
+    await expect(cards.last()).toHaveAttribute('aria-pressed', 'true')
+
+    await pairing.click()
+    await cards.last().click()
+    await expect(page.getByLabel('First debater')).toBeFocused()
+    await expect(page.getByLabel('First debater')).toHaveValue('')
+    await expect(page.getByLabel('Topic')).toHaveValue('')
+    await expect(page.getByRole('button', { name: 'Begin' })).toBeDisabled()
+
+    await deck.getByRole('button', { name: /^The Moon and The Sun/ }).click()
+    await turnByTurn(page).uncheck()
+    await page.getByRole('button', { name: 'Begin' }).click()
+    await expect(closing(page)).toBeVisible()
+    expect(turns[0]).toMatchObject({ person1: 'The Moon', person2: 'The Sun', topic: 'Is it better to shine or to reflect?' })
+  })
+
+  test('arrow keys and Tab move between the cards, and Enter picks one', async ({ page }) => {
+    await mockDebate(page)
+    await openArena(page)
+    const deck = page.getByRole('group', { name: 'Pairings' })
+    const cards = deck.getByRole('button')
+    await cards.first().focus()
+    await page.keyboard.press('ArrowRight')
+    await expect(cards.nth(1)).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(cards.nth(2)).toBeFocused()
+    await page.keyboard.press('ArrowLeft')
+    await expect(cards.nth(1)).toBeFocused()
+    await page.keyboard.press('End')
+    await expect(cards.last()).toBeFocused()
+    await page.keyboard.press('Home')
+    await expect(cards.first()).toBeFocused()
+    await page.keyboard.press('ArrowDown')
+    await expect(cards.first()).not.toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(deck.locator('[aria-pressed="true"]')).toHaveCount(1)
+    await expect(page.getByLabel('First debater')).not.toHaveValue('')
+  })
+
+  test('the two voices have calm colours of their own, neither red nor green, and a marker shape each', async ({ page }) => {
+    await mockDebate(page)
+    await openArena(page)
+    await setUp(page, 'Plato', 'Aristotle', 'Are ideas real?')
+    await page.getByRole('button', { name: 'Begin' }).click()
+    await expect(closing(page)).toBeVisible()
+
+    const looks = await transcript(page).evaluate((log) => {
+      const probe = document.createElement('span')
+      log.appendChild(probe)
+      const resolve = (value: string) => {
+        probe.style.color = value
+        return getComputedStyle(probe).color
+      }
+      const red = [resolve('var(--accent)'), resolve('var(--melon-red)')]
+      const green = [resolve('var(--success)'), resolve('var(--melon-green)')]
+      probe.remove()
+      const bubbles = Array.from(log.querySelectorAll('.justify-start, .justify-end')).slice(0, 2)
+      return {
+        names: bubbles.map((b) => getComputedStyle(b.querySelector('.font-semibold') as Element).color),
+        markers: bubbles.map((b) => (b.querySelector('[aria-hidden="true"]') as Element).className.includes('rotate-45')),
+        red,
+        green,
+      }
+    })
+    expect(looks.names[0]).not.toBe(looks.names[1])
+    for (const colour of looks.names) {
+      expect([...looks.red, ...looks.green]).not.toContain(colour)
+    }
+    expect(looks.markers).toEqual([false, true])
   })
 
   for (const colorScheme of ['light', 'dark'] as const) {
@@ -439,7 +539,7 @@ test.describe('The Arena', () => {
       await openArena(page)
       expect(await axeViolations(page)).toEqual([])
       await setUp(page, 'Ada Lovelace', 'Mary Shelley', 'Should we fear what we create?')
-      await page.getByRole('button', { name: 'Start debate' }).click()
+      await page.getByRole('button', { name: 'Begin' }).click()
       await expect(closing(page)).toBeVisible()
       expect(await axeViolations(page)).toEqual([])
     })
@@ -455,7 +555,7 @@ test.describe('The Arena', () => {
     }
     const first = await page.getByLabel('First debater').inputValue()
     await turnByTurn(page).uncheck()
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
     await expect(closing(page)).toBeVisible()
     expect(turns[0].person1).toBe(first)
   })
@@ -465,7 +565,7 @@ test.describe('The Arena', () => {
     await openArena(page)
     await setUp(page, 'Plato', 'Aristotle', 'Are ideas real?', { flowing: false })
     await expect(turnByTurn(page)).toBeChecked()
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
 
     await expect(transcript(page).getByText('Plato makes point 1 on Are ideas real?.')).toBeVisible()
     await page.waitForTimeout(2000)
@@ -486,7 +586,7 @@ test.describe('The Arena', () => {
 
     // The pace can be changed in the middle of a debate, too
     await page.getByRole('button', { name: 'New debate' }).click()
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
     await expect(transcript(page).getByText(/makes point 1/)).toBeVisible()
     await turnByTurn(page).uncheck()
     await expect(closing(page)).toBeVisible()
@@ -504,7 +604,7 @@ test.describe('The Arena', () => {
     })
     await openArena(page)
     await setUp(page, 'Plato', 'Aristotle', 'Are ideas real?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
     await expect(transcript(page).getByText(/\(3\)$/)).toBeVisible()
     await expect.poll(() => turns.length).toBe(4)
 
@@ -527,7 +627,7 @@ test.describe('The Arena', () => {
     await mockDebate(page)
     await openArena(page)
     await setUp(page, 'Socrates', 'Socrates', 'Know thyself?')
-    await page.getByRole('button', { name: 'Start debate' }).click()
+    await page.getByRole('button', { name: 'Begin' }).click()
     await expect(closing(page)).toBeVisible()
 
     const lefts = await transcript(page).locator('.justify-start').count()
@@ -544,7 +644,7 @@ test.describe('The Arena', () => {
       const long = 'Ada Lovelace-Byron the Extraordinarily Long Named Countess X'
       await setUp(page, long, 'Bartholomew Montgomery-Featherstonehaugh III of Somewhere', 'x'.repeat(140))
       await expect(page.getByLabel('Topic')).toHaveValue('x'.repeat(120))
-      await page.getByRole('button', { name: 'Start debate' }).tap()
+      await page.getByRole('button', { name: 'Begin' }).tap()
       await expect(closing(page)).toBeVisible()
 
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
@@ -563,7 +663,7 @@ test.describe('The Arena', () => {
       })
       await openArena(page)
       await setUp(page, 'The Moon', 'The Sun', 'Is it better to shine or to reflect?')
-      await page.getByRole('button', { name: 'Start debate' }).tap()
+      await page.getByRole('button', { name: 'Begin' }).tap()
       await expect(page.getByRole('button', { name: 'Stop' })).toBeInViewport({ ratio: 1 })
       await expect(transcript(page).getByText(/\(3\)$/)).toBeVisible()
       await expect.poll(() => turns.length).toBe(4)

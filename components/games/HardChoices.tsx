@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -9,7 +9,8 @@ import { useRealtimeVotes } from '@/lib/hooks/useRealtimeVotes'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { DILEMMAS, type Choice, type ChoiceId } from '@/lib/games/hard-choices/dilemmas'
 import { keepKnownAnswers, keepKnownIds, type Answer, type Answers } from '@/lib/games/hard-choices/answers'
-import { groupChoices, readChoices } from '@/lib/games/hard-choices/reading'
+import { dilemmaKeepsake } from '@/lib/keepsake/dilemma'
+import { Keepsake } from './Keepsake'
 
 const ANSWERS_KEY = 'hardChoicesVotes'
 const COUNTED_KEY = 'hardChoicesCounted'
@@ -70,62 +71,25 @@ const CROWD_STYLES = {
 } as const
 
 function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index: number) => void }) {
-  const chosen = DILEMMAS.flatMap((dilemma, index) => {
-    const answer = answers[dilemma.id]
-    if (!isChoice(answer)) return []
-    const choice = answer === 'A' ? dilemma.choiceA : dilemma.choiceB
-    return [{ dilemma, index, choice }]
-  })
+  const chosen = useMemo(
+    () => DILEMMAS.flatMap((dilemma) => {
+      const answer = answers[dilemma.id]
+      if (!isChoice(answer)) return []
+      return [answer === 'A' ? dilemma.choiceA : dilemma.choiceB]
+    }),
+    [answers],
+  )
   const passed = DILEMMAS.length - chosen.length
-  const reading = readChoices(chosen.map(({ choice }) => choice))
-  const groups = groupChoices(chosen.map(({ choice }) => choice))
+  const [day] = useState(() => new Date())
+  const plan = useMemo(() => dilemmaKeepsake({ chosen, day }), [chosen, day])
 
   return (
     <div className="space-y-5 text-left">
-      {chosen.length > 0 ? (
-        <>
-          <p className="text-foreground/80 text-center">Across these questions, this is what you reached for:</p>
-          <div className="space-y-3">
-            {groups.map((group) => (
-              <div key={group.title} className="text-center">
-                <p className="text-sm font-semibold text-foreground/80 mb-1.5" aria-hidden="true">{group.title}</p>
-                <ul className="flex flex-wrap justify-center gap-2" aria-label={group.title}>
-                  {group.values.map((value) => (
-                    <li
-                      key={value}
-                      className="rounded-full border border-card-border bg-background px-3 py-1 text-sm sm:text-base text-foreground"
-                    >
-                      {value}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-          <section aria-labelledby="reading-heading" className="rounded-lg bg-background border border-card-border px-4 py-4 sm:px-6 space-y-2">
-            <h3 id="reading-heading" className="text-sm font-semibold text-foreground/80 text-center">
-              A reading
-            </h3>
-            {reading.map((line) => (
-              <p key={line} className="text-foreground leading-relaxed text-center">{line}</p>
-            ))}
-          </section>
-        </>
-      ) : (
-        <p className="text-foreground/80 text-center">You let every question pass today. Some days are like that.</p>
-      )}
-
-      {passed > 0 && chosen.length > 0 && (
-        <p className="text-sm text-primary-light text-center">
-          You let {passed === 1 ? 'one question' : `${passed} questions`} pass. That is allowed too.
-        </p>
-      )}
+      <Keepsake plan={plan} label="Tonight's sky of what you reached for" hideLabel />
 
       <p className="text-foreground/85 text-center leading-relaxed">
+        {chosen.length > 0 && passed > 0 && `You let ${passed === 1 ? 'one question' : `${passed} questions`} pass, and that is allowed too. `}
         None of this is a verdict on who you are. It is what mattered to you today, and it is allowed to change.
-      </p>
-      <p className="text-sm text-primary-light text-center">
-        Revisit any answer and the reading changes with it. The same questions often land differently on another day.
       </p>
 
       <details className="rounded-lg border border-card-border bg-background">

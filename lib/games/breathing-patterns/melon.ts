@@ -7,6 +7,14 @@
 
 export type BreathPatternId = 'box' | '478' | 'coherent' | 'sigh' | 'free'
 
+export const PATTERN_NAMES: Record<BreathPatternId, string> = {
+  box: 'Box Breathing',
+  '478': '4-7-8 Relaxation',
+  coherent: 'Coherent Breathing',
+  sigh: 'Physiological Sigh',
+  free: 'Free Breathing',
+}
+
 export interface Breath {
   pattern: BreathPatternId
   /** How long the breath took: a guided pattern's full cycle, or the gap between marks. */

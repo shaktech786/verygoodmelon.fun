@@ -61,10 +61,10 @@ export function HelpLine() {
   )
 }
 
-/** Didn’t happen: an open circle. Partly: a half-filled diamond. Happened: a square. */
-export function OutcomeMark({ outcome, className }: { outcome: Outcome; className?: string }) {
+/** Didn’t happen: an open circle. Partly: a half-filled diamond. Happened: a square. Drawn in a 12x12 box. */
+export function OutcomeShape({ outcome }: { outcome: Outcome }) {
   return (
-    <svg viewBox="0 0 12 12" className={cn('w-3 h-3 shrink-0', className)} aria-hidden="true" focusable="false">
+    <>
       {outcome === 'no' && <circle cx="6" cy="6" r="4.6" className={styles.markNo} strokeWidth="1.6" />}
       {outcome === 'partly' && (
         <>
@@ -73,6 +73,14 @@ export function OutcomeMark({ outcome, className }: { outcome: Outcome; classNam
         </>
       )}
       {outcome === 'yes' && <rect x="1.8" y="1.8" width="8.4" height="8.4" rx="1" className={styles.markYes} strokeWidth="1.6" />}
+    </>
+  )
+}
+
+export function OutcomeMark({ outcome, className }: { outcome: Outcome; className?: string }) {
+  return (
+    <svg viewBox="0 0 12 12" className={cn('w-3 h-3 shrink-0', className)} aria-hidden="true" focusable="false">
+      <OutcomeShape outcome={outcome} />
     </svg>
   )
 }

@@ -1,11 +1,14 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Button } from '@/components/ui/Button'
+import { Keepsake } from '@/components/games/Keepsake'
 import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, QuietSupport, WritingForm } from '@/components/games/community-words/WritingParts'
+import { useArrival } from '@/components/games/community-words/arrival'
 import { draftKey } from '@/lib/games/community-words/draft'
 import { useCommunityWords } from '@/lib/games/community-words/useCommunityWords'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { finalWordKeepsake } from '@/lib/keepsake/final-word'
 
 const PROMPTS = [
   'What do you want the people you love to know?',
@@ -23,6 +26,58 @@ const FLICKER: Keyframe[] = [
   { transform: 'scale(0.96, 1.06) rotate(1deg)' },
   { transform: 'scale(1.02, 0.97) rotate(-0.5deg)' },
 ]
+
+const SMOKE_MS = 2000
+// What is left of the smoke once it has risen: a trace, not a line
+const SMOKE_TRACE = 0.45
+// The closing words wait for the smoke and the dusk; the card follows once they have settled
+const LINE_DELAY_MS = 1800
+const CARD_DELAY_MS = 2800
+
+/** One thread of smoke rising from the wick, then thinning to a faint trace. */
+function Smoke({ reduceMotion }: { reduceMotion: boolean }) {
+  const wisp = useRef<SVGPathElement>(null)
+
+  useEffect(() => {
+    const path = wisp.current
+    if (reduceMotion || !path?.animate) return
+    const rise = path.animate(
+      [
+        { strokeDashoffset: 80, opacity: 0, transform: 'translateY(6px) scaleX(0.8)' },
+        { strokeDashoffset: 30, opacity: 0.8, transform: 'translateY(0) scaleX(1)', offset: 0.4 },
+        { strokeDashoffset: 0, opacity: SMOKE_TRACE, transform: 'translateY(-4px) scaleX(1.25)' },
+      ],
+      { duration: SMOKE_MS, easing: 'ease-out', fill: 'backwards' }
+    )
+    return () => rise.cancel()
+  }, [reduceMotion])
+
+  return (
+    <svg
+      className="absolute left-1/2 -translate-x-1/2 overflow-visible"
+      style={{ top: -12, width: 32, height: 52 }}
+      viewBox="0 0 32 52"
+      data-testid="candle-smoke"
+    >
+      <defs>
+        <linearGradient id="candle-smoke-fade" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stopColor="var(--primary-light)" stopOpacity="0.9" />
+          <stop offset="1" stopColor="var(--primary-light)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path
+        ref={wisp}
+        d="M16 52 C 12 44, 21 38, 16 30 S 10 17, 17 10 S 21 3, 18 0"
+        fill="none"
+        stroke="url(#candle-smoke-fade)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeDasharray="80"
+        style={{ opacity: SMOKE_TRACE, transform: 'translateY(-4px) scaleX(1.25)', transformOrigin: '50% 100%', filter: 'blur(0.6px)' }}
+      />
+    </svg>
+  )
+}
 
 /** A small candle that burns while the player writes and goes out when they let it. */
 function Candle({ lit }: { lit: boolean }) {
@@ -48,14 +103,42 @@ function Candle({ lit }: { lit: boolean }) {
       />
       <div
         ref={flame}
-        className={`absolute left-1/2 top-4 -ml-2 h-7 w-4 origin-bottom transition-opacity duration-1000 ${lit ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute left-1/2 top-4 -ml-2 h-7 w-4 origin-bottom transition-opacity duration-500 ${lit ? 'opacity-100' : 'opacity-0'}`}
         style={{
           borderRadius: '50% 50% 45% 45% / 65% 65% 35% 35%',
           background: 'radial-gradient(circle at 50% 75%, var(--melon-yellow), var(--warm) 55%, var(--melon-orange))',
         }}
       />
+      {!lit && <Smoke reduceMotion={reduceMotion} />}
       <div className="absolute left-1/2 top-[2.6rem] h-2 w-0.5 -translate-x-1/2 bg-foreground/60" />
       <div className="absolute bottom-0 left-1/2 h-12 w-8 -translate-x-1/2 rounded-t-sm border border-card-border bg-accent-soft" />
+    </div>
+  )
+}
+
+interface GoodnightProps {
+  words: string
+  prompt: string
+  lineRef: RefObject<HTMLParagraphElement | null>
+}
+
+/** After the candle: the closing words, then the player's words on a card to keep. */
+function Goodnight({ words, prompt, lineRef }: GoodnightProps) {
+  const reduceMotion = useReducedMotion()
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [day] = useState(() => new Date())
+  const plan = useMemo(() => finalWordKeepsake({ words, prompt, day }), [words, prompt, day])
+  useArrival(lineRef, { delay: LINE_DELAY_MS, reduceMotion })
+  useArrival(cardRef, { delay: CARD_DELAY_MS, reduceMotion })
+
+  return (
+    <div className="mt-6">
+      <p ref={lineRef} {...FOCUS_TARGET} className="text-lg text-foreground/90 leading-relaxed">
+        The candle is out. What you wrote is still yours to carry, or to say.
+      </p>
+      <div ref={cardRef} className="mt-6">
+        <Keepsake plan={plan} label="Your words, on a card to keep" />
+      </div>
     </div>
   )
 }
@@ -64,6 +147,9 @@ export default function LastWords() {
   // Care lasts for the visit, so the flame stays away even for the next words
   const { submitted, stored, cloud, reflection, care, submit, reset } = useCommunityWords('last-words')
   const [candleOut, setCandleOut] = useState(false)
+  const [prompt, setPrompt] = useState('')
+  const reduceMotion = useReducedMotion()
+  const cardRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const thanksRef = useRef<HTMLHeadingElement>(null)
   const goodnightRef = useRef<HTMLParagraphElement>(null)
@@ -79,9 +165,12 @@ export default function LastWords() {
     }
   }, [submitted])
 
+  // The smoke rises at the top of the card, so the card comes into view as the candle goes out
   useEffect(() => {
-    if (candleOut) goodnightRef.current?.focus()
-  }, [candleOut])
+    if (!candleOut) return
+    cardRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
+    goodnightRef.current?.focus({ preventScroll: true })
+  }, [candleOut, reduceMotion])
 
   const writeAnother = () => {
     returningToWrite.current = true
@@ -95,12 +184,21 @@ export default function LastWords() {
     <div className="max-w-2xl mx-auto space-y-5">
       {care && submitted === null && <CarePanel />}
 
-      <div className="bg-card-bg border border-card-border rounded-lg p-5 sm:p-8">
+      <div ref={cardRef} className="relative bg-card-bg border border-card-border rounded-lg p-5 sm:p-8 scroll-mt-20">
+        <div
+          aria-hidden="true"
+          data-testid="dusk"
+          className={`pointer-events-none absolute inset-0 rounded-lg transition-opacity duration-[2000ms] ease-in-out ${candleOut ? 'opacity-100' : 'opacity-0'}`}
+          style={{
+            background:
+              'linear-gradient(to bottom, color-mix(in srgb, var(--melon-indigo) 14%, transparent), color-mix(in srgb, var(--melon-purple) 6%, transparent) 70%, transparent)',
+          }}
+        />
         {/* A flame beside words that may come from real danger is the wrong picture, lit or put out */}
         {!care && <Candle lit={!candleOut} />}
 
         {submitted === null ? (
-          <div className="mt-4">
+          <div className="relative mt-4">
             {care && (
               <p className="mb-5 text-center text-foreground/85 leading-relaxed">
                 There is no need to write about endings today. If you would rather, gentler games are waiting just below.
@@ -111,7 +209,10 @@ export default function LastWords() {
               label="Your final words"
               placeholder="Write it the way you would say it…"
               submitLabel="Leave these words"
-              onSubmit={submit}
+              onSubmit={(words, shown) => {
+                setPrompt(shown)
+                submit(words)
+              }}
               textareaRef={textareaRef}
               draftKey={draftKey('last-words')}
             />
@@ -120,7 +221,7 @@ export default function LastWords() {
             </p>
           </div>
         ) : (
-          <div className="mt-4 text-center">
+          <div className="relative mt-4 text-center">
             <h2 ref={thanksRef} {...FOCUS_TARGET} className="text-xl sm:text-2xl font-semibold text-foreground">
               {care ? 'We’re glad you wrote this down' : 'Thank you for writing this'}
             </h2>
@@ -135,6 +236,7 @@ export default function LastWords() {
             <blockquote className="mt-5 text-lg sm:text-xl text-foreground whitespace-pre-wrap break-words leading-relaxed">
               &ldquo;{submitted}&rdquo;
             </blockquote>
+            {candleOut && !care && <Goodnight words={submitted} prompt={prompt} lineRef={goodnightRef} />}
           </div>
         )}
       </div>
@@ -177,16 +279,11 @@ export default function LastWords() {
           )}
 
           <div className="text-center space-y-4">
-            {!care &&
-              (candleOut ? (
-                <p ref={goodnightRef} {...FOCUS_TARGET} className="text-foreground/85 leading-relaxed">
-                  The candle is out. What you wrote is still yours to carry, or to say.
-                </p>
-              ) : (
-                <Button variant="primary" onClick={() => setCandleOut(true)}>
-                  Blow out the candle
-                </Button>
-              ))}
+            {!care && !candleOut && (
+              <Button variant="primary" onClick={() => setCandleOut(true)}>
+                Blow out the candle
+              </Button>
+            )}
             <div>
               <Button variant="secondary" onClick={writeAnother}>
                 Write another

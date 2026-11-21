@@ -399,6 +399,73 @@ test('with reduced motion the good news appears without animation', async ({ pag
   await guess(page, 'solar')
   await expect(page.getByTestId('good-news')).toHaveText(FACT)
   await expect(page.getByTestId('good-news').locator('.animate-fade')).toHaveCount(0)
+  // The found word is simply in its slots
+  await expect(page.getByTestId('solved-word')).toHaveText('SOLAR')
+  expect(await letterDrops(page)).toEqual([])
+})
+
+/** Start delays of the letters dropping into the found word's slots, in order. */
+function letterDrops(page: Page) {
+  return page.evaluate(() =>
+    document
+      .getAnimations()
+      .filter(a => (a as CSSAnimation).animationName === 'optimist-letter-drop')
+      .map(a => Math.round(Number(a.effect?.getComputedTiming().delay ?? 0)))
+      .sort((a, b) => a - b)
+  )
+}
+
+/** Records every tone the page starts, so a chime can be heard without speakers. */
+async function listenForTones(page: Page) {
+  await page.addInitScript(() => {
+    const heard: number[] = []
+    Object.assign(window, { __heard: heard })
+    const Real = window.AudioContext
+    window.AudioContext = class extends Real {
+      createOscillator() {
+        const oscillator = super.createOscillator()
+        const start = oscillator.start.bind(oscillator)
+        oscillator.start = (when?: number) => {
+          heard.push(oscillator.frequency.value)
+          start(when)
+        }
+        return oscillator
+      }
+    }
+  })
+}
+
+const SOLVED_CHIME_HZ = 659.25
+const chimes = (page: Page) => page.evaluate((hz) => (window as unknown as { __heard: number[] }).__heard.filter(f => f === hz).length, SOLVED_CHIME_HZ)
+
+test('when the word is found, its letters drop into their slots one by one, about 60ms apart', async ({ page }) => {
+  await pinDailyWord(page)
+  await openGame(page)
+  await guess(page, 'solar')
+  await expect(page.getByRole('heading', { name: 'SOLAR' })).toBeFocused()
+  await expect(page.getByTestId('solved-word')).toHaveText('SOLAR')
+  expect(await letterDrops(page)).toEqual([0, 60, 120, 180, 240])
+})
+
+test('the found word stays silent unless the page sound was turned on, then rings one soft chime', async ({ page }) => {
+  await listenForTones(page)
+  await pinDailyWord(page)
+  await openGame(page)
+  await guess(page, 'solar')
+  await expect(page.getByTestId('solved-word')).toHaveText('SOLAR')
+  await page.waitForTimeout(800)
+  expect(await chimes(page)).toBe(0)
+
+  await page.evaluate(() => localStorage.removeItem('hope-daily-state'))
+  await page.reload()
+  await expect(input(page)).toBeVisible()
+  const soundButton = page.getByRole('button', { name: 'Ambient sound' })
+  await expect(soundButton).toHaveCSS('opacity', '1')
+  await soundButton.click()
+  await expect(soundButton).toHaveAttribute('aria-pressed', 'true')
+  await guess(page, 'solar')
+  await expect(page.getByTestId('solved-word')).toHaveText('SOLAR')
+  await expect.poll(() => chimes(page)).toBe(1)
 })
 
 test("plays today's real word against the real routes, and a returning player sees the finished good news", async ({ page }) => {
@@ -508,6 +575,23 @@ test.describe('on a phone', () => {
     await tryIt.tap()
     await expect(status(page)).toHaveText('Today’s word has 5 letters.')
     await expect(input(page)).toBeFocused()
+  })
+
+  test('a long found word stays on one line in its slots, without sideways scrolling', async ({ page }) => {
+    await page.route('**/api/hope-daily', route => {
+      const request = route.request()
+      if (request.method() === 'GET') return route.fulfill({ json: { ...PUZZLE, wordLength: 12 } })
+      return route.fulfill({ json: { isCorrect: true, inPlace: [], reveal: { ...REVEAL, word: 'RENEWABILITY' } } })
+    })
+    await openGame(page)
+    await guess(page, 'renewability')
+    const word = page.getByTestId('solved-word')
+    await expect(word).toHaveText('RENEWABILITY')
+    const box = await word.boundingBox()
+    const slot = await word.locator(':scope > span').first().boundingBox()
+    expect(box && box.x + box.width).toBeLessThanOrEqual(390)
+    expect(box!.height).toBeLessThan(slot!.height * 1.5)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   })
 
   test('the longest word fits without sideways scrolling and the controls are easy to tap', async ({ page }) => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CARRIED_LINES, NOT_YET_LINES, OUTCOME_RESPONSES, outcomeResponse, pickLine, tallyReflection, tallySummary } from '@/lib/games/worry-capsule/copy'
+import { CARRIED_LINES, CLOSED_LINES, FIRST_CLOSED_LINE, NOT_YET_LINES, closedLine, OUTCOME_RESPONSES, outcomeResponse, pickLine, tallyReflection, tallySummary } from '@/lib/games/worry-capsule/copy'
 
 describe('pickLine', () => {
   it('is stable for a capsule and varies across capsules', () => {
@@ -94,5 +94,19 @@ describe('tallyReflection', () => {
     expect(tallyReflection({ no: 0, partly: 1, yes: 2, total: 3 })).toBe(
       'Some worries are about real things. You came back to look at each one.',
     )
+  })
+})
+
+describe('closedLine', () => {
+  it('greets the first jar on the shelf, then says one stable line per capsule', () => {
+    expect(closedLine('a', true)).toBe(FIRST_CLOSED_LINE)
+    expect(closedLine('capsule-7', false)).toBe(closedLine('capsule-7', false))
+    const seen = new Set(Array.from({ length: 40 }, (_, i) => closedLine(`capsule-${i}`, false)))
+    expect(seen.size).toBeGreaterThan(1)
+    for (const line of seen) expect(CLOSED_LINES).toContain(line)
+  })
+
+  it('assumes nothing about how it turned out, since some worries are about loss', () => {
+    for (const line of [...CLOSED_LINES, FIRST_CLOSED_LINE]) expect(line).not.toMatch(/glad|relief|fine|brave|win|proud|happen/i)
   })
 })

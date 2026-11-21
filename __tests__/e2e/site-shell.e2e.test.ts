@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
 import { SHOWCASE_GROUPS } from '@/lib/games/config'
+import { PICK_REASONS, dailyPick } from '@/lib/games/daily-pick'
+import { gamesForMood } from '@/lib/games/moods'
 
 /**
  * The shared shell every page sits in: accessibility settings, the feedback
@@ -332,46 +334,91 @@ test.describe('Finding your way', () => {
     await expect(reopened).toBeFocused()
   })
 
-  test('the homepage says what this is and where to start', async ({ page }) => {
+  test("the homepage says what this is and offers one calm game for today, with a reason, the same all day", async ({ page }) => {
+    const noon = new Date(2026, 2, 2, 12)
+    await page.clock.setFixedTime(noon)
     await page.goto('/')
     await expect(page.getByRole('main')).toContainText('quiet games for a busy mind')
-    const start = page.getByRole('link', { name: /^Start here/ })
-    await expect(start).toBeVisible()
-    const href = await start.getAttribute('href')
+
+    const expected = dailyPick(noon)
+    if (!expected) throw new Error('no calm games to pick from')
+    const hero = page.getByRole('region', { name: "Today's pick" })
+    const pick = hero.getByRole('link', { name: /^Today's pick: / })
+    await expect(pick).toBeVisible()
+    await expect(pick).toHaveAttribute('href', `/games/${expected.game.slug}`)
+    await expect(hero).toContainText(expected.game.title)
+    await expect(hero).toContainText(expected.reason)
+    expect(PICK_REASONS[expected.game.id]).toBe(expected.reason)
     const calmSlugs = SHOWCASE_GROUPS.find((group) => group.category === 'Calm')?.games.map((g) => `/games/${g.slug}`)
-    expect(calmSlugs).toContain(href)
-    // "Start here" and the card marked "Today" are two different invitations, never the same game
-    const today = page.getByRole('link', { name: /, featured today\./ })
-    await expect(today).toBeVisible()
-    expect(await today.getAttribute('href')).not.toBe(href)
+    expect(calmSlugs).toContain(`/games/${expected.game.slug}`)
+
+    // Later the same day it is still today's pick; tomorrow brings another
+    await page.clock.setFixedTime(new Date(2026, 2, 2, 23, 30))
+    await page.reload()
+    await expect(pick).toHaveAttribute('href', `/games/${expected.game.slug}`)
+    await page.clock.setFixedTime(new Date(2026, 2, 3, 8))
+    await page.reload()
+    await expect(pick).not.toHaveAttribute('href', `/games/${expected.game.slug}`)
   })
 
-  test('the homepage and the games page group and order games the same way', async ({ page }) => {
+  test('a mood on the homepage opens the games page filtered to it, changeable there, with a way back to all', async ({ page }) => {
+    await page.goto('/')
+    const moods = page.getByRole('region', { name: 'Or start from how you feel' })
+    await expect(moods.getByRole('link')).toHaveText(['Restless: for a restless mind', 'Heavy: for when it feels heavy', 'Want to play: for when you want to play'])
+    await moods.getByRole('link', { name: /^Restless/ }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page).toHaveURL(/\/games\?mood=restless$/)
+
+    const filter = page.getByRole('navigation', { name: 'Games by mood' })
+    const readList = () =>
+      page.locator('main section[aria-labelledby="mood-heading"] a[href^="/games/"]').evaluateAll((links) => links.map((a) => a.getAttribute('href')))
+    await expect(page.getByRole('heading', { level: 2, name: 'For a restless mind' })).toBeVisible()
+    await expect(filter.getByRole('link', { name: 'Restless' })).toHaveAttribute('aria-current', 'page')
+    expect(await readList()).toEqual(gamesForMood('restless').map((g) => `/games/${g.slug}`))
+    await expect(page.locator('main section[aria-labelledby^="category-"]')).toHaveCount(0)
+
+    await filter.getByRole('link', { name: 'Heavy' }).click()
+    await expect(page).toHaveURL(/\/games\?mood=heavy$/)
+    await expect(page.getByRole('heading', { level: 2, name: 'For when it feels heavy' })).toBeVisible()
+    await expect(filter.getByRole('link', { name: 'Heavy' })).toHaveAttribute('aria-current', 'page')
+    await expect(filter.getByRole('link', { name: 'Restless' })).not.toHaveAttribute('aria-current', /.*/)
+    expect(await readList()).toEqual(gamesForMood('heavy').map((g) => `/games/${g.slug}`))
+    // Someone who feels heavy is never pointed at the games about death
+    await expect(page.locator('main a[href="/games/final-breath"], main a[href="/games/first-breath"]')).toHaveCount(0)
+    await expect(page.getByRole('main').getByRole('status')).toContainText('For when it feels heavy')
+
+    await page.getByRole('link', { name: 'Show all games' }).click()
+    await expect(page).toHaveURL(/\/games$/)
+    await expect(filter.getByRole('link', { name: 'All games' })).toHaveAttribute('aria-current', 'page')
+    await expect(page.locator('main section[aria-labelledby^="category-"]')).toHaveCount(SHOWCASE_GROUPS.length)
+
+    // An address with a mood the site does not know shows everything
+    await page.goto('/games?mood=sideways')
+    await expect(filter.getByRole('link', { name: 'All games' })).toHaveAttribute('aria-current', 'page')
+    await expect(page.locator('main section[aria-labelledby^="category-"]')).toHaveCount(SHOWCASE_GROUPS.length)
+  })
+
+  test('the games page groups and orders games the one way the config does', async ({ page }) => {
     const expected = SHOWCASE_GROUPS.map((group) => ({
       heading: group.title,
       games: group.games.map((game) => `/games/${game.slug}`),
     }))
-    const readGroups = () =>
-      page.locator('main section[aria-labelledby^="category-"]').evaluateAll((sections) =>
-        sections.map((section) => ({
-          heading: section.querySelector('h2')?.textContent?.trim() ?? '',
-          games: Array.from(section.querySelectorAll('a[href^="/games/"]')).map((a) => a.getAttribute('href')),
-        }))
-      )
-
-    await page.goto('/')
-    await expect(page.locator('main section h2').first()).toBeVisible()
-    expect(await readGroups()).toEqual(expected)
-
     await page.goto('/games')
-    expect(await readGroups()).toEqual(expected)
+    await expect(page.locator('main section h2').first()).toBeVisible()
+    const groups = await page.locator('main section[aria-labelledby^="category-"]').evaluateAll((sections) =>
+      sections.map((section) => ({
+        heading: section.querySelector('h2')?.textContent?.trim() ?? '',
+        games: Array.from(section.querySelectorAll('a[href^="/games/"]')).map((a) => a.getAttribute('href')),
+      }))
+    )
+    expect(groups).toEqual(expected)
   })
 
   test('in care mode the game lists offer helplines once, list each gentle game once, and a new tab keeps the care', async ({ page, context }) => {
     await page.goto('/')
     await page.evaluate(() => localStorage.setItem('verygoodmelon:care', JSON.stringify({ until: Date.now() + 60 * 60 * 1000 })))
 
-    for (const listing of ['/', '/games']) {
+    for (const listing of ['/', '/games', '/games?mood=heavy']) {
       await page.goto(listing)
       const gentle = page.getByRole('region', { name: 'Something gentle, if it helps' })
       await expect(gentle).toBeVisible()

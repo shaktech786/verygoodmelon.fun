@@ -1,14 +1,17 @@
 'use client'
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { CARE_GAMES } from '@/components/games/CrossGameSuggestions'
+import { Keepsake } from '@/components/games/Keepsake'
 import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, QuietSupport, WritingForm } from '@/components/games/community-words/WritingParts'
+import { useArrival } from '@/components/games/community-words/arrival'
 import { draftKey } from '@/lib/games/community-words/draft'
 import { useCommunityWords } from '@/lib/games/community-words/useCommunityWords'
 import { wakingLine } from '@/lib/games/community-words/waking'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { awakeningKeepsake } from '@/lib/keepsake/awakening'
 
 const PROMPTS = [
   'Who do you hope is there?',
@@ -42,31 +45,64 @@ const SUN: Record<Light, { position: string; color: string }> = {
 const GROUND_IN_THE_DARK = 'color-mix(in srgb, var(--melon-green) 70%, black)'
 const GROUND_BY_DAY = 'color-mix(in srgb, var(--melon-green-light) 75%, var(--melon-green))'
 
+// Waking is the payoff, so the last change of light takes its time
+const SUNRISE_MS = 4000
+const NOTE_DELAY_MS = 2200
+const CARD_DELAY_MS = 3400
+const fade = (light: Light) => (light === 'day' ? 'duration-[4000ms]' : 'duration-[2000ms]')
+
+// A plain wooden table and a paper note look the same whichever theme the page is in
+const TABLE = 'repeating-linear-gradient(to bottom, #a97c55 0 46px, #9a6e48 46px 48px)'
+const NOTE_PAPER = '#fdf8ec'
+const NOTE_INK = '#2b2620'
+const NOTE_INK_SOFT = '#6b5e50'
+const HAND = '"Segoe Print", "Bradley Hand", "Noteworthy", "Comic Sans MS", cursive'
+const NOTE_TILT = 'rotate(-1.2deg)'
+
 const STARS = [
   [8, 18], [17, 46], [26, 12], [35, 34], [44, 8], [56, 28], [63, 14], [72, 40], [81, 10], [90, 30], [12, 60], [68, 58],
 ] as const
 
 /** The sky over the whole visit: night on the other side, dawn on the way back, morning once awake. */
 function Sky({ light }: { light: Light }) {
+  const reduceMotion = useReducedMotion()
+  const glow = useRef<HTMLDivElement>(null)
+
+  // On waking, warm light spreads from the horizon and gives way to the day
+  useEffect(() => {
+    if (light !== 'day' || reduceMotion || !glow.current?.animate) return
+    const sunrise = glow.current.animate([{ opacity: 0 }, { opacity: 0.9, offset: 0.35 }, { opacity: 0 }], {
+      duration: SUNRISE_MS,
+      easing: 'ease-in-out',
+    })
+    return () => sunrise.cancel()
+  }, [light, reduceMotion])
+
   return (
     <div className="relative h-32 sm:h-40 overflow-hidden" aria-hidden="true">
       {(Object.keys(SKY) as Light[]).map((phase) => (
         <div
           key={phase}
           data-sky={phase}
-          className={`absolute inset-0 transition-opacity duration-[2000ms] ${phase === light ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 transition-opacity ${fade(light)} ${phase === light ? 'opacity-100' : 'opacity-0'}`}
           style={{ background: SKY[phase] }}
         />
       ))}
+      <div
+        ref={glow}
+        data-testid="sunrise-glow"
+        className="absolute inset-0 opacity-0"
+        style={{ background: 'radial-gradient(120% 90% at 50% 100%, color-mix(in srgb, var(--warm) 85%, white), color-mix(in srgb, var(--melon-pink) 35%, transparent) 45%, transparent 75%)' }}
+      />
       {STARS.map(([left, top]) => (
         <span
           key={`${left}-${top}`}
-          className={`absolute h-0.5 w-0.5 rounded-full bg-white transition-opacity duration-[2000ms] ${light === 'night' ? 'opacity-80' : light === 'dawn' ? 'opacity-30' : 'opacity-0'}`}
+          className={`absolute h-0.5 w-0.5 rounded-full bg-white transition-opacity ${fade(light)} ${light === 'night' ? 'opacity-80' : light === 'dawn' ? 'opacity-30' : 'opacity-0'}`}
           style={{ left: `${left}%`, top: `${top}%` }}
         />
       ))}
       <div
-        className={`absolute bottom-6 left-1/2 -ml-7 h-14 w-14 rounded-full transition-[transform,background-color,box-shadow] duration-[2000ms] ease-out ${SUN[light].position}`}
+        className={`absolute bottom-6 left-1/2 -ml-7 h-14 w-14 rounded-full transition-[transform,background-color,box-shadow] ${fade(light)} ease-in-out ${SUN[light].position}`}
         style={{
           backgroundColor: SUN[light].color,
           boxShadow: `0 0 ${light === 'day' ? '36px 12px' : '24px 6px'} color-mix(in srgb, ${SUN[light].color} 55%, transparent)`,
@@ -75,10 +111,54 @@ function Sky({ light }: { light: Light }) {
       <svg className="absolute inset-x-0 bottom-0 h-10 w-full" viewBox="0 0 400 40" preserveAspectRatio="none">
         <path
           d="M0 28 C 60 10, 120 12, 190 24 S 320 8, 400 22 L 400 40 L 0 40 Z"
-          className="transition-[fill] duration-[2000ms]"
+          className={`transition-[fill] ${fade(light)}`}
           style={{ fill: light === 'day' ? GROUND_BY_DAY : GROUND_IN_THE_DARK }}
         />
       </svg>
+    </div>
+  )
+}
+
+/** The plan for tomorrow, written by hand on a note left on the kitchen table. */
+function TableNote({ note }: { note: string }) {
+  const reduceMotion = useReducedMotion()
+  const noteRef = useRef<HTMLDivElement>(null)
+  useArrival(noteRef, { delay: NOTE_DELAY_MS, reduceMotion, from: 'translateY(-14px) rotate(-4deg)', to: NOTE_TILT })
+
+  return (
+    <div className="relative -mx-5 sm:-mx-8 mt-5 overflow-hidden px-8 sm:px-14 pt-7 pb-9" style={{ background: TABLE }} data-testid="kitchen-table">
+      {/* A cup of something warm, seen from above, half off the edge */}
+      <div aria-hidden="true" className="absolute -right-3 bottom-3 h-16 w-16 rounded-full border-[6px]" style={{ borderColor: '#d6c7b0', background: '#efe7da' }}>
+        <div className="absolute inset-[7px] rounded-full" style={{ background: '#6b4a32' }} />
+      </div>
+      <div
+        ref={noteRef}
+        className="relative mx-auto max-w-sm px-6 pt-6 pb-5 text-left shadow-[0_6px_14px_rgba(60,40,20,0.35)]"
+        style={{ background: NOTE_PAPER, transform: NOTE_TILT }}
+      >
+        <span aria-hidden="true" className="absolute -top-2.5 left-1/2 h-5 w-20 -translate-x-1/2 rotate-2" style={{ background: 'rgba(243, 227, 179, 0.85)' }} />
+        <p className="text-sm" style={{ fontFamily: HAND, color: NOTE_INK_SOFT }}>
+          For tomorrow
+        </p>
+        <p className="mt-1 text-xl sm:text-2xl leading-snug break-words" style={{ fontFamily: HAND, color: NOTE_INK }}>
+          {note}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/** A morning card to keep: the sunrise, and the note for tomorrow. */
+function MorningCard({ note }: { note: string }) {
+  const reduceMotion = useReducedMotion()
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [day] = useState(() => new Date())
+  const plan = useMemo(() => awakeningKeepsake({ note, day }), [note, day])
+  useArrival(cardRef, { delay: CARD_DELAY_MS, reduceMotion })
+
+  return (
+    <div ref={cardRef} className="mt-6">
+      <Keepsake plan={plan} label="This morning, on a card to keep" />
     </div>
   )
 }
@@ -207,16 +287,15 @@ export default function FirstWords() {
               </p>
               {carried && !care && (
                 <>
-                  <p className="mt-4 rounded-lg border border-card-border border-l-4 border-l-[var(--warm)] bg-background px-5 py-4 text-left text-lg sm:text-xl font-medium text-foreground break-words">
-                    {carried}
-                  </p>
-                  <div className="mt-4">
+                  <TableNote note={carried} />
+                  <div className="mt-5">
                     <CopyWordsButton
                       words={carried}
                       label="Copy it for tomorrow"
                       copiedMessage="Copied. Put it somewhere you will see it tomorrow."
                     />
                   </div>
+                  <MorningCard note={carried} />
                 </>
               )}
             </div>

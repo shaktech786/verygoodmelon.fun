@@ -27,6 +27,8 @@ const SHADOW_WANDER = 0.5
 const SHADOW_EXIT_MARGIN = 40
 // A star made from a shadow stays long enough to be seen before light can gather it
 const NEW_STAR_SETTLE = 0.8
+const PATH_STEP = 6
+const PATH_MAX = 1200
 
 // ==========================================
 // STATE CREATION
@@ -76,6 +78,7 @@ export function createState(w: number = GAME_W, h: number = GAME_H): GameState {
     moveBias: [0, 0, 0, 0],
     spawnTimers: {},
     totalTime: 0,
+    path: [{ x: w / 2, y: h / 2, wave: 0 }],
   }
 }
 
@@ -140,7 +143,23 @@ export function update(s: GameState, dt: number): void {
   s.px = clamp(s.px, margin, s.w - margin)
   s.py = clamp(s.py, margin, s.h - margin)
 
+  recordPath(s)
+
   s.clickThisFrame = false
+}
+
+// ==========================================
+// PATH
+// ==========================================
+
+/** Notes where the orb has been: a point each time it moves a little way, and one whenever a new wave begins. */
+function recordPath(s: GameState): void {
+  const last = s.path[s.path.length - 1]
+  if (last && last.wave === s.wave && dist(last.x, last.y, s.px, s.py) < PATH_STEP) return
+  s.path.push({ x: s.px, y: s.py, wave: s.wave })
+  if (s.path.length <= PATH_MAX) return
+  // A long run keeps its whole shape at half the detail; the first point of every wave always stays
+  s.path = s.path.filter((p, i, all) => i % 2 === 0 || i === all.length - 1 || p.wave !== all[i - 1].wave)
 }
 
 // ==========================================

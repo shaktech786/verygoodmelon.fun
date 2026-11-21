@@ -45,6 +45,10 @@ async function mockSuggestion(page: Page, handler?: (route: Route) => Promise<vo
 const garden = (page: Page) => page.getByRole('application', { name: 'Your garden' })
 const contents = (page: Page) => page.locator('#garden-contents')
 const announcer = (page: Page) => page.locator('#garden-announcer')
+// Shown over the garden while it is looked across; heard through the announcer instead.
+const returnLine = (page: Page) => page.locator('[aria-hidden="true"]').filter({ hasText: /^While you were away/ })
+const RETURN_MS = 4200
+const NOTE = /^While you were away, your oak tree grew a little taller and a new poppy came up on its own\.$/
 
 async function stored(page: Page): Promise<StoredPlant[]> {
   return page.evaluate((key) => {
@@ -473,10 +477,18 @@ test.describe('The Gardener', () => {
     await page.keyboard.press('Tab')
     await expect(stand).toBeFocused()
     await expect(dialog).toContainText('Stay as long as you like.')
+    await expect(dialog).not.toContainText('came to sit with you')
 
-    await page.clock.fastForward(SIT_MS + 1000)
+    // With two flowers and no one visiting yet, two visitors come, one at a time, well apart.
+    await page.clock.runFor(SIT_MS * 0.35 + 500)
+    await expect(page.locator('#sit-words')).toContainText('A butterfly came to sit with you.')
+    await page.clock.runFor(SIT_MS * 0.25)
+    await expect(page.locator('#sit-words')).toContainText('Another came to sit with you.')
+    await expect(page.locator('#sit-words')).not.toContainText('A butterfly came')
+
+    await page.clock.fastForward(SIT_MS * 0.4 + 1000)
     await expect(page.locator('#sit-words')).toHaveText(
-      /^An autumn garden: two flowers, a willow and three stones\. (A butterfly|Two butterflies) came while you sat\. You planted all of it today\.$/,
+      /^An autumn garden: two flowers, a willow and three stones\. Two butterflies came while you sat\. You planted all of it today\.$/,
     )
     expect(bodies.length).toBe(calls)
 
@@ -497,17 +509,86 @@ test.describe('The Gardener', () => {
     ], now - 2 * DAY)
     await page.goto(URL)
 
-    await expect(page.getByRole('paragraph').filter({ hasText: /^While you were away, your oak tree grew a little taller and a new poppy came up on its own\.$/ })).toBeVisible()
-    await expect(announcer(page)).toContainText('While you were away')
+    // First a few seconds looking across the garden, with the line over it, then the line rests below.
+    await expect(returnLine(page)).toBeVisible()
+    await expect(returnLine(page)).toContainText(/to skip/)
+    await expect(page.getByRole('paragraph').filter({ hasText: NOTE })).toHaveCount(0)
+    await expect(announcer(page)).toHaveText(NOTE)
+    await page.clock.runFor(RETURN_MS + 100)
+    await expect(returnLine(page)).toHaveCount(0)
+    await expect(page.getByRole('paragraph').filter({ hasText: NOTE })).toBeVisible()
     await expect(contents(page)).toHaveText('In your garden: three poppies and an oak tree. A butterfly is visiting.')
     await expect.poll(async () => (await stored(page)).filter((p) => p.selfSown)).toHaveLength(1)
     await page.getByText("What's in your garden").click()
     await expect(page.getByRole('listitem').filter({ hasText: 'came up on its own' })).toHaveCount(1)
 
-    // Reloading straight away is not a new visit: nothing more grows.
+    // Reloading straight away is not a new visit: nothing more grows, and there is nothing to look across.
     await page.reload()
+    await expect(contents(page)).toHaveText(/three poppies/)
     await expect(page.getByText(/While you were away/)).toHaveCount(0)
     expect(await stored(page)).toHaveLength(4)
+  })
+
+  const grownGarden = (now: number) => [
+    seeded('a', 'poppy', 0.25, 0.7, now - 3 * DAY),
+    seeded('b', 'poppy', 0.4, 0.75, now - 3 * DAY),
+    seeded('c', 'oak', 0.6, 0.5, now - 3 * DAY),
+  ]
+
+  test('the look across a returning garden ends at a key, and the tap that ends it plants nothing', async ({ page }) => {
+    const errors = collectPageErrors(page)
+    const now = Date.parse('2026-11-24T10:00:00')
+    await page.clock.install({ time: new Date(now) })
+    await mockSuggestion(page)
+    await seedGarden(page, grownGarden(now), now - 2 * DAY)
+    await page.goto(URL)
+    await expect(returnLine(page)).toBeVisible()
+    await page.keyboard.press('Shift')
+    await expect(returnLine(page)).toHaveCount(0)
+    await expect(page.getByRole('paragraph').filter({ hasText: NOTE })).toBeVisible()
+
+    // A new visit two days on, ended by tapping the garden itself.
+    const later = now + 2 * DAY
+    await page.clock.setSystemTime(new Date(later))
+    await page.reload()
+    await expect(returnLine(page)).toBeVisible()
+    const before = (await stored(page)).length
+    const box = (await garden(page).boundingBox())!
+    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.85)
+    await expect(returnLine(page)).toHaveCount(0)
+    expect(await stored(page)).toHaveLength(before)
+    // Afterwards the garden plants as usual.
+    await plantAt(page, 0.5, 0.85)
+    await expect.poll(async () => (await stored(page)).length).toBe(before + 1)
+    expect(errors).toEqual([])
+  })
+
+  test('reduced motion: coming back shows a still garden with the same line, which ends by itself', async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: 'reduce' })
+    const page = await context.newPage()
+    await stubSiteApis(page)
+    await mockSuggestion(page)
+    const now = Date.parse('2026-11-24T10:00:00')
+    await page.clock.install({ time: new Date(now) })
+    await seedGarden(page, grownGarden(now), now - 2 * DAY)
+    await page.goto(URL)
+    await expect(returnLine(page)).toBeVisible()
+    await expect(announcer(page)).toHaveText(NOTE)
+    await page.clock.runFor(RETURN_MS + 100)
+    await expect(returnLine(page)).toHaveCount(0)
+    await context.close()
+  })
+
+  test('a fully grown garden left a while is not described as having grown', async ({ page }) => {
+    const now = Date.parse('2026-11-24T10:00:00')
+    await page.clock.install({ time: new Date(now) })
+    await mockSuggestion(page)
+    // Planted long ago, a single flower (no seeding), last seen a day ago: nothing really changed.
+    await seedGarden(page, [seeded('a', 'oak', 0.5, 0.6, now - 30 * DAY)], now - DAY)
+    await page.goto(URL)
+    await expect(contents(page)).toHaveText(/an oak tree/)
+    await page.clock.runFor(500)
+    await expect(page.getByText(/While you were away/)).toHaveCount(0)
   })
 
   test('at 1280x800 the garden, every plant, Undo and Sit fit on one screen, with no score or page-wide application', async ({ page }) => {

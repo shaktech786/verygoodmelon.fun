@@ -4,7 +4,8 @@ import { test, expect, type Page, type Route } from '@playwright/test'
 import { getThinkerById, thinkers } from '@/lib/games/timeless-minds/thinkers'
 
 /**
- * The Sage (Timeless Minds): a video-call style conversation with a thinker from history.
+ * The Sage (Timeless Minds): a conversation with a thinker from history in a quiet sitting room,
+ * with every control folded into one Menu beside their portrait.
  *
  * The first thinker is random, so each test calls Socrates from the directory first.
  * Replies come from a stub, and browser speech is replaced with a recorder so nothing
@@ -68,8 +69,16 @@ const input = (page: Page) => page.getByRole('textbox', { name: 'Message input' 
 const bubbles = (page: Page) => page.locator('p.whitespace-pre-wrap')
 const spoken = (page: Page) => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken)
 
+const menuButton = (page: Page) => page.getByRole('button', { name: 'Menu', exact: true })
+
+/** Opens the room's one menu and chooses an item from it. */
+async function fromMenu(page: Page, item: string) {
+  if (await menuButton(page).getAttribute('aria-expanded') !== 'true') await menuButton(page).click()
+  await page.getByRole('button', { name: item, exact: true }).click()
+}
+
 async function callFromPhoneBook(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Directory' }).click()
+  await fromMenu(page, 'Choose who to talk with')
   const phoneBook = page.getByRole('dialog', { name: 'Directory' })
   await phoneBook.getByRole('searchbox', { name: 'Search thinkers' }).fill(name)
   await phoneBook.getByRole('button', { name: `Start call with ${name}` }).click()
@@ -131,7 +140,7 @@ test('the player can type the next message while a reply is still being spoken',
   })
   await stubChat(page)
   await openGame(page)
-  await page.getByRole('button', { name: 'Turn on thinker voice' }).click()
+  await fromMenu(page, 'Turn on thinker voice')
 
   await send(page, 'Hello')
   await expect(bubbles(page).nth(2)).toContainText('Reply 1')
@@ -152,7 +161,7 @@ test('switching thinker in the phone book mid-reply starts a clean conversation'
   await send(page, 'A question Socrates never gets to answer')
   await expect(input(page)).toBeDisabled()
 
-  await page.getByRole('button', { name: 'Directory' }).click()
+  await fromMenu(page, 'Choose who to talk with')
   const phoneBook = page.getByRole('dialog', { name: 'Directory' })
   await expect(phoneBook.getByRole('searchbox', { name: 'Search thinkers' })).toBeFocused()
   await expect(phoneBook.getByText('39 thinkers available')).toBeVisible()
@@ -184,7 +193,7 @@ test('the directory filters by a few broad shelves, with no near-duplicates, and
   await stubChat(page)
   await openGame(page)
 
-  await page.getByRole('button', { name: 'Directory' }).click()
+  await fromMenu(page, 'Choose who to talk with')
   const phoneBook = page.getByRole('dialog', { name: 'Directory' })
   await expect(phoneBook.locator('button[aria-pressed]')).toHaveText(['All', 'Philosophy & spirit', 'Science & invention', 'Arts & writing', 'Justice & leadership'])
 
@@ -226,11 +235,12 @@ test('when a reply cannot be fetched, the thinker asks again calmly and the next
   await expect(input(page)).toBeEnabled()
 })
 
-test('the voice starts off, speaks only once chosen, and video can be turned off', async ({ page }) => {
+test('the voice starts off, speaks only once chosen, and the portrait can be hidden', async ({ page }) => {
   await setUpBrowser(page)
   await stubChat(page)
   await openGame(page)
 
+  await menuButton(page).click()
   const voiceOn = page.getByRole('button', { name: 'Turn on thinker voice' })
   await expect(voiceOn).toHaveAttribute('aria-pressed', 'false')
   await expect(voiceOn).toContainText('Voice off')
@@ -239,24 +249,27 @@ test('the voice starts off, speaks only once chosen, and video can be turned off
   await expect(bubbles(page).nth(2)).toContainText('Reply 1')
   expect(await spoken(page)).toEqual([])
 
-  await voiceOn.click()
+  await fromMenu(page, 'Turn on thinker voice')
+  // A toggle leaves the menu open, so its new state can be read straight away.
   const voiceOff = page.getByRole('button', { name: 'Turn off thinker voice' })
   await expect(voiceOff).toHaveAttribute('aria-pressed', 'true')
   await send(page, 'Out loud')
   await expect.poll(() => spoken(page)).toContain('Reply 2: let us think about "Out loud".')
 
-  await voiceOff.click()
+  await fromMenu(page, 'Turn off thinker voice')
   await page.evaluate(() => { (window as unknown as { __spoken: string[] }).__spoken.length = 0 })
 
-  await page.getByRole('button', { name: 'Hide portrait' }).click()
-  await expect(page.getByText('Portrait hidden')).toBeVisible()
-  await expect(page.getByText('Show the portrait to see Socrates')).toBeVisible()
+  const portrait = page.locator('img[src$="socrates.png"]').first()
+  await expect(portrait).toBeVisible()
+  await fromMenu(page, 'Hide portrait')
+  await expect(portrait).toHaveCount(0)
+  await expect(page.getByTestId('portrait-hidden')).toBeVisible()
   await send(page, 'Still softly')
   await expect(bubbles(page).nth(6)).toContainText('Reply 3')
   expect(await spoken(page)).toEqual([])
 
-  await page.getByRole('button', { name: 'Show portrait' }).click()
-  await expect(page.getByText('Portrait hidden')).toHaveCount(0)
+  await fromMenu(page, 'Show portrait')
+  await expect(page.getByTestId('portrait-hidden')).toHaveCount(0)
 })
 
 test('without speech input in the browser, Speak explains that typing still works', async ({ page }) => {
@@ -284,7 +297,7 @@ async function stubFarewell(page: Page, reply: { status?: number; farewell?: str
 }
 
 async function sayGoodbye(page: Page) {
-  await page.getByRole('button', { name: 'Say goodbye' }).click()
+  await fromMenu(page, 'Say goodbye')
   await page.getByRole('dialog', { name: 'Say goodbye to Socrates?' }).getByRole('button', { name: 'Say goodbye' }).click()
 }
 
@@ -296,12 +309,13 @@ test('saying goodbye asks first, can be cancelled with Escape, and ends with par
   await send(page, 'Goodbye soon')
   await expect(bubbles(page).nth(2)).toContainText('Reply 1')
 
-  await page.getByRole('button', { name: 'Say goodbye' }).click()
+  await fromMenu(page, 'Say goodbye')
   const dialog = page.getByRole('dialog', { name: 'Say goodbye to Socrates?' })
   await expect(dialog.getByRole('button', { name: 'Keep talking' })).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await expect(bubbles(page)).toHaveCount(3)
+  await expect(menuButton(page)).toBeFocused()
 
   await sayGoodbye(page)
   const parting = page.getByRole('dialog', { name: 'Parting words from Socrates' })
@@ -310,11 +324,13 @@ test('saying goodbye asks first, can be cancelled with Escape, and ends with par
   await expect(parting.getByRole('heading', { name: 'Parting words from Socrates' })).toBeFocused()
   // Keyboard focus stays inside the parting words.
   await page.keyboard.press('Tab')
+  await expect(parting.getByRole('button', { name: 'Keep this' })).toBeFocused()
+  await page.keyboard.press('Tab')
   await expect(parting.getByRole('button', { name: 'Meet someone new' })).toBeFocused()
   await page.keyboard.press('Tab')
   await expect(parting.getByRole('button', { name: 'Choose who is next' })).toBeFocused()
   await page.keyboard.press('Tab')
-  await expect(parting.getByRole('button', { name: 'Meet someone new' })).toBeFocused()
+  await expect(parting.getByRole('button', { name: 'Keep this' })).toBeFocused()
   expect(farewells[0].thinkerId).toBe('socrates')
   expect(farewells[0].conversationHistory).toContainEqual({ role: 'user', content: 'Goodbye soon' })
 
@@ -366,7 +382,7 @@ test('the call says plainly that the conversation is imagined, without naming th
 
 test.describe('requesting a thinker', () => {
   async function fillRequest(page: Page, name: string) {
-    await page.getByRole('button', { name: 'Request' }).click()
+    await fromMenu(page, 'Request')
     const form = page.getByRole('dialog', { name: 'Request a Thinker' })
     await form.getByLabel('Your email *').fill('ana@example.com')
     await form.getByLabel(/Who would you like to talk to/).fill(name)
@@ -380,7 +396,8 @@ test.describe('requesting a thinker', () => {
     await stubChat(page)
     await openGame(page)
 
-    await expect(page.getByRole('button', { name: 'Directory' })).toBeVisible()
+    await menuButton(page).click()
+    await expect(page.getByRole('button', { name: 'Choose who to talk with' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Request' })).toHaveCount(0)
   })
 
@@ -474,11 +491,15 @@ test.describe('on a phone', () => {
     await stubChat(page)
     await openGame(page)
 
-    for (const name of ['Directory', 'Start voice input', 'Turn on thinker voice', 'Hide portrait', 'Say goodbye']) {
-      await expect(page.getByRole('button', { name })).toBeInViewport()
+    await expect(page.getByRole('button', { name: 'Start voice input' })).toBeInViewport()
+    // The one menu names itself in visible words, not only an icon, and every control in it fits on screen.
+    await expect(menuButton(page).getByText('Menu')).toBeVisible()
+    await menuButton(page).click()
+    for (const name of ['Choose who to talk with', 'Turn on thinker voice', 'Hide portrait', 'Kept lines', 'Say goodbye']) {
+      await expect(page.getByRole('button', { name })).toBeInViewport({ ratio: 1 })
     }
-    // Every toolbar button names itself in visible words, not only an icon.
-    await expect(page.getByRole('button', { name: 'Directory' }).getByText('Directory')).toBeVisible()
+    await menuButton(page).click()
+    await expect(page.getByRole('button', { name: 'Say goodbye' })).toHaveCount(0)
     // Under 16px, phones zoom the page when the field is focused.
     expect(await input(page).evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16)
 
@@ -533,7 +554,7 @@ test('when someone may be at risk, tappable support stays for the visit, the nex
   await expect(bubbles(page).nth(4)).toContainText('Reply 1')
   await expect(support(page)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Say goodbye' }).click()
+  await fromMenu(page, 'Say goodbye')
   const confirm = page.getByRole('dialog', { name: 'Say goodbye to Socrates?' })
   await expect(confirm).not.toContainText('meet someone new')
   await confirm.getByRole('button', { name: 'Say goodbye' }).click()
@@ -541,6 +562,8 @@ test('when someone may be at risk, tappable support stays for the visit, the nex
   const parting = page.getByRole('dialog', { name: 'Parting words from Socrates' })
   await expect(parting.getByRole('complementary', { name: 'Support' })).toBeVisible()
   await expect(parting.getByRole('button', { name: 'Meet someone new' })).toHaveCount(0)
+  // Care words are for now, not for a keepsake shelf.
+  await expect(parting.getByRole('button', { name: 'Keep this' })).toHaveCount(0)
   expect(farewells).toHaveLength(0)
 
   await parting.getByRole('button', { name: 'Stay with Socrates' }).click()
@@ -618,7 +641,10 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await expect(support(page)).toBeVisible()
     expect(await axeViolations(page)).toEqual([])
 
-    await page.getByRole('button', { name: 'Directory' }).click()
+    await menuButton(page).click()
+    expect(await axeViolations(page)).toEqual([])
+
+    await fromMenu(page, 'Choose who to talk with')
     await expect(page.getByRole('dialog', { name: 'Directory' })).toBeVisible()
     expect(await axeViolations(page)).toEqual([])
   })
@@ -684,16 +710,16 @@ test.describe('on a laptop screen with Larger text', () => {
   })
 })
 
-test('regression: closing the directory with Escape hands focus back to the Directory button', async ({ page }) => {
+test('regression: closing the directory with Escape hands focus back to the Menu', async ({ page }) => {
   await setUpBrowser(page)
   await stubChat(page)
   await openGame(page)
 
-  await page.getByRole('button', { name: 'Directory' }).click()
+  await fromMenu(page, 'Choose who to talk with')
   await expect(page.getByRole('dialog', { name: 'Directory' })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog', { name: 'Directory' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Directory' })).toBeFocused()
+  await expect(menuButton(page)).toBeFocused()
 
   // Choosing someone still puts the player straight into the message box
   await callFromPhoneBook(page, 'Plato')
@@ -721,3 +747,94 @@ test.describe('on a phone, first load', () => {
     expect(await log.evaluate((el) => el.scrollTop)).toBe(0)
   })
 })
+
+test('the one menu opens and closes from the keyboard, and Escape hands focus back to it', async ({ page }) => {
+  await setUpBrowser(page)
+  await stubChat(page)
+  await openGame(page)
+
+  await menuButton(page).focus()
+  await page.keyboard.press('Enter')
+  await expect(menuButton(page)).toHaveAttribute('aria-expanded', 'true')
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('button', { name: 'Choose who to talk with' })).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: 'Choose who to talk with' })).toHaveCount(0)
+  await expect(menuButton(page)).toBeFocused()
+  await expect(menuButton(page)).toHaveAttribute('aria-expanded', 'false')
+})
+
+test('parting words can be kept on a small shelf on this device, read again later, and let go one by one', async ({ page }) => {
+  await setUpBrowser(page)
+  await stubChat(page)
+  await stubFarewell(page)
+  await openGame(page)
+
+  await fromMenu(page, 'Kept lines')
+  const shelf = page.getByRole('dialog', { name: 'Kept lines' })
+  await expect(shelf).toContainText('Nothing kept yet.')
+  await shelf.getByRole('button', { name: 'Back to the conversation' }).click()
+  await expect(menuButton(page)).toBeFocused()
+
+  await sayGoodbye(page)
+  const parting = page.getByRole('dialog', { name: 'Parting words from Socrates' })
+  await parting.getByRole('button', { name: 'Keep this' }).click()
+  await expect(parting.getByRole('button', { name: 'Kept' })).toHaveAttribute('aria-disabled', 'true')
+  await expect(parting).toContainText('You can read it again from Kept lines in the menu.')
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('sage_keptLines') ?? '[]'))
+  expect(saved).toEqual([expect.objectContaining({ text: 'Carry your question gently; it is already half an answer.', thinkerId: 'socrates', thinkerName: 'Socrates' })])
+  await parting.getByRole('button', { name: 'Meet someone new' }).click()
+
+  // A later visit still has the line.
+  await page.reload()
+  await expect(bubbles(page).first()).toBeVisible()
+  await fromMenu(page, 'Kept lines')
+  await expect(shelf.getByRole('heading', { name: 'Kept lines' })).toBeFocused()
+  await expect(shelf.locator('blockquote')).toHaveText(['Carry your question gently; it is already half an answer.'])
+  await expect(shelf).toContainText('Socrates, kept')
+
+  await shelf.getByRole('button', { name: 'Remove the line from Socrates' }).click()
+  await expect(shelf).toContainText('Nothing kept yet.')
+  await expect(shelf.getByRole('heading', { name: 'Kept lines' })).toBeFocused()
+  expect(await page.evaluate(() => localStorage.getItem('sage_keptLines'))).toBeNull()
+  await page.keyboard.press('Escape')
+  await expect(shelf).toHaveCount(0)
+})
+
+test('when this device will not save, keeping a line still works for the visit and says so kindly', async ({ page }) => {
+  await setUpBrowser(page)
+  await page.addInitScript(() => {
+    Storage.prototype.setItem = () => { throw new Error('QuotaExceededError') }
+  })
+  await stubChat(page)
+  await stubFarewell(page)
+  await openGame(page)
+
+  await sayGoodbye(page)
+  const parting = page.getByRole('dialog', { name: 'Parting words from Socrates' })
+  await parting.getByRole('button', { name: 'Keep this' }).click()
+  await expect(parting).toContainText('Kept for this visit.')
+  await parting.getByRole('button', { name: 'Meet someone new' }).click()
+  await fromMenu(page, 'Kept lines')
+  await expect(page.getByRole('dialog', { name: 'Kept lines' }).locator('blockquote')).toHaveCount(1)
+})
+
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`the parting words and the kept lines shelf have no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+    await setUpBrowser(page)
+    await stubChat(page)
+    await stubFarewell(page)
+    await openGame(page)
+
+    await sayGoodbye(page)
+    const parting = page.getByRole('dialog', { name: 'Parting words from Socrates' })
+    await parting.getByRole('button', { name: 'Keep this' }).click()
+    expect(await axeViolations(page)).toEqual([])
+    await parting.getByRole('button', { name: 'Meet someone new' }).click()
+
+    await fromMenu(page, 'Kept lines')
+    await expect(page.getByRole('dialog', { name: 'Kept lines' }).locator('blockquote')).toHaveCount(1)
+    expect(await axeViolations(page)).toEqual([])
+  })
+}

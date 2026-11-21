@@ -36,25 +36,23 @@ export function fallbackName(mechanicIds: string[], style: PlayStyle): string {
 export interface RunPicture {
   mechanicIds: string[]
   style: PlayStyle
-  collected: number
   transformed: number
 }
 
 /**
- * Used when no tagline comes back from the server. Built from this run's own rules and numbers,
- * so two different runs read differently even when they were played the same way.
+ * Used when no tagline comes back from the server. Built from this run's own rules and how it was
+ * played, never from how much was gathered, so it reads as a portrait rather than a tally.
  */
-export function fallbackTagline({ mechanicIds, style, collected, transformed }: RunPicture): string {
-  const gem = mechanicIds.includes('pulse_gems') && !mechanicIds.includes('stars')
-  const lights = `${collected} ${gem ? (collected === 1 ? 'gem' : 'gems') : collected === 1 ? 'star' : 'stars'}`
+export function fallbackTagline({ mechanicIds, style, transformed }: RunPicture): string {
+  const lights = mechanicIds.includes('pulse_gems') && !mechanicIds.includes('stars') ? 'gems' : 'stars'
   const deed =
     style === 'bold' && transformed > 0
-      ? `turned ${transformed} ${transformed === 1 ? 'shadow' : 'shadows'} into light`
+      ? 'turned shadows into light'
       : style === 'explorer'
         ? `roamed the whole field and found ${lights}`
         : style === 'collector'
           ? `gathered ${lights}, one small light at a time`
-          : `let ${lights} drift their way`
+          : `let the ${lights} drift their way`
   const scene = [...mechanicIds].reverse().map((id) => RULE_SCENE[id]).find(Boolean)
   return `A game for someone who ${deed}${scene ? ` ${scene}` : ''}.`
 }

@@ -142,6 +142,16 @@ export interface GameState {
   // Spawn timers
   spawnTimers: Record<string, number>
   totalTime: number
+
+  /** Where the orb went, and which wave it was in, for the finale's picture of the run. */
+  path: PathPoint[]
+}
+
+export interface PathPoint {
+  x: number
+  y: number
+  /** 0 before any rule; wave n follows the nth rule to arrive. */
+  wave: number
 }
 
 export interface MutationRecord {

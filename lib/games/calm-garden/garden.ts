@@ -196,22 +196,40 @@ export function plantedSince(plants: readonly Plant[], now: number): number {
   return plants.reduce((first, p) => Math.min(first, p.plantedAt), now)
 }
 
+/** A plant that changed while the garden was left: `from` is its growth at the last visit, 0 if it was not there yet. */
+export interface Growth {
+  id: string
+  from: number
+}
+
+export interface Return {
+  garden: Garden
+  note: string | null
+  /** Only filled when there is a note, so it always matches what the note says. */
+  grew: Growth[]
+}
+
+const NOTICEABLE = 0.005
+
 /**
  * Opening the garden again after a while: plants have grown, and after a night
  * away a flower may have seeded itself. Returns a short note about what changed.
  */
-export function returnToGarden(garden: Garden, now: number, rand: () => number): { garden: Garden; note: string | null } {
+export function returnToGarden(garden: Garden, now: number, rand: () => number): Return {
   const away = now - garden.lastVisit
   const next: Garden = { ...garden, lastVisit: now }
-  if (away < 6 * HOUR || livingCount(garden.plants) === 0) return { garden: next, note: null }
+  if (away < 6 * HOUR || livingCount(garden.plants) === 0) return { garden: next, note: null, grew: [] }
 
   const changes: string[] = []
+  const grew: Growth[] = []
   let grower: Plant | null = null
   let most = 0.02
   for (const p of garden.plants) {
-    const grew = growthFactor(p, now) - growthFactor(p, garden.lastVisit)
-    if (grew > most) {
-      most = grew
+    const from = growthFactor(p, garden.lastVisit)
+    const amount = growthFactor(p, now) - from
+    if (amount > NOTICEABLE) grew.push({ id: p.id, from })
+    if (amount > most) {
+      most = amount
       grower = p
     }
   }
@@ -221,11 +239,13 @@ export function returnToGarden(garden: Garden, now: number, rand: () => number):
   const selfSown = garden.plants.filter((p) => p.selfSown).length
   if (away >= 12 * HOUR && flowers.length >= 2 && selfSown < MAX_SELF_SOWN) {
     const parent = flowers[Math.min(flowers.length - 1, Math.floor(rand() * flowers.length))]
+    const id = `sown-${now.toString(36)}`
+    grew.push({ id, from: 0 })
     next.plants = [
       ...garden.plants,
       {
         ...parent,
-        id: `sown-${now.toString(36)}`,
+        id,
         x: clamp(parent.x + (rand() - 0.5) * 0.14, 0.04, 0.96),
         y: clamp(parent.y + (rand() - 0.5) * 0.08, GROUND_TOP + 0.03, 0.97),
         scale: parent.scale * 0.9,
@@ -237,5 +257,6 @@ export function returnToGarden(garden: Garden, now: number, rand: () => number):
     changes.push(`a new ${variantOf(parent.type).label.toLowerCase()} came up on its own`)
   }
 
-  return { garden: next, note: changes.length ? `While you were away, ${changes.join(' and ')}.` : null }
+  if (!changes.length) return { garden: next, note: null, grew: [] }
+  return { garden: next, note: `While you were away, ${changes.join(' and ')}.`, grew }
 }

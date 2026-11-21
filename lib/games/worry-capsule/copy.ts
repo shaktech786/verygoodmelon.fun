@@ -47,6 +47,19 @@ export const SEALED_LINES: readonly string[] = [
   'Set down, for now. It will wait for you.',
 ]
 
+/** Said once, as an answered capsule is set on the shelf. True whatever the answer was. */
+export const CLOSED_LINES: readonly string[] = [
+  'It rests on the shelf now, with its answer beside it.',
+  'You don’t need to wonder about this one any more.',
+  'Set down for good. You can look back on it whenever you like.',
+]
+
+export const FIRST_CLOSED_LINE = 'The first one on your shelf. You came back for it.'
+
+export function closedLine(seed: string, first: boolean): string {
+  return first ? FIRST_CLOSED_LINE : pickLine(CLOSED_LINES, seed)
+}
+
 function hash(seed: string): number {
   let h = 2166136261
   for (let i = 0; i < seed.length; i++) {

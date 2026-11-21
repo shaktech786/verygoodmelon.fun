@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Locator, type Page, type WebSocketRoute } from '@playwright/test'
+import { expectKeepsakeSaves } from './helpers/keepsake'
 
 /**
  * The Dilemma (Hard Choices): choose A or B (or let it pass) on 12 dilemmas,
@@ -18,6 +19,7 @@ const FIRST_SCENARIO = 'Which would you choose for your life?'
 const FIRST_PERSPECTIVE_A = /What good is purpose/
 const FIRST_PERSPECTIVE_B = /Meaning sustains us/
 const ENDING = 'What you chose to protect'
+const SKY = "Tonight's sky of what you reached for"
 const IDS = ['happiness-vs-meaning', 'career-passion', 'free-evening', 'love-or-freedom', 'radical-honesty',
   'friends-manuscript', 'right-or-close', 'forgiveness-limits', 'the-promotion', 'new-city', 'empty-weekend', 'last-slice']
 const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
@@ -157,16 +159,18 @@ test.describe('database unreachable (the current reality)', () => {
     }
 
     await expect(page.getByRole('heading', { name: ENDING })).toBeFocused()
-    // Odd dilemmas were answered A, even ones B: what each answer protects, gathered into at most three themes
-    const group = (name: string) => page.getByRole('list', { name, exact: true }).getByRole('listitem')
-    await expect(group('The people around you')).toHaveText(['Friendship', 'Openness', 'Encouragement', 'Closeness', 'Roots'])
-    await expect(group('Stretching further')).toHaveText(['Purpose', 'Challenge', 'Making'])
-    await expect(group('And also')).toHaveText(['Selfhood', 'Self-respect', 'Self-kindness', 'Joy'])
-    // A reading of the pattern, not only the words: four answers leaned toward other people, four toward the self
-    await expect(page.getByRole('heading', { name: 'A reading' })).toBeVisible()
-    await expect(page.getByText(
-      'What kept returning was the people around you: Friendship, Openness, Encouragement, Closeness and Roots all lean that way.'
-    )).toBeVisible()
+    // Odd dilemmas were answered A, even ones B: one star per value, gathered by theme, under one reading line
+    const sky = page.getByRole('img', { name: SKY })
+    for (const group of [
+      'Feeling settled: Joy.',
+      'Stretching further: Purpose, Challenge, Making.',
+      'The people around you: Friendship, Openness, Encouragement, Closeness, Roots.',
+      'Your own footing: Selfhood, Self-respect, Self-kindness.',
+    ]) {
+      await expect(sky).toHaveAccessibleDescription(new RegExp(group))
+    }
+    await expect(sky).toHaveAccessibleDescription(/What kept returning today was the people around you\.$/)
+    await expectKeepsakeSaves(page, { fileName: /^the-dilemma-\d{4}-\d{2}-\d{2}\.png$/ })
     await expect(page.getByRole('heading', { name: FIRST_SCENARIO })).toHaveCount(0)
     await expect(page.locator('main [role="alert"]')).toHaveCount(0)
     await expect(page.getByText('Live updates active')).toHaveCount(0)
@@ -372,7 +376,7 @@ test.describe('reading it with a screen reader, and how it looks', () => {
       await page.evaluate((ids) => localStorage.setItem('hardChoicesVotes',
         JSON.stringify(Object.fromEntries(ids.map((id, i) => [id, i % 3 ? 'A' : 'B'])))), IDS)
       await page.reload()
-      await expect(page.getByRole('heading', { name: 'A reading' })).toBeVisible()
+      await expect(page.getByRole('img', { name: SKY })).toBeVisible()
       await page.getByText('See or change each answer').click()
       expect(await axeViolations(page)).toEqual([])
     })
@@ -403,8 +407,8 @@ test.describe('choosing at your own pace', () => {
       await page.getByRole('button', { name: 'Let this one pass' }).click()
     }
     await expect(page.getByRole('heading', { name: ENDING })).toBeFocused()
-    await expect(page.getByRole('list', { name: 'Feeling settled', exact: true }).getByRole('listitem')).toHaveText(['Joy'])
-    await expect(page.getByText('You let 11 questions pass. That is allowed too.')).toBeVisible()
+    await expect(page.getByRole('img', { name: SKY })).toHaveAccessibleDescription(/Feeling settled: Joy\. Beneath it: A glimpse rather than a pattern/)
+    await expect(page.getByText('You let 11 questions pass, and that is allowed too.')).toBeVisible()
     expect(api.posts).toHaveLength(1)
   })
 

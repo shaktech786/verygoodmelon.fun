@@ -11,12 +11,7 @@ const StaticAvatar = lazy(() => import('./StaticAvatar'))
 
 function AvatarLoadingPlaceholder() {
   return (
-    <div className="w-full h-full flex items-center justify-center bg-black/20">
-      <div className="text-center">
-        <div className="w-10 h-10 border-2 border-white/20 border-t-white/60 rounded-full animate-spin mx-auto mb-2" />
-        <p className="text-white/50 text-xs">Loading avatar...</p>
-      </div>
-    </div>
+    <div className="w-full h-full bg-black/10" aria-hidden="true" />
   )
 }
 

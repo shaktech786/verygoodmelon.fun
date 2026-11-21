@@ -1,13 +1,30 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils/cn'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { buzz, playTones, useCanBuzz, useSoundChosen, wakeTones, type Tone } from '@/components/games/gentleCues'
 import { hushAmbient } from '@/lib/audio/ambient-hush'
-
-type MomentId = 'watch' | 'listen' | 'look' | 'reflect' | 'appreciate'
+import { Keepsake } from '@/components/games/Keepsake'
+import { patientOneKeepsake } from '@/lib/keepsake/patient-one'
+import {
+  BODY_WORDS,
+  HEARD,
+  LOOKED_AT_MAX_LENGTH,
+  MIND_WORDS,
+  MOMENT_TITLES,
+  THING_MAX_LENGTH,
+  TODAY_STRIP_KEY,
+  joinNaturally,
+  momentGist,
+  readTodayStrip,
+  withMoment,
+  writeTodayStrip,
+  type Heard,
+  type MomentId,
+  type MomentRecord,
+} from '@/lib/games/patient-one/today'
 
 interface Moment {
   id: MomentId
@@ -21,7 +38,7 @@ interface Moment {
 const MOMENTS: Moment[] = [
   {
     id: 'watch',
-    title: 'Watch the Seeds',
+    title: MOMENT_TITLES.watch,
     description: 'They settle only while you stay still.',
     duration: 40,
     durationLabel: '40 still seconds',
@@ -34,7 +51,7 @@ const MOMENTS: Moment[] = [
   },
   {
     id: 'listen',
-    title: 'Listen to Silence',
+    title: MOMENT_TITLES.listen,
     description: 'Listen to what is already here.',
     duration: 60,
     durationLabel: '60 seconds',
@@ -47,7 +64,7 @@ const MOMENTS: Moment[] = [
   },
   {
     id: 'look',
-    title: 'Look at One Thing',
+    title: MOMENT_TITLES.look,
     description: 'Give one thing near you a whole minute.',
     duration: 60,
     durationLabel: '60 seconds',
@@ -60,7 +77,7 @@ const MOMENTS: Moment[] = [
   },
   {
     id: 'reflect',
-    title: 'Notice This Moment',
+    title: MOMENT_TITLES.reflect,
     description: 'How are you, right now?',
     duration: 45,
     durationLabel: '45 seconds',
@@ -73,7 +90,7 @@ const MOMENTS: Moment[] = [
   },
   {
     id: 'appreciate',
-    title: 'Count Three Things',
+    title: MOMENT_TITLES.appreciate,
     description: 'Three things you appreciate today.',
     duration: 50,
     durationLabel: '50 seconds',
@@ -122,46 +139,27 @@ const CHIME: Tone[] = [
 ]
 const CHIME_LOUDNESS = 0.06
 
-const HEARD = ['Traffic', 'Birds', 'Wind or rain', 'Voices', 'A hum or fan', 'My own breath', 'Almost nothing'] as const
-type Heard = (typeof HEARD)[number]
-
-const BODY_WORDS = ['Tense', 'Tired', 'Heavy', 'Restless', 'Comfortable', 'Warm'] as const
-const MIND_WORDS = ['Busy', 'Worried', 'Flat', 'Quiet', 'Content', 'Curious'] as const
 const UNEASY_WORDS: string[] = ['Tense', 'Tired', 'Heavy', 'Restless', 'Busy', 'Worried', 'Flat']
 
 const THING_LABELS = ['First thing', 'Second thing', 'Third thing']
 
 type View = 'menu' | 'task' | 'reward'
 
-const STORAGE_KEY = 'verygoodmelon:unrusher-today'
-
-function todayKey(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
-}
-
-// The menu shows which moments were savored today, so the list survives a reload but not midnight.
-function loadToday(): MomentId[] {
+// Today's cards survive a reload but not midnight; without storage they last for this visit.
+function loadStrip(): MomentRecord[] {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as { day: string; completed: string[] } | null
-    if (saved?.day !== todayKey() || !Array.isArray(saved.completed)) return []
-    return MOMENTS.map((m) => m.id).filter((id) => saved.completed.includes(id))
+    return readTodayStrip(localStorage.getItem(TODAY_STRIP_KEY), new Date())
   } catch {
     return []
   }
 }
 
-function saveToday(completed: MomentId[]) {
+function saveStrip(records: MomentRecord[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ day: todayKey(), completed }))
+    localStorage.setItem(TODAY_STRIP_KEY, writeTodayStrip(records, new Date()))
   } catch {
-    // Without storage the list simply lasts for this visit.
+    // The strip simply lasts for this visit.
   }
-}
-
-function joinNaturally(words: string[]): string {
-  if (words.length <= 1) return words.join('')
-  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
 }
 
 function timesWord(n: number): string {
@@ -179,6 +177,15 @@ function timeInWords(totalSeconds: number): string {
     (seconds > 0 || minutes === 0) && `${seconds} ${seconds === 1 ? 'second' : 'seconds'}`,
   ].filter(Boolean)
   return parts.join(' ')
+}
+
+function timeOfDay(iso: string): string {
+  return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso))
+}
+
+function MomentKeepsake({ record, label, className }: { record: MomentRecord; label: string; className?: string }) {
+  const plan = useMemo(() => patientOneKeepsake({ record }), [record])
+  return <Keepsake plan={plan} label={label} className={className} />
 }
 
 function MomentIcon({ id, className }: { id: MomentId; className?: string }) {
@@ -292,7 +299,9 @@ export default function TheUnrusher() {
   const [currentTask, setCurrentTask] = useState<Moment | null>(null)
   const [elapsedMs, setElapsedMs] = useState(0)
   const [isActive, setIsActive] = useState(false)
-  const [completed, setCompleted] = useState<MomentId[]>([])
+  const [strip, setStrip] = useState<MomentRecord[]>([])
+  const [rewardKey, setRewardKey] = useState<string | null>(null)
+  const [openCard, setOpenCard] = useState<string | null>(null)
   const [showReward, setShowReward] = useState(false)
   const [welcomeBack, setWelcomeBack] = useState(false)
   const [stirred, setStirred] = useState(false)
@@ -322,12 +331,26 @@ export default function TheUnrusher() {
   const canBuzz = useCanBuzz()
 
   useEffect(() => {
-    setCompleted(loadToday())
+    setStrip(loadStrip())
   }, [])
 
   useEffect(() => {
     buzzAtEndRef.current = buzzAtEnd
   }, [buzzAtEnd])
+
+  // What the player has noted so far, read when the moment ends without restarting its clock.
+  const notedRef = useRef({ things, lookedAt, feelings })
+  useEffect(() => {
+    notedRef.current = { things, lookedAt, feelings }
+  }, [things, lookedAt, feelings])
+
+  const keepInStrip = useCallback((record: MomentRecord) => {
+    setStrip((prev) => {
+      const next = withMoment(prev, record, new Date())
+      saveStrip(next)
+      return next
+    })
+  }, [])
 
   const view: View = currentTask ? (showReward ? 'reward' : 'task') : 'menu'
 
@@ -336,16 +359,23 @@ export default function TheUnrusher() {
     setTimeUp(false)
     setShowReward(true)
     setStirCount(stirsRef.current)
-    setCompleted((prev) => {
-      const next = prev.includes(task.id) ? prev : [...prev, task.id]
-      saveToday(next)
-      return next
+    const at = new Date().toISOString()
+    const noted = notedRef.current
+    keepInStrip({
+      key: at,
+      id: task.id,
+      at,
+      things: noted.things.map((t) => t.trim()).filter(Boolean),
+      heard: [],
+      lookedAt: noted.lookedAt.trim(),
+      feelings: noted.feelings,
     })
+    setRewardKey(at)
     if (task.id === 'listen') {
       playTones(CHIME, CHIME_LOUDNESS)
       if (buzzAtEndRef.current) buzz([80, 120, 80])
     }
-  }, [])
+  }, [keepInStrip])
 
   // Time is counted in small slices of wall-clock time, and a slice only counts while
   // the moment is on screen (and, for the seeds, while nothing has moved). Everything
@@ -509,6 +539,16 @@ export default function TheUnrusher() {
     setHeard([])
   }
 
+  const rewardRecord = strip.find((r) => r.key === rewardKey) ?? null
+
+  const noteHeard = (sound: Heard) => {
+    const next = sound === 'Almost nothing'
+      ? (heard.includes(sound) ? [] : [sound])
+      : toggleIn(heard.filter((s) => s !== 'Almost nothing'), sound)
+    setHeard(next)
+    if (rewardRecord) keepInStrip({ ...rewardRecord, heard: next })
+  }
+
   const resetTask = () => {
     setCurrentTask(null)
     setElapsedMs(0)
@@ -613,7 +653,7 @@ export default function TheUnrusher() {
                   <input
                     type="text"
                     value={lookedAt}
-                    maxLength={40}
+                    maxLength={LOOKED_AT_MAX_LENGTH}
                     onChange={(e) => {
                       noteTyping([e.target.value])
                       setLookedAt(e.target.value)
@@ -648,7 +688,7 @@ export default function TheUnrusher() {
               {currentTask.id === 'appreciate' && (
                 <div className="mb-6 mx-auto w-full max-w-sm space-y-2 text-left">
                   <p className="text-sm text-foreground/75 text-center mb-3">
-                    Write them down if you like. They stay on this screen only.
+                    Write them down if you like. They stay on this device, and only until midnight.
                   </p>
                   {THING_LABELS.map((label, i) => (
                     <label key={label} className="flex items-center gap-3">
@@ -657,7 +697,7 @@ export default function TheUnrusher() {
                       <input
                         type="text"
                         value={things[i]}
-                        maxLength={80}
+                        maxLength={THING_MAX_LENGTH}
                         onChange={(e) => {
                           const next = things.map((t, j) => (j === i ? e.target.value : t))
                           noteTyping(next)
@@ -768,10 +808,7 @@ export default function TheUnrusher() {
                           key={sound}
                           label={sound}
                           pressed={heard.includes(sound)}
-                          onToggle={() => setHeard((prev) => {
-                            if (sound === 'Almost nothing') return prev.includes(sound) ? [] : [sound]
-                            return toggleIn(prev.filter((s) => s !== 'Almost nothing'), sound)
-                          })}
+                          onToggle={() => noteHeard(sound)}
                         />
                       ))}
                     </div>
@@ -833,6 +870,7 @@ export default function TheUnrusher() {
                   Stay a little longer
                 </Button>
               </div>
+              {rewardRecord && <MomentKeepsake record={rewardRecord} label="Keep this moment" className="mt-10 pt-8 border-t border-card-border" />}
             </div>
           )}
         </div>
@@ -840,7 +878,8 @@ export default function TheUnrusher() {
     )
   }
 
-  const savoredToday = MOMENTS.filter((m) => completed.includes(m.id))
+  const savoredIds = new Set(strip.map((r) => r.id))
+  const opened = strip.find((r) => r.key === openCard) ?? null
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -855,7 +894,7 @@ export default function TheUnrusher() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         {MOMENTS.map((task) => {
-          const isCompleted = completed.includes(task.id)
+          const isCompleted = savoredIds.has(task.id)
           return (
             <button
               key={task.id}
@@ -882,18 +921,52 @@ export default function TheUnrusher() {
         })}
       </div>
 
-      {savoredToday.length > 0 && (
-        <div className="bg-success/15 border border-success/40 rounded-lg p-4 text-center">
-          <p className="text-sm text-foreground mb-2">Today you spent time with</p>
-          <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2" aria-label="Moments savored today">
-            {savoredToday.map((m) => (
-              <li key={m.id} className="flex items-center gap-2 text-sm text-foreground">
-                <MomentIcon id={m.id} className="w-5 h-5" />
-                {m.title}
-              </li>
-            ))}
+      {strip.length > 0 && (
+        <section aria-labelledby="today-strip-heading" className="bg-card-bg border border-card-border rounded-lg p-4 sm:p-5">
+          <h3 id="today-strip-heading" className="text-base font-semibold text-foreground">Today</h3>
+          <p className="text-sm text-foreground/70 mb-3">
+            Each moment you finish rests here until midnight. Open one to keep it.
+          </p>
+          <ul className="flex gap-3 overflow-x-auto snap-x pb-2 -mx-1 px-1 pt-1" aria-label="Moments from today">
+            {strip.map((record) => {
+              const isOpen = record.key === openCard
+              return (
+                <li key={record.key} className="snap-start shrink-0 flex">
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    aria-controls="today-moment"
+                    onClick={() => setOpenCard(isOpen ? null : record.key)}
+                    className={cn(
+                      'w-40 text-left rounded-lg border px-3 py-3 transition-colors duration-75',
+                      'focus:outline-none focus:ring-2 focus:ring-focus-ring',
+                      isOpen ? 'border-chosen-line bg-chosen' : 'border-card-border bg-background hover:border-melon-green/50',
+                    )}
+                  >
+                    <span className="flex items-center justify-between gap-2 mb-2">
+                      <MomentIcon id={record.id} className="w-7 h-7" />
+                      <span className="text-xs text-foreground/70 tabular-nums">{timeOfDay(record.at)}</span>
+                    </span>
+                    <span className="block text-sm font-semibold text-foreground">{MOMENT_TITLES[record.id]}</span>
+                    <span className="mt-1 font-serif italic text-sm text-foreground/80 line-clamp-2 break-words">
+                      {momentGist(record)}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
-        </div>
+          <div id="today-moment">
+            {opened && (
+              <MomentKeepsake
+                key={opened.key}
+                record={opened}
+                label={`${MOMENT_TITLES[opened.id]}, at ${timeOfDay(opened.at)}`}
+                className="mt-4 pt-5 border-t border-card-border"
+              />
+            )}
+          </div>
+        </section>
       )}
     </div>
   )

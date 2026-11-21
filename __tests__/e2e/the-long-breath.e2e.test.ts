@@ -1,4 +1,7 @@
+import { readFileSync } from 'fs'
+import path from 'path'
 import { test, expect, type Page } from '@playwright/test'
+import { expectKeepsakeSaves } from './helpers/keepsake'
 
 /**
  * The Patient One (/games/the-long-breath): five moments of unhurried noticing, each ending
@@ -12,6 +15,22 @@ const REWARD_HEADING = 'Moment savored'
 const URL = '/games/the-long-breath'
 const T0 = new Date('2026-11-21T10:00:00').getTime()
 const CHIME_HZ = 659.25
+const STRIP_KEY = 'verygoodmelon:patient-one:today'
+const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
+
+async function axeViolations(page: Page): Promise<string[]> {
+  // axe waits on its own timers, so time runs freely from here on
+  await page.clock.resume()
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.effect?.getTiming().iterations === Infinity || a.playState !== 'running'))
+  await page.evaluate(AXE_SOURCE)
+  return page.evaluate(async () => {
+    const axe = (window as unknown as {
+      axe: { run: (context: unknown, options: unknown) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> }
+    }).axe
+    const result = await axe.run({ include: [['main']], exclude: [['nextjs-portal']] }, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })
+    return result.violations.flatMap((v) => v.nodes.map((n) => `${v.id}: ${n.target.join(' ')}`))
+  })
+}
 
 const MOMENTS: { title: string; description: string; seconds: number; label: string; reflection: string }[] = [
   { title: 'Watch the Seeds', description: 'They settle only while you stay still.', seconds: 40, label: '40 still seconds', reflection: 'All eight seeds settled, and you did not move once.' },
@@ -69,7 +88,8 @@ async function turnSoundOn(page: Page) {
 
 const taskButton = (page: Page, title: string) => page.getByRole('button', { name: new RegExp(`^${title}:`) })
 const timer = (page: Page) => page.getByRole('timer')
-const savoredList = (page: Page) => page.getByRole('list', { name: 'Moments savored today' })
+const todayStrip = (page: Page) => page.getByRole('list', { name: 'Moments from today' })
+const STRIP_NOTE = 'Each moment you finish rests here until midnight.'
 
 test.describe('The Patient One', () => {
   test('patiently completing all five moments, with every duration enforced as shown', async ({ page }) => {
@@ -92,11 +112,12 @@ test.describe('The Patient One', () => {
       await expect(page.getByText(moment.reflection)).toBeVisible()
       await page.getByRole('button', { name: 'Continue slowing down' }).click()
       await expect(taskButton(page, moment.title)).toHaveAccessibleName(/Savored today\.$/)
-      await expect(savoredList(page).getByRole('listitem')).toHaveText(MOMENTS.slice(0, index + 1).map((x) => x.title))
+      await expect(todayStrip(page).getByRole('listitem')).toHaveCount(index + 1)
+      await expect(todayStrip(page).getByRole('listitem').last()).toContainText(moment.title)
     }
 
     // Which moments were visited, never a tally.
-    await expect(page.getByText('Today you spent time with')).toBeVisible()
+    await expect(page.getByText(STRIP_NOTE)).toBeVisible()
     await expect(page.getByText(/\d+ moments?/)).toHaveCount(0)
     expect(errors).toEqual([])
   })
@@ -241,7 +262,7 @@ test.describe('The Patient One', () => {
 
     await heard.getByRole('button', { name: 'Almost nothing' }).click()
     await expect(heard.getByRole('button', { name: 'Birds' })).toHaveAttribute('aria-pressed', 'false')
-    await expect(page.getByText('Almost nothing. That kind of quiet is rarer than it sounds.')).toBeVisible()
+    await expect(page.getByText('Almost nothing. That kind of quiet is rarer than it sounds.', { exact: true })).toBeVisible()
   })
 
   test('the one thing you looked at is named in the reflection', async ({ page }) => {
@@ -285,7 +306,7 @@ test.describe('The Patient One', () => {
     await expect(timer(page)).toHaveText(/^0:(4|5)\d$/)
   })
 
-  test('three things noted while counting are shown back and never stored', async ({ page }) => {
+  test('three things noted while counting are shown back and kept only on this device until midnight', async ({ page }) => {
     await openGame(page)
     await taskButton(page, 'Count Three Things').click()
     await page.getByRole('textbox', { name: 'First thing' }).fill('Morning light')
@@ -296,8 +317,16 @@ test.describe('The Patient One', () => {
     await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeFocused()
     await expect(page.getByText('Today you noticed')).toBeVisible()
     await expect(page.getByRole('listitem').filter({ hasText: /Morning light|A friend who called/ })).toHaveText(['Morning light', 'A friend who called'])
-    const stored = await page.evaluate(() => JSON.stringify(localStorage))
-    expect(stored).not.toContain('Morning light')
+    const stored = await page.evaluate((key) => localStorage.getItem(key), STRIP_KEY)
+    expect(stored).toContain('Morning light')
+
+    await page.getByRole('button', { name: 'Continue slowing down' }).click()
+    await page.reload()
+    await expect(todayStrip(page).getByRole('button', { name: /Count Three Things.*Morning light · A friend who called/ })).toBeVisible()
+    await page.clock.setFixedTime(new Date('2026-11-22T00:00:30'))
+    await page.reload()
+    await expect(page.getByRole('heading', { name: MENU_HEADING })).toBeVisible()
+    await expect(todayStrip(page)).toHaveCount(0)
   })
 
   test('rushing out early is gentle and records nothing', async ({ page }) => {
@@ -307,7 +336,7 @@ test.describe('The Patient One', () => {
     await page.getByRole('button', { name: 'Leave early' }).click()
 
     await expect(page.getByRole('heading', { name: MENU_HEADING })).toBeFocused()
-    await expect(page.getByText('Today you spent time with')).toHaveCount(0)
+    await expect(page.getByText(STRIP_NOTE)).toHaveCount(0)
     await expect(taskButton(page, 'Look at One Thing')).not.toHaveAccessibleName(/Savored/)
 
     // Starting again begins from the full time.
@@ -344,7 +373,7 @@ test.describe('The Patient One', () => {
     await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeVisible()
   })
 
-  test('staying a little longer repeats the moment without listing it twice', async ({ page }) => {
+  test('staying a little longer repeats the moment, and each finished one gets its own card', async ({ page }) => {
     await openGame(page)
     await taskButton(page, 'Look at One Thing').click()
     await advance(page, 60_000)
@@ -353,7 +382,8 @@ test.describe('The Patient One', () => {
     await expect(timer(page)).toHaveText('1:00')
     await advance(page, 60_000)
     await page.getByRole('button', { name: 'Continue slowing down' }).click()
-    await expect(savoredList(page).getByRole('listitem')).toHaveText(['Look at One Thing'])
+    await expect(todayStrip(page).getByRole('listitem')).toHaveCount(2)
+    for (const card of await todayStrip(page).getByRole('listitem').all()) await expect(card).toContainText('Look at One Thing')
   })
 
   test('regression: moments savored today survive a reload but not midnight', async ({ page }) => {
@@ -361,31 +391,89 @@ test.describe('The Patient One', () => {
     await taskButton(page, 'Notice This Moment').click()
     await advance(page, 45_000)
     await page.getByRole('button', { name: 'Continue slowing down' }).click()
-    await expect(savoredList(page).getByRole('listitem')).toHaveText(['Notice This Moment'])
+    await expect(todayStrip(page).getByRole('listitem')).toHaveCount(1)
+    await expect(todayStrip(page)).toContainText('Notice This Moment')
 
     await page.reload()
-    await expect(savoredList(page).getByRole('listitem')).toHaveText(['Notice This Moment'])
+    await expect(todayStrip(page).getByRole('listitem')).toHaveCount(1)
+    await expect(todayStrip(page)).toContainText('Notice This Moment')
     await expect(taskButton(page, 'Notice This Moment')).toHaveAccessibleName(/Savored today\.$/)
 
     await page.clock.setFixedTime(new Date('2026-11-22T09:00:00'))
     await page.reload()
     await expect(page.getByRole('heading', { name: MENU_HEADING })).toBeVisible()
     await expect(taskButton(page, 'Notice This Moment')).not.toHaveAccessibleName(/Savored/)
-    await expect(page.getByText('Today you spent time with')).toHaveCount(0)
+    await expect(page.getByText(STRIP_NOTE)).toHaveCount(0)
   })
 
   test('a broken saved list is ignored', async ({ page }) => {
     const errors = collectPageErrors(page)
-    await page.addInitScript(() => localStorage.setItem('verygoodmelon:unrusher-today', '{oops'))
+    await page.addInitScript((key) => localStorage.setItem(key, '{oops'), STRIP_KEY)
     await openGame(page)
-    await expect(page.getByText('Today you spent time with')).toHaveCount(0)
+    await expect(page.getByText(STRIP_NOTE)).toHaveCount(0)
     expect(errors).toEqual([])
   })
 
-  test('a list saved before the breathing moment was retired shows only the moments that remain', async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem('verygoodmelon:unrusher-today', JSON.stringify({ day: '2026-11-21', completed: ['breathe', 'watch'] })))
+  test('a saved card for a moment that no longer exists is left out', async ({ page }) => {
+    await page.addInitScript((key) => {
+      const card = (id: string, at: string) => ({ key: at, id, at, things: [], heard: [], lookedAt: '', feelings: [] })
+      localStorage.setItem(key, JSON.stringify({ v: 1, day: '2026-11-21', moments: [card('breathe', '2026-11-21T08:00:00'), card('watch', '2026-11-21T08:05:00')] }))
+    }, STRIP_KEY)
     await openGame(page)
-    await expect(savoredList(page).getByRole('listitem')).toHaveText(['Watch the Seeds'])
+    await expect(todayStrip(page).getByRole('listitem')).toHaveCount(1)
+    await expect(todayStrip(page)).toContainText('Watch the Seeds')
+  })
+
+  test('each moment ends in a keepsake of what was noticed, and today’s cards open to keep', async ({ page }) => {
+    const errors = collectPageErrors(page)
+    await openGame(page)
+    await taskButton(page, 'Listen to Silence').click()
+    await advance(page, 60_000)
+    const heard = page.getByRole('group', { name: 'What did you hear?' })
+    await heard.getByRole('button', { name: 'Birds' }).click()
+    await heard.getByRole('button', { name: 'Traffic' }).click()
+    await expectKeepsakeSaves(page, {
+      fileName: /^the-patient-one-listen-to-silence-2026-11-21\.png$/,
+      describedAs: /I heard birds and traffic\./,
+    })
+    expect(await axeViolations(page)).toEqual([])
+    await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
+    expect(await axeViolations(page)).toEqual([])
+    await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'))
+
+    await page.clock.pauseAt(new Date('2026-11-21T10:20:00'))
+    await page.getByRole('button', { name: 'Continue slowing down' }).click()
+    await taskButton(page, 'Count Three Things').click()
+    await page.getByRole('textbox', { name: 'First thing' }).fill('Warm socks')
+    await page.locator('h1').click()
+    await advance(page, 50_000)
+    await page.getByRole('button', { name: 'Done', exact: true }).click()
+    await page.getByRole('button', { name: 'Continue slowing down' }).click()
+
+    // A card for each moment, with what was noticed, and no tally anywhere
+    const cards = todayStrip(page).getByRole('button')
+    await expect(cards).toHaveCount(2)
+    await expect(cards.first()).toContainText('Birds and traffic')
+    await expect(cards.last()).toContainText('Warm socks')
+    await expect(page.locator('main')).not.toContainText(/\d+ moments?\b/)
+    await expect(page.getByTestId('keepsake-canvas')).toHaveCount(0)
+
+    await cards.last().click()
+    await expect(cards.last()).toHaveAttribute('aria-expanded', 'true')
+    const opened = page.locator('#today-moment')
+    await expectKeepsakeSaves(page, {
+      within: opened,
+      fileName: /^the-patient-one-count-three-things-2026-11-21\.png$/,
+      describedAs: /Warm socks/,
+    })
+    await cards.first().click()
+    await expect(opened.getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/I heard birds and traffic/)
+    expect(await axeViolations(page)).toEqual([])
+    await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
+    expect(await axeViolations(page)).toEqual([])
+    await cards.first().click()
+    await expect(page.getByTestId('keepsake-canvas')).toHaveCount(0)
+    expect(errors).toEqual([])
   })
 
   test('keyboard only: start, stop and finish a moment', async ({ page }) => {
@@ -452,6 +540,28 @@ test.describe('The Patient One on a phone with reduced motion', () => {
     // Bringing the moment on screen is not counted as the player moving.
     await expect(page.getByText('The seeds wait while you move.')).toHaveCount(0)
     await expect(timer(page)).toHaveText('0:37')
+  })
+
+  test('the keepsake ending is still, fits the phone, and the strip scrolls inside itself', async ({ page }) => {
+    await openGame(page)
+    for (const title of ['Look at One Thing', 'Notice This Moment', 'Watch the Seeds']) {
+      await taskButton(page, title).tap()
+      await advance(page, 60_000)
+      await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeVisible()
+      if (title !== 'Watch the Seeds') await page.getByRole('button', { name: 'Continue slowing down' }).tap()
+    }
+    // Nothing in the ending keeps moving (the site's own fades are cut to an instant under reduced motion)
+    await expect.poll(() => page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running').map((a) => (a as CSSAnimation).animationName))).toEqual([])
+    await expectKeepsakeSaves(page, { fileName: /^the-patient-one-watch-the-seeds-2026-11-21\.png$/, describedAs: /Eight seeds settled/ })
+    await page.getByRole('button', { name: 'Continue slowing down' }).tap()
+    await expect(todayStrip(page).getByRole('listitem')).toHaveCount(3)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+    await todayStrip(page).getByRole('button').last().tap()
+    const canvas = page.locator('#today-moment').getByTestId('keepsake-canvas')
+    await expect(canvas).toBeVisible()
+    const box = await canvas.boundingBox()
+    expect(box!.x + box!.width).toBeLessThanOrEqual(390)
+    expect(await axeViolations(page)).toEqual([])
   })
 
   test('a phone can offer a gentle buzz at the end of the listening minute', async ({ page }) => {

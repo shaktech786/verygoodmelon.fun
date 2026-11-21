@@ -5,6 +5,8 @@ import { Button, buttonClassName } from '@/components/ui/Button'
 import { StickyActionBar } from '@/components/ui/StickyActionBar'
 import { MessagesSquare, RotateCcw, Loader2, Square, Play, Shuffle, UserRound, HelpCircle, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { PAIRINGS, pairingIndexOf } from '@/lib/games/arena-pairings'
+import { ARENA_VOICES_CSS, OWN_CARD, PairingDeck, VOICE, VoiceMarker, voiceTint } from '@/components/games/ArenaPairingDeck'
 
 interface DebateEntry {
   speaker: string
@@ -17,12 +19,6 @@ interface Closing {
   secondInsight: string
   revealed: string
   question: string
-}
-
-interface Pairing {
-  first: string
-  second: string
-  topic: string
 }
 
 type GamePhase = 'setup' | 'debating' | 'stopped' | 'declined' | 'judging' | 'closing'
@@ -41,21 +37,8 @@ const STICK_TO_BOTTOM_PX = 48
 const TRANSCRIPT_BOX_QUERY = '(min-width: 640px)'
 const ABORTED = Symbol('aborted')
 const ACTION = 'flex items-center gap-2'
-
-const PAIRINGS: readonly Pairing[] = [
-  { first: 'Marcus Aurelius', second: 'Oscar Wilde', topic: 'Should you care what others think?' },
-  { first: 'A cat', second: 'A dog', topic: 'Is a nap a waste of a day?' },
-  { first: 'The Moon', second: 'The Sun', topic: 'Is it better to shine or to reflect?' },
-  { first: 'Socrates', second: 'Nietzsche', topic: 'Is free will an illusion?' },
-  { first: 'Jane Austen', second: 'Sherlock Holmes', topic: 'Can you reason your way into love?' },
-  { first: 'Lao Tzu', second: 'Benjamin Franklin', topic: 'Is doing nothing ever the wise choice?' },
-  { first: 'The Tortoise', second: 'The Hare', topic: 'Is slow and steady overrated?' },
-  { first: 'Ada Lovelace', second: 'Mary Shelley', topic: 'Should we fear what we create?' },
-  { first: 'Winnie-the-Pooh', second: 'Seneca', topic: 'Is it enough to want very little?' },
-  { first: 'An old oak tree', second: 'A mayfly', topic: 'Is a short life a lesser life?' },
-  { first: 'Hypatia', second: 'Carl Sagan', topic: 'Does the universe mind that we are here?' },
-  { first: 'Epicurus', second: 'A busy parent', topic: 'Is a simple life a happy life?' },
-]
+const FIELD =
+  'w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring transition-colors'
 
 const DECLINE_LINES: Record<'voice' | 'topic' | 'unknown', string> = {
   voice: 'The Arena will not give voice to one of these speakers. The question can stay: try it with someone else.',
@@ -128,6 +111,7 @@ export default function MindDebate() {
   const [closing, setClosing] = useState<Closing | null>(null)
   const [turnByTurnChoice, setTurnByTurnChoice] = useState<boolean | null>(null)
   const [awaitingReader, setAwaitingReader] = useState(false)
+  const [writingOwn, setWritingOwn] = useState(false)
   const reducedMotion = useReducedMotion()
   const turnByTurn = turnByTurnChoice ?? reducedMotion
 
@@ -228,6 +212,9 @@ export default function MindDebate() {
   const person2Name = person2.trim()
   const topicName = topic.trim()
   const canStart = person1Name.length > 0 && person2Name.length > 0 && topicName.length > 0
+  const pairingIndex = pairingIndexOf(person1, person2, topic)
+  const selectedCard =
+    pairingIndex !== -1 ? pairingIndex : writingOwn || person1 || person2 || topic ? OWN_CARD : null
 
   const typeText = useCallback(
     (text: string, signal: AbortSignal): Promise<void> => {
@@ -431,24 +418,46 @@ export default function MindDebate() {
     setPhase('setup')
   }
 
-  const handleSurprise = () => {
-    let next = Math.floor(Math.random() * PAIRINGS.length)
-    if (next === pairingRef.current) next = (next + 1) % PAIRINGS.length
-    pairingRef.current = next
-    const pairing = PAIRINGS[next]
+  const pickPairing = (index: number) => {
+    const pairing = PAIRINGS[index]
+    pairingRef.current = index
     setPerson1(pairing.first)
     setPerson2(pairing.second)
     setTopic(pairing.topic)
+    setWritingOwn(false)
+  }
+
+  const writeOwn = () => {
+    if (pairingIndex !== -1) {
+      setPerson1('')
+      setPerson2('')
+      setTopic('')
+    }
+    setWritingOwn(true)
+    person1Ref.current?.focus()
+  }
+
+  const handleSurprise = () => {
+    let next = Math.floor(Math.random() * PAIRINGS.length)
+    if (next === pairingRef.current) next = (next + 1) % PAIRINGS.length
+    pickPairing(next)
     if (phase !== 'setup') backToSetup('start')
   }
 
   if (phase === 'setup') {
     return (
-      <div className="max-w-xl mx-auto animate-fade" role="region" aria-label="Debate setup">
-        <form onSubmit={handleStart} className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="person1" className="block text-sm font-medium text-foreground/80 mb-1.5">
+      <div className="arena-voices max-w-3xl mx-auto animate-fade" role="region" aria-label="Debate setup">
+        <style>{ARENA_VOICES_CSS}</style>
+        <p id="deck-hint" className="text-center text-sm sm:text-base text-foreground/80 mb-3 sm:mb-4">
+          Pick two minds and a question, or write your own.
+        </p>
+        <PairingDeck selected={selectedCard} onPick={pickPairing} onWriteOwn={writeOwn} />
+
+        <form onSubmit={handleStart} className="mt-5 sm:mt-6 max-w-xl mx-auto space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="min-w-0">
+              <label htmlFor="person1" className="flex items-center gap-1.5 text-sm font-medium text-foreground/80 mb-1.5">
+                <VoiceMarker second={false} />
                 First debater
               </label>
               <input
@@ -459,12 +468,13 @@ export default function MindDebate() {
                 onChange={(e) => setPerson1(e.target.value)}
                 placeholder="e.g. Socrates"
                 maxLength={NAME_MAX}
-                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring transition-colors"
+                className={FIELD}
                 autoComplete="off"
               />
             </div>
-            <div>
-              <label htmlFor="person2" className="block text-sm font-medium text-foreground/80 mb-1.5">
+            <div className="min-w-0">
+              <label htmlFor="person2" className="flex items-center gap-1.5 text-sm font-medium text-foreground/80 mb-1.5">
+                <VoiceMarker second />
                 Second debater
               </label>
               <input
@@ -474,7 +484,7 @@ export default function MindDebate() {
                 onChange={(e) => setPerson2(e.target.value)}
                 placeholder="e.g. Nietzsche"
                 maxLength={NAME_MAX}
-                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring transition-colors"
+                className={FIELD}
                 autoComplete="off"
               />
             </div>
@@ -492,14 +502,14 @@ export default function MindDebate() {
               onChange={(e) => setTopic(e.target.value)}
               placeholder="e.g. Is free will an illusion?"
               maxLength={TOPIC_MAX}
-              className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring transition-colors"
+              className={FIELD}
               autoComplete="off"
             />
           </div>
 
           <PaceToggle checked={turnByTurn} onChange={chooseTurnByTurn} />
 
-          <div className="pt-2 flex flex-col sm:flex-row gap-3">
+          <StickyActionBar className="flex gap-3">
             <button
               ref={startRef}
               type="submit"
@@ -507,7 +517,7 @@ export default function MindDebate() {
               className={buttonClassName('primary', 'md', 'flex-1 flex items-center justify-center gap-2')}
             >
               <MessagesSquare size={18} aria-hidden="true" />
-              Start debate
+              Begin
             </button>
             <Button
               type="button"
@@ -518,12 +528,8 @@ export default function MindDebate() {
               <Shuffle size={18} aria-hidden="true" />
               Surprise me
             </Button>
-          </div>
+          </StickyActionBar>
         </form>
-
-        <p className="text-center text-foreground/75 text-sm mt-6">
-          Pick any two minds, real or imagined, and a question for them to explore.
-        </p>
       </div>
     )
   }
@@ -538,10 +544,11 @@ export default function MindDebate() {
   return (
     <div
       ref={regionRef}
-      className="max-w-4xl mx-auto animate-fade"
+      className="arena-voices max-w-4xl mx-auto animate-fade"
       role="region"
       aria-label={`Debate: ${person1Name} and ${person2Name}`}
     >
+      <style>{ARENA_VOICES_CSS}</style>
       <section
         aria-labelledby="arena-question"
         className="bg-card-bg border border-card-border rounded-xl px-4 pt-3 pb-3 sm:px-8 sm:pt-6 sm:pb-4 mb-3 sm:mb-4"
@@ -763,7 +770,7 @@ function Medallion({ side, speaking }: { side: Side; speaking: boolean }) {
     >
       <path d={RIND} fill="var(--melon-green)" />
       <path d={INNER_RIND} fill="var(--melon-green-light)" />
-      <path d={FLESH} fill={side === 'left' ? 'var(--melon-red)' : 'var(--warm)'} />
+      <path d={FLESH} fill="var(--melon-red)" />
       <path d={SEEDS} fill="var(--foreground)" />
       {speaking && <path d={OPEN_MOUTH} fill="var(--foreground)" />}
     </svg>
@@ -782,16 +789,21 @@ function Speaker({
   reducedMotion: boolean
 }) {
   const active = state !== null
+  const voice = side === 'left' ? VOICE.a : VOICE.b
   return (
     <div className="flex flex-col items-center text-center min-w-0">
       <div
-        className={`rounded-full p-1.5 border-2 ${active ? 'border-foreground/50' : 'border-transparent'} ${
-          reducedMotion ? '' : 'transition-transform duration-300'
-        } ${active && !reducedMotion ? '-translate-y-1' : ''}`}
+        className={`rounded-full p-1.5 border-2 ${reducedMotion ? '' : 'transition-transform duration-300'} ${
+          active && !reducedMotion ? '-translate-y-1' : ''
+        }`}
+        style={{ borderColor: active ? voice : 'transparent', background: voiceTint(voice, active ? 16 : 8) }}
       >
         <Medallion side={side} speaking={state === 'speaking'} />
       </div>
-      <p className="mt-1 sm:mt-2 text-base sm:text-lg font-medium text-foreground break-words max-w-full">{name}</p>
+      <p className="mt-1 sm:mt-2 flex items-center justify-center gap-2 text-base sm:text-lg font-medium text-foreground break-words max-w-full">
+        <VoiceMarker second={side === 'right'} />
+        <span className="min-w-0 break-words" style={{ color: voice }}>{name}</span>
+      </p>
       <p className="text-sm text-foreground/75 min-h-[1.25rem]" aria-hidden="true">
         {state === 'speaking' ? 'speaking' : state === 'thinking' ? 'thinking' : ''}
       </p>
@@ -827,14 +839,8 @@ function ClosingThoughts({
       <div>
         <h3 className="text-base font-semibold text-foreground/80 text-center mb-3">What each got right</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 min-w-0">
-            <p className="text-sm font-semibold text-accent break-words mb-1">{first}</p>
-            <p className="text-base text-foreground/90 leading-relaxed break-words">{closing.firstInsight}</p>
-          </div>
-          <div className="rounded-lg border border-success/40 bg-success/10 px-4 py-3 min-w-0">
-            <p className="text-sm font-semibold text-melon-green break-words mb-1">{second}</p>
-            <p className="text-base text-foreground/90 leading-relaxed break-words">{closing.secondInsight}</p>
-          </div>
+          <Insight name={first} insight={closing.firstInsight} second={false} />
+          <Insight name={second} insight={closing.secondInsight} second />
         </div>
       </div>
 
@@ -851,20 +857,34 @@ function ClosingThoughts({
   )
 }
 
+function Insight({ name, insight, second }: { name: string; insight: string; second: boolean }) {
+  const voice = second ? VOICE.b : VOICE.a
+  return (
+    <div
+      className="rounded-lg border px-4 py-3 min-w-0"
+      style={{ borderColor: voiceTint(voice, 40), background: voiceTint(voice, 7) }}
+    >
+      <p className="flex items-center gap-2 text-sm font-semibold break-words mb-1">
+        <VoiceMarker second={second} />
+        <span className="min-w-0 break-words" style={{ color: voice }}>{name}</span>
+      </p>
+      <p className="text-base text-foreground/90 leading-relaxed break-words">{insight}</p>
+    </div>
+  )
+}
+
 function DebateBubble({ entry, side, typing = false }: { entry: DebateEntry; side: Side; typing?: boolean }) {
   const isLeft = side === 'left'
+  const voice = isLeft ? VOICE.a : VOICE.b
   return (
     <div className={`flex ${isLeft ? 'justify-start' : 'justify-end'}`}>
       <div
-        className={`max-w-[88%] sm:max-w-[72%] min-w-0 rounded-xl px-4 py-3 ${
-          isLeft
-            ? 'bg-accent/10 border border-accent/20 rounded-tl-sm'
-            : 'bg-success/10 border border-success/20 rounded-tr-sm'
-        }`}
+        className={`max-w-[88%] sm:max-w-[72%] min-w-0 rounded-xl border px-4 py-3 ${isLeft ? 'rounded-tl-sm' : 'rounded-tr-sm'}`}
+        style={{ background: voiceTint(voice, 8), borderColor: voiceTint(voice, 30) }}
       >
         <div className="flex items-center gap-2 mb-1.5 min-w-0">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${isLeft ? 'bg-accent' : 'bg-success'}`} aria-hidden="true" />
-          <span className="text-sm font-semibold break-words min-w-0 text-foreground">
+          <VoiceMarker second={!isLeft} />
+          <span className="text-sm font-semibold break-words min-w-0" style={{ color: voice }}>
             {entry.speaker}
           </span>
           <span className="text-xs text-foreground/75 shrink-0">Round {entry.round}</span>

@@ -5,14 +5,10 @@ import type { AvatarComponentProps, AvatarHandle } from '@/lib/games/timeless-mi
 import type { AvatarEmotion } from '@/lib/games/timeless-minds/avatar-provider'
 
 /**
- * Static avatar with video-call styling.
- *
- * Uses real portrait photographs with subtle animations
- * to create a live video-call feel:
- * - Slow breathing pulse (scale)
+ * A portrait photograph that sits inside the Sage's picture frame:
+ * - Slow breathing pulse (scale), still with reduced motion
  * - Speaking indicator ring
- * - Vignette overlay for webcam depth
- * - Live indicator dot
+ * - A soft vignette, like an old print
  */
 const StaticAvatar = forwardRef<AvatarHandle, AvatarComponentProps>(
   function StaticAvatar(
@@ -60,15 +56,13 @@ const StaticAvatar = forwardRef<AvatarHandle, AvatarComponentProps>(
     const emotionColor = getEmotionColor(emotion)
 
     return (
-      <div className={`relative w-full h-full flex items-center justify-center ${className}`}>
+      <div className={`relative w-full h-full flex items-center justify-center rounded-[inherit] ${className}`}>
         {!imageError ? (
-          <div className="relative w-full h-full overflow-hidden rounded-2xl bg-black/90">
+          <div className="relative w-full h-full overflow-hidden rounded-[inherit] bg-black/90">
             {/* Speaking indicator ring */}
             <div
-              className={`absolute inset-0 rounded-2xl transition-all duration-500 z-10 pointer-events-none ${
-                isSpeaking
-                  ? `ring-2 ${emotionColor.ring} shadow-lg ${emotionColor.shadow}`
-                  : 'ring-1 ring-white/10'
+              className={`absolute inset-0 rounded-[inherit] transition-all duration-500 z-10 pointer-events-none ${
+                isSpeaking ? `ring-2 ring-inset ${emotionColor.ring} shadow-lg ${emotionColor.shadow}` : ''
               }`}
               aria-hidden="true"
             />
@@ -94,7 +88,7 @@ const StaticAvatar = forwardRef<AvatarHandle, AvatarComponentProps>(
             <div
               className="absolute inset-0 pointer-events-none z-10"
               style={{
-                background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.4) 100%)',
+                background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.25) 100%)',
               }}
               aria-hidden="true"
             />
@@ -112,7 +106,7 @@ const StaticAvatar = forwardRef<AvatarHandle, AvatarComponentProps>(
             )}
           </div>
         ) : (
-          <div className="w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 rounded-2xl bg-gradient-to-br from-accent/30 to-success/30 border border-white/10 flex items-center justify-center text-6xl sm:text-8xl md:text-9xl backdrop-blur-sm">
+          <div className="w-full h-full rounded-[inherit] bg-gradient-to-br from-warm/30 to-success/30 flex items-center justify-center text-3xl lg:text-7xl">
             <span role="img" aria-label="Person silhouette">&#x1F464;</span>
           </div>
         )}

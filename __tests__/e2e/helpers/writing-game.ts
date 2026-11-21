@@ -4,7 +4,7 @@ import { test, expect, type Page } from '@playwright/test'
 
 const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
 
-async function axeViolations(page: Page) {
+export async function axeViolations(page: Page) {
   await page.addScriptTag({ content: AXE_SOURCE })
   return page.evaluate(async () => {
     const axe = (window as unknown as { axe: { run: (context: unknown, options: unknown) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> } }).axe

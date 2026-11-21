@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Button, buttonClassName } from '@/components/ui/Button'
+import { Keepsake } from '@/components/games/Keepsake'
 import { CarryScreen } from '@/components/games/hard-talk/CarryScreen'
-import { BreathMelon, ThresholdArt } from '@/components/games/hard-talk/ThresholdArt'
+import { BreathMelon, StepOutArt, ThresholdArt } from '@/components/games/hard-talk/ThresholdArt'
+import { plainSpeakerKeepsake } from '@/lib/keepsake/plain-speaker'
 import { cn } from '@/lib/utils/cn'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import {
@@ -31,7 +33,7 @@ import {
   type Session,
 } from '@/lib/games/hard-talk/session'
 
-type View = 'steps' | 'offer' | 'check-in'
+type View = 'steps' | 'offer' | 'check-in' | 'step-out'
 
 const BREATHS_OFFERED = 3
 const NEAR_LIMIT = 40
@@ -167,7 +169,7 @@ function HardTalkGame() {
   const [breathingIn, setBreathingIn] = useState(false)
   const [focusRequest, setFocusRequest] = useState(0)
   const [onScreen, setOnScreen] = useState(false)
-  const [copied, setCopied] = useState('')
+  const [day] = useState(() => new Date())
   const headingRef = useRef<HTMLHeadingElement>(null)
   const fieldRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null)
   const responseRef = useRef<HTMLDivElement>(null)
@@ -212,7 +214,6 @@ function HardTalkGame() {
     setWelcomeBack(false)
     setConfirmingStartOver(null)
     setBreathingIn(false)
-    setCopied('')
     setView('steps')
   }
 
@@ -246,6 +247,11 @@ function HardTalkGame() {
   }
 
   const kind = session.kind ?? 'other'
+  const notes = carryNotes(session)
+  const pocketCard = useMemo(
+    () => plainSpeakerKeepsake({ line: notes.line, begin: notes.begin, day }),
+    [notes.line, notes.begin, day],
+  )
   const talk = TALKS[kind]
   const { index, total } = stepPosition(session.kind, session.step)
   const stage = stageOf(session.kind, session.step)
@@ -266,6 +272,23 @@ function HardTalkGame() {
   const sub = (text: string) => <p id="hard-talk-sub" className="mt-3 text-base sm:text-lg text-foreground/75 leading-relaxed">{text}</p>
 
   const optional = (filled: boolean) => (filled ? 'Next' : 'Skip')
+
+  const keepOnScreenButton = (
+    <button
+      ref={keepOnScreenRef}
+      type="button"
+      onClick={() => setOnScreen(true)}
+      className={buttonClassName('primary', 'lg', 'mt-6 w-full')}
+    >
+      Keep this on screen
+    </button>
+  )
+
+  const stepOut = () => {
+    setFocusRequest((n) => n + 1)
+    setConfirmingStartOver(null)
+    setView('step-out')
+  }
 
   function renderStep(): { body: ReactNode; nextLabel: string | null } {
     switch (session.step) {
@@ -492,16 +515,7 @@ function HardTalkGame() {
         const prompt = pick(KINDNESS, session.run)
         return { nextLabel: 'Next', body: <>{heading(prompt.line)}{sub(prompt.sub)}</> }
       }
-      case 'carry': {
-        const notes = carryNotes(session)
-        const copy = async () => {
-          try {
-            await navigator.clipboard.writeText(notes.begin ? `${notes.begin}\n${notes.line}` : notes.line)
-            setCopied('Copied.')
-          } catch {
-            setCopied('Copying isn’t allowed here, but you can select the words and copy them.')
-          }
-        }
+      case 'carry':
         return {
           nextLabel: null,
           body: (
@@ -521,36 +535,29 @@ function HardTalkGame() {
                   {notes.line}
                 </blockquote>
               </figure>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <button
-                  ref={keepOnScreenRef}
-                  type="button"
-                  onClick={() => setOnScreen(true)}
-                  className={buttonClassName('primary', 'lg', 'w-full sm:flex-1')}
-                >
-                  Keep this on screen
-                </button>
-                <Button size="lg" variant="secondary" onClick={copy} className="w-full sm:w-auto">Copy</Button>
-              </div>
-              <p role="status" className="mt-2 min-h-6 text-sm text-foreground/75">{copied}</p>
-              <p className="mt-3 text-base text-foreground/75">
-                Take one more slow breath, and go in when you choose. If you come back afterwards, there’s a quiet place to say how it went.
-              </p>
-              {onScreen && (
-                <CarryScreen
-                  line={notes.line}
-                  begin={notes.begin}
-                  onClose={() => {
-                    setOnScreen(false)
-                    keepOnScreenRef.current?.focus()
-                  }}
-                />
-              )}
+              {keepOnScreenButton}
+              <Keepsake plan={pocketCard} label="A pocket card to keep" className="mt-8" />
+              <Button size="lg" variant="secondary" onClick={stepOut} className="mt-2 w-full">
+                I’m going in
+              </Button>
             </>
           ),
         }
-      }
     }
+  }
+
+  function renderStepOut() {
+    return (
+      <>
+        <div className="mb-6"><StepOutArt reducedMotion={reducedMotion} /></div>
+        {heading('Go in when you’re ready.')}
+        {sub('One more slow breath first, if you like. If you come back afterwards, there’s a quiet place to say how it went.')}
+        {keepOnScreenButton}
+        <Button size="lg" variant="secondary" onClick={() => goTo('carry')} className="mt-3 w-full">
+          Back to my line
+        </Button>
+      </>
+    )
   }
 
   function renderOffer() {
@@ -647,7 +654,7 @@ function HardTalkGame() {
 
       {confirmingStartOver === 'top' && startOverPanel}
 
-      {!(view === 'steps' && session.step === 'breath') && (
+      {view !== 'step-out' && !(view === 'steps' && session.step === 'breath') && (
         <div className="mt-2 mb-4"><ThresholdArt progress={progress} reducedMotion={reducedMotion} /></div>
       )}
 
@@ -663,6 +670,7 @@ function HardTalkGame() {
       <div key={view === 'steps' ? session.step : view} className={cn(!reducedMotion && 'animate-fade')}>
         {view === 'offer' && renderOffer()}
         {view === 'check-in' && renderCheckIn()}
+        {view === 'step-out' && renderStepOut()}
         {step?.body}
       </div>
 
@@ -676,6 +684,16 @@ function HardTalkGame() {
         </div>
       )}
       {confirmingStartOver === 'bottom' && startOverPanel}
+      {onScreen && (
+        <CarryScreen
+          line={notes.line}
+          begin={notes.begin}
+          onClose={() => {
+            setOnScreen(false)
+            keepOnScreenRef.current?.focus()
+          }}
+        />
+      )}
     </section>
   )
 }

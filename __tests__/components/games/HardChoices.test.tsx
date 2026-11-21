@@ -90,7 +90,7 @@ describe('HardChoices', () => {
     expect(screen.getByRole('button', { name: /Choice A/i })).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('ends with a reading of the pattern, not just a list of words', async () => {
+  it('ends with a keepsake sky and one reading of the pattern, not a list of words', async () => {
     const all = ['happiness-vs-meaning', 'career-passion', 'free-evening', 'love-or-freedom', 'radical-honesty',
       'friends-manuscript', 'right-or-close', 'forgiveness-limits', 'the-promotion', 'new-city', 'empty-weekend', 'last-slice']
     mockLocalStorage.setItem('hardChoicesVotes', JSON.stringify(Object.fromEntries(all.map((id) => [id, 'A']))))
@@ -98,8 +98,10 @@ describe('HardChoices', () => {
     render(<HardChoices />)
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'What you chose to protect' })).toBeInTheDocument())
-    expect(screen.getByRole('heading', { name: 'A reading' })).toBeInTheDocument()
-    expect(screen.getByText(/What kept returning was the people around you/)).toBeInTheDocument()
+    const sky = screen.getByRole('img', { name: "Tonight's sky of what you reached for" })
+    expect(sky).toHaveAccessibleDescription(/one star for each value you reached for.*What kept returning today was the people around you\./)
+    expect(screen.getByRole('button', { name: 'Save image' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy as text' })).toBeInTheDocument()
   })
 
   it('submits vote when choice clicked', async () => {

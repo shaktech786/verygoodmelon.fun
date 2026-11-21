@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useId, type FormEvent } from 'react'
 import { Share2 } from 'lucide-react'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { playTones, wakeTones } from '@/components/games/gentleCues'
 import { LIVE_COMMENTARY_GUESSES, fallbackCommentary } from '@/lib/games/hope-daily/commentary'
 import {
   buildLadder,
@@ -18,6 +19,14 @@ import {
   type StoryPart,
   type Unfolded,
 } from '@/lib/games/hope-daily/puzzle'
+import {
+  LETTER_DROP_MS,
+  SOLVED_CHIME_HZ,
+  SOLVED_CHIME_LOUDNESS,
+  SOLVED_CHIME_SECONDS,
+  letterDropDelayMs,
+  lettersLandAfterSeconds,
+} from '@/lib/games/hope-daily/solved'
 
 interface Puzzle {
   category: string
@@ -82,6 +91,7 @@ export default function HopeDaily() {
   const [confirmingTell, setConfirmingTell] = useState(false)
   const [shareNote, setShareNote] = useState('')
   const [freshPart, setFreshPart] = useState<number | null>(null)
+  const [foundNow, setFoundNow] = useState(false)
   const reduceMotion = useReducedMotion()
   // Only the newest guess may speak: a slow reply for an earlier guess is dropped.
   const commentaryRequestRef = useRef(0)
@@ -198,6 +208,10 @@ export default function HopeDaily() {
     setMessage('')
     setConfirmingTell(false)
     setProgress(previous => ({ ...previous, status, reveal }))
+    if (status !== 'found') return
+    setFoundNow(true)
+    // Silent unless the visitor turned this page's sound on; it rings as the last letter lands.
+    playTones([{ hz: SOLVED_CHIME_HZ, at: lettersLandAfterSeconds(wordLength, !reduceMotion), seconds: SOLVED_CHIME_SECONDS }], SOLVED_CHIME_LOUDNESS)
   }
 
   const nextStep = (): Unfolded => {
@@ -272,6 +286,8 @@ export default function HopeDaily() {
 
   const submitGuess = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    // Audio may only start inside the tap itself, and the answer arrives after it.
+    wakeTones()
     // A tap on Try it would otherwise leave focus on a button that is about to be disabled, and so on the page itself
     inputRef.current?.focus()
     if (busy) return
@@ -532,6 +548,7 @@ export default function HopeDaily() {
           className="p-5 sm:p-7 rounded-2xl border-2 border-melon-green bg-card-bg"
           aria-labelledby="optimist-ending-title"
         >
+          {foundNow && !reduceMotion && <style>{LETTER_DROP_CSS}</style>}
           <p className="text-xs font-semibold uppercase tracking-wider text-foreground/70">
             {progress.status === 'found' ? 'You found it' : 'Here is today’s word'}
           </p>
@@ -541,7 +558,7 @@ export default function HopeDaily() {
             tabIndex={-1}
             className="mt-1 text-3xl sm:text-4xl font-semibold tracking-wider text-foreground focus-visible:shadow-none!"
           >
-            {progress.reveal?.word ?? 'Today’s good news'}
+            {progress.reveal ? <SolvedWord word={progress.reveal.word} dropping={foundNow && !reduceMotion} /> : 'Today’s good news'}
           </h2>
 
           {progress.reveal ? (
@@ -558,6 +575,42 @@ export default function HopeDaily() {
         </section>
       )}
     </div>
+  )
+}
+
+const LETTER_DROP_CSS = `
+@keyframes optimist-letter-drop {
+  from { transform: translateY(-0.9em); opacity: 0; }
+  70% { transform: translateY(0.06em); opacity: 1; }
+  to { transform: none; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-testid="solved-word"] span { animation: none !important; }
+}`
+
+/** The word set into slots like the ones it was guessed in; when just found, each letter drops into place in turn. */
+function SolvedWord({ word, dropping }: { word: string; dropping: boolean }) {
+  return (
+    <>
+      <span className="sr-only">{word}</span>
+      <span
+        aria-hidden="true"
+        className="mt-1 flex gap-[0.2em]"
+        style={{ fontSize: `min(1em, calc((100vw - 7rem) / ${word.length * 1.3}))` }}
+        data-testid="solved-word"
+      >
+        {[...word].map((letter, position) => (
+          <span key={position} className="flex h-[1.45em] w-[1.05em] items-end justify-center border-b-2 border-melon-green pb-0.5 overflow-hidden">
+            <span
+              className="inline-block leading-none tracking-normal"
+              style={dropping ? { animation: `optimist-letter-drop ${LETTER_DROP_MS}ms cubic-bezier(0.3, 0, 0.3, 1) ${letterDropDelayMs(position)}ms both` } : undefined}
+            >
+              {letter}
+            </span>
+          </span>
+        ))}
+      </span>
+    </>
   )
 }
 

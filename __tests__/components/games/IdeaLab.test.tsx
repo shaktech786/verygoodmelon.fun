@@ -93,4 +93,21 @@ describe('IdeaLab', () => {
     expect(screen.getAllByText('Let love meet its ending, then let the dawn sit beside it.', { exact: false }).length).toBeGreaterThan(0)
     expect(screen.queryAllByText('Plainer:').length).toBeLessThan(7)
   })
+
+  it('shelves each new idea in the cabinet, to be opened and read again with what made it', async () => {
+    await begin()
+    fireEvent.click(concept('Love'))
+    fireEvent.click(concept('Fear'))
+    await waitFor(() => expect(concept('Jealousy')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Your cabinet' }))
+    const drawer = screen.getByRole('button', { name: 'Reread Jealousy' })
+    expect(drawer).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(drawer)
+    expect(drawer).toHaveAttribute('aria-expanded', 'true')
+    const reading = document.getElementById(drawer.getAttribute('aria-controls') ?? '')
+    expect(reading).toHaveTextContent('When love fears loss, it curdles into possession.')
+    expect(reading).toHaveTextContent(/Made from .*Fear and .*Love/)
+  })
 })
+

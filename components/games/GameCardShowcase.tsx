@@ -5,7 +5,6 @@ import type { GameConfig } from '@/lib/games/config'
 interface GameCardShowcaseProps {
   game: GameConfig
   priority?: boolean
-  isFeatured?: boolean
   showCategory?: boolean
   headingLevel?: 'h2' | 'h3'
 }
@@ -26,7 +25,6 @@ const BORDER_HOVER: Record<GameConfig['accentColor'], string> = {
 export function GameCardShowcase({
   game,
   priority = false,
-  isFeatured = false,
   showCategory = true,
   headingLevel: Heading = 'h3',
 }: GameCardShowcaseProps) {
@@ -41,17 +39,8 @@ export function GameCardShowcase({
         transition-[box-shadow,border-color] duration-200 ease-out
         focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background
       `}
-      aria-label={`${game.title}${isFeatured ? ', featured today' : ''}. ${game.hook}.`}
+      aria-label={`${game.title}. ${game.hook}.`}
     >
-      {isFeatured && (
-        <span
-          className="absolute -top-2.5 right-4 z-10 bg-warm text-[#1a1a1a] text-[11px] font-semibold px-2.5 py-0.5 rounded-full shadow-sm"
-          aria-hidden="true"
-        >
-          Today
-        </span>
-      )}
-
       <div className="flex items-center gap-4 p-4 sm:p-5 h-full">
         <div className="relative flex-shrink-0 w-14 h-[84px] sm:w-16 sm:h-24 overflow-hidden rounded-lg">
           <Image

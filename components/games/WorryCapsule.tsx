@@ -24,11 +24,12 @@ import {
   shelve,
   tally,
 } from '@/lib/games/worry-capsule/capsules'
-import { NOT_YET_LINES, RESTING_LINES, SEALED_LINES, outcomeResponse, pickLine } from '@/lib/games/worry-capsule/copy'
+import { NOT_YET_LINES, RESTING_LINES, SEALED_LINES, closedLine, outcomeResponse, pickLine } from '@/lib/games/worry-capsule/copy'
 import { type DateKey, localDateKey } from '@/lib/games/worry-capsule/dates'
 import type { WorryDraft as Draft } from '@/lib/games/worry-capsule/draft'
+import { shelfOutcomes } from '@/lib/games/worry-capsule/shelf'
 import { DevTimeTravel } from './worry-capsule/DevTimeTravel'
-import { ComposeArt, Jar, SealSteps } from './worry-capsule/Jar'
+import { ComposeArt, Jar, KeptShelf, SealSteps } from './worry-capsule/Jar'
 import styles from './worry-capsule/Keeper.module.css'
 import {
   type KeeperSnapshot,
@@ -51,6 +52,7 @@ type View =
   | { kind: 'sealed'; id: string }
   | { kind: 'rescue'; draft: Draft; reason: 'full' | 'unavailable' }
   | { kind: 'capsule'; id: string }
+  | { kind: 'closed'; id: string; first: boolean }
 
 const EMPTY_DRAFT: Draft = { text: '', horizon: 'week' }
 
@@ -73,6 +75,10 @@ function copyFileName(today: DateKey): string {
   return `the-keeper-${today}.json`
 }
 
+/** Jars shown on the shelf strip, and those already there when a new one joins them. */
+const SHELF_JARS = 4
+const CEREMONY_NEIGHBOURS = 3
+
 const panel = 'bg-card-bg border border-card-border rounded-lg px-5 py-8 sm:px-10 sm:py-10'
 const muted = 'text-sm sm:text-base text-foreground/75'
 
@@ -82,6 +88,7 @@ export default function WorryCapsule() {
   const [view, setView] = useState<View | null>(null)
   const [navigated, setNavigated] = useState(false)
   const [announcement, setAnnouncement] = useState('')
+  const [quietNews, setQuietNews] = useState('')
   const [importMessage, setImportMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -105,6 +112,7 @@ export default function WorryCapsule() {
     setNavigated(true)
     setImportMessage('')
     setAnnouncement('')
+    setQuietNews('')
     setView(next)
   }
 
@@ -135,8 +143,9 @@ export default function WorryCapsule() {
   const answer = (capsule: Capsule, outcome: Outcome, note: string): boolean => {
     const next = capsules.map((c) => (c.id === capsule.id ? openCapsule(c, outcome, note, now()) : c))
     if (!commit(next).ok) return false
-    go({ kind: 'shelf' })
-    setAnnouncement(capsules.length > 1 ? 'Closed and kept with the others.' : 'Closed and kept here.')
+    const first = !capsules.some((c) => c.opening)
+    go({ kind: 'closed', id: capsule.id, first })
+    setQuietNews(`${first ? 'Closed and kept here.' : 'Closed and kept with the others.'} ${closedLine(capsule.id, first)}`)
     return true
   }
 
@@ -270,6 +279,36 @@ export default function WorryCapsule() {
     ) : null
   } else if (current.kind === 'rescue') {
     body = <Rescue draft={current.draft} reason={current.reason} today={today} focus={navigated} onRetry={() => seal(current.draft)} onBack={() => go({ kind: 'compose', draft: current.draft })} />
+  } else if (current.kind === 'closed') {
+    const capsule = capsules.find((c) => c.id === current.id)
+    bodyKey = `closed-${current.id}`
+    if (capsule?.opening) {
+      const others = shelve(capsules.filter((c) => c.id !== capsule.id), nowDate).opened
+      body = (
+        <div className={cn('space-y-4', motion && styles.motion)}>
+          <KeptShelf
+            outcomes={[...shelfOutcomes(others, CEREMONY_NEIGHBOURS), ...(motion ? [] : [capsule.opening.outcome])]}
+            arriving={motion ? capsule.opening.outcome : undefined}
+            motion={motion}
+            zoom={1.6}
+            className="mx-auto"
+          />
+          <div className={cn('space-y-4', styles.afterClose)}>
+            <ViewHeading focus={navigated}>Closed.</ViewHeading>
+            <p className="text-base sm:text-lg text-foreground max-w-md mx-auto">{closedLine(capsule.id, current.first)}</p>
+            <p className="text-sm text-foreground/75">
+              <span className="inline-flex items-center justify-center gap-2">
+                <OutcomeMark outcome={capsule.opening.outcome} className="w-4 h-4" />
+                {OUTCOME_WORDS[capsule.opening.outcome]}
+              </span>
+            </p>
+            <div className="pt-1">
+              <Button onClick={() => go({ kind: 'shelf' })}>Back to the shelf</Button>
+            </div>
+          </div>
+        </div>
+      )
+    }
   } else if (current.kind === 'capsule') {
     const capsule = capsules.find((c) => c.id === current.id)
     bodyKey = `capsule-${current.id}`
@@ -338,6 +377,7 @@ export default function WorryCapsule() {
         {shelf.opened.length > 0 && (
           <section aria-labelledby="keeper-opened" className="text-left">
             <h3 id="keeper-opened" className="text-base font-semibold text-foreground mb-2">Looked back on</h3>
+            <KeptShelf outcomes={shelfOutcomes(shelf.opened, SHELF_JARS)} motion={false} className="mx-auto mb-3" />
             <ul className="divide-y divide-card-border border-y border-card-border">
               {shelf.opened.map((capsule) => capsule.opening && (
                 <li key={capsule.id}>
@@ -382,6 +422,7 @@ export default function WorryCapsule() {
         <p aria-live="polite" className={announcement ? 'mb-5 rounded-lg bg-success/15 px-4 py-2.5 text-sm text-foreground' : 'sr-only'}>
           {announcement}
         </p>
+        <p aria-live="polite" className="sr-only">{quietNews}</p>
         <div key={bodyKey}>{body}</div>
       </div>
       {restoreControls}

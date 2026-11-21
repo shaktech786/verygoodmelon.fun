@@ -1,4 +1,4 @@
-import { forwardRef } from 'react'
+import { forwardRef, useEffect, useRef } from 'react'
 import type { Concept } from '@/lib/games/idea-lab/concepts'
 import { WORK_TITLES, goldsFor } from '@/lib/games/idea-lab/golds'
 
@@ -8,6 +8,9 @@ interface GoldShelfProps {
   hints: number[]
   /** The gold whose riddle grew plainer on the last try, if any. */
   freshClue: number | null
+  /** The gold found by the last combination: its riddle stays in place while it turns gold. */
+  freshGold: number | null
+  reducedMotion: boolean
   /** The player's concept for each gold of this Work, in shelf order, or undefined while unfound. */
   found: (Concept | undefined)[]
   /** Works whose letter can be read again. */
@@ -20,9 +23,26 @@ interface GoldShelfProps {
 const LETTER_BUTTON_LABELS = ['Read the letter from the Great Work', 'Read the letter from the Second Work']
 
 export const GoldShelf = forwardRef<HTMLHeadingElement, GoldShelfProps>(function GoldShelf(
-  { work, hints, freshClue, found, completedWorks, canBeginNextWork, onReadLetter, onBeginNextWork },
+  { work, hints, freshClue, freshGold, reducedMotion, found, completedWorks, canBeginNextWork, onReadLetter, onBeginNextWork },
   headingRef,
 ) {
+  const freshRef = useRef<HTMLLIElement>(null)
+
+  // In the wide layout the riddles scroll in their own column; bring the one turning gold into view there.
+  useEffect(() => {
+    const card = freshRef.current
+    const column = card?.closest<HTMLElement>('[data-shelf-scroll]')
+    if (!card || !column || column.scrollHeight <= column.clientHeight) return
+    const cardBox = card.getBoundingClientRect()
+    const columnBox = column.getBoundingClientRect()
+    // The column can reach past the bottom of the window while the page is still scrolled to the top.
+    const visibleBottom = Math.min(columnBox.bottom, window.innerHeight)
+    const offset = cardBox.top < columnBox.top
+      ? cardBox.top - columnBox.top - 12
+      : cardBox.bottom > visibleBottom ? cardBox.bottom - visibleBottom + 12 : 0
+    if (offset !== 0) column.scrollBy({ top: offset, behavior: reducedMotion ? 'auto' : 'smooth' })
+  }, [freshGold, reducedMotion])
+
   const golds = goldsFor(work)
   const count = found.filter(Boolean).length
   const done = count === golds.length
@@ -32,10 +52,10 @@ export const GoldShelf = forwardRef<HTMLHeadingElement, GoldShelfProps>(function
     : hints.some(level => level > 0)
       ? 'Plainer clues surface one riddle at a time, oldest first. There is no wrong order.'
       : 'Each riddle hides the two ideas a gold is made from. If you get stuck, plainer clues will surface here, one riddle at a time.'
-  const unsolved = golds.map((gold, index) => ({ gold, index })).filter(({ index }) => !found[index])
+  const unsolved = golds.map((gold, index) => ({ gold, index })).filter(({ index }) => !found[index] || index === freshGold)
   const solved = golds.flatMap((gold, index) => {
     const concept = found[index]
-    return concept ? [{ gold, concept }] : []
+    return concept && index !== freshGold ? [{ gold, concept }] : []
   })
 
   return (
@@ -53,6 +73,27 @@ export const GoldShelf = forwardRef<HTMLHeadingElement, GoldShelfProps>(function
           {unsolved.map(({ gold, index }) => {
             const level = hints[index] ?? 0
             const fresh = index === freshClue
+            const answer = index === freshGold ? found[index] : undefined
+            if (answer) {
+              return (
+                <li
+                  key={gold.name}
+                  ref={freshRef}
+                  className={`rounded-lg border border-dashed px-3 py-2.5 alchemist-gold-settled ${reducedMotion ? '' : 'alchemist-gold-turn'}`}
+                >
+                  <p className="text-sm font-medium text-foreground/80 italic">
+                    <span className="sr-only">Just found. Riddle: </span>
+                    {gold.riddles[0]}
+                  </p>
+                  <div className={`mt-2 ${reducedMotion ? '' : 'alchemist-gold-answer'}`}>
+                    <p className="font-semibold text-foreground">
+                      <span aria-hidden="true">{answer.emoji} </span>{answer.name}
+                    </p>
+                    {answer.description && <p className="text-sm text-foreground/75 mt-1">{answer.description}</p>}
+                  </div>
+                </li>
+              )
+            }
             return (
               <li
                 key={gold.name}

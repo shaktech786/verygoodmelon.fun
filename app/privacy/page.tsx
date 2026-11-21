@@ -138,7 +138,15 @@ export default function PrivacyPage() {
             <Term>Private writing.</Term> What you write in The Keeper (your sealed worries and how
             they turned out) and in The Plain Speaker (your notes before a conversation) is kept only in
             this browser and never sent to us. &ldquo;Save a copy&rdquo; in The Keeper creates a
-            file on your own device.
+            file on your own device. The moments you finish in The Patient One (and anything you
+            wrote or ticked in them) are kept in this browser only until midnight, for the
+            &ldquo;Today&rdquo; strip. Parting lines you choose to keep in The Sage stay in this
+            browser until you remove them.
+          </li>
+          <li>
+            <Term>Keepsake images.</Term> The pictures some games offer at the end are drawn by
+            your own browser. &ldquo;Save image&rdquo; and &ldquo;Share&rdquo; hand the picture
+            straight to your device; nothing is uploaded to us.
           </li>
           <li>
             <Term>Session storage.</Term> A single flag, erased when you close the tab, stops the

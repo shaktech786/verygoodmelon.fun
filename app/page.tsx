@@ -1,226 +1,96 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { useCareMode } from '@/components/games/CareMode'
-import { GentleGames, stepsAsideInCare } from '@/components/games/CrossGameSuggestions'
-import { GameCardShowcase } from '@/components/games/GameCardShowcase'
+import { GentleGames } from '@/components/games/CrossGameSuggestions'
+import { MoodDoors } from '@/components/home/MoodDoors'
 import { PersonalizedSuggestions } from '@/components/home/PersonalizedSuggestions'
-import { SHOWCASE_GAMES, SHOWCASE_GROUPS } from '@/lib/games/config'
-import type { GameConfig } from '@/lib/games/config'
+import { TodaysPick } from '@/components/home/TodaysPick'
+import { dailyPick } from '@/lib/games/daily-pick'
 import { usePresence } from '@/lib/hooks/usePresence'
 import { useDailyWisdom } from '@/lib/hooks/useDailyWisdom'
-import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
-// Someone arriving anxious should be pointed at something calming, never at a game about death
-const FEATURABLE_GAMES = SHOWCASE_GAMES.filter((game) => game.category === 'Calm')
-
-/**
- * Today's featured game, marked "Today" on its card, and a different calm game to start with, so the
- * two invitations never point at the same place. Rotates daily in the visitor's own timezone.
- */
-function getDailyPicks(): { featured: GameConfig; start: GameConfig } | undefined {
-  if (FEATURABLE_GAMES.length === 0) return undefined
-  const today = new Date()
-  const dayOfYear = Math.floor(
-    (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24)
-  )
-  return {
-    featured: FEATURABLE_GAMES[dayOfYear % FEATURABLE_GAMES.length],
-    start: FEATURABLE_GAMES[(dayOfYear + 1) % FEATURABLE_GAMES.length],
-  }
-}
-
-const GAME_INDICES = new Map(
-  SHOWCASE_GROUPS.flatMap((group) => group.games).map((game, index) => [game.id, index])
-)
+const fadeIn = (mounted: boolean, delayMs: number) => ({
+  className: `transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`,
+  style: { transitionDelay: mounted ? `${delayMs}ms` : '0ms' },
+})
 
 /**
- * Homepage - Clear, Inviting, Informative
- *
- * Design principles:
- * - Every game is immediately understandable
- * - Title, description, and hook always visible
- * - Category grouping gives structure without clutter
- * - Breathing space and subtle parallax delight
- * - Warm presence: you're not alone here
+ * Homepage: one game for today and three ways in by mood. The full list lives on /games,
+ * so a busy mind meets one invitation here instead of fifteen.
  */
 export default function Home() {
   const [mounted, setMounted] = useState(false)
-  const [mousePosition, setMousePosition] = useState({ x: 0.5, y: 0.5 })
-  const containerRef = useRef<HTMLDivElement>(null)
-  const reduceMotion = useReducedMotion()
   const { count: presenceCount, isLoaded: presenceLoaded } = usePresence()
   const { wisdom, isLoaded: wisdomLoaded } = useDailyWisdom()
   const { care } = useCareMode()
   // Picked after mount so the server's date can never disagree with the visitor's
-  const picks = mounted ? getDailyPicks() : undefined
-  const featuredGame = picks?.featured
-  const startGame = picks?.start
+  const pick = mounted ? dailyPick(new Date()) : undefined
 
   useEffect(() => {
     queueMicrotask(() => setMounted(true))
   }, [])
 
-  // Subtle parallax on mouse move
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (reduceMotion || !containerRef.current) return
-    const rect = containerRef.current.getBoundingClientRect()
-    const x = (e.clientX - rect.left) / rect.width
-    const y = (e.clientY - rect.top) / rect.height
-    setMousePosition({ x, y })
-  }
+  const intro = fadeIn(mounted, 0)
+  const hero = fadeIn(mounted, 150)
+  const moods = fadeIn(mounted, 300)
 
   return (
-    <div
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-      className="min-h-[80vh] flex flex-col items-center px-4 sm:px-6 py-12"
-    >
-      {/* Minimal tagline - sets the tone */}
-      <div
-        className={`
-          text-center mb-6 sm:mb-10
-          transition-all duration-700 ease-out
-          ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
-        `}
-      >
+    <div className="min-h-[80vh] flex flex-col items-center px-4 sm:px-6 py-10 sm:py-14">
+      <div className={`text-center mb-8 sm:mb-10 ${intro.className}`} style={intro.style}>
         <p className="text-primary-light text-sm sm:text-base tracking-widest uppercase mb-2">
           Think deeply
         </p>
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-light text-foreground">
+        <h1 className="text-3xl sm:text-4xl font-light text-foreground">
           Feel <span className="text-accent font-medium">lighter</span>
         </h1>
         <p className="mt-4 max-w-md mx-auto text-base sm:text-lg text-primary-light leading-relaxed">
           Small, quiet games for a busy mind. Play one for a few minutes and leave a little lighter than you came.
         </p>
-        <div className="mt-5 min-h-11">
-          {startGame && (
-            <Link
-              href={`/games/${startGame.slug}`}
-              className="inline-flex items-center gap-2 min-h-11 px-5 rounded-full border border-card-border bg-card-bg text-sm sm:text-base text-foreground hover:bg-hover-bg transition-colors"
-            >
-              <span className="text-primary-light">Start here:</span>
-              <span className="font-medium">{startGame.title}</span>
-              <ArrowRight size={16} aria-hidden="true" />
-            </Link>
+      </div>
+
+      <div className="w-full max-w-2xl space-y-10 sm:space-y-12">
+        {/* After words of danger the gentle games and the helplines take the pick's place */}
+        <div className={hero.className} style={hero.style}>
+          {care ? (
+            <GentleGames helplines />
+          ) : (
+            <section aria-label="Today's pick" className="min-h-[166px] sm:min-h-[222px]">
+              {pick && <TodaysPick pick={pick} />}
+            </section>
           )}
         </div>
-      </div>
 
-      {/* Presence indicator - warm, not metrics-y */}
-      {presenceLoaded && presenceCount > 0 && (
-        <div
-          className={`
-            mb-8 sm:mb-12 text-center
-            transition-all duration-700 ease-out
-            ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}
-          `}
-          style={{ transitionDelay: mounted ? '400ms' : '0ms' }}
-          aria-live="polite"
-        >
-          <p className="text-primary-light text-xs sm:text-sm flex items-center justify-center gap-2">
-            <span
-              className="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse-slow"
-              aria-hidden="true"
-            />
-            {presenceCount === 1
-              ? 'Someone else is here too'
-              : `${presenceCount} others exploring right now`
-            }
+        <div className={moods.className} style={moods.style}>
+          <MoodDoors />
+          <p className="mt-6 text-center">
+            <Link
+              href="/games"
+              className="inline-flex items-center gap-1.5 min-h-11 px-3 text-sm sm:text-base text-primary-light hover:text-foreground underline-offset-4 hover:underline rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            >
+              See every game
+              <ArrowRight size={15} aria-hidden="true" />
+            </Link>
           </p>
         </div>
-      )}
-
-      {/* Games by category; after words of danger, calm games lead and the games about death step aside */}
-      <div className="w-full max-w-3xl space-y-10 sm:space-y-14">
-        {care && <GentleGames helplines />}
-        {SHOWCASE_GROUPS.map(({ category, title, description, games: groupGames }) => {
-          const games = care ? groupGames.filter((game) => !stepsAsideInCare(game.id)) : groupGames
-          // Use first game's index for category header delay
-          const firstGameIdx = GAME_INDICES.get(games[0].id) ?? 0
-
-          return (
-            <section
-              key={category}
-              aria-labelledby={`category-${category.toLowerCase()}`}
-            >
-              <div
-                className={`
-                  mb-4 sm:mb-5
-                  transition-all duration-700 ease-out
-                  ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
-                `}
-                style={{ transitionDelay: mounted ? `${150 + firstGameIdx * 80}ms` : '0ms' }}
-              >
-                <h2
-                  id={`category-${category.toLowerCase()}`}
-                  className="text-sm font-semibold uppercase tracking-wider text-foreground"
-                >
-                  {title}
-                </h2>
-                <p className="text-sm text-primary-light mt-0.5">
-                  {description}
-                </p>
-              </div>
-
-              {/* Game cards in this category */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {games.map((game) => {
-                  const currentIndex = GAME_INDICES.get(game.id) ?? 0
-                  const isFeatured = game.id === featuredGame?.id
-
-                  // Very subtle parallax offset per card
-                  const offsetX = (mousePosition.x - 0.5) * (currentIndex % 2 === 0 ? 1.5 : -1.5)
-                  const offsetY = (mousePosition.y - 0.5) * (currentIndex % 3 === 0 ? 1 : -1)
-
-                  return (
-                    <div
-                      key={game.id}
-                      className={`
-                        h-full transition-all duration-700 ease-out
-                        ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}
-                      `}
-                      style={{
-                        transitionDelay: mounted ? `${200 + currentIndex * 80}ms` : '0ms',
-                        transform: mounted ? `translate(${offsetX}px, ${offsetY}px)` : undefined,
-                      }}
-                    >
-                      <div className="animate-float h-full" style={{ animationDelay: `${currentIndex * 0.4}s` }}>
-                        <GameCardShowcase
-                          game={game}
-                          priority={currentIndex < 3}
-                          isFeatured={isFeatured}
-                          showCategory={false}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
-          )
-        })}
       </div>
 
-      {/* Personalized suggestions based on play history */}
+      {presenceLoaded && presenceCount > 0 && (
+        <p className="mt-8 text-primary-light text-xs sm:text-sm flex items-center justify-center gap-2" aria-live="polite">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse-slow" aria-hidden="true" />
+          {presenceCount === 1 ? 'Someone else is here too' : `${presenceCount} others exploring right now`}
+        </p>
+      )}
+
       <PersonalizedSuggestions />
 
       {/* Daily wisdom - ambient, quiet, appears last */}
       {wisdomLoaded && wisdom && (
-        <div
-          className={`
-            mt-10 sm:mt-14 max-w-lg text-center px-6
-            transition-all duration-1000 ease-out
-            ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
-          `}
-          style={{ transitionDelay: mounted ? '1200ms' : '0ms' }}
-        >
+        <div className="mt-10 sm:mt-14 max-w-lg text-center px-6 animate-fade">
           <div className="border-t border-card-border pt-6">
-            <p className="text-primary-light text-sm italic leading-relaxed">
-              {wisdom}
-            </p>
+            <p className="text-primary-light text-sm italic leading-relaxed">{wisdom}</p>
           </div>
         </div>
       )}

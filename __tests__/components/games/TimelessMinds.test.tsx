@@ -16,6 +16,7 @@ vi.mock('@/lib/games/timeless-minds/thinkers', async (importOriginal) => {
     avatarUrl: '/avatars/socrates.jpg',
     openingLine: 'The unexamined life is not worth living.',
     topics: ['virtue', 'wisdom', 'justice'],
+    coreBeliefs: ['Know thyself.'],
     gender: 'male',
   }
   return {
@@ -135,7 +136,8 @@ describe('TimelessMinds', () => {
 
   it('starts with the voice off until the player chooses it', async () => {
     render(<TimelessMinds />)
-    const voice = await screen.findByRole('button', { name: 'Turn on thinker voice' })
+    await userEvent.click(await screen.findByRole('button', { name: 'Menu' }))
+    const voice = screen.getByRole('button', { name: 'Turn on thinker voice' })
     expect(voice).toHaveAttribute('aria-pressed', 'false')
   })
 
@@ -188,5 +190,33 @@ describe('TimelessMinds', () => {
     await userEvent.type(box, 'Thank you{Enter}')
     await screen.findByText('I am still here.')
     expect(screen.getByRole('complementary', { name: 'Support' })).toBeInTheDocument()
+  })
+
+  it('keeps parting words on a small shelf on the device, where each line can be let go', async () => {
+    localStorage.clear()
+    mockFetch.mockImplementation(async (url: string) =>
+      url.includes('/farewell') ? reply({ farewell: 'Know thyself, gently.' }) : reply({})
+    )
+    render(<TimelessMinds />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Menu' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Say goodbye' }))
+    await userEvent.click(within(screen.getByRole('dialog', { name: 'Say goodbye to Socrates?' })).getByRole('button', { name: 'Say goodbye' }))
+
+    const parting = await screen.findByRole('dialog', { name: 'Parting words from Socrates' })
+    await userEvent.click(await within(parting).findByRole('button', { name: 'Keep this' }))
+    expect(within(parting).getByRole('button', { name: 'Kept' })).toHaveAttribute('aria-disabled', 'true')
+    expect(within(parting).getByText('You can read it again from Kept lines in the menu.')).toBeInTheDocument()
+    const saved = JSON.parse(localStorage.getItem('sage_keptLines') ?? '[]')
+    expect(saved).toEqual([expect.objectContaining({ text: 'Know thyself, gently.', thinkerId: 'socrates', thinkerName: 'Socrates' })])
+
+    await userEvent.click(within(parting).getByRole('button', { name: 'Meet someone new' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Kept lines' }))
+    const shelf = screen.getByRole('dialog', { name: 'Kept lines' })
+    expect(within(shelf).getByText('Know thyself, gently.')).toBeInTheDocument()
+
+    await userEvent.click(within(shelf).getByRole('button', { name: 'Remove the line from Socrates' }))
+    expect(within(shelf).getByText(/Nothing kept yet/)).toBeInTheDocument()
+    expect(localStorage.getItem('sage_keptLines')).toBeNull()
   })
 })

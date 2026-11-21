@@ -255,6 +255,92 @@
   stroke: var(--melon-blue);
 }
 
+/* Closing, once a capsule is answered: the slip folds and drops in, the lid goes back on, the
+   label is marked, and the jar glides down to join the others on the shelf. Under three seconds. */
+.tintNo {
+  fill: color-mix(in srgb, var(--melon-green) 20%, transparent);
+}
+
+.tintPartly {
+  fill: color-mix(in srgb, var(--warm) 30%, transparent);
+}
+
+.tintYes {
+  fill: color-mix(in srgb, var(--melon-blue) 18%, transparent);
+}
+
+.stageFrame {
+  height: var(--landed-height);
+}
+
+.motion .stageFrame {
+  animation: frame-close 700ms cubic-bezier(0.45, 0, 0.25, 1) 1800ms both;
+}
+
+.motion .closeFold {
+  animation: fold 500ms ease-in-out 150ms both;
+}
+
+.motion .closeDrop {
+  transform-box: fill-box;
+  animation: drop-short 450ms cubic-bezier(0.5, 0, 0.6, 1) 650ms both;
+}
+
+.motion .closeLid {
+  animation: lid-down 400ms cubic-bezier(0.4, 0, 0.3, 1) 1100ms both;
+}
+
+.motion .closeLabel {
+  animation: stamp 300ms ease-out 1500ms both;
+}
+
+/* The jar's resting place is its transform attribute; while moving, both poses are full transforms
+   measured from the picture's top-left corner. */
+.motion .closeTravel {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  animation: travel 700ms cubic-bezier(0.45, 0, 0.25, 1) 1800ms both;
+}
+
+.motion .closeSettle {
+  transform-origin: bottom center;
+  animation: jar-settle 250ms ease-out 2500ms both;
+}
+
+.motion .afterClose {
+  animation: settle 450ms ease-out 2450ms both;
+}
+
+@keyframes drop-short {
+  from {
+    transform: translateY(-50px);
+  }
+  80% {
+    transform: translateY(1px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes frame-close {
+  from {
+    height: var(--stage-height);
+  }
+  to {
+    height: var(--landed-height);
+  }
+}
+
+@keyframes travel {
+  from {
+    transform: var(--stage);
+  }
+  to {
+    transform: var(--place);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .motion * {
     animation: none !important;

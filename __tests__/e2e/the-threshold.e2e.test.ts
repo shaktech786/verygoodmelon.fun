@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Locator, type Page } from '@playwright/test'
+import { expectKeepsakeSaves } from './helpers/keepsake'
 
 /**
  * The Plain Speaker (/games/the-threshold): a player-paced minute before a hard conversation.
@@ -149,11 +150,11 @@ test.describe('The Plain Speaker', () => {
     await expect(page.getByText('In your own words.')).toBeVisible()
     await expect(page.locator('blockquote')).toHaveText('SECRET-WORDS I have grown into this role.')
     await expect(page.getByText('Ask clearly, then let them answer.')).toHaveCount(0)
-    await expect(page.getByText('Begin with')).toBeVisible()
+    await expect(page.getByText('Begin with', { exact: true })).toBeVisible()
     // The opener is said first, so it reads first, as on the full-screen card
     const top = async (target: Locator) => (await target.boundingBox())!.y
-    expect(await top(page.getByText('Begin with'))).toBeLessThan(await top(page.locator('blockquote')))
-    await expect(page.getByText('“Could we have ten minutes? There’s something I’d like to ask for.”')).toBeVisible()
+    expect(await top(page.getByText('Begin with', { exact: true }))).toBeLessThan(await top(page.locator('blockquote')))
+    await expect(page.getByText('“Could we have ten minutes? There’s something I’d like to ask for.”', { exact: true })).toBeVisible()
     await expect(button(page, 'Next')).toHaveCount(0)
     await expect(page.locator('#hard-talk').getByText(/\bready\b|\bsafe\b/i)).toHaveCount(0)
 
@@ -184,7 +185,7 @@ test.describe('The Plain Speaker', () => {
     await next(page)
     await expectStep(page, 'One line to carry in')
     await expect(page.locator('blockquote')).toHaveText('I missed your birthday.')
-    await expect(page.getByText('“Before anything else, I want to say sorry.”')).toBeVisible()
+    await expect(page.getByText('“Before anything else, I want to say sorry.”', { exact: true })).toBeVisible()
   })
 
   test('a doctor’s appointment, played with the keyboard alone', async ({ page }) => {
@@ -286,9 +287,9 @@ test.describe('The Plain Speaker', () => {
     await next(page)
     await next(page)
     await expectStep(page, 'One line to carry in')
-    await expect(page.getByText('Lead with what you want, then listen.')).toBeVisible()
+    await expect(page.getByText('Lead with what you want, then listen.', { exact: true })).toBeVisible()
     await expect(page.getByText('In your own words.')).toHaveCount(0)
-    await expect(page.getByText('Begin with')).toHaveCount(0)
+    await expect(page.getByText('Begin with', { exact: true })).toHaveCount(0)
   })
 
   test('back keeps what was written, and changing the kind of talk clears only its own choices', async ({ page }) => {
@@ -400,7 +401,7 @@ test.describe('The Plain Speaker', () => {
 
     await page.reload()
     await expect(heading(page, 'One line to carry in')).toBeVisible()
-    await expect(page.getByText('Your questions belong in the room.')).toBeVisible()
+    await expect(page.getByText('Your questions belong in the room.', { exact: true })).toBeVisible()
     await expect(page.getByText(/Welcome back/)).toHaveCount(0)
 
     await finishedMinutesAgo(page, 31)
@@ -421,7 +422,7 @@ test.describe('The Plain Speaker', () => {
     await expectStep(page, FIRST)
   })
 
-  test('the line can be copied to take into the room', async ({ page, context }) => {
+  test('the line can be copied, with its first sentence, from the pocket card', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await openGame(page)
     await page.getByRole('button', { name: /Raising a problem/ }).click()
@@ -436,12 +437,54 @@ test.describe('The Plain Speaker', () => {
     await next(page)
     await expectStep(page, 'One line to carry in')
     await expect(page.locator('blockquote')).toHaveText('When plans change last minute I feel like an afterthought.')
-    await button(page, 'Copy').click()
+    await button(page, 'Copy as text').click()
     await expect(page.getByRole('status').filter({ hasText: 'Copied.' })).toBeVisible()
     // Some systems store line breaks on the clipboard as \r\n.
     expect((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n')).toBe(
-      'Can we talk about weekends?\nWhen plans change last minute I feel like an afterthought.',
+      'Begin with: “Can we talk about weekends?”\n\nWhen plans change last minute I feel like an afterthought.\n\nThe Plain Speaker · verygoodmelon.fun',
     )
+  })
+
+  test('ends with a pocket card to save, then a door left ajar to step through when they choose', async ({ page }) => {
+    const errors = collectPageErrors(page)
+    await openGame(page)
+    await page.getByRole('button', { name: /Asking for something/ }).click()
+    await page.getByLabel('Who the talk is with').fill('Ana')
+    await throughSettling(page)
+    await page.getByRole('textbox').fill('I have grown into this role')
+    await next(page)
+    await next(page, 'Skip')
+    await page.getByText('Could we have ten minutes?').click()
+    await next(page)
+    await next(page)
+    await next(page)
+    await expectStep(page, 'One line to carry in')
+
+    const card = page.getByRole('region', { name: 'A pocket card to keep' })
+    await expectKeepsakeSaves(page, {
+      within: card,
+      fileName: /^the-plain-speaker-\d{4}-\d{2}-\d{2}\.png$/,
+      describedAs: /pocket card.*Could we have ten minutes\?.*I have grown into this role\./,
+    })
+    // The card is a picture to keep; it never names who the talk is with
+    await expect(card.getByTestId('keepsake-canvas')).not.toHaveAccessibleDescription(/Ana/)
+
+    await button(page, 'I’m going in').click()
+    await expectStep(page, 'Go in when you’re ready.')
+    await expect(page.locator('#hard-talk .plain-speaker-crack')).toHaveCount(1)
+    // The door opens only a crack, and settles there
+    await expect.poll(() => page.locator('#hard-talk .plain-speaker-crack').evaluate((g) => g.getAnimations().every((a) => a.playState === 'finished'))).toBe(true)
+    await expect(page.getByText('Here’s your line')).toHaveCount(0)
+
+    await button(page, 'Keep this on screen').click()
+    const onScreen = page.getByRole('dialog', { name: 'Your line to carry in' })
+    await expect(onScreen).toContainText('I have grown into this role.')
+    await page.keyboard.press('Escape')
+    await expect(button(page, 'Keep this on screen')).toBeFocused()
+
+    await button(page, 'Back to my line').click()
+    await expectStep(page, 'One line to carry in')
+    expect(errors).toEqual([])
   })
 
   test('works for this visit when the browser refuses storage', async ({ page }) => {
@@ -509,6 +552,15 @@ test.describe('The Plain Speaker', () => {
       await noHorizontalScroll(page)
       await onScreen.getByRole('button', { name: 'Done' }).tap()
       await expect(onScreen).toHaveCount(0)
+
+      await button(page, 'I’m going in').tap()
+      await expectStep(page, 'Go in when you’re ready.')
+      // Still: the door is simply already ajar
+      await expect(page.locator('#hard-talk .plain-speaker-crack')).toHaveCount(0)
+      await expect(page.locator('#hard-talk svg style')).toHaveCount(0)
+      expect(await page.locator('#hard-talk svg g[style*="scaleX"]').evaluate((g) => getComputedStyle(g).transform)).not.toBe('none')
+      await expect(page.locator('#hard-talk [style*="transition"]')).toHaveCount(0)
+      await noHorizontalScroll(page)
     })
   })
 
@@ -542,6 +594,9 @@ test.describe('The Plain Speaker', () => {
       await button(page, 'Start over').click()
       expect(await axeViolations(page)).toEqual([])
       await button(page, 'Keep going').click()
+      await button(page, 'I’m going in').click()
+      await expectStep(page, 'Go in when you’re ready.')
+      expect(await axeViolations(page)).toEqual([])
       await finishedMinutesAgo(page, 45)
       await page.reload()
       await expect(heading(page, 'Welcome back. How did it go?')).toBeVisible()

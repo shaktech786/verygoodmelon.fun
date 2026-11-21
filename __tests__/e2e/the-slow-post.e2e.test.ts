@@ -81,6 +81,20 @@ function capsule(id: string, opensInDays: number, opening: StoredCapsule['openin
 
 const composerHeading = (page: Page) => page.getByRole('heading', { name: 'What’s on your mind?' })
 const shelfHeading = (page: Page) => page.getByRole('heading', { name: 'Kept for you' })
+const closedHeading = (page: Page) => page.getByRole('heading', { name: 'Closed.' })
+
+async function answerReady(page: Page, answer: string) {
+  await page.getByRole('button', { name: /Ready to open/ }).click()
+  await page.getByRole('button', { name: 'Open it' }).click()
+  await page.getByRole('radio', { name: answer, exact: true }).locator('..').click()
+  await page.getByRole('button', { name: 'Close the capsule' }).click()
+  await expect(closedHeading(page)).toBeFocused()
+}
+
+/** The answered jars standing on a shelf picture, by the shape on each label. */
+function shelfShapes(page: Page, within = page.locator('main')) {
+  return within.locator('svg g[transform^="translate(31"]').evaluateAll((marks) => marks.map((m) => [...m.children].map((c) => c.tagName).join('+')))
+}
 
 async function sealWorry(page: Page, worry = WORRY, horizon = 'In about a week') {
   await page.getByLabel('Your worry').fill(worry)
@@ -259,6 +273,50 @@ test.describe('The Keeper', () => {
     expect(new Set(shapes).size).toBe(3)
   })
 
+  test('closing is one calm beat: fold, drop, lid, label, then the jar settles onto the shelf beside the others', async ({ page }) => {
+    const errors = collectPageErrors(page)
+    await openKeeper(page)
+    const opened = (outcome: string) => ({ at: new Date(T0 - DAY).toISOString(), outcome, note: '' })
+    await seed(page, [capsule('a', -5, opened('no')), capsule('b', -5, opened('yes')), capsule('c', -1)])
+    await answerReady(page, 'Partly happened')
+    const beat = await page.evaluate(() =>
+      document.getAnimations().map((a) => ({
+        name: (a as CSSAnimation).animationName,
+        start: Math.round(Number(a.effect?.getComputedTiming().delay ?? 0)),
+        end: Math.round(Number(a.effect?.getComputedTiming().endTime ?? 0)),
+      })),
+    )
+    const at = (name: string) => beat.find((b) => b.name.replace(/^.*__/, '') === name)
+    for (const name of ['fold', 'drop-short', 'lid-down', 'stamp', 'travel', 'jar-settle', 'settle']) expect(at(name), name).toBeDefined()
+    expect(at('fold')!.end).toBeLessThanOrEqual(at('drop-short')!.start)
+    expect(at('drop-short')!.end).toBeLessThanOrEqual(at('lid-down')!.start)
+    expect(at('lid-down')!.end).toBeLessThanOrEqual(at('stamp')!.start)
+    expect(at('stamp')!.end).toBeLessThanOrEqual(at('travel')!.start)
+    expect(at('travel')!.end).toBeLessThanOrEqual(at('jar-settle')!.start)
+    expect(Math.max(...beat.map((b) => b.end))).toBeLessThanOrEqual(3000)
+    // The new jar stands last, after the older answers, each with its own label shape
+    const shapes = await shelfShapes(page)
+    expect(shapes).toHaveLength(3)
+    expect(new Set(shapes).size).toBe(3)
+
+    await page.getByRole('button', { name: 'Back to the shelf' }).click()
+    await expect(shelfHeading(page)).toBeFocused()
+    expect(await shelfShapes(page, page.getByRole('region', { name: 'Looked back on' }))).toEqual(shapes)
+    expect(errors).toEqual([])
+  })
+
+  test('the looked-back-on shelf holds the four most recent jars, oldest first', async ({ page }) => {
+    await openKeeper(page)
+    const opened = (outcome: string, daysAgo: number) => ({ at: new Date(T0 - daysAgo * DAY).toISOString(), outcome, note: '' })
+    await seed(page, [
+      capsule('a', -9, opened('yes', 6)), capsule('b', -9, opened('no', 5)), capsule('c', -9, opened('partly', 4)),
+      capsule('d', -9, opened('no', 3)), capsule('e', -9, opened('yes', 2)),
+    ])
+    await expect(page.getByRole('heading', { name: 'Looked back on' })).toBeVisible()
+    const shapes = await shelfShapes(page, page.getByRole('region', { name: 'Looked back on' }))
+    expect(shapes.map((s) => s.split('+')[0])).toEqual(['circle', 'path', 'circle', 'rect'])
+  })
+
   test('an early visit shows it resting, with no countdown and no way to peek', async ({ page }) => {
     await openKeeper(page)
     await sealWorry(page)
@@ -307,9 +365,12 @@ test.describe('The Keeper', () => {
       await page.getByLabel(/A line to your past self/).fill('  Dear me: it was all right.  ')
       await page.getByRole('button', { name: 'Close the capsule' }).click()
 
+      await expect(closedHeading(page)).toBeFocused()
+      // The first capsule ever closed has no others to join, and is told so quietly
+      await expect(page.locator('[aria-live="polite"]', { hasText: 'Closed and kept here.' })).toHaveText('Closed and kept here. The first one on your shelf. You came back for it.')
+      await expect(page.getByText(word, { exact: true })).toBeVisible()
+      await page.getByRole('button', { name: 'Back to the shelf' }).click()
       await expect(shelfHeading(page)).toBeFocused()
-      // The first capsule ever closed has no others to join
-      await expect(page.getByText('Closed and kept here.')).toBeVisible()
       await expect(page.getByRole('heading', { name: 'How they turned out' })).toBeVisible()
       const [saved] = await stored(page)
       expect(saved.opening).toMatchObject({ outcome: id, note: 'Dear me: it was all right.' })
@@ -461,7 +522,7 @@ test.describe('The Keeper', () => {
     await page.getByRole('button', { name: 'Open it' }).click()
     await page.getByRole('radio', { name: 'It didn’t happen', exact: true }).locator('..').click()
     await page.getByRole('button', { name: 'Close the capsule' }).click()
-    await expect(shelfHeading(page)).toBeVisible()
+    await expect(closedHeading(page)).toBeVisible()
     expect(leaks).toEqual([])
   })
 
@@ -542,6 +603,10 @@ test.describe('The Keeper', () => {
     await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: 'Close the capsule' })).toBeFocused()
     await page.keyboard.press('Enter')
+    await expect(closedHeading(page)).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('button', { name: 'Back to the shelf' })).toBeFocused()
+    await page.keyboard.press('Enter')
     await expect(shelfHeading(page)).toBeFocused()
     expect((await stored(page))[0].opening).toMatchObject({ outcome: 'no', note: 'Told you.' })
   })
@@ -564,6 +629,10 @@ test.describe('The Keeper', () => {
       // Let the opening scene finish so contrast is measured on the settled page.
       await page.clock.runFor(3000)
       await page.emulateMedia({ reducedMotion: 'reduce' })
+      expect(await runAxe(page)).toEqual([])
+
+      await page.getByRole('button', { name: 'Close the capsule' }).click()
+      await expect(closedHeading(page)).toBeFocused()
       expect(await runAxe(page)).toEqual([])
     })
   }
@@ -591,6 +660,16 @@ test.describe('The Keeper with reduced motion on a phone', () => {
     await page.getByRole('button', { name: 'Open it' }).tap()
     await expect(page.getByText(WORRY)).toBeVisible()
     expect(await page.getByText(WORRY).evaluate((el) => getComputedStyle(el.closest('figure')!.parentElement!).opacity)).toBe('1')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+
+    // Closing is one still frame: the jar already on its shelf, the words already there
+    await page.getByRole('radio', { name: 'It didn’t happen', exact: true }).locator('..').tap()
+    await page.getByRole('button', { name: 'Close the capsule' }).tap()
+    await expect(closedHeading(page)).toBeFocused()
+    const moving = await page.evaluate(() => [...document.querySelectorAll('svg *, p, h2')].filter((el) => getComputedStyle(el).animationName !== 'none').length)
+    expect(moving).toBe(0)
+    expect(await closedHeading(page).evaluate((el) => getComputedStyle(el.parentElement!).opacity)).toBe('1')
+    expect(await shelfShapes(page)).toEqual(['circle'])
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
     expect(errors).toEqual([])
   })

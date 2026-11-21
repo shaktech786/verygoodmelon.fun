@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  createState, update, activateMechanic, getProfileSummary,
+  createState, update, activateMechanic, getProfileSummary, advanceWave,
 } from '@/app/games/the-mutation/engine/engine'
 import type { Entity, GameState } from '@/app/games/the-mutation/engine/types'
 
@@ -190,5 +190,48 @@ describe('The Shapeshifter engine', () => {
 
     expect(s.score).toBeGreaterThanOrEqual(30)
     expect(getProfileSummary(s).playStyle).toBe('gentle')
+  })
+})
+
+describe('The Shapeshifter path', () => {
+  it('begins where the orb rests, before any rule', () => {
+    expect(createState(480, 720).path).toEqual([{ x: 240, y: 360, wave: 0 }])
+  })
+
+  it('follows the orb as it moves, marked with the wave it moved in', () => {
+    const s = withMechanics('arrow_keys')
+    s.wave = 1
+    s.keys.add('ArrowRight')
+    run(s, 0.6)
+    const moved = s.path.filter((p) => p.wave === 1)
+    expect(moved.length).toBeGreaterThan(3)
+    expect(moved[moved.length - 1].x).toBeGreaterThan(s.w / 2 + 40)
+    for (let i = 1; i < moved.length; i++) expect(moved[i].x).toBeGreaterThanOrEqual(moved[i - 1].x)
+  })
+
+  it('notes each new wave even when the orb stays still, so every rule has a place on the path', () => {
+    const s = createState()
+    for (let wave = 1; wave <= 6; wave++) {
+      advanceWave(s)
+      run(s, 0.1)
+    }
+    expect(s.path.map((p) => p.wave)).toEqual([0, 1, 2, 3, 4, 5, 6])
+    expect(new Set(s.path.map((p) => `${p.x},${p.y}`)).size).toBe(1)
+  })
+
+  it('stays a modest size on a long, busy run and keeps the start of every wave', () => {
+    const s = withMechanics('mouse_follow')
+    for (let wave = 1; wave <= 6; wave++) {
+      advanceWave(s)
+      for (let i = 0; i < 400; i++) {
+        s.mx = i % 2 ? 40 : s.w - 40
+        s.my = (i * 37) % s.h
+        run(s, 0.15)
+      }
+    }
+    expect(s.path.length).toBeLessThanOrEqual(1200)
+    expect(new Set(s.path.map((p) => p.wave))).toEqual(new Set([0, 1, 2, 3, 4, 5, 6]))
+    const waves = s.path.map((p) => p.wave)
+    expect(waves).toEqual([...waves].sort((a, b) => a - b))
   })
 })

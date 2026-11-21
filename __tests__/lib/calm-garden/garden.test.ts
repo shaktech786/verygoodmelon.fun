@@ -136,6 +136,26 @@ describe('coming back to the garden', () => {
     expect(back.note).toBe('While you were away, your pine tree grew a little taller and a new poppy came up on its own.')
   })
 
+  it('lists exactly what changed, with how big it was when last seen, so the return can show it truthfully', () => {
+    const g = gardenOf([
+      plant('poppy', 0.3, 0.7, NOW - 3 * DAY),
+      plant('poppy', 0.6, 0.8, NOW - 9 * DAY),
+      plant('pine', 0.8, 0.5, NOW - 3 * DAY),
+      plant('round-stone', 0.5, 0.9, NOW - 3 * DAY),
+    ], NOW - 2 * DAY)
+    const back = returnToGarden(g, NOW, sequence(0, 1, 0))
+    const ids = back.grew.map((c) => c.id)
+    // The older poppy was already fully grown and stones never grow.
+    expect(ids).toEqual(['poppy-0.3-0.7', 'pine-0.8-0.5', back.garden.plants[4].id])
+    expect(back.grew[0].from).toBeCloseTo(growthFactor(g.plants[0], NOW - 2 * DAY))
+    expect(back.grew[2].from).toBe(0)
+  })
+
+  it('has nothing to show after a short break', () => {
+    const g = gardenOf([plant('oak', 0.5, 0.5, NOW - 2 * HOUR)], NOW - 2 * HOUR)
+    expect(returnToGarden(g, NOW, sequence(0.5)).grew).toEqual([])
+  })
+
   it('stops seeding once a few flowers have come up by themselves', () => {
     const sown = [0.2, 0.3, 0.4, 0.5].map((x) => ({ ...plant('daisy', x, 0.6, NOW - 9 * DAY), selfSown: true as const }))
     const g = gardenOf(sown, NOW - 2 * DAY)

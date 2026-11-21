@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
-import { describeWritingGame } from './helpers/writing-game'
+import { axeViolations, describeWritingGame } from './helpers/writing-game'
+import { expectKeepsakeSaves } from './helpers/keepsake'
 
 /**
  * The Awakening (First Words): imagine the moment after your life ends, say
@@ -59,10 +60,72 @@ test.describe('The Awakening', () => {
     await expect(page.getByRole('heading', { name: 'Good morning' })).toBeFocused()
     await expect(page.getByText('Over there, you said “I wish I had danced more.” You woke up with this:')).toBeVisible()
     await expect(page.getByText('Dance with Sam after dinner.', { exact: true })).toBeVisible()
-    await expect(daySky(page)).toHaveCSS('opacity', '1')
+    // The sunrise takes about four seconds
+    await expect(daySky(page)).toHaveCSS('opacity', '1', { timeout: 10_000 })
     await expect(page.getByRole('button', { name: 'Wake up' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Copy it for tomorrow' })).toBeVisible()
   })
+
+  test('the plan for tomorrow is left as a handwritten note on the kitchen table, and the morning can be kept', async ({ page }) => {
+    await offline(page, { reflection: 'Dancing sounds like joy you can still reach.', intention: INTENTION })
+    await page.goto('/games/first-breath')
+    await speak(page, 'I wish I had danced more.')
+    await intentionBox(page).fill('Dance with Sam after dinner.')
+    await page.getByRole('button', { name: 'Wake up' }).click()
+
+    const table = page.getByTestId('kitchen-table')
+    await expect(table.getByText('For tomorrow')).toBeVisible()
+    await expect(table.getByText('Dance with Sam after dinner.', { exact: true })).toBeVisible()
+    // The sunrise plays out rather than cutting straight to day
+    expect(await page.getByTestId('sunrise-glow').evaluate((el) => el.getAnimations().length)).toBe(1)
+    await expect(daySky(page)).toHaveCSS('opacity', '1', { timeout: 10_000 })
+
+    await expectKeepsakeSaves(page, {
+      fileName: /^the-awakening-\d{4}-\d{2}-\d{2}\.png$/,
+      describedAs: /sun rising.*handwritten note on a kitchen table.*“Dance with Sam after dinner\.”/,
+    })
+  })
+
+  test('waking with no plan leaves no note and no card to keep', async ({ page }) => {
+    await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+    await page.goto('/games/first-breath')
+    await speak(page, 'Where is everyone?')
+    await intentionBox(page).fill('')
+    await page.getByRole('button', { name: 'Wake up' }).click()
+    await expect(page.getByRole('heading', { name: 'Good morning' })).toBeFocused()
+    await expect(page.getByTestId('kitchen-table')).toHaveCount(0)
+    await expect(page.getByTestId('keepsake-canvas')).toHaveCount(0)
+  })
+
+  test.describe('with reduced motion', () => {
+    test.use({ reducedMotion: 'reduce' })
+
+    test('waking goes straight to the still morning: day sky, the note set down, the card ready', async ({ page }) => {
+      await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+      await page.goto('/games/first-breath')
+      await speak(page, 'It is so quiet here.')
+      await page.getByRole('button', { name: 'Wake up' }).click()
+      await expect(page.getByRole('heading', { name: 'Good morning' })).toBeFocused()
+
+      expect(await page.getByTestId('sunrise-glow').evaluate((el) => [getComputedStyle(el).opacity, el.getAnimations().length])).toEqual(['0', 0])
+      await expect(daySky(page)).toHaveCSS('opacity', '1', { timeout: 1000 })
+      const note = page.getByTestId('kitchen-table').getByText(INTENTION, { exact: true })
+      expect(await note.evaluate((el) => el.parentElement!.getAnimations().length)).toBe(0)
+      await expectKeepsakeSaves(page, { fileName: /^the-awakening-/ })
+    })
+  })
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`the morning, with its note and card, has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+      await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+      await page.goto('/games/first-breath')
+      await speak(page, 'I wish I had danced more.')
+      await page.getByRole('button', { name: 'Wake up' }).click()
+      await expect(page.getByTestId('keepsake-canvas')).toBeVisible()
+      expect(await axeViolations(page)).toEqual([])
+    })
+  }
 
   test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
