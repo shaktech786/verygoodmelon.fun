@@ -280,7 +280,7 @@ test.describe('database unreachable (the current reality)', () => {
 })
 
 test.describe('reading it with a screen reader, and how it looks', () => {
-  test('the perspectives sit outside the choice buttons, describe them, and are announced after a choice', async ({ page }) => {
+  test('the perspectives sit outside the choice buttons and describe them; a choice announces only its result', async ({ page }) => {
     await databaseDown(page)
     await page.goto('/games/the-crossroads')
     await choose(choiceB(page))
@@ -293,9 +293,10 @@ test.describe('reading it with a screen reader, and how it looks', () => {
 
     const status = page.getByRole('status')
     await expect(status).toContainText('You chose Meaning.')
-    await expect(status).toContainText(FIRST_PERSPECTIVE_A)
-    await expect(status).toContainText(FIRST_PERSPECTIVE_B)
     await expect(status).toContainText(/which you reach for first on a hard day/)
+    await expect(status).not.toContainText(FIRST_PERSPECTIVE_A)
+    await expect(status).not.toContainText(FIRST_PERSPECTIVE_B)
+    await expect(status).toHaveAttribute('aria-atomic', 'false')
   })
 
   test('the chosen card is marked calmly, with words and a tick, not a red outline', async ({ page }) => {
@@ -512,8 +513,9 @@ test.describe('database reachable', () => {
       }).toPass()
       await expect(card(page, choiceB(page))).toContainText('50% chose this')
       await expect(page.getByText(/almost evenly split/)).toBeVisible()
-      await nextButton(page).scrollIntoViewIfNeeded()
-      await expect(nextButton(page)).toBeVisible()
+      // Regression: the result and the way on are brought on screen, without the player hunting for them
+      await expect(page.getByText(/^You chose /)).toBeInViewport()
+      await expect(nextButton(page)).toBeInViewport()
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
       expect(overflow).toBeLessThanOrEqual(0)
     })

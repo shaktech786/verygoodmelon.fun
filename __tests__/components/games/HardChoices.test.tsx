@@ -58,13 +58,16 @@ describe('HardChoices', () => {
     expect(screen.getByRole('button', { name: /Choice B/i })).toHaveAccessibleDescription(/Meaning sustains us/)
   })
 
-  it('announces both perspectives politely after a choice', async () => {
+  it('announces only the new result after a choice, never re-reading both perspectives', async () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 500 })
     render(<HardChoices />)
     fireEvent.click(screen.getByRole('button', { name: /Choice B/i }))
 
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/^You chose Meaning\./))
-    expect(screen.getByRole('status')).toHaveTextContent(/What good is purpose.*Meaning sustains us/)
+    const status = screen.getByRole('status')
+    await waitFor(() => expect(status).toHaveTextContent(/^You chose Meaning\./))
+    expect(status).not.toHaveTextContent(/What good is purpose|Meaning sustains us/)
+    // Counts that arrive later are read on their own, not with everything above them
+    expect(status).toHaveAttribute('aria-atomic', 'false')
   })
 
   it('drops saved answers to retired dilemmas and resumes at the first unanswered one', async () => {

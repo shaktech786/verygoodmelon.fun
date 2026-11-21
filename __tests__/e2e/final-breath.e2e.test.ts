@@ -16,6 +16,7 @@ test.describe('The Final Word', () => {
     careAgainLabel: 'Write another',
     againLabel: 'Write another',
     thanksHeading: 'Thank you for writing this',
+    careHeading: 'We’re glad you wrote this down',
     textboxLabel: 'Your final words',
     cloudLabel: 'Most common last words',
     firstPrompt: 'What do you want the people you love to know?',
@@ -85,5 +86,30 @@ test.describe('The Final Word', () => {
     await page.getByRole('button', { name: 'Write another' }).click()
     await expect(page.getByRole('textbox', { name: 'Your final words' })).toBeFocused()
     await expect(page.getByTestId('candle')).toHaveCount(0)
+  })
+
+  test('regression: the support panel stays for the rest of the visit, and the heading is gentle', async ({ page }) => {
+    await page.route('**/api/last-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
+    await page.route('**/api/last-words/reflect', (route) => route.fulfill({ status: 500, json: {} }))
+    await page.goto('/games/final-breath')
+
+    await expect(async () => {
+      await page.getByRole('textbox', { name: 'Your final words' }).fill('I want to kill myself')
+      await expect(page.getByRole('button', { name: 'Leave these words' })).toBeEnabled({ timeout: 500 })
+    }).toPass()
+    await page.getByRole('button', { name: 'Leave these words' }).click()
+
+    await expect(page.getByRole('heading', { name: 'We’re glad you wrote this down' })).toBeFocused()
+    await expect(page.getByRole('heading', { name: 'Thank you for writing this' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Write another' }).click()
+    await expect(page.getByRole('complementary', { name: 'Support' })).toBeVisible()
+
+    await expect(async () => {
+      await page.getByRole('textbox', { name: 'Your final words' }).fill('Look after the dog.')
+      await expect(page.getByRole('button', { name: 'Leave these words' })).toBeEnabled({ timeout: 500 })
+    }).toPass()
+    await page.getByRole('button', { name: 'Leave these words' }).click()
+    await expect(page.getByRole('complementary', { name: 'Support' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: "These don't have to wait" })).toHaveCount(0)
   })
 })

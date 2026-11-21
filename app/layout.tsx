@@ -10,6 +10,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FeedbackButton } from "@/components/FeedbackButton";
 import { AmbientParticles } from "@/components/ui/AmbientParticles";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import { CareModeProvider } from "@/components/games/CareMode";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
@@ -91,11 +92,13 @@ export default function RootLayout({
           Skip to main content
         </a>
         <Header />
-        <ErrorBoundary>
-          <main id="main-content" className="min-h-screen" role="main">
-            {children}
-          </main>
-        </ErrorBoundary>
+        <CareModeProvider>
+          <ErrorBoundary>
+            <main id="main-content" className="min-h-screen" role="main">
+              {children}
+            </main>
+          </ErrorBoundary>
+        </CareModeProvider>
         <Footer />
         <AccessibilityControls />
         <FeedbackButton />

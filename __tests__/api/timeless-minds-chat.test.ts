@@ -98,14 +98,29 @@ describe('POST /api/timeless-minds/chat', () => {
   })
 
   it('flags care when the thinker judges the visitor may be at risk, and keeps the reply gentle and plain', async () => {
-    sendMessage.mockResolvedValue({ text: '```json\n{"risk": true, "reply": "I am glad you told me. Please call or text **988** now."}\n```' })
+    sendMessage.mockResolvedValue({ text: '```json\n{"risk": true, "reply": "I am **glad** you told me. You do not have to carry this alone."}\n```' })
 
     const { status, data } = await post(chat, { thinkerId: 'socrates', message: 'Everyone would be fine without me' })
 
     expect(status).toBe(200)
     expect(data.care).toBe(true)
-    expect(data.response).toBe('I am glad you told me. Please call or text 988 now.')
+    expect(data.response).toBe('I am glad you told me. You do not have to carry this alone.')
     expect(data.emotion).toBe('concerned')
+  })
+
+  it('leaves the numbers to the support panel beside a care reply, so they are not read out twice', async () => {
+    for (const reply of [
+      'I am glad you told me. Please call or text 988 now.',
+      'Please reach Samaritans on 116 123, any hour.',
+      'You can find a line at findahelpline.com.',
+    ]) {
+      sendMessage.mockResolvedValue({ text: JSON.stringify({ risk: true, reply }) })
+      const { data } = await post(chat, { thinkerId: 'socrates', message: 'Everyone would be fine without me' })
+
+      expect(data.care).toBe(true)
+      expect(data.response).toBe(CARE_REPLY)
+      expect(data.response).not.toMatch(/988|116 ?123|findahelpline/)
+    }
   })
 
   it('answers danger said outright with care and no model call', async () => {

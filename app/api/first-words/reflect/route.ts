@@ -15,11 +15,11 @@ For "reply": one or two short sentences, under 35 words in all, in a calm, kind 
     'Hold on to what you just said. Today has room for it.',
   ],
   intention: {
-    instruction: `For "intention": one small, concrete thing they could do tomorrow that grows out of what they said, written as a short plain note to themselves, under 12 words, starting with a verb. For example, someone who wished they had danced more might get "Put on one song and dance in the kitchen." It must be gentle, free, possible in a single day, and never about dying, leaving, resting for good or going back to the other side.`,
+    instruction: `For "intention": one small, concrete thing they could do tomorrow that grows out of what they said, written as a short plain note to themselves, under 12 words, starting with a verb. For example, someone who wished they had danced more might get "Put on one song and dance in the kitchen." It must be gentle, free, possible in a single day, and never about dying, leaving, resting for good or going back to the other side. Never use the word "today": it is shown to them as a plan for tomorrow.`,
     fallbacks: [
       'Tell one person something kind you usually keep to yourself.',
       'Spend ten unhurried minutes outside and notice the light.',
-      'Do one small thing today you would be glad you did.',
+      'Do one small thing you will be glad you did.',
     ],
   },
 })

@@ -109,9 +109,28 @@ export function WritingForm({ prompts, label, placeholder, submitLabel, onSubmit
   )
 }
 
+const HELPLINE_LINK = 'font-medium text-foreground underline underline-offset-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
+
+/**
+ * For when no one could tell whether the words carry danger: support within
+ * reach, said softly enough that it never reads as an accusation.
+ */
+export function QuietSupport() {
+  return (
+    <p className="text-center text-sm text-foreground/80 leading-relaxed">
+      If any of this is close to home, there are people to talk to at any hour: call or text{' '}
+      <a href="tel:988" className={HELPLINE_LINK}>988</a> in the US, call{' '}
+      <a href="tel:116123" className={HELPLINE_LINK}>116 123</a> in the UK and Ireland, or find a line near you at{' '}
+      <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer" className={HELPLINE_LINK}>
+        findahelpline.com
+      </a>
+      .
+    </p>
+  )
+}
+
 /** Shown whenever the words sound like more than an imagined ending. */
 export function CarePanel() {
-  const link = 'font-medium text-foreground underline underline-offset-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
   return (
     <aside
       aria-label="Support"
@@ -122,11 +141,11 @@ export function CarePanel() {
       </p>
       <p className="mt-2 text-sm text-foreground/80">
         Free, confidential support at any hour:{' '}
-        <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer" className={link}>
+        <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer" className={HELPLINE_LINK}>
           findahelpline.com
         </a>{' '}
-        lists lines in most countries. In the US, call or text <a href="tel:988" className={link}>988</a>. In the UK
-        and Ireland, call <a href="tel:116123" className={link}>116 123</a>.
+        lists lines in most countries. In the US, call or text <a href="tel:988" className={HELPLINE_LINK}>988</a>. In the UK
+        and Ireland, call <a href="tel:116123" className={HELPLINE_LINK}>116 123</a>.
       </p>
     </aside>
   )

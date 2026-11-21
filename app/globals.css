@@ -792,6 +792,14 @@ html[data-contrast="extra-high"] a:not(:has(h2, h3)) {
   text-decoration: underline;
 }
 
+/* From sm up, the accessibility and sound buttons float at the bottom right. Anything scrolled into view
+   (focus, a revealed result, a form brought above the keyboard) stops clear of them, never underneath. */
+@media (min-width: 640px) {
+  html {
+    scroll-padding-bottom: 6rem;
+  }
+}
+
 /* Text size: Tailwind sizes and spacing are in rem, so the whole layout scales with the root size */
 html[data-text-size="large"] {
   font-size: 112.5%;

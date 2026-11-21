@@ -14,9 +14,10 @@ test.describe('The Awakening', () => {
     slug: 'first-breath',
     game: 'first-words',
     submitLabel: 'Speak',
-    careAgainLabel: 'Start over',
+    careAgainLabel: null,
     againLabel: 'Imagine it again',
     thanksHeading: 'Before you wake',
+    careHeading: 'Before you wake',
     textboxLabel: 'Your first words on arriving',
     cloudLabel: 'Most common first words',
     firstPrompt: 'Who do you hope is there?',
@@ -104,8 +105,42 @@ test.describe('The Awakening', () => {
     await expect(page.getByText('You came back. It is good to have you here, today.')).toBeVisible()
     await expect(page.getByText(/Over there, you said/)).toHaveCount(0)
     await expect(page.getByRole('complementary', { name: 'Support' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Start over' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start over' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Imagine it again' })).toHaveCount(0)
+    const exit = page.getByRole('navigation', { name: 'Somewhere calm to go next' })
+    await expect(exit.locator('a[href="/games/the-still-point"]')).toBeVisible()
+    await expect(exit.locator('a[href="/games/quiet-grove"]')).toBeVisible()
+  })
+
+  test('regression: once care has begun, the next arrival never gets the ordinary flow', async ({ page }) => {
+    await offline(page, { reflection: 'Thank you for trusting this page.', care: true })
+    await page.goto('/games/first-breath')
+    await speak(page, 'I hope it is over for good this time')
+    await expect(page.getByRole('complementary', { name: 'Support' })).toBeVisible()
+
+    // Coming back to the game later in the visit
+    await page.unroute('**/api/first-words/reflect')
+    await page.route('**/api/first-words/reflect', (route) =>
+      route.fulfill({ json: { reflection: 'Carry it home.', intention: INTENTION } })
+    )
+    await page.reload()
+    await expect(page.getByRole('complementary', { name: 'Support' })).toBeVisible()
+    await expect(page.getByText(/This one imagines the moment after a life ends/)).toBeVisible()
+    await speak(page, 'Hello? Is anyone here?')
+    await expect(intentionBox(page)).toHaveCount(0)
+    await expect(page.getByText('Carry it home.')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Wake up' }).click()
+    await expect(page.getByText('You came back. It is good to have you here, today.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start over' })).toHaveCount(0)
+    await expect(page.getByRole('navigation', { name: 'Somewhere calm to go next' })).toBeVisible()
+  })
+
+  test('the plan for tomorrow says plainly that it goes nowhere', async ({ page }) => {
+    await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+    await page.goto('/games/first-breath')
+    await speak(page, 'It is so quiet here.')
+    await expect(page.getByText(/never sent or saved anywhere/)).toBeVisible()
+    await expect(page.getByText(/It stays on this page/)).toHaveCount(0)
   })
 
   test('regression: a plan for tomorrow that sounds like danger brings care instead of being shown back', async ({ page }) => {
@@ -125,6 +160,27 @@ test.describe('The Awakening', () => {
 
   test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+    test('regression: after speaking, the dawn sky is on screen below the header', async ({ page }) => {
+      await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+      await page.goto('/games/first-breath')
+      await expect(async () => {
+        await page.getByRole('textbox', { name: 'Your first words on arriving' }).fill('Oh. Mum? I was so scared of this part and it was just quiet.')
+        await expect(page.getByRole('button', { name: 'Speak', exact: true })).toBeEnabled({ timeout: 500 })
+      }).toPass()
+      // As the open keyboard leaves it: scrolled well down past the sky
+      await page.evaluate(() => window.scrollBy(0, 600))
+      await page.getByRole('button', { name: 'Speak', exact: true }).click()
+
+      await expect(page.getByRole('heading', { name: 'Before you wake' })).toBeFocused()
+      await expect(async () => {
+        const sky = await page.locator('[data-sky="dawn"]').boundingBox()
+        const header = await page.locator('header').first().boundingBox()
+        expect(sky!.y).toBeGreaterThanOrEqual(header!.y + header!.height - 1)
+        expect(sky!.y).toBeLessThan(400)
+      }).toPass()
+      await expect(page.getByRole('heading', { name: 'Before you wake' })).toBeInViewport()
+    })
 
     test('regression: the sky turning to morning happens on screen, beside the greeting', async ({ page }) => {
       await offline(page, { reflection: 'Dancing sounds like joy you can still reach.', intention: INTENTION })

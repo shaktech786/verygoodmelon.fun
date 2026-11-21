@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
-import { useCareMode } from '@/components/games/CareMode'
-import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, WritingForm } from '@/components/games/community-words/WritingParts'
+import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, QuietSupport, WritingForm } from '@/components/games/community-words/WritingParts'
 import { draftKey } from '@/lib/games/community-words/draft'
 import { useCommunityWords } from '@/lib/games/community-words/useCommunityWords'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
@@ -62,11 +61,9 @@ function Candle({ lit }: { lit: boolean }) {
 }
 
 export default function LastWords() {
+  // Care lasts for the visit, so the flame stays away even for the next words
   const { submitted, stored, cloud, reflection, care, submit, reset } = useCommunityWords('last-words')
-  const { care: visitNeededCare } = useCareMode()
   const [candleOut, setCandleOut] = useState(false)
-  // Once this visit has needed care, the flame stays away even for the next words
-  const flameAllowed = !care && !visitNeededCare
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const thanksRef = useRef<HTMLHeadingElement>(null)
   const goodnightRef = useRef<HTMLParagraphElement>(null)
@@ -96,12 +93,19 @@ export default function LastWords() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
+      {care && submitted === null && <CarePanel />}
+
       <div className="bg-card-bg border border-card-border rounded-lg p-5 sm:p-8">
         {/* A flame beside words that may come from real danger is the wrong picture, lit or put out */}
-        {flameAllowed && <Candle lit={!candleOut} />}
+        {!care && <Candle lit={!candleOut} />}
 
         {submitted === null ? (
           <div className="mt-4">
+            {care && (
+              <p className="mb-5 text-center text-foreground/85 leading-relaxed">
+                There is no need to write about endings today. If you would rather, gentler games are waiting just below.
+              </p>
+            )}
             <WritingForm
               prompts={PROMPTS}
               label="Your final words"
@@ -118,7 +122,7 @@ export default function LastWords() {
         ) : (
           <div className="mt-4 text-center">
             <h2 ref={thanksRef} {...FOCUS_TARGET} className="text-xl sm:text-2xl font-semibold text-foreground">
-              Thank you for writing this
+              {care ? 'We’re glad you wrote this down' : 'Thank you for writing this'}
             </h2>
             <p className="mt-1 text-primary-light">
               {others === null
@@ -149,6 +153,8 @@ export default function LastWords() {
             )}
           </div>
 
+          {reflection.unjudged && !care && <QuietSupport />}
+
           <CloudSection
             cloud={cloud}
             heading="What others would say at the end"
@@ -156,7 +162,8 @@ export default function LastWords() {
             source={(total) => `From ${total.toLocaleString()} ${total === 1 ? 'person' : 'people'}.`}
           />
 
-          {!care && (
+          {/* Urging words out into the world is only safe once they have been heard as an imagined ending */}
+          {!care && !reflection.unjudged && !reflection.pending && (
             <section aria-labelledby="final-word-now" className="bg-card-bg border border-card-border rounded-lg p-5 sm:p-6 text-center">
               <h3 id="final-word-now" className="text-lg font-semibold text-foreground">These don&apos;t have to wait</h3>
               <p className="mt-2 text-foreground/80 leading-relaxed">
@@ -169,7 +176,7 @@ export default function LastWords() {
           )}
 
           <div className="text-center space-y-4">
-            {flameAllowed &&
+            {!care &&
               (candleOut ? (
                 <p ref={goodnightRef} {...FOCUS_TARGET} className="text-foreground/85 leading-relaxed">
                   The candle is out. What you wrote is still yours to carry, or to say.
@@ -180,7 +187,7 @@ export default function LastWords() {
                 </Button>
               ))}
             <div>
-              <Button variant="ghost" onClick={writeAnother}>
+              <Button variant="secondary" onClick={writeAnother}>
                 Write another
               </Button>
             </div>

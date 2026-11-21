@@ -75,6 +75,14 @@ describe('community words routes', () => {
       expect(insert).not.toHaveBeenCalled()
     })
 
+    it('never stores words that sound like someone may be in danger', async () => {
+      for (const words of ['I want to kill myself', 'I just want it all to be over', 'I am going to take all my pills tonight']) {
+        const response = await submit(lastWords, { words })
+        expect(await response.json()).toEqual({ stored: false })
+      }
+      expect(insert).not.toHaveBeenCalled()
+    })
+
     it('rejects malformed, empty and over-long submissions', async () => {
       for (const body of ['not json', {}, { words: 42 }, { words: '   ' }, { words: 'a'.repeat(501) }]) {
         const response = await submit(lastWords, body)
@@ -113,7 +121,7 @@ describe('community words routes', () => {
   })
 
   describe('GET (the shared cloud)', () => {
-    it('counts each word once per person and leaves out abuse, swearing and contact details', async () => {
+    it('counts each word once per person and leaves out abuse, swearing, contact details and words of crisis', async () => {
       read.mockResolvedValue({
         data: [
           { words: 'Love love love love love' },
@@ -121,6 +129,8 @@ describe('community words routes', () => {
           { words: 'Fuck cancer, love you' },
           { words: 'you are all faggots' },
           { words: 'visit www.spam.example garden' },
+          { words: 'I want to end it all, nobody would miss me' },
+          { words: 'Love you, even dying' },
           { words: null },
         ],
         error: null,
@@ -131,10 +141,11 @@ describe('community words routes', () => {
 
       expect(response.status).toBe(200)
       expect(response.headers.get('cache-control')).toContain('no-store')
-      expect(body.total).toBe(3)
+      expect(body.total).toBe(4)
       expect(body.words).toEqual([
-        { word: 'love', count: 3 },
+        { word: 'love', count: 4 },
         { word: 'cancer', count: 1 },
+        { word: 'even', count: 1 },
         { word: 'garden', count: 1 },
       ])
       expect(read).toHaveBeenCalledWith('last_words')

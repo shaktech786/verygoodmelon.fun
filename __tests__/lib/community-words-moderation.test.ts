@@ -79,6 +79,18 @@ describe('isCloudSafeWord', () => {
     }
   })
 
+  it('keeps words of self-harm and dying out of the shared cloud', () => {
+    for (const word of ['kill', 'killed', 'killing', 'suicide', 'suicidal', 'pills', 'overdose', 'die', 'died', 'dying', 'dead', 'death', 'noose']) {
+      expect(isCloudSafeWord(word)).toBe(false)
+    }
+  })
+
+  it('does not hide ordinary words that contain one of those', () => {
+    for (const word of ['skill', 'diet', 'deadline', 'pillow', 'studied', 'goodbye']) {
+      expect(isCloudSafeWord(word)).toBe(true)
+    }
+  })
+
   it('keeps swearing and abuse out of the shared cloud', () => {
     for (const word of ['fuck', 'fucking', 'shit', 'sh1t', 'faggot', 'faggots', 'cunt']) {
       expect(isCloudSafeWord(word)).toBe(false)
@@ -112,6 +124,8 @@ describe('soundsLikeDistress', () => {
       'nobody would miss me',
       'I just want it all to be over',
       'I wish I could sleep and never wake up',
+      'I am going to take all my pills tonight',
+      'I just want to end it',
     ]) {
       expect(soundsLikeDistress(words)).toBe(true)
     }
@@ -123,6 +137,8 @@ describe('soundsLikeDistress', () => {
       'Thank you for the ordinary days',
       'Do not be afraid of dying, it is part of living',
       'I hope I die peacefully in my sleep',
+      'Remember to take your pills, Dad, and look after Mum',
+      'I want to end it on a happy note: thank you, all of you',
     ]) {
       expect(soundsLikeDistress(words)).toBe(false)
     }

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useRealtimeVotes } from '@/lib/hooks/useRealtimeVotes'
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { DILEMMAS, type Choice, type ChoiceId } from '@/lib/games/hard-choices/dilemmas'
 import { keepKnownAnswers, keepKnownIds, type Answer, type Answers } from '@/lib/games/hard-choices/answers'
 import { readChoices } from '@/lib/games/hard-choices/reading'
@@ -154,6 +155,9 @@ export default function HardChoices() {
   const moveFocusToHeading = useRef(false)
   const moveFocusToChoices = useRef(false)
   const hasChosen = useRef(false)
+  const revealResult = useRef(false)
+  const resultEndRef = useRef<HTMLDivElement>(null)
+  const reduceMotion = useReducedMotion()
 
   const currentDilemma = DILEMMAS[currentDilemmaIndex]
   const currentAnswer = answers[currentDilemma.id]
@@ -209,6 +213,7 @@ export default function HardChoices() {
 
   const showDilemma = (index: number, knownAnswers: Answers) => {
     const dilemma = DILEMMAS[index]
+    revealResult.current = false
     setFinished(false)
     setCurrentDilemmaIndex(index)
     if (isChoice(knownAnswers[dilemma.id]) && !votes[dilemma.id]) {
@@ -242,6 +247,13 @@ export default function HardChoices() {
     }
   }, [currentDilemmaIndex, finished, hasVoted])
 
+  // On a phone the result and Next sit below the fold; bring them up rather than leave the player hunting.
+  // Again once the counts arrive, since their bars push Next further down.
+  useEffect(() => {
+    if (!hasVoted || !revealResult.current) return
+    resultEndRef.current?.scrollIntoView?.({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' })
+  }, [hasVoted, displayResults, reduceMotion])
+
   const recordAnswer = (dilemmaId: string, answer: Answer | null) => {
     const next = { ...answers }
     if (answer) next[dilemmaId] = answer
@@ -254,6 +266,7 @@ export default function HardChoices() {
   const handleChoice = async (choiceId: ChoiceId) => {
     if (hasVoted) return
     hasChosen.current = true
+    revealResult.current = true
 
     const dilemmaId = currentDilemma.id
     recordAnswer(dilemmaId, choiceId)
@@ -305,6 +318,7 @@ export default function HardChoices() {
   }
 
   const handleChangeAnswer = () => {
+    revealResult.current = false
     moveFocusToChoices.current = true
     recordAnswer(currentDilemma.id, null)
   }
@@ -475,15 +489,14 @@ export default function HardChoices() {
                   })}
                 </ul>
 
-                <div role="status">
+                {/* Not atomic: counts arriving later are read alone, not with the whole result again.
+                    The perspectives are on screen and describe each choice, so they are not read out here. */}
+                <div role="status" aria-atomic="false">
                   {showResults && selectedChoice && (
                     <div className="mt-6 p-5 bg-background border border-card-border rounded-lg text-center">
                       <p className="text-sm text-foreground/75 mb-2">
                         You chose <span className="font-medium text-foreground">{currentDilemma[selectedChoice === 'A' ? 'choiceA' : 'choiceB'].value}</span>.
-                        {displayResults && ` ${crowdLine(percentages[selectedChoice])}`}
-                      </p>
-                      <p className="sr-only">
-                        {choices.map(({ choice }) => `${choice.text}: ${choice.perspective}`).join(' ')}
+                        {displayResults && <span> {crowdLine(percentages[selectedChoice])}</span>}
                       </p>
                       <p className="text-foreground/90 leading-relaxed">{currentDilemma.carry}</p>
                     </div>
@@ -517,6 +530,7 @@ export default function HardChoices() {
                   </Button>
                 )}
               </div>
+              <div ref={resultEndRef} className="scroll-mb-4" aria-hidden="true" />
 
               <div className="mt-6 text-center text-sm text-foreground/70">
                 {hasVoted ? (

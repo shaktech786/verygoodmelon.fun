@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useCareMode } from '@/components/games/CareMode'
 import { ALL_GAMES, type GameConfig } from '@/lib/games/config'
 import { useGameHistory } from '@/lib/stores/game-history'
 
@@ -47,12 +48,14 @@ export function PersonalizedSuggestions() {
   const visits = useGameHistory((s) => s.visits)
   const getMostPlayed = useGameHistory((s) => s.getMostPlayed)
   const getNeverPlayed = useGameHistory((s) => s.getNeverPlayed)
+  const { care } = useCareMode()
 
   useEffect(() => {
     queueMicrotask(() => setMounted(true))
   }, [])
 
-  if (!mounted) return null
+  // Play history can point back at the games about death; in care mode the gentle row speaks instead
+  if (!mounted || care) return null
 
   // Unique games visited
   const visitedGameIds = new Set(visits.map((v) => v.gameId))

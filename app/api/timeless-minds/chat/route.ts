@@ -14,6 +14,9 @@ import {
 
 const careResponse = (response: string) => NextResponse.json({ response, emotion: 'concerned', care: true })
 
+// A care reply sits beside the support panel, which already lists the lines; read out twice, they become noise
+const NAMES_A_HELPLINE = /988|116\s?123|findahelpline|samaritans|crisis line|hotline/i
+
 export async function POST(request: NextRequest) {
   try {
     const { thinkerId, message, conversationHistory } = await request.json()
@@ -124,7 +127,7 @@ ${JUDGED_REPLY_FORMAT}`
 
     const result = await chat.sendMessage({ message })
     const { risk, reply: response } = readJudgedReply(result.text ?? '')
-    if (risk) return careResponse(response || CARE_REPLY)
+    if (risk) return careResponse(response && !NAMES_A_HELPLINE.test(response) ? response : CARE_REPLY)
     if (!response) throw new Error('Empty reply')
 
     const emotionResult = await detectEmotion(response)

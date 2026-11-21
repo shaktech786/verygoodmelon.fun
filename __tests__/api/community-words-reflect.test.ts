@@ -13,12 +13,12 @@ import { POST as firstWordsReflect } from '@/app/api/first-words/reflect/route'
 import { CARE_REFLECTION } from '@/lib/games/community-words/reflect'
 
 let ipCounter = 0
-async function reflect(handler: typeof lastWordsReflect, message: unknown) {
+async function reflect(handler: typeof lastWordsReflect, message: unknown, ip = `10.1.0.${++ipCounter}`) {
   const response = await handler(
     new Request('http://localhost/api/last-words/reflect', {
       method: 'POST',
       body: JSON.stringify({ message }),
-      headers: { 'Content-Type': 'application/json', 'x-forwarded-for': `10.1.0.${++ipCounter}` },
+      headers: { 'Content-Type': 'application/json', 'x-forwarded-for': ip },
     }) as never
   )
   return { status: response.status, body: await response.json() }
@@ -31,7 +31,7 @@ describe('reflection routes', () => {
   })
 
   it('returns the written reflection', async () => {
-    generateContent.mockResolvedValue({ text: '  You chose gratitude over regret.  ' })
+    generateContent.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: '  You chose gratitude over regret.  ' }) })
     const { status, body } = await reflect(lastWordsReflect, 'Thank you for the ordinary days.')
 
     expect(status).toBe(200)
@@ -103,12 +103,48 @@ describe('reflection routes', () => {
     }
   })
 
-  it('offers a written intention whenever a fresh one is not available', async () => {
+  it('when the words could not be judged, hands nothing back to do and asks for the quiet line of support', async () => {
     generateContent.mockRejectedValue(new Error('quota'))
-    const { body } = await reflect(firstWordsReflect, 'Hello?')
+    const { status, body } = await reflect(firstWordsReflect, 'I am so tired of all of it, I do not want to go home')
 
+    expect(status).toBe(200)
+    expect(body.unjudged).toBe(true)
     expect(body.reflection).toBeTruthy()
-    expect(body.intention).toBeTruthy()
+    expect(body).not.toHaveProperty('intention')
+    expect(body).not.toHaveProperty('care')
+    // Nothing that would read as a push back toward the ending, or as an alarm
+    expect(body.reflection).not.toMatch(/wait|sooner|today|tomorrow|while you are here|danger|crisis|help/i)
+  })
+
+  it('treats a reply that carries no judgement as unjudged', async () => {
+    generateContent.mockResolvedValue({ text: 'You chose gratitude over regret.' })
+    const { body } = await reflect(lastWordsReflect, 'Thank you for the ordinary days.')
+
+    expect(body.unjudged).toBe(true)
+    expect(body.reflection).not.toBe('You chose gratitude over regret.')
+  })
+
+  it('treats a rate-limited visitor as unjudged too', async () => {
+    generateContent.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: 'Say it soon.' }) })
+    const ip = '10.9.9.9'
+    for (let i = 0; i < 10; i++) await reflect(lastWordsReflect, `Love you ${i}`, ip)
+    const { body } = await reflect(lastWordsReflect, 'Love you again', ip)
+
+    expect(generateContent).toHaveBeenCalledTimes(10)
+    expect(body.unjudged).toBe(true)
+    expect(body.reflection).not.toMatch(/wait|sooner/i)
+  })
+
+  it('never suggests something for "today" under a heading that says tomorrow', async () => {
+    generateContent.mockResolvedValue({
+      text: JSON.stringify({ risk: false, reply: 'Carry that home.', intention: 'Call your sister today and laugh.' }),
+    })
+    for (let i = 0; i < 12; i++) {
+      const { body } = await reflect(firstWordsReflect, 'I miss my sister.')
+      expect(body.intention).toBeTruthy()
+      expect(body.intention).not.toMatch(/\btoday\b/i)
+    }
+    expect(String(generateContent.mock.calls[0][0].contents)).toMatch(/never use the word "today"/i)
   })
 
   it('gives no intention alongside care, and none to The Final Word', async () => {
@@ -130,7 +166,7 @@ describe('reflection routes', () => {
   })
 
   it('never passes on a reply that fails the same filter as the shared cloud', async () => {
-    generateContent.mockResolvedValue({ text: 'Visit www.example.com for more, faggot.' })
+    generateContent.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: 'Visit www.example.com for more, faggot.' }) })
     const { body } = await reflect(firstWordsReflect, 'Hello?')
 
     expect(body.reflection).toBeTruthy()
@@ -143,6 +179,7 @@ describe('reflection routes', () => {
 
     expect(status).toBe(200)
     expect(body.reflection.length).toBeGreaterThan(20)
+    expect(body.unjudged).toBe(true)
     expect(body.reflection).not.toMatch(/\bAI\b|generat|error|sorry/i)
   })
 

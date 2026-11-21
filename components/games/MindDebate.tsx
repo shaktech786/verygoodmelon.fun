@@ -477,7 +477,8 @@ export default function MindDebate() {
       >
         <p className="text-sm text-foreground/75 text-center">The question</p>
         <h2 id="arena-question" className="mt-1 text-xl sm:text-2xl font-semibold text-center text-foreground break-words">
-          &ldquo;{topicName}&rdquo;
+          {/* A question turned down for what it says is not echoed back in large type */}
+          {phase === 'declined' && declineReason === 'topic' ? 'A question set aside' : <>&ldquo;{topicName}&rdquo;</>}
         </h2>
         <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 sm:gap-6">
           <Speaker name={person1Name} side="left" state={activeSide === 'left' ? activeState : null} reducedMotion={reducedMotion} />

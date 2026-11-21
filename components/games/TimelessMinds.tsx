@@ -102,6 +102,7 @@ export default function TimelessMinds() {
   const inputRowRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const directoryButtonRef = useRef<HTMLButtonElement>(null)
   const endCallCancelRef = useRef<HTMLButtonElement>(null)
   // Bumped whenever a new conversation starts, so a reply still in flight for the
   // previous thinker is dropped instead of landing in the new conversation.
@@ -264,13 +265,14 @@ export default function TimelessMinds() {
   }, [])
 
   // The support panel shrinks the message area, so the latest reply is brought back into view when it appears too.
+  // A fresh call starts at the top instead, so the suggested questions are read from the first one.
   useEffect(() => {
     if (messagesContainerRef.current) {
       const container = messagesContainerRef.current
       requestAnimationFrame(() => {
         if (typeof container.scrollTo === 'function') {
           container.scrollTo({
-            top: container.scrollHeight,
+            top: messages.length === 1 ? 0 : container.scrollHeight,
             behavior: reducedMotion ? 'auto' : 'smooth'
           })
         }
@@ -438,6 +440,12 @@ export default function TimelessMinds() {
     setTimeout(() => viewport.removeEventListener('resize', reveal), KEYBOARD_SETTLE_MS)
   }
 
+  const closeDirectory = () => {
+    setShowPhoneBook(false)
+    // Choosing someone has already put focus in the message box; otherwise it would fall to the page
+    if (document.activeElement !== inputRef.current) directoryButtonRef.current?.focus()
+  }
+
   const handleSelectThinker = (thinkerId: string) => {
     const selectedThinker = getThinkerById(thinkerId)
     if (selectedThinker) startConversation(selectedThinker)
@@ -540,8 +548,9 @@ export default function TimelessMinds() {
 
   return (
     <div className="max-w-7xl mx-auto h-[calc(100dvh-12rem)] min-h-[36rem] sm:h-[calc(100dvh-10rem)] flex flex-col bg-black rounded-xl overflow-hidden shadow-2xl">
-      {/* Main Video Area */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3 min-h-0">
+      {/* Main Video Area. On wider screens its right edge leaves a rail for the site's floating buttons,
+          which would otherwise sit on Send at some sizes and text settings. */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3 sm:pr-[5.5rem] min-h-0">
         {/* Video Window */}
         <div className={`${care ? 'h-20' : 'h-32'} sm:h-auto sm:flex-[2] shrink-0 relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden sm:min-h-[200px] lg:min-h-0`}>
           <div className="absolute inset-0">
@@ -725,7 +734,7 @@ export default function TimelessMinds() {
       <div className="shrink-0 bg-gray-900 border-t border-gray-800 py-2 pl-1 pr-14 sm:p-4 flex items-center justify-between">
         {/* Left Side */}
         <div className="flex items-center gap-0.5 sm:gap-2">
-          <button onClick={() => setShowPhoneBook(true)} className={toolbarButton}>
+          <button ref={directoryButtonRef} onClick={() => setShowPhoneBook(true)} className={toolbarButton}>
             <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-success/20 group-hover:bg-success/30">
               <Book size={16} className="text-success sm:w-5 sm:h-5" aria-hidden="true" />
             </div>
@@ -908,7 +917,7 @@ export default function TimelessMinds() {
       {showPhoneBook && (
         <ThinkerPhoneBook
           isOpen
-          onClose={() => setShowPhoneBook(false)}
+          onClose={closeDirectory}
           thinkers={allThinkers}
           onSelectThinker={handleSelectThinker}
         />

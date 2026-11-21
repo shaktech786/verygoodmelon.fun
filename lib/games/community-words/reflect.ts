@@ -8,6 +8,16 @@ import { clientAddress, createRateLimiter } from './rateLimit'
 export const CARE_REFLECTION =
   'Thank you for trusting this page with something that heavy. You matter, and you deserve someone who can listen to you properly, right now.'
 
+/**
+ * For when no one has judged the words (the model failed, was rate-limited or
+ * gave no verdict): kind to anyone, someone in real danger included, and they
+ * ask nothing of the player or point them anywhere.
+ */
+const UNJUDGED_REFLECTIONS = [
+  'Thank you for putting this into words. Take a quiet moment with it, at your own pace.',
+  'Whatever is underneath these words, they deserved to be said.',
+] as const
+
 const REFLECTIONS_PER_CLIENT = { max: 10, windowMs: 60_000 }
 const SELF_DISCLOSURE = /\b(?:AI|A\.I\.|language model|as an assistant|chatbot)\b/i
 
@@ -50,20 +60,22 @@ interface JudgedReply {
   intention: string
 }
 
-function parseJudgedReply(text: string): JudgedReply {
+/** Null when the reply carries no clear verdict on risk, which must never be read as "no risk". */
+function parseJudgedReply(text: string): JudgedReply | null {
   const trimmed = text.trim().replace(/^```(?:json)?\s*|\s*```$/g, '')
   try {
     const parsed: unknown = JSON.parse(trimmed)
     if (parsed && typeof parsed === 'object') {
       const { risk, reply, intention } = parsed as Record<string, unknown>
+      if (typeof risk !== 'boolean') return null
       return {
-        risk: risk === true,
+        risk,
         reply: typeof reply === 'string' ? reply : '',
         intention: typeof intention === 'string' ? intention : '',
       }
     }
   } catch {}
-  return { risk: false, reply: text, intention: '' }
+  return null
 }
 
 /** A reflection is only passed on if it would be fit for the shared cloud and never gives itself away. */
@@ -75,10 +87,12 @@ function usable(text: string): string | null {
 
 const MAX_INTENTION_LENGTH = 120
 
-/** An intention is shown as the player's own plan for tomorrow, so it must never carry danger. */
+/** An intention is shown as the player's own plan for tomorrow, so it must never carry danger or say "today". */
 function usableIntention(text: string): string | null {
   const intention = usable(text)
-  if (!intention || intention.length > MAX_INTENTION_LENGTH || soundsLikeDistress(intention)) return null
+  if (!intention || intention.length > MAX_INTENTION_LENGTH || soundsLikeDistress(intention) || /\btoday\b/i.test(intention)) {
+    return null
+  }
   return intention
 }
 
@@ -95,12 +109,15 @@ export function createReflectHandler(voice: ReflectionVoice) {
     if (soundsLikeDistress(words)) {
       return NextResponse.json({ reflection: CARE_REFLECTION, care: true })
     }
-    const written = (reflection: string, intention: string | null = null) =>
+    const written = (reflection: string, intention: string | null) =>
       NextResponse.json(
         voice.intention ? { reflection, intention: intention ?? pick(voice.intention.fallbacks) } : { reflection }
       )
+    // Without a verdict the words may still be danger said sideways: no plan to carry, no nudge
+    // toward the ending, and the page quietly offers support
+    const unjudged = () => NextResponse.json({ reflection: pick(UNJUDGED_REFLECTIONS), unjudged: true })
 
-    if (isLimited(clientAddress(request))) return written(pick(voice.fallbacks))
+    if (isLimited(clientAddress(request))) return unjudged()
 
     try {
       const result = await getGemini().models.generateContent({
@@ -109,14 +126,14 @@ export function createReflectHandler(voice: ReflectionVoice) {
         config: { temperature: 0.8, topP: 0.9, maxOutputTokens: 240, responseMimeType: 'application/json', ...MINIMAL_THINKING },
       })
       const judged = parseJudgedReply(result.text ?? '')
+      if (!judged) return unjudged()
       if (judged.risk) {
         return NextResponse.json({ reflection: CARE_REFLECTION, care: true })
       }
-      const reflection = usable(judged.reply)
-      if (reflection) return written(reflection, usableIntention(judged.intention))
+      return written(usable(judged.reply) ?? pick(voice.fallbacks), usableIntention(judged.intention))
     } catch (error) {
       console.error(`${voice.logLabel} reflect error:`, error)
     }
-    return written(pick(voice.fallbacks))
+    return unjudged()
   }
 }

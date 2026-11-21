@@ -16,23 +16,28 @@ interface Reflection {
   pending: boolean
   /** A small thing to carry back into tomorrow, for a game that offers one. */
   intention: string
+  /** No one could judge whether the words carry danger, so support is offered quietly. */
+  unjudged: boolean
 }
 
-const NO_REFLECTION: Reflection = { text: '', pending: false, intention: '' }
+const NO_REFLECTION: Reflection = { text: '', pending: false, intention: '', unjudged: false }
 
 /**
  * Everything a writing game does with the player's words: shows them back at
- * once, offers them to the shared cloud through the server, and asks for a
- * reflection. Neither the cloud nor the reflection is ever waited on, so the
- * player's moment is the same whether or not the store can be reached.
+ * once, asks for a reflection, and then offers them to the shared cloud
+ * through the server. Neither is ever waited on, so the player's moment is the
+ * same whether or not the store can be reached. Words that may come from
+ * someone in danger, and anything written once care mode has begun, are never
+ * offered to the cloud.
  */
 export function useCommunityWords(game: CommunityWordsGame) {
   const [submitted, setSubmitted] = useState<string | null>(null)
   const [stored, setStored] = useState(false)
   const [cloud, setCloud] = useState<CloudState>({ status: 'hidden' })
   const [reflection, setReflection] = useState<Reflection>(NO_REFLECTION)
-  const [care, setCare] = useState(false)
-  const { enterCareMode } = useCareMode()
+  const [wordsNeedCare, setWordsNeedCare] = useState(false)
+  const { care: visitNeedsCare, enterCareMode } = useCareMode()
+  const care = wordsNeedCare || visitNeedsCare
   const session = useRef(0)
   // A double click lands before the first click's render, so state alone cannot guard it
   const hasSubmitted = useRef(false)
@@ -60,7 +65,8 @@ export function useCommunityWords(game: CommunityWordsGame) {
     }
   }
 
-  async function reflect(words: string, id: number) {
+  /** Resolves to whether the reply judged the words to need care, even if the player has moved on. */
+  async function reflect(words: string, id: number): Promise<boolean> {
     setReflection({ ...NO_REFLECTION, pending: true })
     try {
       const response = await fetch(`/api/${game}/reflect`, {
@@ -68,16 +74,31 @@ export function useCommunityWords(game: CommunityWordsGame) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: words }),
       })
-      const data: { reflection?: string; intention?: string; care?: boolean } = response.ok ? await response.json() : {}
-      if (!isCurrent(id)) return
-      if (data.care) {
-        setCare(true)
-        enterCareMode()
+      const data: { reflection?: string; intention?: string; care?: boolean; unjudged?: boolean } = response.ok
+        ? await response.json()
+        : { unjudged: true }
+      if (data.care) enterCareMode()
+      if (isCurrent(id)) {
+        if (data.care) setWordsNeedCare(true)
+        setReflection({
+          text: data.reflection ?? '',
+          pending: false,
+          intention: data.intention ?? '',
+          unjudged: data.unjudged === true,
+        })
       }
-      setReflection({ text: data.reflection ?? '', pending: false, intention: data.intention ?? '' })
+      return data.care === true
     } catch {
-      if (isCurrent(id)) setReflection(NO_REFLECTION)
+      if (isCurrent(id)) setReflection({ ...NO_REFLECTION, unjudged: true })
+      return false
     }
+  }
+
+  async function respond(words: string, id: number, distressed: boolean) {
+    // Someone already in care is not asked to picture endings again by a fresh reflection
+    if (visitNeedsCare && !distressed) return
+    const judgedCare = await reflect(words, id)
+    if (!distressed && !judgedCare) await share(words, id)
   }
 
   function submit(text: string) {
@@ -87,10 +108,9 @@ export function useCommunityWords(game: CommunityWordsGame) {
     const id = ++session.current
     setSubmitted(words)
     const distressed = soundsLikeDistress(words)
-    setCare(distressed)
+    setWordsNeedCare(distressed)
     if (distressed) enterCareMode()
-    void share(words, id)
-    void reflect(words, id)
+    void respond(words, id, distressed)
   }
 
   function reset() {
@@ -100,13 +120,13 @@ export function useCommunityWords(game: CommunityWordsGame) {
     setStored(false)
     setCloud({ status: 'hidden' })
     setReflection(NO_REFLECTION)
-    setCare(false)
+    setWordsNeedCare(false)
   }
 
   /** For words written after the reflection, such as what a player chooses to carry back. */
   function noticeDistress(text: string): boolean {
     if (!soundsLikeDistress(text)) return false
-    setCare(true)
+    setWordsNeedCare(true)
     enterCareMode()
     return true
   }

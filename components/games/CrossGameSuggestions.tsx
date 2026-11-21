@@ -22,30 +22,27 @@ const RELATED_GAMES: Record<string, [string, string]> = {
   'hard-talk': ['breathing-patterns', 'worry-capsule'],
 }
 
-// After words that suggest someone may be in danger, never point them toward games about death
-const CARE_GAMES: [string, string] = ['breathing-patterns', 'calm-garden']
+/** The games about death, never pushed toward someone who may be in danger. */
+export const HEAVY_GAMES: ReadonlySet<string> = new Set(['last-words', 'first-words'])
 
-interface CrossGameSuggestionsProps {
-  currentGameId: string
-}
+// After words that suggest someone may be in danger, point only at the calmest games
+const CARE_GAME_IDS = ['breathing-patterns', 'calm-garden'] as const
 
-export function CrossGameSuggestions({ currentGameId }: CrossGameSuggestionsProps) {
-  const { care } = useCareMode()
-  const suggestions = (care ? CARE_GAMES : RELATED_GAMES[currentGameId] ?? [])
-    .map((id) => ALL_GAMES.find((game) => game.id === id))
-    .filter((game): game is GameConfig => game !== undefined)
+const findGames = (ids: readonly string[]) =>
+  ids.map((id) => ALL_GAMES.find((game) => game.id === id)).filter((game): game is GameConfig => game !== undefined)
 
-  if (suggestions.length === 0) {
-    return null
-  }
+export const CARE_GAMES: readonly GameConfig[] = findGames(CARE_GAME_IDS)
 
+const GENTLE_HEADING = 'Something gentle, if it helps'
+
+function SuggestionRow({ heading, games, className }: { heading: string; games: readonly GameConfig[]; className: string }) {
   return (
-    <section aria-labelledby="related-games-heading" className="mt-12 pt-8 border-t border-card-border">
+    <section aria-labelledby="related-games-heading" className={className}>
       <h2 id="related-games-heading" className="text-sm font-semibold uppercase tracking-wider text-foreground mb-4">
-        {care ? 'Something gentle, if it helps' : 'Continue your journey'}
+        {heading}
       </h2>
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        {suggestions.map((game) => (
+        {games.map((game) => (
           <li key={game.id}>
             <GameCardShowcase game={game} showCategory={false} />
           </li>
@@ -53,4 +50,24 @@ export function CrossGameSuggestions({ currentGameId }: CrossGameSuggestionsProp
       </ul>
     </section>
   )
+}
+
+/** Leads the game lists while care mode lasts. */
+export function GentleGames({ className = '' }: { className?: string }) {
+  return <SuggestionRow heading={GENTLE_HEADING} games={CARE_GAMES} className={className} />
+}
+
+interface CrossGameSuggestionsProps {
+  currentGameId: string
+}
+
+export function CrossGameSuggestions({ currentGameId }: CrossGameSuggestionsProps) {
+  const { care } = useCareMode()
+  const className = 'mt-12 pt-8 border-t border-card-border'
+
+  if (care) return <GentleGames className={className} />
+
+  const suggestions = findGames(RELATED_GAMES[currentGameId] ?? [])
+  if (suggestions.length === 0) return null
+  return <SuggestionRow heading="Continue your journey" games={suggestions} className={className} />
 }

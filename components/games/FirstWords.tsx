@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
-import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, WritingForm } from '@/components/games/community-words/WritingParts'
+import { CARE_GAMES } from '@/components/games/CrossGameSuggestions'
+import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, QuietSupport, WritingForm } from '@/components/games/community-words/WritingParts'
 import { draftKey } from '@/lib/games/community-words/draft'
 import { useCommunityWords } from '@/lib/games/community-words/useCommunityWords'
 import { wakingLine } from '@/lib/games/community-words/waking'
@@ -81,7 +83,29 @@ function Sky({ light }: { light: Light }) {
   )
 }
 
+/** In place of imagining it again, once someone may be in danger: somewhere calm, with support already on screen. */
+function GentleExit() {
+  return (
+    <nav aria-label="Somewhere calm to go next" className="text-center">
+      <p className="text-foreground/85">When you are ready, somewhere calm:</p>
+      <ul className="mt-3 flex flex-wrap justify-center gap-3">
+        {CARE_GAMES.map((game) => (
+          <li key={game.id}>
+            <Link
+              href={`/games/${game.slug}`}
+              className="inline-flex items-center min-h-11 px-5 rounded-lg border border-card-border bg-card-bg text-foreground font-medium hover:bg-hover-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              {game.title}: {game.description}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
 export default function FirstWords() {
+  // Care lasts for the visit, so every later arrival is met the gentle way too
   const { submitted, stored, cloud, reflection, care, submit, reset, noticeDistress } = useCommunityWords('first-words')
   const [typedIntention, setTypedIntention] = useState<string | null>(null)
   const [carried, setCarried] = useState<string | null>(null)
@@ -97,15 +121,17 @@ export default function FirstWords() {
   // The suggestion fills the box until the player writes their own
   const intention = typedIntention ?? reflection.intention
 
-  // Keep keyboard and screen-reader users oriented when the view changes
+  // Keep keyboard and screen-reader users oriented when the view changes. On a phone the
+  // keyboard leaves the page scrolled low, so the dawn sky is brought back into view first.
   useEffect(() => {
     if (submitted !== null) {
-      beforeWakingRef.current?.focus()
+      sceneRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
+      beforeWakingRef.current?.focus({ preventScroll: true })
     } else if (returningToWrite.current) {
       returningToWrite.current = false
       textareaRef.current?.focus()
     }
-  }, [submitted])
+  }, [submitted, reduceMotion])
 
   // The sky turning to morning is the payoff, so bring it on screen before focus moves
   useEffect(() => {
@@ -133,12 +159,19 @@ export default function FirstWords() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
+      {care && submitted === null && <CarePanel />}
+
       <div ref={sceneRef} className="bg-card-bg border border-card-border rounded-lg overflow-hidden scroll-mt-20">
         <Sky light={light} />
 
         <div className="p-5 sm:p-8 pt-5 sm:pt-6">
           {submitted === null ? (
             <>
+              {care && (
+                <p className="mb-5 text-center text-foreground/85 leading-relaxed">
+                  This one imagines the moment after a life ends. If that is too close today, gentler games are waiting just below.
+                </p>
+              )}
               <p className="mb-5 text-center text-lg sm:text-xl text-foreground leading-relaxed">
                 You open your eyes. It is quiet, and nothing hurts.
               </p>
@@ -221,7 +254,9 @@ export default function FirstWords() {
                       placeholder="Something small you could do tomorrow…"
                       className="mt-2 w-full px-4 py-3 border border-card-border rounded-lg bg-background text-foreground text-base sm:text-lg placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent"
                     />
-                    <p className="mt-1 text-xs sm:text-sm text-primary-light">Change it, or leave it empty. It stays on this page.</p>
+                    <p className="mt-1 text-xs sm:text-sm text-primary-light">
+                      Change it, or leave it empty. It is never sent or saved anywhere; you can copy it once you wake.
+                    </p>
                   </>
                 )}
                 <div className="mt-4 text-center">
@@ -244,6 +279,7 @@ export default function FirstWords() {
       {submitted !== null && (
         <>
           {care && <CarePanel />}
+          {reflection.unjudged && !care && <QuietSupport />}
 
           <CloudSection
             cloud={cloud}
@@ -252,12 +288,16 @@ export default function FirstWords() {
             source={(total) => `From ${total.toLocaleString()} ${total === 1 ? 'visit' : 'visits'}.`}
           />
 
-          <div className="text-center">
-            <Button variant="ghost" onClick={imagineAgain}>
-              {/* Someone who may be in danger is not invited to picture their death again */}
-              {care ? 'Start over' : 'Imagine it again'}
-            </Button>
-          </div>
+          {/* Someone who may be in danger is not invited to picture their death again */}
+          {care ? (
+            <GentleExit />
+          ) : (
+            <div className="text-center">
+              <Button variant="secondary" onClick={imagineAgain}>
+                Imagine it again
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>

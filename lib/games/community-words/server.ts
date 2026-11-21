@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { countWords } from '@/lib/games/wordFrequency'
-import { MAX_SUBMISSION_LENGTH, moderateSubmission } from './moderation'
+import { MAX_SUBMISSION_LENGTH, moderateSubmission, soundsLikeDistress } from './moderation'
 import { clientAddress, createRateLimiter } from './rateLimit'
 
 export type CommunityWordsTable = 'last_words' | 'first_words'
@@ -42,8 +42,9 @@ export function createCommunityWordsHandlers(table: CommunityWordsTable) {
     if (isLimited(clientAddress(request))) return notStored(429)
 
     const verdict = moderateSubmission(parsed.data.words)
-    // Declined quietly: the player still gets their moment, just not a place in the cloud
-    if (!verdict.ok) return notStored(200)
+    // Declined quietly: the player still gets their moment, just not a place in the cloud.
+    // Words from someone who may be in danger stay theirs, never something for strangers to read.
+    if (!verdict.ok || soundsLikeDistress(verdict.words)) return notStored(200)
 
     const writer = supabase(process.env.SUPABASE_SERVICE_ROLE_KEY)
     if (!writer) return notStored(503)
@@ -75,7 +76,7 @@ export function createCommunityWordsHandlers(table: CommunityWordsTable) {
     const accepted = data.flatMap((row: { words: unknown }) => {
       if (typeof row.words !== 'string') return []
       const verdict = moderateSubmission(row.words)
-      return verdict.ok ? [verdict.words] : []
+      return verdict.ok && !soundsLikeDistress(verdict.words) ? [verdict.words] : []
     })
 
     return NextResponse.json({ words: countWords(accepted), total: accepted.length }, { headers: NO_STORE })

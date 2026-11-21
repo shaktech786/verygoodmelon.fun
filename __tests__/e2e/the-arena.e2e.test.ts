@@ -329,6 +329,8 @@ test.describe('The Arena', () => {
 
     await expect(transcript(page).getByText(/a question The Arena will not hold, whoever is asking/)).toBeVisible()
     await expect(debate(page).getByText(/better left unspoken/)).toHaveCount(0)
+    // Regression: the question it will not hold is never echoed back in large quotes
+    await expect(debate(page).getByText(/Which people deserve less/)).toHaveCount(0)
     await page.getByRole('button', { name: 'Ask another question' }).click()
     await expect(page.getByLabel('Topic')).toBeFocused()
     await expect(page.getByLabel('First debater')).toHaveValue('Socrates')

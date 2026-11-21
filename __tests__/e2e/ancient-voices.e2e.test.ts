@@ -640,3 +640,66 @@ test.describe('on a phone with the keyboard open', () => {
     expect(overflow).toBeLessThanOrEqual(0)
   })
 })
+
+test.describe('on a laptop screen with Larger text', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+
+  test('regression: the floating buttons never sit on top of Send', async ({ page }) => {
+    await setUpBrowser(page)
+    await stubChat(page)
+    await openGame(page)
+    await page.evaluate(() => document.documentElement.setAttribute('data-text-size', 'larger'))
+    await input(page).fill('Hello')
+    // The sound button fades in after a moment; wait until it can be hit
+    await expect(page.getByRole('button', { name: 'Ambient sound' })).toHaveCSS('opacity', '1')
+
+    const sendButton = page.getByRole('button', { name: 'Send message' })
+    await sendButton.scrollIntoViewIfNeeded()
+    const box = (await sendButton.boundingBox())!
+    const hitIsSend = await page.evaluate(({ x, y }) => {
+      const hit = document.elementFromPoint(x, y)
+      return hit?.closest('button')?.getAttribute('aria-label') ?? hit?.tagName ?? null
+    }, { x: box.x + box.width / 2, y: box.y + box.height / 2 })
+    expect(hitIsSend).toBe('Send message')
+
+    await sendButton.click({ trial: true })
+    await sendButton.click()
+    await expect(bubbles(page).nth(2)).toContainText('Reply 1')
+    await expect(page.locator('#accessibility-panel')).not.toBeVisible()
+  })
+})
+
+test('regression: closing the directory with Escape hands focus back to the Directory button', async ({ page }) => {
+  await setUpBrowser(page)
+  await stubChat(page)
+  await openGame(page)
+
+  await page.getByRole('button', { name: 'Directory' }).click()
+  await expect(page.getByRole('dialog', { name: 'Directory' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog', { name: 'Directory' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Directory' })).toBeFocused()
+
+  // Choosing someone still puts the player straight into the message box
+  await callFromPhoneBook(page, 'Plato')
+  await expect(input(page)).toBeFocused()
+})
+
+test.describe('on a phone, first load', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+  test('regression: the first suggested question is shown whole, not scrolled half away', async ({ page }) => {
+    await setUpBrowser(page)
+    await stubChat(page)
+    await openGame(page)
+    const log = page.getByRole('log', { name: 'Conversation' })
+    const first = log.getByText('Try asking about:')
+    await expect(async () => {
+      const logBox = (await log.boundingBox())!
+      const firstBox = (await first.boundingBox())!
+      expect(firstBox.y).toBeGreaterThanOrEqual(logBox.y)
+      const firstSuggestion = (await log.locator('button').first().boundingBox())!
+      expect(firstSuggestion.y).toBeGreaterThanOrEqual(logBox.y)
+    }).toPass()
+  })
+})

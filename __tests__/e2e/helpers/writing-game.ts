@@ -1,4 +1,17 @@
+import { readFileSync } from 'fs'
+import path from 'path'
 import { test, expect, type Page } from '@playwright/test'
+
+const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
+
+async function axeViolations(page: Page) {
+  await page.addScriptTag({ content: AXE_SOURCE })
+  return page.evaluate(async () => {
+    const axe = (window as unknown as { axe: { run: (context: unknown, options: unknown) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> } }).axe
+    const result = await axe.run({ include: [['main']] }, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] } })
+    return result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)
+  })
+}
 
 /**
  * Shared play-through for the two writing games, The Final Word and The Awakening.
@@ -14,9 +27,11 @@ export interface WritingGameConfig {
   game: 'last-words' | 'first-words'
   submitLabel: string
   againLabel: string
-  /** The same button once the words have called for care. */
-  careAgainLabel: string
+  /** The button to write again once the words have called for care, or null where care offers only a calm way out. */
+  careAgainLabel: string | null
   thanksHeading: string
+  /** The heading over words that have called for care. */
+  careHeading: string
   textboxLabel: string
   cloudLabel: string
   firstPrompt: string
@@ -111,11 +126,16 @@ async function fillWords(page: Page, config: WritingGameConfig, words: string) {
   }).toPass()
 }
 
-async function write(page: Page, config: WritingGameConfig, words: string) {
+async function write(page: Page, config: WritingGameConfig, words: string, heading = config.thanksHeading) {
   await fillWords(page, config, words)
   await page.getByRole('button', { name: config.submitLabel, exact: true }).click()
-  await expect(page.getByRole('heading', { name: config.thanksHeading })).toBeFocused()
+  await expect(page.getByRole('heading', { name: heading })).toBeFocused()
 }
+
+const QUIET_SUPPORT = /If any of this is close to home/
+
+// The cloud waits for the reflection (words judged to need care are never shared), then loads its drawing on demand
+const CLOUD_WAIT = 15_000
 
 async function expectNoErrorPanel(page: Page) {
   await expect(page.locator('main [role="alert"]')).toHaveCount(0)
@@ -141,7 +161,8 @@ export function describeWritingGame(config: WritingGameConfig) {
       await expect(cloud(page)).toHaveCount(0)
       await expect(page.getByText(/Gathering/)).toHaveCount(0)
       await expect(support(page)).toHaveCount(0)
-      expect(db.posts).toEqual(['Thank you for the ordinary days.'])
+      await expect(page.getByText(QUIET_SUPPORT)).toHaveCount(0)
+      await expect.poll(() => db.posts).toEqual(['Thank you for the ordinary days.'])
       expect(db.reads()).toBe(0)
 
       await page.getByRole('button', { name: config.closingButton }).click()
@@ -164,6 +185,29 @@ export function describeWritingGame(config: WritingGameConfig) {
       await expect(page.getByRole('button', { name: config.againLabel })).toBeVisible()
       await expectNoErrorPanel(page)
       await expect(page.locator('main')).not.toContainText(/\bAI\b|generat|powered by/i)
+      // Unheard words may still be danger said sideways, so support is within reach, softly
+      await expect(page.getByText(QUIET_SUPPORT)).toBeVisible()
+      await expect(page.getByText(QUIET_SUPPORT).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+      await expect(support(page)).toHaveCount(0)
+    })
+
+    test('when the reply could not judge the words, nothing is handed back to do and support waits quietly', async ({ page }) => {
+      await databaseDown(page, config)
+      await page.route(`**/api/${config.game}/reflect`, (route) =>
+        route.fulfill({ json: { reflection: 'Whatever is underneath these words, they deserved to be said.', unjudged: true } })
+      )
+      await page.goto(`/games/${config.slug}`)
+
+      await write(page, config, 'Honestly I just do not want to go home again.')
+
+      await expect(page.getByText('Whatever is underneath these words, they deserved to be said.')).toBeVisible()
+      await expect(page.getByText(QUIET_SUPPORT)).toBeVisible()
+      await expect(support(page)).toHaveCount(0)
+      await expect(page.getByRole('heading', { name: "These don't have to wait" })).toHaveCount(0)
+      if (config.game === 'first-words') {
+        await expect(page.getByRole('textbox', { name: 'One small thing to bring back into tomorrow' })).toHaveValue('')
+      }
+      await expect(page.locator('main')).not.toContainText(/danger|crisis|worried about you/i)
     })
 
     test('words that sound like someone may be in danger are met with care and real places to turn', async ({ page }) => {
@@ -172,12 +216,61 @@ export function describeWritingGame(config: WritingGameConfig) {
       await mockReflection(page, config, 500)
       await page.goto(`/games/${config.slug}`)
 
-      await write(page, config, 'I want to end my life. Everyone is better off without me.')
+      await write(page, config, 'I want to end my life. Everyone is better off without me.', config.careHeading)
 
       await expect(support(page)).toBeVisible()
       await expect(support(page).getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
       await expect(support(page).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
-      await expect(page.getByRole('button', { name: config.careAgainLabel })).toBeVisible()
+      if (config.careAgainLabel) {
+        await expect(page.getByRole('button', { name: config.careAgainLabel })).toBeVisible()
+      } else {
+        await expect(page.getByRole('button', { name: config.againLabel })).toHaveCount(0)
+        await expect(page.getByRole('button', { name: 'Start over' })).toHaveCount(0)
+        const exit = page.getByRole('navigation', { name: 'Somewhere calm to go next' })
+        await expect(exit.locator('a[href="/games/the-still-point"]')).toBeVisible()
+      }
+    })
+
+    test('care lasts for the visit: across a reload, the homepage and the games list', async ({ page }) => {
+      // Four page loads in one test
+      test.slow()
+      const db = await databaseDown(page, config)
+      let reflections = 0
+      await page.route(`**/api/${config.game}/reflect`, (route) => {
+        reflections++
+        return route.fulfill({ json: { reflection: 'Thank you for trusting this page.', care: true } })
+      })
+      await page.goto(`/games/${config.slug}`)
+      await expect(support(page)).toHaveCount(0)
+
+      await write(page, config, 'I want to end my life.', config.careHeading)
+      await expect(support(page)).toBeVisible()
+
+      // Opening the game again: support first, and a gentle word before the premise
+      await page.reload()
+      await expect(support(page)).toBeVisible()
+      await expect(page.getByText(/gentler games are waiting just below/)).toBeVisible()
+      const supportBox = await support(page).boundingBox()
+      const textboxBox = await textbox(page, config).boundingBox()
+      expect(supportBox!.y).toBeLessThan(textboxBox!.y)
+      const related = page.getByRole('region', { name: 'Something gentle, if it helps' })
+      await expect(related).toBeVisible()
+
+      // Later words are met the same way, never stored, never reflected on as an ending
+      const calls = reflections
+      await write(page, config, 'Tell Mum I love her.', config.careHeading)
+      await expect(support(page)).toBeVisible()
+      await page.waitForTimeout(500)
+      expect(reflections).toBe(calls)
+      expect(db.posts).toEqual([])
+
+      for (const path of ['/', '/games']) {
+        await page.goto(path)
+        const gentle = page.getByRole('region', { name: 'Something gentle, if it helps' })
+        await expect(gentle).toBeVisible()
+        await expect(gentle.locator('a[href="/games/the-still-point"]')).toBeVisible()
+        await expect(page.locator('main a[href="/games/final-breath"], main a[href="/games/first-breath"]')).toHaveCount(0)
+      }
     })
 
     test('regression: in care mode the suggestions offer calm games, never the games about death', async ({ page }) => {
@@ -188,7 +281,7 @@ export function describeWritingGame(config: WritingGameConfig) {
       await page.goto(`/games/${config.slug}`)
 
       // Indirect enough that only the reply's own judgement recognises it
-      await write(page, config, 'Everything feels heavy and I am done with all of it.')
+      await write(page, config, 'Everything feels heavy and I am done with all of it.', new RegExp(`^(${config.thanksHeading}|${config.careHeading})$`))
 
       await expect(support(page)).toBeVisible()
       const related = page.getByRole('region', { name: 'Something gentle, if it helps' })
@@ -207,8 +300,8 @@ export function describeWritingGame(config: WritingGameConfig) {
 
       await write(page, config, 'Love each other loudly.')
 
-      await expect(cloud(page)).toBeVisible()
-      await expect(cloud(page)).toHaveAttribute('aria-label', /love/)
+      await expect(cloud(page)).toBeVisible({ timeout: CLOUD_WAIT })
+      await expect(cloud(page)).toHaveAttribute('aria-label', /love/, { timeout: CLOUD_WAIT })
       await expect(page.getByText(/From 301 /)).toBeVisible()
       await expect(page.getByText(config.othersLine)).toBeVisible()
       expect(db.posts).toEqual(['Love each other loudly.'])
@@ -224,7 +317,7 @@ export function describeWritingGame(config: WritingGameConfig) {
       await write(page, config, 'Remember the sunrise')
 
       await expect(page.getByText(config.firstLine)).toBeVisible()
-      await expect(cloud(page)).toHaveAttribute('aria-label', `${config.cloudLabel}: remember, sunrise`)
+      await expect(cloud(page)).toHaveAttribute('aria-label', `${config.cloudLabel}: remember, sunrise`, { timeout: CLOUD_WAIT })
       await expect(page.getByText(/From 1 (person|visit)\.$/)).toBeVisible()
     })
 
@@ -242,7 +335,7 @@ export function describeWritingGame(config: WritingGameConfig) {
       await write(page, config, words)
 
       await expect(page.locator('blockquote')).toHaveText(`“${words}”`)
-      await expect(cloud(page)).toHaveAttribute('aria-label', /спасибо/)
+      await expect(cloud(page)).toHaveAttribute('aria-label', /спасибо/, { timeout: CLOUD_WAIT })
       await expect(page.locator('main script, main img[src="x"]')).toHaveCount(0)
       expect(dialogs).toBe(0)
     })
@@ -282,7 +375,7 @@ export function describeWritingGame(config: WritingGameConfig) {
       await expect(page.getByRole('heading', { name: config.thanksHeading })).toBeVisible()
       // The second click must not also close the moment it just opened
       await expect(page.getByRole('button', { name: config.closingButton })).toBeVisible()
-      await expect(cloud(page)).toBeVisible()
+      await expect(cloud(page)).toBeVisible({ timeout: CLOUD_WAIT })
       expect(db.posts).toHaveLength(1)
     })
 
@@ -305,6 +398,7 @@ export function describeWritingGame(config: WritingGameConfig) {
 
       await page.getByRole('button', { name: config.submitLabel, exact: true }).click()
       await expect(page.getByRole('heading', { name: config.thanksHeading })).toBeFocused()
+      await expect.poll(() => db.posts.length).toBe(1)
       await page.getByRole('button', { name: config.againLabel }).click()
       await expect(textbox(page, config)).toHaveValue('')
       await page.reload()
@@ -318,7 +412,7 @@ export function describeWritingGame(config: WritingGameConfig) {
       await page.goto(`/games/${config.slug}`)
 
       await write(page, config, 'See you on the other side')
-      await expect(cloud(page)).toBeVisible()
+      await expect(cloud(page)).toBeVisible({ timeout: CLOUD_WAIT })
       await page.reload()
       await expect(textbox(page, config)).toHaveValue('')
       expect(db.posts).toHaveLength(1)
@@ -334,6 +428,11 @@ export function describeWritingGame(config: WritingGameConfig) {
 
     const link = await request.post(`/api/${config.game}`, { data: { words: 'buy at cheap-pills.ru' }, headers: visitor() })
     expect(await link.json()).toEqual({ stored: false })
+
+    // Words from someone who may be in danger are never something for strangers to read
+    const crisis = await request.post(`/api/${config.game}`, { data: { words: 'I am going to take all my pills tonight' }, headers: visitor() })
+    expect(crisis.status()).toBe(200)
+    expect(await crisis.json()).toEqual({ stored: false })
 
     const tooLong = await request.post(`/api/${config.game}`, { data: { words: 'a'.repeat(501) }, headers: visitor() })
     expect(tooLong.status()).toBe(400)
@@ -380,6 +479,34 @@ export function describeWritingGame(config: WritingGameConfig) {
     }).toPass()
   })
 
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`in care mode, the game, its support and the gentle way on have no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+      await databaseDown(page, config)
+      await page.route(`**/api/${config.game}/reflect`, (route) =>
+        route.fulfill({ json: { reflection: 'Thank you for trusting this page.', care: true } })
+      )
+      await page.goto(`/games/${config.slug}`)
+      await write(page, config, 'I want to end my life.', config.careHeading)
+      await expect(support(page)).toBeVisible()
+      expect(await axeViolations(page)).toEqual([])
+
+      await page.reload()
+      await expect(support(page)).toBeVisible()
+      expect(await axeViolations(page)).toEqual([])
+    })
+
+    test(`the quiet line of support has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+      await databaseDown(page, config)
+      await mockReflection(page, config, 500)
+      await page.goto(`/games/${config.slug}`)
+      await write(page, config, 'Be kind to each other.')
+      await expect(page.getByText(QUIET_SUPPORT)).toBeVisible()
+      expect(await axeViolations(page)).toEqual([])
+    })
+  }
+
   test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
@@ -393,7 +520,7 @@ export function describeWritingGame(config: WritingGameConfig) {
       expect(send!.y + send!.height).toBeLessThan(844)
 
       await write(page, config, 'Hold the people you love.')
-      await expect(cloud(page)).toBeVisible()
+      await expect(cloud(page)).toBeVisible({ timeout: CLOUD_WAIT })
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
       expect(overflow).toBeLessThanOrEqual(0)
       const box = await cloud(page).boundingBox()
@@ -411,7 +538,7 @@ export function describeWritingGame(config: WritingGameConfig) {
 
       await write(page, config, 'Slow down.')
       await expect(page.getByText(REFLECTION)).toBeVisible()
-      await expect(cloud(page)).toBeVisible()
+      await expect(cloud(page)).toBeVisible({ timeout: CLOUD_WAIT })
       await page.getByRole('button', { name: config.closingButton }).click()
       await expect(page.getByText(config.closingLine)).toBeFocused()
     })

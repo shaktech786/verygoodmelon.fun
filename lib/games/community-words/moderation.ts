@@ -50,6 +50,9 @@ const DISTRESS_PATTERNS = [
   /\bbetter off (?:if i (?:disappeared|was gone|were gone|wasn'?t here)|dead)\b/,
   /\bnever wake up\b/,
   /\bdisappear (?:forever|for good)\b/,
+  /\b(?:take|took|taking|swallow(?:ed|ing)?) (?:all|a bottle|the whole bottle) (?:of )?(?:my |the |these |those )?pills\b/,
+  // "End it on a happy note" is a farewell; "I just want to end it" is not
+  /\b(?:want|wanna|going|ready|need|have) to end it\b(?! (?:on|with|by|well|gently|properly|right))/,
 ]
 
 function fold(text: string): string {

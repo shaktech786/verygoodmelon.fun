@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+import { useCareMode } from '@/components/games/CareMode'
+import { GentleGames, HEAVY_GAMES } from '@/components/games/CrossGameSuggestions'
 import { GameCardShowcase } from '@/components/games/GameCardShowcase'
 import { PersonalizedSuggestions } from '@/components/home/PersonalizedSuggestions'
 import { SHOWCASE_GAMES, SHOWCASE_GROUPS } from '@/lib/games/config'
@@ -44,6 +46,7 @@ export default function Home() {
   const reduceMotion = useReducedMotion()
   const { count: presenceCount, isLoaded: presenceLoaded } = usePresence()
   const { wisdom, isLoaded: wisdomLoaded } = useDailyWisdom()
+  const { care } = useCareMode()
   // Picked after mount so the server's date can never disagree with the visitor's
   const featuredGame = mounted ? getDailyFeatured() : undefined
 
@@ -121,9 +124,11 @@ export default function Home() {
         </div>
       )}
 
-      {/* Games by category */}
+      {/* Games by category; after words of danger, calm games lead and the games about death step aside */}
       <div className="w-full max-w-3xl space-y-10 sm:space-y-14">
-        {SHOWCASE_GROUPS.map(({ category, title, description, games }) => {
+        {care && <GentleGames />}
+        {SHOWCASE_GROUPS.map(({ category, title, description, games: groupGames }) => {
+          const games = care ? groupGames.filter((game) => !HEAVY_GAMES.has(game.id)) : groupGames
           // Use first game's index for category header delay
           const firstGameIdx = GAME_INDICES.get(games[0].id) ?? 0
 
