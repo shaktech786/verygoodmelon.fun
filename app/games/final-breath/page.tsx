@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'The Final Word | VeryGoodMelon.Fun',
-  description: 'If you had one last thing to say to the world, what would it be? Write it, hear it back, and see what others would say.'
+  description: 'If you had one last thing to say to the world, what would it be? Write it, hear it back, and find out why it does not have to wait.'
 }
 
 export default function LastWordsPage() {
