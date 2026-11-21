@@ -3,8 +3,12 @@ export const TOPIC_MAX = 120
 export const ARGUMENT_MAX = 1200
 export const MAX_HISTORY = 12
 
-/** Marker the model is told to send instead of explaining why it will not voice a debate. */
-export const STEP_ASIDE = '[[STEP_ASIDE]]'
+/** Markers the model is told to send instead of explaining why it will not voice a turn. */
+export const STEP_ASIDE_VOICE = '[[STEP_ASIDE_VOICE]]'
+export const STEP_ASIDE_TOPIC = '[[STEP_ASIDE_TOPIC]]'
+const STEP_ASIDE_PREFIX = '[[STEP_ASIDE'
+
+export type DeclineReason = 'voice' | 'topic'
 
 export interface HistoryEntry {
   speaker: string
@@ -34,7 +38,14 @@ const REFUSAL_PATTERNS = [
 
 /** True when the model answered as itself instead of as the debater. */
 export function isRefusal(text: string): boolean {
-  return text.includes(STEP_ASIDE) || REFUSAL_PATTERNS.some(p => p.test(text))
+  return text.includes(STEP_ASIDE_PREFIX) || REFUSAL_PATTERNS.some(p => p.test(text))
+}
+
+/** Which part the model would not voice, when it said so; a plain refusal names neither. */
+export function declineReason(text: string): DeclineReason | null {
+  if (text.includes(STEP_ASIDE_VOICE)) return 'voice'
+  if (text.includes(STEP_ASIDE_TOPIC)) return 'topic'
+  return null
 }
 
 /** Markdown would show up as literal asterisks in a speech bubble. */
@@ -55,4 +66,36 @@ export function clampToSentences(text: string, max: number): string {
   if (end > max * 0.4) return cut.slice(0, end + 1)
   const space = cut.lastIndexOf(' ')
   return `${cut.slice(0, space > 0 ? space : max).replace(/[,;:\s]+$/, '')}…`
+}
+
+const SENTENCE_END = /[.!?…]+["'”’)\]]*(?=\s|$)/g
+// A full stop after a title or an initial does not end the sentence ("I." still does)
+const NOT_AN_END = /\b(?:Mr|Mrs|Ms|Dr|St|Prof|Mt|vs|etc|e\.g|i\.e|[A-HJ-Z])\.$/
+
+const wordCount = (text: string) => text.split(/\s+/).filter(Boolean).length
+
+/**
+ * Keeps whole sentences only, at most `maxSentences` and, after the first,
+ * no more than `maxWords` in total. A trailing fragment cut off part way is dropped.
+ */
+export function limitSpeech(text: string, maxSentences: number, maxWords: number): string {
+  const sentences: string[] = []
+  let start = 0
+  for (const match of text.matchAll(SENTENCE_END)) {
+    const end = match.index + match[0].length
+    if (NOT_AN_END.test(text.slice(start, end))) continue
+    sentences.push(text.slice(start, end).trim())
+    start = end
+  }
+  if (sentences.length === 0) return text.trim()
+
+  const kept: string[] = []
+  let words = 0
+  for (const sentence of sentences) {
+    if (kept.length === maxSentences) break
+    if (kept.length > 0 && words + wordCount(sentence) > maxWords) break
+    kept.push(sentence)
+    words += wordCount(sentence)
+  }
+  return kept.join(' ')
 }

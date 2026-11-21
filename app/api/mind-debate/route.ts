@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 import {
-  NAME_MAX, TOPIC_MAX, STEP_ASIDE,
-  clean, cleanHistory, isRefusal, plainSpeech, clampToSentences,
+  NAME_MAX, TOPIC_MAX, STEP_ASIDE_VOICE, STEP_ASIDE_TOPIC,
+  clean, cleanHistory, isRefusal, declineReason, plainSpeech, clampToSentences, limitSpeech,
 } from './text'
 
 const MAX_ROUNDS = 12
 const TURN_MAX = 600
+const TURN_SENTENCES = 3
+const TURN_WORDS = 60
 
 // The model sometimes prefixes its reply with the speaker's name or wraps it in quotes.
 function stripSpeakerLabel(text: string, speaker: string): string {
@@ -55,19 +57,20 @@ ${historyText}
 ROUND: ${roundContext}
 
 HOW TO SPEAK:
-- 2 or 3 sentences, under 70 words. Plain spoken text, no markdown, no labels, no speaker name prefix.
+- 2 or 3 short sentences, 45 words at most. Plain spoken text, no markdown, no labels, no speaker name prefix.
 - Use ${currentSpeaker}'s known views, manner and style. If they are fictional or not a person, use their established character.
 - Disagree generously: challenge the idea, never the person. No insults, mockery, slurs or contempt.
 - If ${currentSpeaker} is a real living person, voice the spirit of their public views. Never invent quotes, private facts, scandals or claims about real people.
 - Be warm, witty and clear. Leave the listener with something to think about.
 
 WHEN TO STEP ASIDE:
-Reply with exactly ${STEP_ASIDE} and nothing else if voicing this turn would mean any of these:
+Reply with exactly ${STEP_ASIDE_VOICE} and nothing else if the problem is who is speaking:
 - speaking as someone chiefly known for atrocities, terror or hatred, in their own voice;
+- mocking, threatening or making claims about a private individual.
+Reply with exactly ${STEP_ASIDE_TOPIC} and nothing else if the problem is the question itself, whoever discusses it:
 - arguing that any group of people is inferior, or that anyone should be harmed;
-- mocking, threatening or making claims about a private individual;
 - sexual content, self-harm, or instructions for anything dangerous.
-Never explain, apologise or mention rules. Either speak in character or send ${STEP_ASIDE}.`
+Never explain, apologise or mention rules. Either speak in character or send one of those two markers.`
 
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
@@ -75,9 +78,13 @@ Never explain, apologise or mention rules. Either speak in character or send ${S
       config: { temperature: 0.9, topP: 0.95, topK: 40, maxOutputTokens: 256, ...MINIMAL_THINKING },
     })
     const raw = (result.text ?? '').trim()
-    if (isRefusal(raw)) return NextResponse.json({ declined: true })
+    if (isRefusal(raw)) {
+      const reason = declineReason(raw)
+      return NextResponse.json(reason ? { declined: true, reason } : { declined: true })
+    }
 
-    const argument = clampToSentences(plainSpeech(stripSpeakerLabel(raw, currentSpeaker)), TURN_MAX)
+    const speech = plainSpeech(stripSpeakerLabel(raw, currentSpeaker))
+    const argument = clampToSentences(limitSpeech(speech, TURN_SENTENCES, TURN_WORDS), TURN_MAX)
     if (!argument) throw new Error('Empty debate turn')
 
     return NextResponse.json({ speaker: currentSpeaker, argument, round })

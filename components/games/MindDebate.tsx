@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Button } from '@/components/ui/Button'
-import { MessagesSquare, RotateCcw, Loader2, Square, Play, Shuffle } from 'lucide-react'
+import { Button, buttonClassName } from '@/components/ui/Button'
+import { MessagesSquare, RotateCcw, Loader2, Square, Play, Shuffle, UserRound, HelpCircle } from 'lucide-react'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
 interface DebateEntry {
@@ -25,6 +25,9 @@ interface Pairing {
 }
 
 type GamePhase = 'setup' | 'debating' | 'stopped' | 'declined' | 'judging' | 'closing'
+type DeclineReason = 'voice' | 'topic' | null
+type FocusTarget = 'transcript' | 'person1' | 'topic' | 'start'
+type Side = 'left' | 'right'
 
 const TOTAL_ROUNDS = 6
 const CHAR_DELAY_MS = 18
@@ -32,6 +35,8 @@ const TURN_PAUSE_MS = 400
 const NAME_MAX = 60
 const TOPIC_MAX = 120
 const STICK_TO_BOTTOM_PX = 48
+const ABORTED = Symbol('aborted')
+const ACTION = 'flex items-center gap-2'
 
 const PAIRINGS: readonly Pairing[] = [
   { first: 'Marcus Aurelius', second: 'Oscar Wilde', topic: 'Should you care what others think?' },
@@ -47,6 +52,12 @@ const PAIRINGS: readonly Pairing[] = [
   { first: 'Hypatia', second: 'Carl Sagan', topic: 'Does the universe mind that we are here?' },
   { first: 'Epicurus', second: 'A busy parent', topic: 'Is a simple life a happy life?' },
 ]
+
+const DECLINE_LINES: Record<'voice' | 'topic' | 'unknown', string> = {
+  voice: 'The Arena will not give voice to one of these speakers. The question can stay: try it with someone else.',
+  topic: 'This is a question The Arena will not hold, whoever is asking. The voices can stay: try them on a different question.',
+  unknown: 'This conversation is one The Arena will sit out. Try another pair or question, or let it surprise you.',
+}
 
 function fallbackClosing(first: string, second: string): Closing {
   return {
@@ -69,6 +80,8 @@ function speakerFor(round: number, first: string, second: string): string {
   return round % 2 === 1 ? first : second
 }
 
+const sideOf = (round: number): Side => (round % 2 === 1 ? 'left' : 'right')
+
 function wait(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
     const t = setTimeout(resolve, ms)
@@ -76,7 +89,22 @@ function wait(ms: number, signal: AbortSignal): Promise<void> {
   })
 }
 
-class Declined extends Error {}
+/** Stops waiting on a promise when the signal aborts, without cancelling the promise itself. */
+function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T | typeof ABORTED> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return resolve(ABORTED)
+    signal.addEventListener('abort', () => resolve(ABORTED), { once: true })
+    promise.then(resolve, reject)
+  })
+}
+
+const focusLost = () => !document.activeElement || document.activeElement === document.body
+
+class Declined extends Error {
+  constructor(readonly reason: DeclineReason) {
+    super('declined')
+  }
+}
 
 export default function MindDebate() {
   const [person1, setPerson1] = useState('')
@@ -87,21 +115,59 @@ export default function MindDebate() {
   const [currentRound, setCurrentRound] = useState(0)
   const [typingText, setTypingText] = useState('')
   const [interruption, setInterruption] = useState<string | null>(null)
+  const [declineReason, setDeclineReason] = useState<DeclineReason>(null)
   const [closing, setClosing] = useState<Closing | null>(null)
   const reducedMotion = useReducedMotion()
 
+  const regionRef = useRef<HTMLDivElement>(null)
   const debateRef = useRef<HTMLDivElement>(null)
+  const person1Ref = useRef<HTMLInputElement>(null)
+  const topicRef = useRef<HTMLInputElement>(null)
+  const startRef = useRef<HTMLButtonElement>(null)
+  const stopRef = useRef<HTMLButtonElement>(null)
+  const continueRef = useRef<HTMLButtonElement>(null)
+  const declineActionRef = useRef<HTMLButtonElement>(null)
+  const closingHeadingRef = useRef<HTMLHeadingElement>(null)
+  const focusNextRef = useRef<FocusTarget | null>(null)
+
   const stickToBottomRef = useRef(true)
-  const abortRef = useRef<AbortController | null>(null)
+  // The session covers a whole debate; play covers what is being shown now, so Stop can pause the show without dropping a reply already paid for
+  const sessionRef = useRef<AbortController | null>(null)
+  const playRef = useRef<AbortController | null>(null)
+  const historyRef = useRef<DebateEntry[]>([])
+  const pendingRef = useRef<{ round: number; reply: Promise<DebateEntry> } | null>(null)
   const pairingRef = useRef(-1)
 
-  useEffect(() => () => abortRef.current?.abort(), [])
+  useEffect(() => () => {
+    sessionRef.current?.abort()
+    playRef.current?.abort()
+  }, [])
 
   // Follows new text only while the reader is already at the bottom, so scrolling back to reread is never yanked away
   useEffect(() => {
     const el = debateRef.current
     if (el && stickToBottomRef.current) el.scrollTop = el.scrollHeight
   }, [history, typingText, phase])
+
+  // Whatever control was just pressed usually disappears with the phase it belonged to, so focus moves to the next sensible place
+  useEffect(() => {
+    const target = focusNextRef.current
+    focusNextRef.current = null
+    if (target === 'transcript') debateRef.current?.focus()
+    else if (target === 'person1') person1Ref.current?.focus()
+    else if (target === 'topic') topicRef.current?.focus()
+    else if (target === 'start') startRef.current?.focus()
+    else if (phase === 'closing' || phase === 'declined') {
+      // An ending the reader would otherwise have to go looking for
+      if (focusLost() || regionRef.current?.contains(document.activeElement)) {
+        if (phase === 'closing') closingHeadingRef.current?.focus()
+        else declineActionRef.current?.focus()
+      }
+    } else if (focusLost()) {
+      if (phase === 'debating') stopRef.current?.focus()
+      else if (phase === 'stopped') continueRef.current?.focus()
+    }
+  }, [phase])
 
   const handleTranscriptScroll = () => {
     const el = debateRef.current
@@ -152,7 +218,7 @@ export default function MindDebate() {
       })
       if (!res.ok) throw new Error(`turn ${res.status}`)
       const data = await res.json()
-      if (data.declined === true) throw new Declined()
+      if (data.declined === true) throw new Declined(data.reason === 'voice' || data.reason === 'topic' ? data.reason : null)
       if (typeof data.argument !== 'string' || !data.argument.trim()) throw new Error('empty turn')
       return { speaker: speakerFor(round, person1Name, person2Name), argument: data.argument.trim(), round }
     },
@@ -184,29 +250,54 @@ export default function MindDebate() {
     [person1Name, person2Name, topicName]
   )
 
-  const runDebate = useCallback(async (startHistory: DebateEntry[]) => {
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-    const { signal } = controller
+  const commit = useCallback((entry: DebateEntry) => {
+    if (historyRef.current.length !== entry.round - 1) return
+    historyRef.current = [...historyRef.current, entry]
+    setHistory(historyRef.current)
+  }, [])
+
+  // One request per round: a reply still on its way when the reader pressed Stop is reused by Continue
+  const requestTurn = useCallback((round: number, session: AbortSignal): Promise<DebateEntry> => {
+    const pending = pendingRef.current
+    if (pending && pending.round === round) return pending.reply
+    const request = { round, reply: fetchTurn(round, historyRef.current, session) }
+    pendingRef.current = request
+    const settle = () => { if (pendingRef.current === request) pendingRef.current = null }
+    request.reply.then(settle, settle)
+    return request.reply
+  }, [fetchTurn])
+
+  const runDebate = useCallback(async () => {
+    const session = sessionRef.current?.signal
+    if (!session) return
+    playRef.current?.abort()
+    const play = new AbortController()
+    playRef.current = play
 
     stickToBottomRef.current = true
     setPhase('debating')
     setInterruption(null)
+    setDeclineReason(null)
     setClosing(null)
-    setHistory(startHistory)
-    let runningHistory = startHistory
 
-    for (let round = startHistory.length + 1; round <= TOTAL_ROUNDS; round++) {
+    for (let round = historyRef.current.length + 1; round <= TOTAL_ROUNDS; round = historyRef.current.length + 1) {
       setCurrentRound(round)
       setTypingText('')
 
+      const reply = requestTurn(round, session)
       let entry: DebateEntry
       try {
-        entry = await fetchTurn(round, runningHistory, signal)
+        const result = await untilAborted(reply, play.signal)
+        if (result === ABORTED) {
+          // Paused while this turn was on its way: it joins the transcript whole when it lands
+          reply.then((late) => { if (!session.aborted) commit(late) }, () => {})
+          return
+        }
+        entry = result
       } catch (error) {
-        if (signal.aborted) return
+        if (session.aborted || play.signal.aborted) return
         if (error instanceof Declined) {
+          setDeclineReason(error.reason)
           setPhase('declined')
           return
         }
@@ -214,48 +305,61 @@ export default function MindDebate() {
         setInterruption(`${speakerFor(round, person1Name, person2Name)} lost their train of thought.`)
         return
       }
-      if (signal.aborted) return
 
-      await typeText(entry.argument, signal)
-      if (signal.aborted) return
+      if (historyRef.current.length < round) {
+        await typeText(entry.argument, play.signal)
+        if (session.aborted) return
+        // Stopping part way through still keeps the whole turn the reader was following
+        commit(entry)
+        setTypingText('')
+        if (play.signal.aborted) return
+      }
 
-      runningHistory = [...runningHistory, entry]
-      setHistory(runningHistory)
-      setTypingText('')
-
-      if (round < TOTAL_ROUNDS) await wait(TURN_PAUSE_MS, signal)
-      if (signal.aborted) return
+      if (round < TOTAL_ROUNDS) await wait(TURN_PAUSE_MS, play.signal)
+      if (play.signal.aborted) return
     }
 
     setPhase('judging')
-    const result = await fetchClosing(runningHistory, signal)
-    if (signal.aborted) return
+    const result = await fetchClosing(historyRef.current, session)
+    if (session.aborted) return
     setClosing(result)
     setPhase('closing')
-  }, [fetchTurn, typeText, fetchClosing, person1Name, person2Name])
+  }, [requestTurn, commit, typeText, fetchClosing, person1Name, person2Name])
+
+  const resetDebate = () => {
+    sessionRef.current?.abort()
+    playRef.current?.abort()
+    sessionRef.current = null
+    pendingRef.current = null
+    historyRef.current = []
+    setHistory([])
+    setCurrentRound(0)
+    setTypingText('')
+    setInterruption(null)
+    setDeclineReason(null)
+    setClosing(null)
+  }
 
   const handleStart = (e: React.FormEvent) => {
     e.preventDefault()
     if (!canStart) return
-    setCurrentRound(0)
-    runDebate([])
+    resetDebate()
+    sessionRef.current = new AbortController()
+    focusNextRef.current = 'transcript'
+    runDebate()
   }
 
   const handleStop = () => {
-    abortRef.current?.abort()
+    playRef.current?.abort()
     setTypingText('')
     setInterruption(null)
     setPhase('stopped')
   }
 
-  const backToSetup = () => {
-    abortRef.current?.abort()
+  const backToSetup = (focus?: FocusTarget) => {
+    resetDebate()
+    focusNextRef.current = focus ?? null
     setPhase('setup')
-    setHistory([])
-    setCurrentRound(0)
-    setTypingText('')
-    setInterruption(null)
-    setClosing(null)
   }
 
   const handleSurprise = () => {
@@ -266,7 +370,7 @@ export default function MindDebate() {
     setPerson1(pairing.first)
     setPerson2(pairing.second)
     setTopic(pairing.topic)
-    if (phase !== 'setup') backToSetup()
+    if (phase !== 'setup') backToSetup('start')
   }
 
   if (phase === 'setup') {
@@ -279,6 +383,7 @@ export default function MindDebate() {
                 First debater
               </label>
               <input
+                ref={person1Ref}
                 id="person1"
                 type="text"
                 value={person1}
@@ -311,6 +416,7 @@ export default function MindDebate() {
               Topic
             </label>
             <input
+              ref={topicRef}
               id="topic"
               type="text"
               value={topic}
@@ -323,15 +429,15 @@ export default function MindDebate() {
           </div>
 
           <div className="pt-2 flex flex-col sm:flex-row gap-3">
-            <Button
+            <button
+              ref={startRef}
               type="submit"
-              variant="primary"
               disabled={!canStart}
-              className="flex-1 flex items-center justify-center gap-2"
+              className={buttonClassName('primary', 'md', 'flex-1 flex items-center justify-center gap-2')}
             >
               <MessagesSquare size={18} aria-hidden="true" />
-              Start Debate
-            </Button>
+              Start debate
+            </button>
             <Button
               type="button"
               variant="secondary"
@@ -344,55 +450,65 @@ export default function MindDebate() {
           </div>
         </form>
 
-        <p className="text-center text-foreground/70 text-sm mt-6">
+        <p className="text-center text-foreground/75 text-sm mt-6">
           Pick any two minds, real or imagined, and a question for them to explore.
         </p>
       </div>
     )
   }
 
+  // In the short pause after a turn lands, nobody is speaking or thinking yet
+  const turnInProgress = phase === 'debating' && currentRound > history.length
+  const activeSide: Side | null = turnInProgress ? sideOf(currentRound) : null
+  const activeState = typingText ? 'speaking' : 'thinking'
   const nextSpeaker = speakerFor(currentRound, person1Name, person2Name)
-  const waitingForTurn = phase === 'debating' && !typingText
+  const waitingForTurn = turnInProgress && !typingText
 
   return (
     <div
+      ref={regionRef}
       className="max-w-4xl mx-auto animate-fade"
       role="region"
       aria-label={`Debate: ${person1Name} and ${person2Name}`}
     >
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
-        <div className="text-center sm:text-left min-w-0 max-w-full">
-          <p className="text-sm text-foreground/80 break-words">
-            {person1Name} <span className="text-accent font-semibold" aria-hidden="true">&amp;</span>
-            <span className="sr-only">and</span> {person2Name}
-          </p>
-          <p className="text-xs text-foreground/70 mt-0.5 break-words">&ldquo;{topicName}&rdquo;</p>
-          <p className="text-xs text-foreground/70 mt-0.5">Imagined voices, not real quotes.</p>
+      <section
+        aria-labelledby="arena-question"
+        className="bg-card-bg border border-card-border rounded-xl px-4 pt-5 pb-4 sm:px-8 sm:pt-6 mb-4"
+      >
+        <p className="text-sm text-foreground/75 text-center">The question</p>
+        <h2 id="arena-question" className="mt-1 text-xl sm:text-2xl font-semibold text-center text-foreground break-words">
+          &ldquo;{topicName}&rdquo;
+        </h2>
+        <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 sm:gap-6">
+          <Speaker name={person1Name} side="left" state={activeSide === 'left' ? activeState : null} reducedMotion={reducedMotion} />
+          <span className="self-center pb-8 text-xl sm:text-2xl font-semibold text-foreground/60" aria-hidden="true">&amp;</span>
+          <Speaker name={person2Name} side="right" state={activeSide === 'right' ? activeState : null} reducedMotion={reducedMotion} />
         </div>
+        <p className="mt-3 text-sm text-foreground/75 text-center">Imagined voices, not real quotes.</p>
+      </section>
 
-        {(phase === 'debating' || phase === 'stopped') && (
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm font-medium text-foreground/80">
-              Round {currentRound}/{TOTAL_ROUNDS}
-            </span>
-            <div
-              className="flex gap-1"
-              role="progressbar"
-              aria-valuenow={history.length}
-              aria-valuemin={0}
-              aria-valuemax={TOTAL_ROUNDS}
-              aria-label={`${history.length} of ${TOTAL_ROUNDS} rounds finished`}
-            >
-              {Array.from({ length: TOTAL_ROUNDS }, (_, i) => (
-                <div
-                  key={i}
-                  className={`w-2 h-2 rounded-full transition-colors ${i < history.length ? 'bg-accent' : 'bg-foreground/15'}`}
-                />
-              ))}
-            </div>
+      {(phase === 'debating' || phase === 'stopped') && (
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <span className="text-sm font-medium text-foreground/80">
+            Round {currentRound}/{TOTAL_ROUNDS}
+          </span>
+          <div
+            className="flex gap-1"
+            role="progressbar"
+            aria-valuenow={history.length}
+            aria-valuemin={0}
+            aria-valuemax={TOTAL_ROUNDS}
+            aria-label={`${history.length} of ${TOTAL_ROUNDS} rounds finished`}
+          >
+            {Array.from({ length: TOTAL_ROUNDS }, (_, i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full transition-colors ${i < history.length ? 'bg-accent' : 'bg-foreground/15'}`}
+              />
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div
         ref={debateRef}
@@ -401,24 +517,24 @@ export default function MindDebate() {
         role="log"
         aria-live="polite"
         aria-label="Debate transcript"
-        className="bg-card-bg border border-card-border rounded-xl p-4 sm:p-6 min-h-[300px] max-h-[60vh] overflow-y-auto space-y-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="bg-card-bg border border-card-border rounded-xl p-4 sm:p-6 min-h-[240px] max-h-[60vh] overflow-y-auto space-y-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         {history.map((entry) => (
-          <DebateBubble key={entry.round} entry={entry} isLeft={entry.round % 2 === 1} />
+          <DebateBubble key={entry.round} entry={entry} side={sideOf(entry.round)} />
         ))}
 
         {phase === 'debating' && typingText && (
           <div aria-hidden="true">
             <DebateBubble
               entry={{ speaker: nextSpeaker, argument: typingText, round: currentRound }}
-              isLeft={currentRound % 2 === 1}
+              side={sideOf(currentRound)}
               typing
             />
           </div>
         )}
 
         {waitingForTurn && (
-          <div className="flex items-center justify-center gap-2 py-3 text-foreground/70">
+          <div className="flex items-center justify-center gap-2 py-3 text-foreground/75">
             <Loader2 size={18} className={reducedMotion ? '' : 'animate-spin'} aria-hidden="true" />
             <span className="text-sm break-words">{nextSpeaker} is thinking...</span>
           </div>
@@ -431,95 +547,205 @@ export default function MindDebate() {
         )}
 
         {phase === 'declined' && (
-          <div className="text-center py-4 max-w-md mx-auto">
-            <p className="text-sm text-foreground/80 leading-relaxed">
-              This conversation is one The Arena will sit out. Some voices are better left unspoken here.
-            </p>
-            <p className="text-sm text-foreground/80 mt-2">Try another pair, or let it surprise you.</p>
-          </div>
+          <p className="text-center text-sm text-foreground/80 leading-relaxed py-4 max-w-md mx-auto">
+            {DECLINE_LINES[declineReason ?? 'unknown']}
+          </p>
         )}
 
         {phase === 'judging' && (
-          <div className="flex items-center justify-center gap-2 py-6 text-foreground/70">
+          <div className="flex items-center justify-center gap-2 py-6 text-foreground/75">
             <Loader2 size={18} className={reducedMotion ? '' : 'animate-spin'} aria-hidden="true" />
             <span className="text-sm">Letting it settle...</span>
           </div>
         )}
-
-        {phase === 'closing' && closing && (
-          <ClosingThoughts closing={closing} first={person1Name} second={person2Name} />
-        )}
       </div>
+
+      {phase === 'closing' && closing && (
+        <ClosingThoughts closing={closing} first={person1Name} second={person2Name} headingRef={closingHeadingRef} />
+      )}
 
       <div className="flex flex-wrap justify-center gap-3 mt-5">
         {phase === 'debating' && (
-          <Button onClick={handleStop} variant="secondary" className="flex items-center gap-2">
+          <button ref={stopRef} type="button" onClick={handleStop} className={buttonClassName('secondary', 'md', ACTION)}>
             <Square size={16} aria-hidden="true" />
             Stop
-          </Button>
+          </button>
         )}
         {phase === 'stopped' && history.length < TOTAL_ROUNDS && (
-          <Button onClick={() => runDebate(history)} variant="primary" className="flex items-center gap-2">
+          <button ref={continueRef} type="button" onClick={runDebate} className={buttonClassName('primary', 'md', ACTION)}>
             <Play size={16} aria-hidden="true" />
             {interruption ? 'Try again' : 'Continue'}
-          </Button>
+          </button>
         )}
-        {phase === 'declined' && (
-          <Button onClick={handleSurprise} variant="primary" className="flex items-center gap-2">
+        {phase === 'declined' && declineReason === 'voice' && (
+          <button ref={declineActionRef} type="button" onClick={() => backToSetup('person1')} className={buttonClassName('primary', 'md', ACTION)}>
+            <UserRound size={16} aria-hidden="true" />
+            Choose other voices
+          </button>
+        )}
+        {phase === 'declined' && declineReason === 'topic' && (
+          <button ref={declineActionRef} type="button" onClick={() => backToSetup('topic')} className={buttonClassName('primary', 'md', ACTION)}>
+            <HelpCircle size={16} aria-hidden="true" />
+            Ask another question
+          </button>
+        )}
+        {(phase === 'declined' || phase === 'closing') && (
+          <button
+            ref={phase === 'declined' && declineReason === null ? declineActionRef : undefined}
+            type="button"
+            onClick={handleSurprise}
+            className={buttonClassName(phase === 'declined' && declineReason !== null ? 'secondary' : 'primary', 'md', ACTION)}
+          >
             <Shuffle size={16} aria-hidden="true" />
             Surprise me
-          </Button>
+          </button>
         )}
-        <Button onClick={backToSetup} variant="secondary" className="flex items-center gap-2">
+        <Button onClick={() => backToSetup()} variant="secondary" className={ACTION}>
           <RotateCcw size={16} aria-hidden="true" />
-          New Debate
+          New debate
         </Button>
       </div>
     </div>
   )
 }
 
-function ClosingThoughts({ closing, first, second }: { closing: Closing; first: string; second: string }) {
+// A pixel watermelon slice with a face, drawn facing right; the right-hand speaker is mirrored so the two face each other
+const FACE = [
+  '....GGGGGG....',
+  '..GGLLLLLLGG..',
+  '.GLLRRRRRRLLG.',
+  '.GLRRRRRRRRLG.',
+  'GLRRSRRRRRRRLG',
+  'GLRRRRRERRERLG',
+  'GLRRRRRERRERLG',
+  'GLRSRRRRRRRRLG',
+  'GLRRRRRRMMRRLG',
+  'GLRRRRRROORRLG',
+  '.GLRRSRRRRRLG.',
+  '.GLLRRRRRRLLG.',
+  '..GGLLLLLLGG..',
+  '....GGGGGG....',
+]
+
+function pixelPath(cells: string): string {
+  const d: string[] = []
+  FACE.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) if (cells.includes(row[x])) d.push(`M${x} ${y}h1v1h-1z`)
+  })
+  return d.join('')
+}
+
+const RIND = pixelPath('G')
+const INNER_RIND = pixelPath('L')
+const FLESH = pixelPath('RO')
+const SEEDS = pixelPath('SEM')
+const OPEN_MOUTH = pixelPath('O')
+
+function Medallion({ side, speaking }: { side: Side; speaking: boolean }) {
   return (
-    <section aria-label="Closing thoughts" className="mt-2 border-t border-card-border pt-5 space-y-5">
+    <svg
+      viewBox="0 0 14 14"
+      shapeRendering="crispEdges"
+      className="w-16 h-16 sm:w-24 sm:h-24"
+      style={side === 'right' ? { transform: 'scaleX(-1)' } : undefined}
+      aria-hidden="true"
+    >
+      <path d={RIND} fill="var(--melon-green)" />
+      <path d={INNER_RIND} fill="var(--melon-green-light)" />
+      <path d={FLESH} fill={side === 'left' ? 'var(--melon-red)' : 'var(--warm)'} />
+      <path d={SEEDS} fill="var(--foreground)" />
+      {speaking && <path d={OPEN_MOUTH} fill="var(--foreground)" />}
+    </svg>
+  )
+}
+
+function Speaker({
+  name,
+  side,
+  state,
+  reducedMotion,
+}: {
+  name: string
+  side: Side
+  state: 'speaking' | 'thinking' | null
+  reducedMotion: boolean
+}) {
+  const active = state !== null
+  return (
+    <div className="flex flex-col items-center text-center min-w-0">
+      <div
+        className={`rounded-full p-1.5 border-2 ${active ? 'border-foreground/50' : 'border-transparent'} ${
+          reducedMotion ? '' : 'transition-transform duration-300'
+        } ${active && !reducedMotion ? '-translate-y-1' : ''}`}
+      >
+        <Medallion side={side} speaking={state === 'speaking'} />
+      </div>
+      <p className="mt-2 text-base sm:text-lg font-medium text-foreground break-words max-w-full">{name}</p>
+      <p className="text-sm text-foreground/75 min-h-[1.25rem]" aria-hidden="true">
+        {state === 'speaking' ? 'speaking' : state === 'thinking' ? 'thinking' : ''}
+      </p>
+    </div>
+  )
+}
+
+function ClosingThoughts({
+  closing,
+  first,
+  second,
+  headingRef,
+}: {
+  closing: Closing
+  first: string
+  second: string
+  headingRef: React.RefObject<HTMLHeadingElement | null>
+}) {
+  return (
+    <section
+      aria-labelledby="closing-heading"
+      className="mt-6 bg-card-bg border border-card-border rounded-xl px-4 py-6 sm:px-8 sm:py-8 space-y-6 animate-fade"
+    >
+      <h2
+        id="closing-heading"
+        ref={headingRef}
+        tabIndex={-1}
+        className="text-xl sm:text-2xl font-semibold text-center text-foreground focus:outline-none focus-visible:shadow-none!"
+      >
+        Closing thoughts
+      </h2>
+
       <div>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground/70 text-center mb-3">
-          What each got right
-        </h2>
+        <h3 className="text-base font-semibold text-foreground/80 text-center mb-3">What each got right</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 min-w-0">
-            <p className="text-xs font-semibold text-accent break-words mb-1">{first}</p>
-            <p className="text-sm text-foreground/85 leading-relaxed break-words">{closing.firstInsight}</p>
+            <p className="text-sm font-semibold text-accent break-words mb-1">{first}</p>
+            <p className="text-base text-foreground/90 leading-relaxed break-words">{closing.firstInsight}</p>
           </div>
           <div className="rounded-lg border border-success/40 bg-success/10 px-4 py-3 min-w-0">
-            <p className="text-xs font-semibold text-melon-green break-words mb-1">{second}</p>
-            <p className="text-sm text-foreground/85 leading-relaxed break-words">{closing.secondInsight}</p>
+            <p className="text-sm font-semibold text-melon-green break-words mb-1">{second}</p>
+            <p className="text-base text-foreground/90 leading-relaxed break-words">{closing.secondInsight}</p>
           </div>
         </div>
       </div>
 
-      <div className="text-center max-w-lg mx-auto">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground/70 mb-2">
-          What the conversation revealed
-        </h2>
-        <p className="text-sm text-foreground/85 leading-relaxed break-words">{closing.revealed}</p>
+      <div className="text-center max-w-xl mx-auto">
+        <h3 className="text-base font-semibold text-foreground/80 mb-2">What the conversation revealed</h3>
+        <p className="text-base text-foreground/90 leading-relaxed break-words">{closing.revealed}</p>
       </div>
 
-      <div className="text-center max-w-lg mx-auto pb-1">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground/70 mb-2">
-          To take with you
-        </h2>
-        <p className="text-base text-foreground italic leading-relaxed break-words">{closing.question}</p>
+      <div className="text-center max-w-xl mx-auto">
+        <h3 className="text-base font-semibold text-foreground/80 mb-2">To take with you</h3>
+        <p className="text-lg text-foreground italic leading-relaxed break-words">{closing.question}</p>
       </div>
     </section>
   )
 }
 
-function DebateBubble({ entry, isLeft, typing = false }: { entry: DebateEntry; isLeft: boolean; typing?: boolean }) {
+function DebateBubble({ entry, side, typing = false }: { entry: DebateEntry; side: Side; typing?: boolean }) {
+  const isLeft = side === 'left'
   return (
     <div className={`flex ${isLeft ? 'justify-start' : 'justify-end'}`}>
       <div
-        className={`max-w-[85%] sm:max-w-[70%] min-w-0 rounded-xl px-4 py-3 ${
+        className={`max-w-[88%] sm:max-w-[72%] min-w-0 rounded-xl px-4 py-3 ${
           isLeft
             ? 'bg-accent/10 border border-accent/20 rounded-tl-sm'
             : 'bg-success/10 border border-success/20 rounded-tr-sm'
@@ -527,12 +753,12 @@ function DebateBubble({ entry, isLeft, typing = false }: { entry: DebateEntry; i
       >
         <div className="flex items-center gap-2 mb-1.5 min-w-0">
           <span className={`w-2 h-2 rounded-full shrink-0 ${isLeft ? 'bg-accent' : 'bg-success'}`} aria-hidden="true" />
-          <span className="text-xs font-semibold break-words min-w-0 text-foreground">
+          <span className="text-sm font-semibold break-words min-w-0 text-foreground">
             {entry.speaker}
           </span>
-          <span className="text-xs text-foreground/70 shrink-0">Round {entry.round}</span>
+          <span className="text-xs text-foreground/75 shrink-0">Round {entry.round}</span>
         </div>
-        <p className="text-sm text-foreground/85 leading-relaxed break-words">
+        <p className="text-[15px] sm:text-base text-foreground/90 leading-relaxed break-words">
           {entry.argument}
           {typing && <span className="inline-block w-0.5 h-4 bg-foreground/40 ml-0.5 align-middle" />}
         </p>

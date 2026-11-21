@@ -74,16 +74,24 @@ describe('POST /api/mind-debate (one turn)', () => {
 
     expect(prompt).toMatch(/never the person/i)
     expect(prompt).toMatch(/invent/i)
-    expect(prompt).toContain('[[STEP_ASIDE]]')
+    expect(prompt).toContain('[[STEP_ASIDE_')
   })
 
-  it('turns the step-aside signal into a quiet decline instead of a speech', async () => {
-    generateContent.mockResolvedValue({ text: '[[STEP_ASIDE]]' })
+  it('turns the step-aside signal into a quiet decline that says whether the voice or the topic is the problem', async () => {
+    generateContent.mockResolvedValue({ text: '[[STEP_ASIDE_VOICE]]' })
+    const voice = await askTurn({ person1: 'A dictator', topic: 'Is kindness weakness?' })
+    expect(voice.status).toBe(200)
+    expect(voice.data).toEqual({ declined: true, reason: 'voice' })
 
-    const { status, data } = await askTurn({ person1: 'A dictator', topic: 'Which group deserves less' })
+    generateContent.mockResolvedValue({ text: '[[STEP_ASIDE_TOPIC]]' })
+    const topic = await askTurn({ topic: 'Which group deserves less' })
+    expect(topic.data).toEqual({ declined: true, reason: 'topic' })
+  })
 
-    expect(status).toBe(200)
-    expect(data).toEqual({ declined: true })
+  it('asks the model to name which part it will not voice', async () => {
+    await askTurn()
+    expect(promptOf()).toContain('[[STEP_ASIDE_VOICE]]')
+    expect(promptOf()).toContain('[[STEP_ASIDE_TOPIC]]')
   })
 
   it('never lets a refusal be read out as if the debater said it', async () => {
@@ -123,6 +131,49 @@ describe('POST /api/mind-debate (one turn)', () => {
 
     expect(data.argument.length).toBeLessThanOrEqual(600)
     expect(data.argument.endsWith('.')).toBe(true)
+  })
+
+  it('trims a reply that runs long to at most three whole sentences', async () => {
+    generateContent.mockResolvedValue({
+      text: 'Freedom is a habit. It is practised daily, in small choices nobody sees. You call it an illusion because you look for it in grand gestures. Look instead at how you choose your words, Nietzsche, and you will find it there.',
+    })
+
+    const { data } = await askTurn()
+
+    expect(data.argument).toBe('Freedom is a habit. It is practised daily, in small choices nobody sees. You call it an illusion because you look for it in grand gestures.')
+  })
+
+  it('keeps fewer sentences when three would run past sixty words', async () => {
+    const phrase = 'this sentence carries a great many words because the speaker loves the sound of their own voice today'
+    const long = `Yes, ${phrase} and then ${phrase}`
+    generateContent.mockResolvedValue({ text: `Short opener. ${long}. ${long}. Final thought.` })
+
+    const { data } = await askTurn()
+
+    expect(data.argument).toBe(`Short opener. ${long}.`)
+    expect(data.argument.split(/\s+/).length).toBeLessThanOrEqual(60)
+  })
+
+  it('drops a last sentence that was cut off part way', async () => {
+    generateContent.mockResolvedValue({ text: 'Doubt needs a doubter. And the doubter, my friend, is the one who' })
+
+    const { data } = await askTurn()
+
+    expect(data.argument).toBe('Doubt needs a doubter.')
+  })
+
+  it('does not mistake a title like Mr. or Dr. for the end of a sentence', async () => {
+    generateContent.mockResolvedValue({ text: 'Ask Mr. Darcy whether pride is reason. Dr. Watson would say no. So would I. And more.' })
+
+    const { data } = await askTurn()
+
+    expect(data.argument).toBe('Ask Mr. Darcy whether pride is reason. Dr. Watson would say no. So would I.')
+  })
+
+  it('asks for two or three short sentences', async () => {
+    await askTurn()
+    expect(promptOf()).toMatch(/2 or 3 short sentences/)
+    expect(promptOf()).toMatch(/45 words/)
   })
 
   it('caps player text before it reaches the model', async () => {
