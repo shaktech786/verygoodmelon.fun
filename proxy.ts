@@ -59,6 +59,11 @@ function getClientIp(request: NextRequest): string {
 // ---------------------------------------------------------------------------
 
 export function proxy(request: NextRequest): NextResponse {
+  // Local requests all share one address, so e2e runs would trip the limit.
+  if (process.env.NODE_ENV !== 'production') {
+    return NextResponse.next()
+  }
+
   // Periodic cleanup (non-blocking, runs inline)
   cleanupStaleEntries()
 
