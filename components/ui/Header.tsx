@@ -195,7 +195,7 @@ export function Header() {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-base text-primary-light hover:text-foreground transition-colors py-2 px-3 rounded-lg hover:bg-hover-bg"
+                className="font-medium text-base text-primary-light hover:text-foreground transition-all py-2 px-3 rounded-lg border-l-4 border-transparent hover:bg-hover-bg hover:border-accent/30"
                 aria-label="View source code on GitHub"
               >
                 GitHub

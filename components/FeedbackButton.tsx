@@ -1,8 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MessageSquare, X, Send, Loader2, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+
+const OPEN_FEEDBACK_EVENT = 'verygoodmelon:open-feedback'
+
+export function openFeedback(): void {
+  window.dispatchEvent(new Event(OPEN_FEEDBACK_EVENT))
+}
 
 export function FeedbackButton() {
   const [isOpen, setIsOpen] = useState(false)
@@ -10,6 +16,12 @@ export function FeedbackButton() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const open = () => setIsOpen(true)
+    window.addEventListener(OPEN_FEEDBACK_EVENT, open)
+    return () => window.removeEventListener(OPEN_FEEDBACK_EVENT, open)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,7 +65,7 @@ export function FeedbackButton() {
 
   return (
     <>
-      {/* Side Button - Hidden on small mobile, visible on tablets+ */}
+      {/* On phones a floating button would cover game controls, so feedback opens from the footer instead */}
       <button
         onClick={() => setIsOpen(true)}
         className="hidden sm:block fixed right-0 top-1/2 -translate-y-1/2 z-[45] bg-accent text-white px-3 py-4 rounded-l-lg shadow-lg hover:bg-accent/90 transition-all hover:px-4 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
@@ -65,14 +77,6 @@ export function FeedbackButton() {
         </div>
       </button>
 
-      {/* Mobile Feedback Button - Bottom right corner on mobile only */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className="sm:hidden fixed bottom-6 right-6 z-[45] bg-accent text-white p-4 rounded-full shadow-lg hover:bg-accent/90 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
-        aria-label="Send feedback"
-      >
-        <MessageSquare size={24} />
-      </button>
 
       {/* Feedback Modal */}
       {isOpen && (

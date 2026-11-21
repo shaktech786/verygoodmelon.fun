@@ -1,4 +1,10 @@
+import type { Metadata } from 'next'
 import { ExternalLink } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'About | VeryGoodMelon.Fun',
+  description: 'Why VeryGoodMelon.Fun exists and who makes it.',
+}
 
 export default function AboutPage() {
   return (

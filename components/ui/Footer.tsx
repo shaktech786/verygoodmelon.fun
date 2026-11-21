@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { openFeedback } from '@/components/FeedbackButton'
 
 export function Footer() {
   const [visitCount, setVisitCount] = useState<number | null>(null)
@@ -73,6 +74,14 @@ export function Footer() {
             >
               Analytics
             </Link>
+            <span className="text-foreground/20 sm:hidden" aria-hidden="true">|</span>
+            <button
+              type="button"
+              onClick={openFeedback}
+              className="sm:hidden text-xs text-primary-light hover:text-foreground transition-colors underline-offset-2 hover:underline"
+            >
+              Feedback
+            </button>
           </div>
         </div>
       </div>
