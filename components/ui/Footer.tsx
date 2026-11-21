@@ -48,7 +48,7 @@ export function Footer() {
           )}
           <p className="text-primary-light">Made with purpose. Every pixel has meaning.</p>
           <p className="text-primary-light">
-            © {new Date().getFullYear()} VeryGoodMelon.Fun · Built by{' '}
+            © <span suppressHydrationWarning>{new Date().getFullYear()}</span> VeryGoodMelon.Fun · Built by{' '}
             <a href="https://shak-tech.com" target="_blank" rel="noopener" className="underline hover:text-foreground transition-colors">
               ShakTech Labs
             </a>

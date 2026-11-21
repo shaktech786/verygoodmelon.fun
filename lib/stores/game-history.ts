@@ -6,8 +6,32 @@
  */
 
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import { ALL_GAMES } from '@/lib/games/config'
+
+/** Enough history for suggestions; older visits are dropped so storage never fills up. */
+export const MAX_VISITS = 200
+
+// Full or blocked storage must never break a game page; history just stays in memory.
+const forgivingLocalStorage: StateStorage = {
+  getItem: (name) => {
+    try {
+      return localStorage.getItem(name)
+    } catch {
+      return null
+    }
+  },
+  setItem: (name, value) => {
+    try {
+      localStorage.setItem(name, value)
+    } catch {}
+  },
+  removeItem: (name) => {
+    try {
+      localStorage.removeItem(name)
+    } catch {}
+  },
+}
 
 export interface GameVisit {
   gameId: string
@@ -40,7 +64,7 @@ export const useGameHistory = create<GameHistoryState>()(
               visitedAt: new Date().toISOString(),
               duration: 0,
             },
-          ],
+          ].slice(-MAX_VISITS),
         }))
       },
 
@@ -91,6 +115,7 @@ export const useGameHistory = create<GameHistoryState>()(
     }),
     {
       name: 'verygoodmelon:game-history',
+      storage: createJSONStorage(() => forgivingLocalStorage),
     }
   )
 )
