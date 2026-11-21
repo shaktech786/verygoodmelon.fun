@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { vi } from 'vitest'
 
 const mockFetch = vi.fn()
@@ -41,11 +41,62 @@ describe('HardChoices', () => {
     expect(screen.getByText('The Dilemma')).toBeInTheDocument()
   })
 
-  it('shows category label', () => {
+  it('shows the category label capitalised, as it is read aloud', () => {
     render(<HardChoices />)
-    // Categories like existential, ethics, meaning, etc.
-    const categories = screen.getAllByText(/existential|ethics|meaning|metaphysics|love|relationships|career|identity/i)
-    expect(categories.length).toBeGreaterThan(0)
+    expect(screen.getByText('Meaning', { selector: 'span' })).toBeInTheDocument()
+  })
+
+  it('keeps the perspectives outside the choice buttons and describes each button with its own', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500 })
+    render(<HardChoices />)
+    fireEvent.click(screen.getByRole('button', { name: /Choice A/i }))
+
+    const perspective = await screen.findByText(/What good is purpose/, { selector: 'li p' })
+    const buttonA = screen.getByRole('button', { name: /Choice A/i })
+    expect(buttonA).not.toContainElement(perspective)
+    expect(buttonA).toHaveAccessibleDescription(/What good is purpose/)
+    expect(screen.getByRole('button', { name: /Choice B/i })).toHaveAccessibleDescription(/Meaning sustains us/)
+  })
+
+  it('announces both perspectives politely after a choice', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500 })
+    render(<HardChoices />)
+    fireEvent.click(screen.getByRole('button', { name: /Choice B/i }))
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/^You chose Meaning\./))
+    expect(screen.getByRole('status')).toHaveTextContent(/What good is purpose.*Meaning sustains us/)
+  })
+
+  it('drops saved answers to retired dilemmas and resumes at the first unanswered one', async () => {
+    mockLocalStorage.setItem('hardChoicesVotes', JSON.stringify({
+      'happiness-vs-meaning': 'A', 'trolley-personal': 'B', 'memory-erasure': 'skip',
+    }))
+    mockLocalStorage.setItem('hardChoicesCounted', JSON.stringify(['happiness-vs-meaning', 'children-climate']))
+
+    render(<HardChoices />)
+
+    await waitFor(() => expect(screen.getByText('Dilemma 2 of 12')).toBeInTheDocument())
+    expect(JSON.parse(mockLocalStorage.getItem('hardChoicesVotes') ?? '{}')).toEqual({ 'happiness-vs-meaning': 'A' })
+    expect(JSON.parse(mockLocalStorage.getItem('hardChoicesCounted') ?? '[]')).toEqual(['happiness-vs-meaning'])
+  })
+
+  it('starts cleanly from saved answers that cannot be read', async () => {
+    mockLocalStorage.setItem('hardChoicesVotes', '{not json')
+    render(<HardChoices />)
+    await waitFor(() => expect(screen.getByText('Dilemma 1 of 12')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: /Choice A/i })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('ends with a reading of the pattern, not just a list of words', async () => {
+    const all = ['happiness-vs-meaning', 'career-passion', 'free-evening', 'love-or-freedom', 'radical-honesty',
+      'friends-manuscript', 'right-or-close', 'forgiveness-limits', 'the-promotion', 'new-city', 'empty-weekend', 'last-slice']
+    mockLocalStorage.setItem('hardChoicesVotes', JSON.stringify(Object.fromEntries(all.map((id) => [id, 'A']))))
+
+    render(<HardChoices />)
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'What you chose to protect' })).toBeInTheDocument())
+    expect(screen.getByRole('heading', { name: 'A reading' })).toBeInTheDocument()
+    expect(screen.getByText(/What kept returning was the people around you/)).toBeInTheDocument()
   })
 
   it('submits vote when choice clicked', async () => {
@@ -157,7 +208,7 @@ describe('HardChoices', () => {
     render(<HardChoices />)
     fireEvent.click(screen.getByRole('button', { name: /Choice B/i }))
 
-    await waitFor(() => expect(screen.getByText('Meaning')).toBeInTheDocument())
+    await waitFor(() => expect(within(screen.getByRole('status')).getByText('Meaning')).toBeInTheDocument())
     expect(screen.getByText(/which you reach for first on a hard day/)).toBeInTheDocument()
   })
 

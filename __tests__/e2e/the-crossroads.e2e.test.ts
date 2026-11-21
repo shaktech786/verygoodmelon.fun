@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { test, expect, type Locator, type Page, type WebSocketRoute } from '@playwright/test'
 
 /**
@@ -16,11 +18,32 @@ const FIRST_SCENARIO = 'Which would you choose for your life?'
 const FIRST_PERSPECTIVE_A = /What good is purpose/
 const FIRST_PERSPECTIVE_B = /Meaning sustains us/
 const ENDING = 'What you chose to protect'
+const IDS = ['happiness-vs-meaning', 'career-passion', 'free-evening', 'love-or-freedom', 'radical-honesty',
+  'friends-manuscript', 'right-or-close', 'forgiveness-limits', 'the-promotion', 'new-city', 'empty-weekend', 'last-slice']
+const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
 
 const choiceA = (page: Page) => page.getByRole('button', { name: /^Choice A:/ })
 const choiceB = (page: Page) => page.getByRole('button', { name: /^Choice B:/ })
 const nextButton = (page: Page) => page.getByRole('button', { name: 'Next Dilemma' })
 const progress = (page: Page, n: number) => page.getByText(`Dilemma ${n} of ${DILEMMA_COUNT}`)
+const answerList = (page: Page) => page.getByRole('list', { name: 'The two answers' })
+/** The card around a choice: its button, then the perspective and counts shown after choosing. */
+const card = (page: Page, choice: Locator) => page.getByRole('listitem').filter({ has: choice })
+
+async function axeViolations(page: Page): Promise<string[]> {
+  await page.evaluate(() =>
+    Promise.all(document.getAnimations()
+      .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+      .map((a) => a.finished.catch(() => undefined))))
+  await page.evaluate(AXE_SOURCE)
+  return page.evaluate(async () => {
+    const axe = (window as unknown as {
+      axe: { run: (c: unknown, o: unknown) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> }
+    }).axe
+    const result = await axe.run({ exclude: [['nextjs-portal']] }, { runOnly: ['wcag2a', 'wcag2aa'] })
+    return result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)
+  })
+}
 
 /** Clicks a choice, retrying only if the click landed before the page hydrated. */
 async function choose(choice: Locator) {
@@ -136,9 +159,14 @@ test.describe('database unreachable (the current reality)', () => {
     await expect(page.getByRole('heading', { name: ENDING })).toBeFocused()
     // Odd dilemmas were answered A, even ones B: the portrait names what each answer protects
     await expect(page.getByRole('list', { name: ENDING }).getByRole('listitem')).toHaveText([
-      'Joy', 'Purpose', 'Presence', 'Selfhood', 'Openness', 'Integrity',
-      'Comfort', 'Spontaneity', 'Legacy', 'Wholeness', 'Hope', 'Self-respect',
+      'Joy', 'Purpose', 'Friendship', 'Selfhood', 'Openness', 'Encouragement',
+      'Closeness', 'Self-respect', 'Challenge', 'Roots', 'Making', 'Self-kindness',
     ])
+    // A reading of the pattern, not only the words: four answers leaned toward other people, four toward the self
+    await expect(page.getByRole('heading', { name: 'A reading' })).toBeVisible()
+    await expect(page.getByText(
+      'What kept returning was the people around you: Friendship, Openness, Encouragement, Closeness and Roots all lean that way.'
+    )).toBeVisible()
     await expect(page.getByRole('heading', { name: FIRST_SCENARIO })).toHaveCount(0)
     await expect(page.locator('main [role="alert"]')).toHaveCount(0)
     await expect(page.getByText('Live updates active')).toHaveCount(0)
@@ -162,7 +190,7 @@ test.describe('database unreachable (the current reality)', () => {
 
     await expect(progress(page, 2)).toBeVisible()
     await page.getByRole('button', { name: 'Previous' }).click()
-    await expect(page.getByText(FIRST_PERSPECTIVE_B)).toBeVisible({ timeout: 2000 })
+    await expect(answerList(page).getByText(FIRST_PERSPECTIVE_B)).toBeVisible({ timeout: 2000 })
     await expect(nextButton(page)).toBeVisible({ timeout: 2000 })
   })
 
@@ -191,11 +219,7 @@ test.describe('database unreachable (the current reality)', () => {
   })
 
   test('the ending offers a revisit and a fresh start that clears every answer', async ({ page }) => {
-    const answers = Object.fromEntries(
-      ['happiness-vs-meaning', 'career-passion', 'simulation-knowledge', 'love-or-freedom', 'radical-honesty',
-        'trolley-personal', 'lying-for-good', 'mortality-awareness', 'legacy-vs-experience', 'memory-erasure',
-        'children-climate', 'forgiveness-limits'].map((id) => [id, 'A'])
-    )
+    const answers = Object.fromEntries(IDS.map((id) => [id, 'A']))
     const api = await databaseDown(page)
     await page.addInitScript((stored) => {
       if (!sessionStorage.getItem('seeded')) {
@@ -210,7 +234,7 @@ test.describe('database unreachable (the current reality)', () => {
     await page.getByRole('button', { name: 'Look back from the start' }).click()
     await expect(page.getByRole('heading', { name: FIRST_SCENARIO })).toBeFocused()
     await expect(choiceA(page)).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.getByText(FIRST_PERSPECTIVE_A)).toBeVisible()
+    await expect(answerList(page).getByText(FIRST_PERSPECTIVE_A)).toBeVisible()
 
     for (let n = 1; n < DILEMMA_COUNT; n++) await nextButton(page).click()
     await page.getByRole('button', { name: 'Finish' }).click()
@@ -255,6 +279,105 @@ test.describe('database unreachable (the current reality)', () => {
   })
 })
 
+test.describe('reading it with a screen reader, and how it looks', () => {
+  test('the perspectives sit outside the choice buttons, describe them, and are announced after a choice', async ({ page }) => {
+    await databaseDown(page)
+    await page.goto('/games/the-crossroads')
+    await choose(choiceB(page))
+
+    // The button's name is only its own answer, so the perspectives are not swallowed by it
+    await expect(choiceA(page)).toHaveAccessibleName('Choice A: Constant happiness, less meaning')
+    await expect(choiceA(page)).toHaveAccessibleDescription(FIRST_PERSPECTIVE_A)
+    await expect(choiceB(page)).toHaveAccessibleDescription(FIRST_PERSPECTIVE_B)
+    await expect(choiceA(page).getByText(FIRST_PERSPECTIVE_A)).toHaveCount(0)
+
+    const status = page.getByRole('status')
+    await expect(status).toContainText('You chose Meaning.')
+    await expect(status).toContainText(FIRST_PERSPECTIVE_A)
+    await expect(status).toContainText(FIRST_PERSPECTIVE_B)
+    await expect(status).toContainText(/which you reach for first on a hard day/)
+  })
+
+  test('the chosen card is marked calmly, with words and a tick, not a red outline', async ({ page }) => {
+    await databaseDown(page)
+    await page.goto('/games/the-crossroads')
+    await choose(choiceB(page))
+
+    await expect(choiceB(page)).toContainText('Your choice')
+    const colours = await page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement)
+      const chosen = document.querySelector('li:has(button[aria-pressed="true"])') as HTMLElement
+      const probe = document.createElement('div')
+      probe.style.color = root.getPropertyValue('--accent')
+      document.body.appendChild(probe)
+      const accent = getComputedStyle(probe).color
+      probe.remove()
+      return { border: getComputedStyle(chosen).borderTopColor, accent }
+    })
+    expect(colours.border).not.toBe(colours.accent)
+  })
+
+  test('the header is centred like every other game and the category reads as a word', async ({ page }) => {
+    await databaseDown(page)
+    await page.goto('/games/the-crossroads')
+
+    const title = page.getByRole('heading', { level: 1, name: 'The Dilemma' })
+    await expect(title).toHaveCSS('text-align', 'center')
+    await expect(page.locator('main')).toMatchAriaSnapshot('- text: Dilemma 1 of 12 Meaning')
+  })
+
+  test('answers saved by the earlier set of dilemmas are kept where they still apply and the rest dropped', async ({ page }) => {
+    const api = await databaseDown(page)
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem('seeded')) return
+      sessionStorage.setItem('seeded', '1')
+      localStorage.setItem('hardChoicesVotes', JSON.stringify({
+        'happiness-vs-meaning': 'A', 'career-passion': 'B', 'simulation-knowledge': 'A', 'trolley-personal': 'B',
+        'lying-for-good': 'A', 'mortality-awareness': 'B', 'legacy-vs-experience': 'A', 'memory-erasure': 'skip',
+        'children-climate': 'A', 'love-or-freedom': 'A', 'radical-honesty': 'B', 'forgiveness-limits': 'A',
+      }))
+      localStorage.setItem('hardChoicesCounted', JSON.stringify(['happiness-vs-meaning', 'trolley-personal']))
+    })
+    await page.goto('/games/the-crossroads')
+
+    // The first new dilemma is the third one: the two before it were answered and still exist
+    await expect(progress(page, 3)).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Who gets your one free evening?' })).toBeVisible()
+    const stored = await page.evaluate(() => ({
+      votes: JSON.parse(localStorage.getItem('hardChoicesVotes') ?? '{}'),
+      counted: JSON.parse(localStorage.getItem('hardChoicesCounted') ?? '[]'),
+    }))
+    expect(stored.votes).toEqual({
+      'happiness-vs-meaning': 'A', 'career-passion': 'B', 'love-or-freedom': 'A', 'radical-honesty': 'B', 'forgiveness-limits': 'A',
+    })
+    expect(stored.counted).toEqual(['happiness-vs-meaning'])
+
+    await page.getByRole('button', { name: 'Previous' }).click()
+    await page.getByRole('button', { name: 'Previous' }).click()
+    await expect(choiceA(page)).toHaveAttribute('aria-pressed', 'true')
+    expect(api.posts).toEqual([])
+  })
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`no accessibility violations mid-game and at the ending (${colorScheme})`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+      await databaseUp(page, { 'happiness-vs-meaning': { choiceA: 3, choiceB: 5 } })
+      await failingRealtime(page)
+      await page.goto('/games/the-crossroads')
+      await choose(choiceB(page))
+      await expect(card(page, choiceB(page))).toContainText('% chose this')
+      expect(await axeViolations(page)).toEqual([])
+
+      await page.evaluate((ids) => localStorage.setItem('hardChoicesVotes',
+        JSON.stringify(Object.fromEntries(ids.map((id, i) => [id, i % 3 ? 'A' : 'B'])))), IDS)
+      await page.reload()
+      await expect(page.getByRole('heading', { name: 'A reading' })).toBeVisible()
+      await page.getByText('See or change each answer').click()
+      expect(await axeViolations(page)).toEqual([])
+    })
+  }
+})
+
 test.describe('choosing at your own pace', () => {
   test('a question can be let pass, answered later, and the ending says so kindly', async ({ page }) => {
     const api = await databaseDown(page)
@@ -270,7 +393,7 @@ test.describe('choosing at your own pace', () => {
     await expect(page.getByText(/You let this one pass earlier/)).toBeVisible()
     await expect(choiceA(page)).toHaveAttribute('aria-pressed', 'false')
     await choose(choiceA(page))
-    await expect(page.getByText(FIRST_PERSPECTIVE_A)).toBeVisible()
+    await expect(answerList(page).getByText(FIRST_PERSPECTIVE_A)).toBeVisible()
     expect(api.posts).toEqual([{ dilemmaId: 'happiness-vs-meaning', choice: 'A' }])
 
     await nextButton(page).click()
@@ -290,7 +413,7 @@ test.describe('choosing at your own pace', () => {
     await page.goto('/games/the-crossroads')
 
     await choose(choiceA(page))
-    await expect(choiceA(page)).toContainText('1 vote')
+    await expect(card(page, choiceA(page))).toContainText('1 vote')
     await page.getByRole('button', { name: 'Change my answer' }).click()
     await expect(choiceA(page)).toBeFocused()
     await expect(choiceA(page)).toHaveAttribute('aria-pressed', 'false')
@@ -303,18 +426,15 @@ test.describe('choosing at your own pace', () => {
   })
 
   test('from the ending, any single answer can be revisited', async ({ page }) => {
-    const ids = ['happiness-vs-meaning', 'career-passion', 'simulation-knowledge', 'love-or-freedom', 'radical-honesty',
-      'trolley-personal', 'lying-for-good', 'mortality-awareness', 'legacy-vs-experience', 'memory-erasure',
-      'children-climate', 'forgiveness-limits']
     await databaseDown(page)
     await page.addInitScript((stored) => localStorage.setItem('hardChoicesVotes', stored),
-      JSON.stringify(Object.fromEntries(ids.map((id) => [id, 'B']))))
+      JSON.stringify(Object.fromEntries(IDS.map((id) => [id, 'B']))))
     await page.goto('/games/the-crossroads')
 
     await expect(page.getByRole('heading', { name: ENDING })).toBeVisible()
     await page.getByText('See or change each answer').click()
-    await page.getByRole('button', { name: 'Revisit: Would you erase your most painful memory?' }).click()
-    await expect(page.getByRole('heading', { name: 'Would you erase your most painful memory?' })).toBeFocused()
+    await page.getByRole('button', { name: 'Revisit: Start fresh, or stay known?' }).click()
+    await expect(page.getByRole('heading', { name: 'Start fresh, or stay known?' })).toBeFocused()
     await expect(progress(page, 10)).toBeVisible()
     await expect(choiceB(page)).toHaveAttribute('aria-pressed', 'true')
   })
@@ -327,9 +447,9 @@ test.describe('database reachable', () => {
     await page.goto('/games/the-crossroads')
 
     await choose(choiceA(page))
-    await expect(choiceA(page)).toContainText('30% chose this')
-    await expect(choiceA(page)).toContainText('30 votes')
-    await expect(choiceB(page)).toContainText('70% chose this')
+    await expect(card(page, choiceA(page))).toContainText('30% chose this')
+    await expect(card(page, choiceA(page))).toContainText('30 votes')
+    await expect(card(page, choiceB(page))).toContainText('70% chose this')
     await expect(page.getByText(/Fewer people chose this: 30% did\./)).toBeVisible()
     await expect(page.getByText('Live updates active')).toBeVisible()
     expect(api.posts).toEqual([{ dilemmaId: 'happiness-vs-meaning', choice: 'A' }])
@@ -337,8 +457,8 @@ test.describe('database reachable', () => {
     // The player's own insert echoes back over realtime and must not count twice
     realtime.insert('happiness-vs-meaning', 'A')
     realtime.insert('happiness-vs-meaning', 'B')
-    await expect(choiceB(page)).toContainText('71 votes')
-    await expect(choiceA(page)).toContainText('30 votes')
+    await expect(card(page, choiceB(page))).toContainText('71 votes')
+    await expect(card(page, choiceA(page))).toContainText('30 votes')
   })
 
   test('when the realtime socket cannot connect it gives up quietly instead of reconnecting forever', async ({ page }) => {
@@ -351,7 +471,7 @@ test.describe('database reachable', () => {
     await page.goto('/games/the-crossroads')
 
     await choose(choiceA(page))
-    await expect(choiceA(page)).toContainText('100% chose this')
+    await expect(card(page, choiceA(page))).toContainText('100% chose this')
     await expect.poll(realtime.opened).toBeGreaterThan(0)
     const attempts = realtime.opened()
     // The client library would retry after 1 s, 2 s and 5 s if left alone
@@ -367,13 +487,13 @@ test.describe('database reachable', () => {
     await page.goto('/games/the-crossroads')
 
     await choose(choiceA(page))
-    await expect(choiceA(page)).toContainText('1 vote')
+    await expect(card(page, choiceA(page))).toContainText('1 vote')
     await page.evaluate(() => localStorage.removeItem('hardChoicesVotes'))
     await page.reload()
 
     await choose(choiceB(page))
     await expect(choiceB(page)).toHaveAttribute('aria-pressed', 'true')
-    await expect(choiceA(page)).toContainText('1 vote')
+    await expect(card(page, choiceA(page))).toContainText('1 vote')
     expect(api.posts).toHaveLength(1)
     expect(api.reads).toContain('happiness-vs-meaning')
   })
@@ -390,7 +510,7 @@ test.describe('database reachable', () => {
         await choiceB(page).tap()
         await expect(choiceB(page)).toHaveAttribute('aria-pressed', 'true', { timeout: 500 })
       }).toPass()
-      await expect(choiceB(page)).toContainText('50% chose this')
+      await expect(card(page, choiceB(page))).toContainText('50% chose this')
       await expect(page.getByText(/almost evenly split/)).toBeVisible()
       await nextButton(page).scrollIntoViewIfNeeded()
       await expect(nextButton(page)).toBeVisible()

@@ -2,32 +2,43 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useRealtimeVotes } from '@/lib/hooks/useRealtimeVotes'
 import { DILEMMAS, type Choice, type ChoiceId } from '@/lib/games/hard-choices/dilemmas'
+import { keepKnownAnswers, keepKnownIds, type Answer, type Answers } from '@/lib/games/hard-choices/answers'
+import { readChoices } from '@/lib/games/hard-choices/reading'
 
 const ANSWERS_KEY = 'hardChoicesVotes'
 const COUNTED_KEY = 'hardChoicesCounted'
 const LEANING_PERCENT = 60
 
-type Answer = ChoiceId | 'skip'
-type Answers = Record<string, Answer>
-
-function readStored<T>(key: string, fallback: T): T {
+function readStored(key: string): unknown {
   try {
     const stored = localStorage.getItem(key)
-    return stored ? JSON.parse(stored) : fallback
+    return stored ? JSON.parse(stored) : null
   } catch {
-    return fallback
+    return null
   }
 }
 
-function saveAnswers(answers: Answers) {
+function store(key: string, value: unknown) {
   try {
-    localStorage.setItem(ANSWERS_KEY, JSON.stringify(answers))
+    localStorage.setItem(key, JSON.stringify(value))
   } catch {
     // Private browsing: answers last for this visit only
   }
+}
+
+/** Saved answers, minus any left over from dilemmas that have since been retired. */
+function loadAnswers(): Answers {
+  const raw = readStored(ANSWERS_KEY)
+  const answers = keepKnownAnswers(raw)
+  if (raw !== null && JSON.stringify(raw) !== JSON.stringify(answers)) store(ANSWERS_KEY, answers)
+  const rawCounted = readStored(COUNTED_KEY)
+  const counted = keepKnownIds(rawCounted)
+  if (rawCounted !== null && JSON.stringify(rawCounted) !== JSON.stringify(counted)) store(COUNTED_KEY, counted)
+  return answers
 }
 
 function firstUnansweredIndex(answers: Answers): number {
@@ -56,6 +67,7 @@ function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index:
     return [{ dilemma, index, choice }]
   })
   const passed = DILEMMAS.length - chosen.length
+  const reading = readChoices(chosen.map(({ choice }) => choice))
 
   return (
     <div className="space-y-5 text-left">
@@ -72,6 +84,14 @@ function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index:
               </li>
             ))}
           </ul>
+          <section aria-labelledby="reading-heading" className="rounded-lg bg-background border border-card-border px-4 py-4 sm:px-6 space-y-2">
+            <h3 id="reading-heading" className="text-sm font-semibold text-foreground/80 text-center">
+              A reading
+            </h3>
+            {reading.map((line) => (
+              <p key={line} className="text-foreground leading-relaxed text-center">{line}</p>
+            ))}
+          </section>
         </>
       ) : (
         <p className="text-foreground/80 text-center">You let every question pass today. Some days are like that.</p>
@@ -85,6 +105,9 @@ function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index:
 
       <p className="text-foreground/85 text-center leading-relaxed">
         None of this is a verdict on who you are. It is what mattered to you today, and it is allowed to change.
+      </p>
+      <p className="text-sm text-primary-light text-center">
+        Revisit any answer and the reading changes with it. The same questions often land differently on another day.
       </p>
 
       <details className="rounded-lg border border-card-border bg-background">
@@ -195,7 +218,7 @@ export default function HardChoices() {
 
   // Pick up where the player left off
   useEffect(() => {
-    const stored = readStored<Answers>(ANSWERS_KEY, {})
+    const stored = loadAnswers()
     const resumeIndex = firstUnansweredIndex(stored)
     setAnswers((current) => ({ ...stored, ...current }))
     // A choice made while the page was still hydrating keeps the player where they are
@@ -224,7 +247,7 @@ export default function HardChoices() {
     if (answer) next[dilemmaId] = answer
     else delete next[dilemmaId]
     setAnswers(next)
-    saveAnswers(next)
+    store(ANSWERS_KEY, next)
     return next
   }
 
@@ -236,7 +259,7 @@ export default function HardChoices() {
     recordAnswer(dilemmaId, choiceId)
 
     // A dilemma answered again (changed, or after starting fresh) is not counted twice.
-    const counted = readStored<string[]>(COUNTED_KEY, [])
+    const counted = keepKnownIds(readStored(COUNTED_KEY))
     if (counted.includes(dilemmaId)) {
       if (!votes[dilemmaId]) await loadResults(dilemmaId)
       return
@@ -255,7 +278,7 @@ export default function HardChoices() {
       }
       const data = await response.json()
       seedVotes(dilemmaId, data.results.choiceA, data.results.choiceB)
-      localStorage.setItem(COUNTED_KEY, JSON.stringify([...counted, dilemmaId]))
+      store(COUNTED_KEY, [...counted, dilemmaId])
     } catch {
       cancelOwnVote(dilemmaId, choiceId)
     }
@@ -313,10 +336,10 @@ export default function HardChoices() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 max-w-3xl">
         <div className="animate-fade">
-          <div className="mb-8">
+          <div className="mb-8 text-center">
             <h1 className="text-3xl sm:text-4xl font-semibold mb-3">The Dilemma</h1>
-            <p className="text-foreground/70 text-base sm:text-lg">
-              Twelve questions with no right answers. Choose, skip or change your mind, and at the end see what you chose to protect.
+            <p className="text-foreground/75 text-base sm:text-lg max-w-2xl mx-auto">
+              Twelve everyday questions with no right answer. Choose, skip or change your mind, and at the end see what you chose to protect.
             </p>
           </div>
 
@@ -337,7 +360,7 @@ export default function HardChoices() {
                 )}
               </div>
               {!finished && (
-                <span className="text-xs capitalize">{currentDilemma.category}</span>
+                <span className="text-xs">{currentDilemma.category}</span>
               )}
             </div>
             <div className="h-1 bg-foreground/10 rounded-full overflow-hidden" aria-hidden="true">
@@ -353,7 +376,7 @@ export default function HardChoices() {
               <h2
                 ref={headingRef}
                 tabIndex={-1}
-                className="text-xl sm:text-2xl font-medium mb-4 text-center focus:outline-none"
+                className="text-xl sm:text-2xl font-medium mb-4 text-center focus:outline-none focus-visible:shadow-none!"
               >
                 What you chose to protect
               </h2>
@@ -374,85 +397,93 @@ export default function HardChoices() {
                 <h2
                   ref={headingRef}
                   tabIndex={-1}
-                  className="text-xl sm:text-2xl font-medium mb-6 sm:mb-8 focus:outline-none"
+                  className="text-xl sm:text-2xl font-medium mb-6 sm:mb-8 focus:outline-none focus-visible:shadow-none!"
                 >
                   {currentDilemma.scenario}
                 </h2>
 
-                <div className="space-y-4">
-                  {choices.map(({ id, choice }, index) => (
-                    <button
-                      key={id}
-                      ref={index === 0 ? firstChoiceRef : undefined}
-                      onClick={() => handleChoice(id)}
-                      aria-disabled={hasVoted}
-                      className={`
-                        w-full text-left p-4 sm:p-6 rounded-lg border-2 transition-all
-                        focus:outline-none focus:ring-2 focus:ring-accent
-                        ${hasVoted ? 'cursor-default' : 'hover:border-accent hover:bg-accent/5 cursor-pointer'}
-                        ${selectedChoice === id ? 'border-accent bg-accent/5' : 'border-foreground/10'}
-                      `}
-                      aria-label={`Choice ${id}: ${choice.text}`}
-                      aria-pressed={selectedChoice === id}
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className={`
-                          flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-semibold
-                          ${selectedChoice === id
-                            ? 'border-accent bg-accent text-white'
-                            : 'border-foreground/20 text-foreground/70'
-                          }
-                        `}>
-                          {id}
-                        </div>
-                        <div className="flex-1 pt-1">
-                          <p className="text-lg mb-2">
+                <ul className="space-y-4" aria-label="The two answers">
+                  {choices.map(({ id, choice }, index) => {
+                    const selected = selectedChoice === id
+                    const perspectiveId = `perspective-${id}`
+                    return (
+                      <li
+                        key={id}
+                        className={`rounded-lg border-2 transition-colors ${
+                          selected ? 'border-melon-green bg-success/10' : 'border-foreground/15'
+                        } ${hasVoted ? '' : 'hover:border-foreground/40 hover:bg-hover-bg'}`}
+                      >
+                        <button
+                          ref={index === 0 ? firstChoiceRef : undefined}
+                          onClick={() => handleChoice(id)}
+                          aria-disabled={hasVoted}
+                          aria-label={`Choice ${id}: ${choice.text}`}
+                          aria-pressed={selected}
+                          aria-describedby={showResults ? perspectiveId : undefined}
+                          className={`w-full text-left p-4 sm:p-6 rounded-lg flex items-start gap-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                            hasVoted ? 'cursor-default' : 'cursor-pointer'
+                          }`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-semibold ${
+                              selected ? 'border-melon-green bg-melon-green text-background' : 'border-foreground/25 text-foreground/75'
+                            }`}
+                          >
+                            {selected ? <Check size={18} strokeWidth={3} /> : id}
+                          </span>
+                          <span className="flex-1 pt-0.5 text-lg">
                             {choice.text}
-                            {selectedChoice === id && (
-                              <span className="ml-2 text-xs uppercase tracking-wide text-foreground/70">Your choice</span>
+                            {selected && (
+                              <span className="block mt-1 text-sm font-medium text-foreground/80">Your choice</span>
                             )}
-                          </p>
-                          {showResults && (
-                            <p className="text-sm text-foreground/70 mb-3 italic">
+                          </span>
+                        </button>
+                        {showResults && (
+                          <div className="px-4 pb-4 sm:px-6 sm:pb-6 pl-16 sm:pl-[4.5rem] -mt-1 sm:-mt-2">
+                            <p id={perspectiveId} className="text-foreground/80 italic leading-relaxed">
                               {choice.perspective}
                             </p>
-                          )}
-                          {showResults && displayResults && (
-                            <div className="mt-3">
-                              <div className="flex items-center justify-between text-sm mb-1">
-                                <span className="text-foreground/70">
-                                  {percentages[id]}% chose this
-                                </span>
-                                <span
-                                  className={`transition-colors duration-300 ${
-                                    pulseChoice === id ? CHOICE_STYLES[id].pulse : 'text-foreground/70'
-                                  }`}
-                                >
-                                  {counts[id]} {counts[id] === 1 ? 'vote' : 'votes'}
-                                </span>
+                            {displayResults && (
+                              <div className="mt-3">
+                                <div className="flex items-center justify-between text-sm mb-1">
+                                  <span className="text-foreground/75">
+                                    {percentages[id]}% chose this
+                                  </span>
+                                  <span
+                                    className={`transition-colors duration-300 ${
+                                      pulseChoice === id ? CHOICE_STYLES[id].pulse : 'text-foreground/75'
+                                    }`}
+                                  >
+                                    {counts[id]} {counts[id] === 1 ? 'vote' : 'votes'}
+                                  </span>
+                                </div>
+                                <div className="h-2 bg-foreground/5 rounded-full overflow-hidden" aria-hidden="true">
+                                  <div
+                                    className={`h-full transition-all duration-300 ${CHOICE_STYLES[id].bar} ${
+                                      pulseChoice === id ? CHOICE_STYLES[id].glow : ''
+                                    }`}
+                                    style={{ width: `${percentages[id]}%` }}
+                                  />
+                                </div>
                               </div>
-                              <div className="h-2 bg-foreground/5 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full transition-all duration-300 ${CHOICE_STYLES[id].bar} ${
-                                    pulseChoice === id ? CHOICE_STYLES[id].glow : ''
-                                  }`}
-                                  style={{ width: `${percentages[id]}%` }}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
 
                 <div role="status">
                   {showResults && selectedChoice && (
                     <div className="mt-6 p-5 bg-background border border-card-border rounded-lg text-center">
-                      <p className="text-sm text-foreground/70 mb-2">
+                      <p className="text-sm text-foreground/75 mb-2">
                         You chose <span className="font-medium text-foreground">{currentDilemma[selectedChoice === 'A' ? 'choiceA' : 'choiceB'].value}</span>.
                         {displayResults && ` ${crowdLine(percentages[selectedChoice])}`}
+                      </p>
+                      <p className="sr-only">
+                        {choices.map(({ choice }) => `${choice.text}: ${choice.perspective}`).join(' ')}
                       </p>
                       <p className="text-foreground/90 leading-relaxed">{currentDilemma.carry}</p>
                     </div>

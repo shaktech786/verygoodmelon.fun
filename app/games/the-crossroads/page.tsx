@@ -4,7 +4,7 @@ import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 
 export const metadata: Metadata = {
   title: 'The Dilemma | VeryGoodMelon.Fun',
-  description: 'Practice critical thinking through thoughtful life dilemmas. See what others chose and build your decision-making skills.',
+  description: 'Twelve everyday questions with no right answer, and a gentle reading of what your choices protect.',
 }
 
 export default function HardChoicesPage() {
