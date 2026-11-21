@@ -38,7 +38,7 @@ export function ShareButton({ title, text, url }: ShareButtonProps) {
         aria-label="Share this game"
         className="
           p-2 rounded-lg
-          text-foreground/50 hover:text-foreground/80
+          text-primary-light hover:text-foreground/80
           hover:bg-foreground/5
           transition-colors duration-75
           focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2

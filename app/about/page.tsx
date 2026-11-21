@@ -32,7 +32,7 @@ export default function AboutPage() {
                 href="https://neal.fun"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-accent hover:underline transition-colors font-medium"
+                className="text-accent underline underline-offset-2 hover:no-underline font-medium"
               >
                 Neal Agarwal
               </a>
@@ -41,7 +41,7 @@ export default function AboutPage() {
                 href="https://neal.fun"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-accent hover:underline transition-colors"
+                className="text-accent underline underline-offset-2 hover:no-underline"
               >
                 neal.fun
               </a>

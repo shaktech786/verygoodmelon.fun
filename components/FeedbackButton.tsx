@@ -89,7 +89,7 @@ export function FeedbackButton() {
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="text-foreground/50 hover:text-foreground transition-colors ml-2 flex-shrink-0"
+                  className="text-primary-light hover:text-foreground transition-colors ml-2 flex-shrink-0"
                   aria-label="Close"
                 >
                   <X size={20} />
@@ -129,7 +129,7 @@ export function FeedbackButton() {
                     <p id="feedback-public-note" className="text-xs text-foreground/70 mt-2">
                       Feedback is posted publicly, so please leave out anything personal.
                     </p>
-                    <p className="text-xs text-foreground/50 mt-2 hidden sm:block">
+                    <p className="text-xs text-primary-light mt-2 hidden sm:block">
                       Tip: Press Cmd+Enter (Mac) or Ctrl+Enter (Windows) to submit
                     </p>
                   </div>

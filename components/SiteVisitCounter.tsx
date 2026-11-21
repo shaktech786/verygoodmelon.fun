@@ -47,7 +47,7 @@ export default function SiteVisitCounter() {
 
   return (
     <div className="text-center py-4">
-      <p className="text-sm text-foreground/40">
+      <p className="text-sm text-primary-light">
         <span className="font-mono">{visitCount.toLocaleString()}</span> visits and counting
       </p>
     </div>

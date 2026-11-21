@@ -28,7 +28,7 @@ function StatCard({ label, value, icon }: StatCardProps) {
     >
       <div className="flex items-center justify-between">
         <span className="text-sm text-primary-light">{label}</span>
-        <span className="text-primary-light/50" aria-hidden="true">
+        <span className="text-primary-light" aria-hidden="true">
           {icon}
         </span>
       </div>
@@ -218,7 +218,7 @@ export default async function AnalyticsPage() {
         <p className="mt-12 text-sm text-primary-light">
           Every number here is an anonymous count. Nothing on this page, or behind it, can be
           traced back to a person.{' '}
-          <Link href="/privacy" className="text-accent hover:underline">
+          <Link href="/privacy" className="text-accent underline underline-offset-2 hover:no-underline">
             How we handle data
           </Link>
         </p>

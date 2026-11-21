@@ -122,7 +122,7 @@ export function PersonalizedSuggestions() {
     // Completionist: played everything
     heading = "You've explored everything"
     content = (
-      <p className="text-xs text-primary-light/40 text-center">
+      <p className="text-xs text-primary-light text-center">
         Every card, every thought. Time to revisit a favorite?
       </p>
     )
@@ -138,7 +138,7 @@ export function PersonalizedSuggestions() {
       `}
       style={{ transitionProperty: 'opacity' }}
     >
-      <p className="text-xs text-primary-light/50 text-center mb-3">
+      <p className="text-xs text-primary-light text-center mb-3">
         {heading}
       </p>
       {content}

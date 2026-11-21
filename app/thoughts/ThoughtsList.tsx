@@ -64,12 +64,12 @@ export function ThoughtsList({ thoughts }: ThoughtsListProps) {
           >
             {/* Meta row */}
             <div className="flex items-center gap-3 mb-3 text-sm">
-              <span className="inline-block bg-accent/10 text-accent px-2.5 py-0.5 rounded-full text-xs font-medium">
+              <span className="inline-block bg-accent/10 text-foreground px-2.5 py-0.5 rounded-full text-xs font-medium">
                 {THEME_LABELS[thought.theme]}
               </span>
               <time
                 dateTime={thought.createdAt}
-                className="text-primary-light/60"
+                className="text-primary-light"
               >
                 {formatDate(thought.createdAt)}
               </time>

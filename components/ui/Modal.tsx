@@ -123,7 +123,7 @@ export function ModalHeader({ children, onClose, showCloseButton = true }: Modal
       {showCloseButton && onClose && (
         <button
           onClick={onClose}
-          className="text-foreground/50 hover:text-foreground transition-colors ml-4"
+          className="text-primary-light hover:text-foreground transition-colors ml-4"
           aria-label="Close modal"
         >
           <X size={24} />

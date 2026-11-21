@@ -71,10 +71,10 @@ export function FreshThought({ mounted }: FreshThoughtProps) {
       <div className="bg-accent/5 border border-accent/20 rounded-lg p-6">
         {/* Meta row */}
         <div className="flex items-center gap-3 mb-3 text-sm">
-          <span className="inline-block bg-accent/10 text-accent px-2.5 py-0.5 rounded-full text-xs font-medium">
+          <span className="inline-block bg-accent/10 text-foreground px-2.5 py-0.5 rounded-full text-xs font-medium">
             {THEME_LABELS[fresh.theme] || fresh.theme}
           </span>
-          <span className="text-primary-light/60 text-xs">Fresh today</span>
+          <span className="text-primary-light text-xs">Fresh today</span>
         </div>
 
         {/* Title */}

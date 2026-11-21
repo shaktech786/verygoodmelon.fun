@@ -87,10 +87,10 @@ export default async function ThoughtPage({ params }: PageProps) {
         <article aria-labelledby="thought-title">
           {/* Meta */}
           <div className="flex items-center gap-3 mb-4 text-sm">
-            <span className="inline-block bg-accent/10 text-accent px-2.5 py-0.5 rounded-full text-xs font-medium">
+            <span className="inline-block bg-accent/10 text-foreground px-2.5 py-0.5 rounded-full text-xs font-medium">
               {THEME_LABELS[thought.theme]}
             </span>
-            <time dateTime={thought.createdAt} className="text-primary-light/60">
+            <time dateTime={thought.createdAt} className="text-primary-light">
               {formatDate(thought.createdAt)}
             </time>
           </div>
@@ -119,14 +119,14 @@ export default async function ThoughtPage({ params }: PageProps) {
         {/* Related thought */}
         {related && (
           <div className="mt-16 pt-8 border-t border-card-border">
-            <p className="text-primary-light/60 text-xs uppercase tracking-widest mb-4">
+            <p className="text-primary-light text-xs uppercase tracking-widest mb-4">
               Keep reading
             </p>
             <Link
               href={`/thoughts/${related.slug}`}
               className="block bg-card-bg border border-card-border rounded-lg p-5 hover:border-accent/30 transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
             >
-              <span className="inline-block bg-accent/10 text-accent px-2 py-0.5 rounded-full text-xs font-medium mb-2">
+              <span className="inline-block bg-accent/10 text-foreground px-2 py-0.5 rounded-full text-xs font-medium mb-2">
                 {THEME_LABELS[related.theme]}
               </span>
               <h2 className="text-foreground font-semibold">{related.title}</h2>

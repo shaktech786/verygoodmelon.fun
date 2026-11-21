@@ -41,7 +41,7 @@ export function Footer() {
       <div className="container mx-auto px-6 py-12 max-w-6xl">
         <div className="flex flex-col items-center gap-2 text-sm text-center">
           {visitCount !== null && (
-            <p className="text-xs text-foreground/40">
+            <p className="text-xs text-primary-light">
               <span className="font-mono">{visitCount.toLocaleString()}</span> visits and counting
             </p>
           )}
@@ -55,21 +55,21 @@ export function Footer() {
           <div className="flex items-center gap-3">
             <Link
               href="/privacy"
-              className="text-xs text-foreground/40 hover:text-foreground/60 transition-colors"
+              className="text-xs text-primary-light hover:text-foreground transition-colors"
             >
               Privacy
             </Link>
             <span className="text-foreground/20" aria-hidden="true">|</span>
             <Link
               href="/terms"
-              className="text-xs text-foreground/40 hover:text-foreground/60 transition-colors"
+              className="text-xs text-primary-light hover:text-foreground transition-colors"
             >
               Terms
             </Link>
             <span className="text-foreground/20" aria-hidden="true">|</span>
             <Link
               href="/analytics"
-              className="text-xs text-foreground/40 hover:text-foreground/60 transition-colors"
+              className="text-xs text-primary-light hover:text-foreground transition-colors"
             >
               Analytics
             </Link>

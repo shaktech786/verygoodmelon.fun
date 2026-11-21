@@ -302,7 +302,7 @@ function SignInForm({
           required
           autoComplete="email"
           disabled={isLoading}
-          className="w-full px-3 py-2.5 rounded-lg border border-card-border bg-background text-foreground placeholder:text-primary-light/50 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
+          className="w-full px-3 py-2.5 rounded-lg border border-card-border bg-background text-foreground placeholder:text-primary-light text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
         />
         <button
           type="submit"

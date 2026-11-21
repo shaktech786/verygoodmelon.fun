@@ -128,7 +128,7 @@ export function SubmitThought() {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={6}
-            className="w-full rounded-lg border border-card-border bg-card-bg px-4 py-3 text-foreground text-sm leading-relaxed placeholder:text-primary-light/50 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background resize-y"
+            className="w-full rounded-lg border border-card-border bg-card-bg px-4 py-3 text-foreground text-sm leading-relaxed placeholder:text-primary-light focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background resize-y"
             placeholder="Write something honest..."
             aria-describedby="thought-body-hint"
             required
@@ -139,7 +139,7 @@ export function SubmitThought() {
             className={`mt-1.5 text-xs ${
               charCount > 0 && !isValidLength
                 ? 'text-accent'
-                : 'text-primary-light/60'
+                : 'text-primary-light'
             }`}
           >
             {charCount > 0
@@ -169,7 +169,7 @@ export function SubmitThought() {
                   focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2 focus-within:ring-offset-background
                   ${
                     theme === t.value
-                      ? 'border-accent bg-accent/10 text-accent'
+                      ? 'border-accent bg-accent/10 text-foreground'
                       : 'border-card-border bg-card-bg text-primary-light hover:border-accent/30 hover:text-foreground'
                   }
                   ${state === 'submitting' ? 'opacity-60 pointer-events-none' : ''}
@@ -197,7 +197,7 @@ export function SubmitThought() {
             className="block text-sm font-medium text-foreground mb-2"
           >
             Your name{' '}
-            <span className="font-normal text-primary-light/60">
+            <span className="font-normal text-primary-light">
               (optional)
             </span>
           </label>
@@ -207,12 +207,12 @@ export function SubmitThought() {
             value={authorName}
             onChange={(e) => setAuthorName(e.target.value)}
             maxLength={100}
-            className="w-full rounded-lg border border-card-border bg-card-bg px-4 py-2.5 text-foreground text-sm placeholder:text-primary-light/50 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
+            className="w-full rounded-lg border border-card-border bg-card-bg px-4 py-2.5 text-foreground text-sm placeholder:text-primary-light focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
             placeholder="Leave blank to stay anonymous"
             aria-describedby="author-name-hint"
             disabled={state === 'submitting'}
           />
-          <p id="author-name-hint" className="mt-1.5 text-xs text-primary-light/60">
+          <p id="author-name-hint" className="mt-1.5 text-xs text-primary-light">
             Shown alongside your thought if approved.
           </p>
         </div>
