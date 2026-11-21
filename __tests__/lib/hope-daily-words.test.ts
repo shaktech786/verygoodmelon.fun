@@ -8,6 +8,7 @@ import {
   wordList,
 } from '@/lib/games/hope-daily/words'
 import { REFLECTIONS } from '@/lib/games/hope-daily/reflections'
+import { buildStory, storyText } from '@/lib/games/hope-daily/puzzle'
 
 const DAY = 24 * 60 * 60 * 1000
 const START = Date.UTC(2025, 0, 1)
@@ -56,6 +57,14 @@ describe('The Optimist word list', () => {
     }
     expect(texts.size).toBe(wordList.length)
     expect(Object.keys(REFLECTIONS).sort()).toEqual(wordList.map(entry => entry.word).sort())
+  })
+
+  it('opens every story on the hopeful part, not on something grim', () => {
+    const grim = /\b(killed|death\w*|die[sd]?|dying|dead|deadly|extinct\w*|extinction|devastat\w*|smog|plague)\b/i
+    for (const entry of wordList) {
+      const [first] = buildStory(entry.fact, entry.word)
+      expect(storyText([first]), entry.word).not.toMatch(grim)
+    }
   })
 
   it('is long enough to run for most of a year before any word comes back', () => {
