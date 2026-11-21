@@ -1,9 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/Button'
-import { CarePanel, CloudSection, WritingForm } from '@/components/games/community-words/WritingParts'
+import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, WritingForm } from '@/components/games/community-words/WritingParts'
+import { draftKey } from '@/lib/games/community-words/draft'
 import { useCommunityWords } from '@/lib/games/community-words/useCommunityWords'
+import { wakingLine } from '@/lib/games/community-words/waking'
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
 const PROMPTS = [
   'Who do you hope is there?',
@@ -12,81 +15,128 @@ const PROMPTS = [
   'What did you bring with you?',
   'Is it what you expected?',
   'What would you ask whoever greets you?',
-  'How do you feel, now that it is over?',
+  'What do you wish you had done more of?',
   'What do you want to say about the life you just lived?',
 ] as const
 
-type Light = 'before-dawn' | 'dawn' | 'day'
+const MAX_INTENTION_LENGTH = 120
 
+type Light = 'night' | 'dawn' | 'day'
+
+// Night and dawn are dark in both themes and day is a pale blue in both, so waking reads clearly either way
 const SKY: Record<Light, string> = {
-  'before-dawn':
-    'linear-gradient(to top, color-mix(in srgb, var(--melon-purple) 16%, transparent), transparent 85%)',
-  dawn: 'linear-gradient(to top, color-mix(in srgb, var(--warm) 38%, transparent), color-mix(in srgb, var(--melon-purple) 14%, transparent) 55%, transparent)',
-  day: 'linear-gradient(to top, color-mix(in srgb, var(--melon-green-light) 22%, transparent), transparent 80%)',
+  night:
+    'linear-gradient(to bottom, color-mix(in srgb, var(--melon-indigo) 30%, black), color-mix(in srgb, var(--melon-purple) 40%, black))',
+  dawn: 'linear-gradient(to bottom, color-mix(in srgb, var(--melon-indigo) 45%, black), color-mix(in srgb, var(--melon-pink) 45%, var(--melon-purple)) 60%, var(--warm))',
+  day: 'linear-gradient(to bottom, color-mix(in srgb, var(--melon-blue) 70%, white), color-mix(in srgb, var(--melon-blue) 22%, white))',
 }
 
-const SUN: Record<Light, string> = {
-  'before-dawn': 'translate-y-3/4 opacity-40',
-  dawn: 'translate-y-1/4 opacity-90',
-  day: 'translate-y-0 opacity-70',
+const SUN: Record<Light, { position: string; color: string }> = {
+  night: { position: 'translate-y-[160%]', color: 'var(--melon-orange)' },
+  dawn: { position: 'translate-y-[35%]', color: 'var(--melon-orange)' },
+  day: { position: '-translate-y-[60%]', color: 'var(--melon-yellow)' },
 }
 
-/** A horizon that brightens as the player arrives, and turns to ordinary daylight when they come back. */
-function Horizon({ light }: { light: Light }) {
+const GROUND_IN_THE_DARK = 'color-mix(in srgb, var(--melon-green) 70%, black)'
+const GROUND_BY_DAY = 'color-mix(in srgb, var(--melon-green-light) 75%, var(--melon-green))'
+
+const STARS = [
+  [8, 18], [17, 46], [26, 12], [35, 34], [44, 8], [56, 28], [63, 14], [72, 40], [81, 10], [90, 30], [12, 60], [68, 58],
+] as const
+
+/** The sky over the whole visit: night on the other side, dawn on the way back, morning once awake. */
+function Sky({ light }: { light: Light }) {
   return (
-    <div className="relative h-20 sm:h-28 overflow-hidden rounded-t-lg" aria-hidden="true">
+    <div className="relative h-32 sm:h-40 overflow-hidden" aria-hidden="true">
       {(Object.keys(SKY) as Light[]).map((phase) => (
         <div
           key={phase}
-          className={`absolute inset-0 transition-opacity duration-[1500ms] ${phase === light ? 'opacity-100' : 'opacity-0'}`}
+          data-sky={phase}
+          className={`absolute inset-0 transition-opacity duration-[2000ms] ${phase === light ? 'opacity-100' : 'opacity-0'}`}
           style={{ background: SKY[phase] }}
         />
       ))}
+      {STARS.map(([left, top]) => (
+        <span
+          key={`${left}-${top}`}
+          className={`absolute h-0.5 w-0.5 rounded-full bg-white transition-opacity duration-[2000ms] ${light === 'night' ? 'opacity-80' : light === 'dawn' ? 'opacity-30' : 'opacity-0'}`}
+          style={{ left: `${left}%`, top: `${top}%` }}
+        />
+      ))}
       <div
-        className={`absolute bottom-0 left-1/2 -ml-10 h-10 w-20 rounded-t-full bg-[var(--warm)] transition-all duration-[1500ms] ease-out ${SUN[light]}`}
+        className={`absolute bottom-6 left-1/2 -ml-7 h-14 w-14 rounded-full transition-[transform,background-color,box-shadow] duration-[2000ms] ease-out ${SUN[light].position}`}
+        style={{
+          backgroundColor: SUN[light].color,
+          boxShadow: `0 0 ${light === 'day' ? '36px 12px' : '24px 6px'} color-mix(in srgb, ${SUN[light].color} 55%, transparent)`,
+        }}
       />
-      <div className="absolute bottom-0 inset-x-0 h-px bg-foreground/15" />
+      <svg className="absolute inset-x-0 bottom-0 h-10 w-full" viewBox="0 0 400 40" preserveAspectRatio="none">
+        <path
+          d="M0 28 C 60 10, 120 12, 190 24 S 320 8, 400 22 L 400 40 L 0 40 Z"
+          className="transition-[fill] duration-[2000ms]"
+          style={{ fill: light === 'day' ? GROUND_BY_DAY : GROUND_IN_THE_DARK }}
+        />
+      </svg>
     </div>
   )
 }
 
 export default function FirstWords() {
-  const { submitted, stored, cloud, reflection, care, submit, reset } = useCommunityWords('first-words')
-  const [awake, setAwake] = useState(false)
+  const { submitted, stored, cloud, reflection, care, submit, reset, noticeDistress } = useCommunityWords('first-words')
+  const [typedIntention, setTypedIntention] = useState<string | null>(null)
+  const [carried, setCarried] = useState<string | null>(null)
+  const reduceMotion = useReducedMotion()
+  const sceneRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const arrivedRef = useRef<HTMLHeadingElement>(null)
-  const welcomeBackRef = useRef<HTMLParagraphElement>(null)
+  const beforeWakingRef = useRef<HTMLHeadingElement>(null)
+  const morningRef = useRef<HTMLHeadingElement>(null)
   const returningToWrite = useRef(false)
+  const intentionId = useId()
+
+  const awake = carried !== null
+  // The suggestion fills the box until the player writes their own
+  const intention = typedIntention ?? reflection.intention
 
   // Keep keyboard and screen-reader users oriented when the view changes
   useEffect(() => {
     if (submitted !== null) {
-      arrivedRef.current?.focus()
+      beforeWakingRef.current?.focus()
     } else if (returningToWrite.current) {
       returningToWrite.current = false
       textareaRef.current?.focus()
     }
   }, [submitted])
 
+  // The sky turning to morning is the payoff, so bring it on screen before focus moves
   useEffect(() => {
-    if (awake) welcomeBackRef.current?.focus()
-  }, [awake])
+    if (!awake) return
+    sceneRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
+    morningRef.current?.focus({ preventScroll: true })
+  }, [awake, reduceMotion])
+
+  const wake = (event: FormEvent) => {
+    event.preventDefault()
+    const chosen = care ? '' : intention.trim()
+    if (chosen) noticeDistress(chosen)
+    setCarried(chosen)
+  }
 
   const imagineAgain = () => {
     returningToWrite.current = true
-    setAwake(false)
+    setCarried(null)
+    setTypedIntention(null)
     reset()
   }
 
-  const light: Light = awake ? 'day' : submitted === null ? 'before-dawn' : 'dawn'
+  const light: Light = awake ? 'day' : submitted === null ? 'night' : 'dawn'
   const before = cloud.status === 'ready' && stored ? cloud.total - 1 : null
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
-      <div className="bg-card-bg border border-card-border rounded-lg">
-        <Horizon light={light} />
+      <div ref={sceneRef} className="bg-card-bg border border-card-border rounded-lg overflow-hidden scroll-mt-20">
+        <Sky light={light} />
 
-        <div className="p-5 sm:p-8 pt-4 sm:pt-6">
+        <div className="p-5 sm:p-8 pt-5 sm:pt-6">
           {submitted === null ? (
             <>
               <p className="mb-5 text-center text-lg sm:text-xl text-foreground leading-relaxed">
@@ -99,35 +149,93 @@ export default function FirstWords() {
                 submitLabel="Speak"
                 onSubmit={submit}
                 textareaRef={textareaRef}
+                draftKey={draftKey('first-words')}
               />
               <p className="mt-4 text-center text-sm text-primary-light">
-                Whatever you believe comes next, or don&apos;t, is welcome here.
+                Whatever you believe comes next, or don&apos;t, is welcome here. In a moment, you wake up.
               </p>
             </>
+          ) : awake ? (
+            <div className="text-center">
+              <h2 ref={morningRef} {...FOCUS_TARGET} className="text-2xl sm:text-3xl font-semibold text-foreground">
+                Good morning
+              </h2>
+              <p className="mt-3 text-foreground/85 leading-relaxed break-words">
+                {wakingLine({ words: submitted, intention: carried, care })}
+              </p>
+              {carried && !care && (
+                <>
+                  <p className="mt-4 rounded-lg border border-card-border border-l-4 border-l-[var(--warm)] bg-background px-5 py-4 text-left text-lg sm:text-xl font-medium text-foreground break-words">
+                    {carried}
+                  </p>
+                  <div className="mt-4">
+                    <CopyWordsButton
+                      words={carried}
+                      label="Copy it for tomorrow"
+                      copiedMessage="Copied. Put it somewhere you will see it tomorrow."
+                    />
+                  </div>
+                </>
+              )}
+            </div>
           ) : (
             <div className="text-center">
-              <h2 ref={arrivedRef} tabIndex={-1} className="text-xl sm:text-2xl font-semibold text-foreground focus:outline-none">
-                You&apos;ve arrived
+              <h2 ref={beforeWakingRef} {...FOCUS_TARGET} className="text-xl sm:text-2xl font-semibold text-foreground">
+                Before you wake
               </h2>
               <p className="mt-1 text-primary-light">
                 {before === null
-                  ? 'Rest a moment with what you said.'
+                  ? 'Morning is close.'
                   : before > 0
-                    ? `${before.toLocaleString()} ${before === 1 ? 'other has' : 'others have'} arrived before you.`
-                    : 'You are the first to arrive.'}
+                    ? `${before.toLocaleString()} ${before === 1 ? 'other has' : 'others have'} stood here and come back.`
+                    : 'You are the first to stand here and come back.'}
               </p>
               <blockquote className="mt-5 text-lg sm:text-xl text-foreground whitespace-pre-wrap break-words leading-relaxed">
                 &ldquo;{submitted}&rdquo;
               </blockquote>
 
-              <div aria-live="polite" className="mt-6">
+              <div aria-live="polite" className="mt-5">
                 {reflection.pending && <p className="text-sm text-primary-light">The quiet listens…</p>}
                 {reflection.text && (
                   <p className="animate-fade text-foreground/85 italic leading-relaxed text-base sm:text-lg">
                     {reflection.text}
                   </p>
                 )}
+                {reflection.intention && typedIntention === null && !care && (
+                  <p className="sr-only">Suggested for tomorrow: {reflection.intention}</p>
+                )}
               </div>
+
+              <form onSubmit={wake} className="mt-6 text-left">
+                {!care && (
+                  <>
+                    <label htmlFor={intentionId} className="block text-sm sm:text-base font-medium text-foreground">
+                      One small thing to bring back into tomorrow
+                    </label>
+                    <input
+                      id={intentionId}
+                      type="text"
+                      value={intention}
+                      onChange={(e) => setTypedIntention(e.target.value)}
+                      maxLength={MAX_INTENTION_LENGTH}
+                      placeholder="Something small you could do tomorrow…"
+                      className="mt-2 w-full px-4 py-3 border border-card-border rounded-lg bg-background text-foreground text-base sm:text-lg placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent"
+                    />
+                    <p className="mt-1 text-xs sm:text-sm text-primary-light">Change it, or leave it empty. It stays on this page.</p>
+                  </>
+                )}
+                <div className="mt-4 text-center">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="px-8 py-3 text-lg"
+                    // The second click of a double click on Speak can land here; waking should be a choice
+                    onClick={(event) => event.detail > 1 && event.preventDefault()}
+                  >
+                    Wake up
+                  </Button>
+                </div>
+              </form>
             </div>
           )}
         </div>
@@ -139,34 +247,15 @@ export default function FirstWords() {
 
           <CloudSection
             cloud={cloud}
-            heading="What others said on arriving"
+            heading="What others said on the other side"
             label="Most common first words"
-            source={(total) => `From ${total.toLocaleString()} ${total === 1 ? 'arrival' : 'arrivals'}.`}
+            source={(total) => `From ${total.toLocaleString()} ${total === 1 ? 'visit' : 'visits'}.`}
           />
-
-          <section aria-labelledby="awakening-return" className="bg-card-bg border border-card-border rounded-lg p-5 sm:p-6 text-center">
-            <h3 id="awakening-return" className="text-lg font-semibold text-foreground">
-              {awake ? 'Back on this side' : 'Before you go back'}
-            </h3>
-            {awake ? (
-              <p ref={welcomeBackRef} tabIndex={-1} className="mt-2 text-foreground/85 leading-relaxed focus:outline-none">
-                Welcome back to today. It&apos;s good to have you here.
-              </p>
-            ) : (
-              <>
-                <p className="mt-2 text-foreground/80 leading-relaxed">
-                  What we hope to find after the end is usually something we love before it. It&apos;s here, too.
-                </p>
-                <Button variant="primary" className="mt-4" onClick={() => setAwake(true)}>
-                  Wake up
-                </Button>
-              </>
-            )}
-          </section>
 
           <div className="text-center">
             <Button variant="ghost" onClick={imagineAgain}>
-              Imagine it again
+              {/* Someone who may be in danger is not invited to picture their death again */}
+              {care ? 'Start over' : 'Imagine it again'}
             </Button>
           </div>
         </>

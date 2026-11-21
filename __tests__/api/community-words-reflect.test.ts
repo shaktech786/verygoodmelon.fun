@@ -67,7 +67,7 @@ describe('reflection routes', () => {
     generateContent.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: 'Carry that laugh back into today.' }) })
     const { body } = await reflect(firstWordsReflect, 'Where did everyone go? I want to tell them a joke.')
 
-    expect(body).toEqual({ reflection: 'Carry that laugh back into today.' })
+    expect(body.reflection).toBe('Carry that laugh back into today.')
   })
 
   it('asks for a risk judgement and, for the arrival, a reply that turns back toward life', async () => {
@@ -77,6 +77,56 @@ describe('reflection routes', () => {
     const prompt = String(generateContent.mock.calls[0][0].contents)
     expect(prompt).toMatch(/risk/i)
     expect(prompt).toMatch(/never (?:suggest|say|imply)[^.]*(?:stay|no need to (?:go|return))/i)
+  })
+
+  it('gives The Awakening one small thing to bring back into tomorrow', async () => {
+    generateContent.mockResolvedValue({
+      text: JSON.stringify({ risk: false, reply: 'That quiet sounds like rest you have been missing.', intention: 'Take ten quiet minutes tomorrow morning.' }),
+    })
+    const { body } = await reflect(firstWordsReflect, 'It is so quiet here.')
+
+    expect(body).toEqual({
+      reflection: 'That quiet sounds like rest you have been missing.',
+      intention: 'Take ten quiet minutes tomorrow morning.',
+    })
+    expect(String(generateContent.mock.calls[0][0].contents)).toMatch(/"intention"/)
+  })
+
+  it('replaces an intention that is unfit to show or sounds like danger with a written one', async () => {
+    for (const intention of ['Never wake up again', 'Visit www.example.com', '']) {
+      generateContent.mockResolvedValueOnce({ text: JSON.stringify({ risk: false, reply: 'Carry that home.', intention }) })
+      const { body } = await reflect(firstWordsReflect, 'Hello?')
+
+      expect(body.reflection).toBe('Carry that home.')
+      expect(body.intention).toBeTruthy()
+      expect(body.intention).not.toMatch(/wake up|example/i)
+    }
+  })
+
+  it('offers a written intention whenever a fresh one is not available', async () => {
+    generateContent.mockRejectedValue(new Error('quota'))
+    const { body } = await reflect(firstWordsReflect, 'Hello?')
+
+    expect(body.reflection).toBeTruthy()
+    expect(body.intention).toBeTruthy()
+  })
+
+  it('gives no intention alongside care, and none to The Final Word', async () => {
+    generateContent.mockResolvedValue({ text: JSON.stringify({ risk: true, reply: 'Rest.', intention: 'Stay.' }) })
+    expect((await reflect(firstWordsReflect, 'I am so tired')).body).toEqual({ reflection: CARE_REFLECTION, care: true })
+
+    generateContent.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: 'Say it soon.', intention: 'Call her.' }) })
+    expect((await reflect(lastWordsReflect, 'Love you, sis')).body).toEqual({ reflection: 'Say it soon.' })
+    expect(String(generateContent.mock.calls.at(-1)?.[0].contents)).not.toMatch(/"intention"/)
+  })
+
+  it('asks The Final Word for plain words of its own instead of echoing the question', async () => {
+    generateContent.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: 'Say it soon.' }) })
+    await reflect(lastWordsReflect, 'Love you, sis')
+
+    const prompt = String(generateContent.mock.calls[0][0].contents)
+    expect(prompt).not.toMatch(/hold[s]? most dear/i)
+    expect(prompt).toMatch(/never use the words? [^.]*dear/i)
   })
 
   it('never passes on a reply that fails the same filter as the shared cloud', async () => {

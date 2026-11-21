@@ -12,6 +12,17 @@ import FirstWords from '@/components/games/FirstWords'
 describe('FirstWords', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    sessionStorage.clear()
+  })
+
+  it('brings back an unsent draft after a reload', () => {
+    const { unmount } = render(<FirstWords />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Not finished yet' } })
+    unmount()
+
+    render(<FirstWords />)
+    expect(screen.getByRole('textbox')).toHaveValue('Not finished yet')
+    expect(sessionStorage.getItem('verygoodmelon:first-words:draft')).toBe('Not finished yet')
   })
 
   it('renders textarea', () => {

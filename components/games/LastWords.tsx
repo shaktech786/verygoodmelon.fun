@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
-import { CarePanel, CloudSection, CopyWordsButton, WritingForm } from '@/components/games/community-words/WritingParts'
+import { useCareMode } from '@/components/games/CareMode'
+import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, WritingForm } from '@/components/games/community-words/WritingParts'
+import { draftKey } from '@/lib/games/community-words/draft'
 import { useCommunityWords } from '@/lib/games/community-words/useCommunityWords'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
@@ -40,7 +42,7 @@ function Candle({ lit }: { lit: boolean }) {
   }, [lit, reduceMotion])
 
   return (
-    <div className="relative mx-auto h-24 w-16" aria-hidden="true">
+    <div className="relative mx-auto h-24 w-16" aria-hidden="true" data-testid="candle">
       <div
         className={`absolute left-1/2 top-0 h-16 w-16 -translate-x-1/2 rounded-full transition-opacity duration-1000 ${lit ? 'opacity-60' : 'opacity-0'}`}
         style={{ background: 'radial-gradient(circle, color-mix(in srgb, var(--warm) 55%, transparent), transparent 65%)' }}
@@ -61,7 +63,10 @@ function Candle({ lit }: { lit: boolean }) {
 
 export default function LastWords() {
   const { submitted, stored, cloud, reflection, care, submit, reset } = useCommunityWords('last-words')
+  const { care: visitNeededCare } = useCareMode()
   const [candleOut, setCandleOut] = useState(false)
+  // Once this visit has needed care, the flame stays away even for the next words
+  const flameAllowed = !care && !visitNeededCare
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const thanksRef = useRef<HTMLHeadingElement>(null)
   const goodnightRef = useRef<HTMLParagraphElement>(null)
@@ -92,7 +97,8 @@ export default function LastWords() {
   return (
     <div className="max-w-2xl mx-auto space-y-5">
       <div className="bg-card-bg border border-card-border rounded-lg p-5 sm:p-8">
-        <Candle lit={!candleOut} />
+        {/* A flame beside words that may come from real danger is the wrong picture, lit or put out */}
+        {flameAllowed && <Candle lit={!candleOut} />}
 
         {submitted === null ? (
           <div className="mt-4">
@@ -103,6 +109,7 @@ export default function LastWords() {
               submitLabel="Leave these words"
               onSubmit={submit}
               textareaRef={textareaRef}
+              draftKey={draftKey('last-words')}
             />
             <p className="mt-4 text-center text-sm text-primary-light">
               Anonymous. Nothing is asked of you but a few honest words.
@@ -110,7 +117,7 @@ export default function LastWords() {
           </div>
         ) : (
           <div className="mt-4 text-center">
-            <h2 ref={thanksRef} tabIndex={-1} className="text-xl sm:text-2xl font-semibold text-foreground focus:outline-none">
+            <h2 ref={thanksRef} {...FOCUS_TARGET} className="text-xl sm:text-2xl font-semibold text-foreground">
               Thank you for writing this
             </h2>
             <p className="mt-1 text-primary-light">
@@ -156,24 +163,22 @@ export default function LastWords() {
                 Most last words are things we could say today. Is there someone who would like to hear yours now?
               </p>
               <div className="mt-4 flex justify-center">
-                <CopyWordsButton words={submitted} />
+                <CopyWordsButton words={submitted} label="Copy my words" copiedMessage="Your words are copied, ready to send." />
               </div>
             </section>
           )}
 
           <div className="text-center space-y-4">
-            {candleOut ? (
-              <p ref={goodnightRef} tabIndex={-1} className="text-foreground/85 leading-relaxed focus:outline-none">
-                The candle is out. What you wrote is still yours to carry, or to say.
-              </p>
-            ) : (
-              // Putting out a flame is the wrong picture to offer someone who may be in danger
-              !care && (
+            {flameAllowed &&
+              (candleOut ? (
+                <p ref={goodnightRef} {...FOCUS_TARGET} className="text-foreground/85 leading-relaxed">
+                  The candle is out. What you wrote is still yours to carry, or to say.
+                </p>
+              ) : (
                 <Button variant="primary" onClick={() => setCandleOut(true)}>
                   Blow out the candle
                 </Button>
-              )
-            )}
+              ))}
             <div>
               <Button variant="ghost" onClick={writeAnother}>
                 Write another

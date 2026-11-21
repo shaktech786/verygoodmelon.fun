@@ -14,7 +14,11 @@ export type CloudState =
 interface Reflection {
   text: string
   pending: boolean
+  /** A small thing to carry back into tomorrow, for a game that offers one. */
+  intention: string
 }
+
+const NO_REFLECTION: Reflection = { text: '', pending: false, intention: '' }
 
 /**
  * Everything a writing game does with the player's words: shows them back at
@@ -26,7 +30,7 @@ export function useCommunityWords(game: CommunityWordsGame) {
   const [submitted, setSubmitted] = useState<string | null>(null)
   const [stored, setStored] = useState(false)
   const [cloud, setCloud] = useState<CloudState>({ status: 'hidden' })
-  const [reflection, setReflection] = useState<Reflection>({ text: '', pending: false })
+  const [reflection, setReflection] = useState<Reflection>(NO_REFLECTION)
   const [care, setCare] = useState(false)
   const { enterCareMode } = useCareMode()
   const session = useRef(0)
@@ -57,22 +61,22 @@ export function useCommunityWords(game: CommunityWordsGame) {
   }
 
   async function reflect(words: string, id: number) {
-    setReflection({ text: '', pending: true })
+    setReflection({ ...NO_REFLECTION, pending: true })
     try {
       const response = await fetch(`/api/${game}/reflect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: words }),
       })
-      const data: { reflection?: string; care?: boolean } = response.ok ? await response.json() : {}
+      const data: { reflection?: string; intention?: string; care?: boolean } = response.ok ? await response.json() : {}
       if (!isCurrent(id)) return
       if (data.care) {
         setCare(true)
         enterCareMode()
       }
-      setReflection({ text: data.reflection ?? '', pending: false })
+      setReflection({ text: data.reflection ?? '', pending: false, intention: data.intention ?? '' })
     } catch {
-      if (isCurrent(id)) setReflection({ text: '', pending: false })
+      if (isCurrent(id)) setReflection(NO_REFLECTION)
     }
   }
 
@@ -95,9 +99,17 @@ export function useCommunityWords(game: CommunityWordsGame) {
     setSubmitted(null)
     setStored(false)
     setCloud({ status: 'hidden' })
-    setReflection({ text: '', pending: false })
+    setReflection(NO_REFLECTION)
     setCare(false)
   }
 
-  return { submitted, stored, cloud, reflection, care, submit, reset }
+  /** For words written after the reflection, such as what a player chooses to carry back. */
+  function noticeDistress(text: string): boolean {
+    if (!soundsLikeDistress(text)) return false
+    setCare(true)
+    enterCareMode()
+    return true
+  }
+
+  return { submitted, stored, cloud, reflection, care, submit, reset, noticeDistress }
 }

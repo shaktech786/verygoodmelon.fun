@@ -14,6 +14,8 @@ export interface WritingGameConfig {
   game: 'last-words' | 'first-words'
   submitLabel: string
   againLabel: string
+  /** The same button once the words have called for care. */
+  careAgainLabel: string
   thanksHeading: string
   textboxLabel: string
   cloudLabel: string
@@ -175,7 +177,7 @@ export function describeWritingGame(config: WritingGameConfig) {
       await expect(support(page)).toBeVisible()
       await expect(support(page).getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
       await expect(support(page).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
-      await expect(page.getByRole('button', { name: config.againLabel })).toBeVisible()
+      await expect(page.getByRole('button', { name: config.careAgainLabel })).toBeVisible()
     })
 
     test('regression: in care mode the suggestions offer calm games, never the games about death', async ({ page }) => {
@@ -223,7 +225,7 @@ export function describeWritingGame(config: WritingGameConfig) {
 
       await expect(page.getByText(config.firstLine)).toBeVisible()
       await expect(cloud(page)).toHaveAttribute('aria-label', `${config.cloudLabel}: remember, sunrise`)
-      await expect(page.getByText(/From 1 (person|arrival)\.$/)).toBeVisible()
+      await expect(page.getByText(/From 1 (person|visit)\.$/)).toBeVisible()
     })
 
     test('emoji, non-Latin and markup-looking text are shown literally and never run', async ({ page }) => {
@@ -278,8 +280,36 @@ export function describeWritingGame(config: WritingGameConfig) {
       await fillWords(page, config, 'Only once')
       await page.getByRole('button', { name: config.submitLabel, exact: true }).dblclick()
       await expect(page.getByRole('heading', { name: config.thanksHeading })).toBeVisible()
+      // The second click must not also close the moment it just opened
+      await expect(page.getByRole('button', { name: config.closingButton })).toBeVisible()
       await expect(cloud(page)).toBeVisible()
       expect(db.posts).toHaveLength(1)
+    })
+
+    test('an unsent draft survives a reload, stays in the browser, and is gone once sent', async ({ page }) => {
+      const db = await databaseUp(page, config, [])
+      await mockReflection(page, config)
+      let reflections = 0
+      page.on('request', (request) => {
+        if (request.url().includes('/reflect')) reflections++
+      })
+      await page.goto(`/games/${config.slug}`)
+
+      await fillWords(page, config, 'Half of what I mean to say')
+      await page.reload()
+      await expect(textbox(page, config)).toHaveValue('Half of what I mean to say')
+      await expect(page.getByText('26/500 characters')).toBeVisible()
+      expect(db.posts).toHaveLength(0)
+      expect(reflections).toBe(0)
+      expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => key.includes('words')))).toEqual([])
+
+      await page.getByRole('button', { name: config.submitLabel, exact: true }).click()
+      await expect(page.getByRole('heading', { name: config.thanksHeading })).toBeFocused()
+      await page.getByRole('button', { name: config.againLabel }).click()
+      await expect(textbox(page, config)).toHaveValue('')
+      await page.reload()
+      await expect(textbox(page, config)).toHaveValue('')
+      expect(db.posts).toEqual(['Half of what I mean to say'])
     })
 
     test('reloading after submitting starts a fresh page without resubmitting', async ({ page }) => {
@@ -324,8 +354,16 @@ export function describeWritingGame(config: WritingGameConfig) {
     await expect(textbox(page, config)).toBeFocused()
     await page.keyboard.type('Keep going.')
     await page.keyboard.press('Control+Enter')
-    await expect(page.getByRole('heading', { name: config.thanksHeading })).toBeFocused()
+    const heading = page.getByRole('heading', { name: config.thanksHeading })
+    await expect(heading).toBeFocused()
     await expect(page.getByText(REFLECTION)).toBeVisible()
+
+    // A heading that only code focuses shows no ring that could read as an error; real controls keep theirs
+    expect(await heading.evaluate((el) => getComputedStyle(el).boxShadow)).toBe('none')
+    await page.keyboard.press('Tab')
+    const control = page.locator(':focus')
+    expect(await control.evaluate((el) => el.tagName)).toMatch(/^(BUTTON|A|INPUT)$/)
+    expect(await control.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
   })
 
   test('the question changes only when the player asks for another', async ({ page }) => {

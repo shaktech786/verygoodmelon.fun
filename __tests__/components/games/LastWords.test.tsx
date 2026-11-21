@@ -13,6 +13,17 @@ import LastWords from '@/components/games/LastWords'
 describe('LastWords', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    sessionStorage.clear()
+  })
+
+  it('brings back an unsent draft after a reload', () => {
+    const { unmount } = render(<LastWords />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Not finished yet' } })
+    unmount()
+
+    render(<LastWords />)
+    expect(screen.getByRole('textbox')).toHaveValue('Not finished yet')
+    expect(sessionStorage.getItem('verygoodmelon:last-words:draft')).toBe('Not finished yet')
   })
 
   it('renders textarea for input', () => {

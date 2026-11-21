@@ -1,12 +1,22 @@
 'use client'
 
-import { useId, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react'
+import { useId, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent, type RefObject } from 'react'
 import { Button } from '@/components/ui/Button'
 import { CommunityWordCloud } from '@/components/games/CommunityWordCloud'
+import { clearDraft, readDraft, saveDraft } from '@/lib/games/community-words/draft'
 import { MAX_SUBMISSION_LENGTH } from '@/lib/games/community-words/moderation'
 import type { CloudState } from '@/lib/games/community-words/useCommunityWords'
 
 const KEYBOARD_SETTLE_MS = 350
+
+/**
+ * For a heading or line that only code moves focus to, so screen readers follow
+ * the change. The site's red focus ring would read as an error on text that
+ * cannot be acted on; real controls keep it.
+ */
+export const FOCUS_TARGET = { tabIndex: -1, style: { outline: 'none', boxShadow: 'none' } } as const
+
+const subscribeToNothing = () => () => {}
 
 interface WritingFormProps {
   prompts: readonly string[]
@@ -16,6 +26,8 @@ interface WritingFormProps {
   submitLabel: string
   onSubmit: (words: string) => void
   textareaRef: RefObject<HTMLTextAreaElement | null>
+  /** Where the unsent words wait if the page reloads. */
+  draftKey: string
 }
 
 /**
@@ -23,8 +35,11 @@ interface WritingFormProps {
  * button to send. On phones the on-screen keyboard covers the lower half of the
  * page, so once it opens the send button is brought back into view.
  */
-export function WritingForm({ prompts, label, placeholder, submitLabel, onSubmit, textareaRef }: WritingFormProps) {
-  const [input, setInput] = useState('')
+export function WritingForm({ prompts, label, placeholder, submitLabel, onSubmit, textareaRef, draftKey }: WritingFormProps) {
+  // Read after hydration, so the server's empty box and the browser's saved draft never disagree
+  const savedDraft = useSyncExternalStore(subscribeToNothing, () => readDraft(draftKey), () => '')
+  const [typed, setTyped] = useState<string | null>(null)
+  const input = typed ?? savedDraft
   const [promptIndex, setPromptIndex] = useState(0)
   const endOfForm = useRef<HTMLDivElement>(null)
   const textareaId = useId()
@@ -33,7 +48,14 @@ export function WritingForm({ prompts, label, placeholder, submitLabel, onSubmit
 
   const send = (event: FormEvent | KeyboardEvent) => {
     event.preventDefault()
-    if (canSend) onSubmit(input)
+    if (!canSend) return
+    clearDraft(draftKey)
+    onSubmit(input)
+  }
+
+  const write = (text: string) => {
+    setTyped(text)
+    saveDraft(draftKey, text)
   }
 
   const keepSendInView = () => {
@@ -64,7 +86,7 @@ export function WritingForm({ prompts, label, placeholder, submitLabel, onSubmit
         id={textareaId}
         ref={textareaRef}
         value={input}
-        onChange={(e) => setInput(e.target.value)}
+        onChange={(e) => write(e.target.value)}
         onFocus={keepSendInView}
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') send(e)
@@ -135,8 +157,15 @@ export function CloudSection({ cloud, heading, label, source }: CloudSectionProp
   )
 }
 
-/** Copies the player's own words so they can send them to someone. */
-export function CopyWordsButton({ words }: { words: string }) {
+interface CopyWordsButtonProps {
+  words: string
+  label: string
+  /** Announced once the words are on the clipboard. */
+  copiedMessage: string
+}
+
+/** Copies the player's own words so they can keep them or send them to someone. */
+export function CopyWordsButton({ words, label, copiedMessage }: CopyWordsButtonProps) {
   const [copied, setCopied] = useState(false)
   const copy = async () => {
     try {
@@ -149,9 +178,9 @@ export function CopyWordsButton({ words }: { words: string }) {
   return (
     <>
       <Button type="button" variant="secondary" onClick={copy}>
-        {copied ? 'Copied' : 'Copy my words'}
+        {copied ? 'Copied' : label}
       </Button>
-      <span className="sr-only" aria-live="polite">{copied ? 'Your words are copied, ready to send.' : ''}</span>
+      <span className="sr-only" aria-live="polite">{copied ? copiedMessage : ''}</span>
     </>
   )
 }
