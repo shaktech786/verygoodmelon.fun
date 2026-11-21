@@ -10,7 +10,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FeedbackButton } from "@/components/FeedbackButton";
 import { AmbientParticles } from "@/components/ui/AmbientParticles";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
-import { Providers } from "@/components/Providers";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
@@ -87,24 +86,22 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="VeryGoodMelon" />
       </head>
       <body className={`${quicksand.variable} antialiased`} suppressHydrationWarning>
-        <Providers>
-          <AmbientParticles />
-          <a href="#main-content" className="skip-to-content">
-            Skip to main content
-          </a>
-          <Header />
-          <ErrorBoundary>
-            <main id="main-content" className="min-h-screen" role="main">
-              {children}
-            </main>
-          </ErrorBoundary>
-          <Footer />
-          <AccessibilityControls />
-          <FeedbackButton />
-          <ToastContainer />
-          <SiteAnalytics />
-          <ServiceWorkerRegistration />
-        </Providers>
+        <AmbientParticles />
+        <a href="#main-content" className="skip-to-content">
+          Skip to main content
+        </a>
+        <Header />
+        <ErrorBoundary>
+          <main id="main-content" className="min-h-screen" role="main">
+            {children}
+          </main>
+        </ErrorBoundary>
+        <Footer />
+        <AccessibilityControls />
+        <FeedbackButton />
+        <ToastContainer />
+        <SiteAnalytics />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );

@@ -10,7 +10,7 @@ const CONTACT_EMAIL = 'hello@verygoodmelon.fun'
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Use" lastUpdated="September 21, 2026">
+    <LegalPage title="Terms of Use" lastUpdated="November 21, 2026">
       <p className="text-lg">
         VeryGoodMelon.Fun is a free collection of thoughtful games. These terms are short on
         purpose. By using the site you agree to them. If you do not agree, please do not use the
@@ -79,13 +79,6 @@ export default function TermsPage() {
         <p>We may limit or block access that puts the site or its visitors at risk.</p>
       </LegalSection>
 
-      <LegalSection id="accounts" title="Accounts">
-        <p>
-          Accounts are optional. If you create one, you are responsible for the email or GitHub
-          account you sign in with. You can ask us to delete your account at any time, and we may
-          remove accounts that are used to abuse the site.
-        </p>
-      </LegalSection>
 
       <LegalSection id="privacy" title="Privacy">
         <p>

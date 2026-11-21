@@ -11,7 +11,7 @@ const CONTACT_EMAIL = 'hello@verygoodmelon.fun'
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="September 21, 2026">
+    <LegalPage title="Privacy Policy" lastUpdated="November 21, 2026">
       <p className="text-lg">
         VeryGoodMelon.Fun exists to help you feel a little lighter. Watching you closely would
         defeat the point. This page explains, in plain language, exactly what the site learns
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
             We never sell, rent, or trade data, and we never use it for anything other than
             running and improving this site.
           </li>
-          <li>You can play everything without an account.</li>
+          <li>There are no accounts. You can play everything without giving us anything.</li>
           <li>
             If your browser sends a <Term>Do Not Track</Term> or{' '}
             <Term>Global Privacy Control</Term> signal, we skip measuring you entirely.
@@ -120,24 +120,11 @@ export default function PrivacyPage() {
         </LegalList>
       </LegalSection>
 
-      <LegalSection id="accounts" title="Optional Accounts">
-        <p>
-          You never need an account. If you choose to sign in, by email link or with GitHub, we
-          store your email address and, for GitHub sign-in, your public display name and avatar.
-          This is used only to sign you in and show your profile. Email{' '}
-          <LegalLink href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</LegalLink> and we will
-          delete your account and everything attached to it.
-        </p>
-      </LegalSection>
 
       <LegalSection id="cookies" title="Cookies and Browser Storage">
         <LegalList>
           <li>
             <Term>No analytics or advertising cookies.</Term> None, ever.
-          </li>
-          <li>
-            <Term>Sign-in cookie.</Term> Set only if you sign in, and used only to keep you signed
-            in.
           </li>
           <li>
             <Term>Local storage.</Term> Your accessibility settings, game progress, play history
@@ -183,7 +170,6 @@ export default function PrivacyPage() {
           </li>
           <li>
             <LegalLink href="https://supabase.com/privacy">Supabase</LegalLink> &mdash; database
-            and optional sign-in
           </li>
           <li>
             <LegalLink href="https://policies.google.com/privacy">Google</LegalLink> and{' '}
@@ -206,7 +192,7 @@ export default function PrivacyPage() {
             <LegalLink href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">
               GitHub
             </LegalLink>{' '}
-            &mdash; optional sign-in and public feedback
+            &mdash; public feedback
           </li>
           <li>
             <LegalLink href="https://esm.sh">esm.sh</LegalLink> &mdash; delivers an open-source 3D
@@ -229,7 +215,7 @@ export default function PrivacyPage() {
         <LegalList>
           <li>Anonymous counts are kept indefinitely. They describe no one.</li>
           <li>Public submissions stay until they are removed. Ask and we will remove yours.</li>
-          <li>Thinker requests and accounts are kept until you ask us to delete them.</li>
+          <li>Thinker requests are kept until you ask us to delete them.</li>
           <li>Error reports are deleted automatically within 90 days.</li>
         </LegalList>
       </LegalSection>
@@ -238,13 +224,13 @@ export default function PrivacyPage() {
         <p>
           Wherever you live, you can ask what we hold about you, ask for a copy, ask us to correct
           it, or ask us to delete it. Because almost everything here is anonymous, this usually
-          applies only to an account, a thinker request, or something you submitted. Email{' '}
+          applies only to a thinker request or something you submitted. Email{' '}
           <LegalLink href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</LegalLink> and we will
           respond within 30 days. We will never treat you differently for asking.
         </p>
         <p>
           To opt out of anonymous measurement, turn on Do Not Track or Global Privacy Control in
-          your browser. No banner, no dark patterns, no account needed.
+          your browser. No banner and no dark patterns.
         </p>
       </LegalSection>
 

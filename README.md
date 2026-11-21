@@ -6,27 +6,27 @@
 
 ---
 
-## 🎮 Current Games
+## 🎮 Games
 
-### The Striker
-**Watermelon bowling** - Roll strikes with physics-based gameplay
-*Action • Medium difficulty*
+Twelve games in three groups. The list in `lib/games/config.ts` is the source of truth.
 
-### The Optimist
-**Daily word puzzle** - Guess words about global progress and hope
-*Puzzle • Easy • Daily*
+### Slow down
+- **[The Patient One](https://verygoodmelon.fun/games/the-long-breath)**: A game that rewards you for not rushing
+- **[The Harmonist](https://verygoodmelon.fun/games/the-still-point)**: Breathe along with animated patterns that calm you down
+- **[The Gardener](https://verygoodmelon.fun/games/quiet-grove)**: Plant seeds of thought and watch your garden respond
 
-### The Sage
-**Chat with wisdom figures** - Converse with 61 historical thinkers (AI-powered)
-*Wisdom • Easy • Therapeutic*
+### Reflect
+- **[The Sage](https://verygoodmelon.fun/games/ancient-voices)**: Ask life questions to history's greatest thinkers
+- **[The Dilemma](https://verygoodmelon.fun/games/the-crossroads)**: Vote on impossible dilemmas and see how others chose
+- **[The Final Word](https://verygoodmelon.fun/games/final-breath)**: Write what you'd say at the end and read others' words
+- **[The Awakening](https://verygoodmelon.fun/games/first-breath)**: Imagine waking up in the afterlife and speak first
+- **[The Arena](https://verygoodmelon.fun/games/the-arena)**: Pick two people and a topic, then watch them argue it out
 
-### The Dilemma
-**Ethical voting game** - Make tough choices and see how others voted
-*Thought • Medium • Community*
-
-### The Final Word
-**Last words reflection** - Share your final message, see humanity's collective word cloud
-*Thought • Easy • Philosophical*
+### Play
+- **[The Optimist](https://verygoodmelon.fun/games/the-silver-lining)**: Guess the word, discover something good about the world
+- **[The Alchemist](https://verygoodmelon.fun/games/idea-lab)**: Mix two ideas together and see what emerges
+- **[The Philosopher](https://verygoodmelon.fun/games/thought-pockets)**: A deckbuilder where you build arguments against cognitive biases
+- **[The Shapeshifter](https://verygoodmelon.fun/games/the-mutation)**: Play an arcade game that rewrites its own rules
 
 ---
 
@@ -50,7 +50,7 @@ Built-in accessibility controls accessible via button in corner:
 ### Technical Excellence
 - **Performance**: 90+ Lighthouse scores, optimized builds
 - **Real-time Data**: Supabase for live game data and community features
-- **Modern Stack**: Next.js 15, React 19, TypeScript, Tailwind CSS v4
+- **Modern Stack**: Next.js 16, React 19, TypeScript, Tailwind CSS v4
 - **Fast Deployment**: Auto-deploy via Vercel on push to main
 
 ---
@@ -161,8 +161,7 @@ verygoodmelon.fun/
 │   ├── games/
 │   │   └── config.ts             # Central game configuration (SSOT)
 │   ├── hooks/
-│   │   ├── useAccessibility.ts   # Accessibility state management
-│   │   └── useAuth.ts            # Supabase auth (future)
+│   │   └── useAccessibility.ts   # Accessibility state management
 │   ├── supabase/                 # Supabase client setup
 │   └── utils/                    # Helper functions
 ├── supabase/
