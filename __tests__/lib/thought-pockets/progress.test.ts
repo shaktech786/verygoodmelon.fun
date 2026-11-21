@@ -24,7 +24,7 @@ import {
 import { CARD_PRICES, FIGHT_GOLD, START_GOLD, TEA_HEAL, shopPrice } from '@/lib/games/thought-pockets/engine/economy'
 import { endTurn, enemyRuleText, enemyRules, playCard, undoPlay } from '@/lib/games/thought-pockets/engine/battle'
 import { EVENTS } from '@/lib/games/thought-pockets/data/events'
-import { MAX_RIGOR, RIGOR_LEVELS, RIGOROUS_HEALTH } from '@/lib/games/thought-pockets/data/pace'
+import { MAX_RIGOR, RIGOR_LEVELS, RIGOROUS_HEALTH, TIRING } from '@/lib/games/thought-pockets/data/pace'
 import { ENEMIES, TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { canUpgrade } from '@/lib/games/thought-pockets/data/cards'
 import { BattleState, MapNode, RunState } from '@/types/thought-pockets'
@@ -196,6 +196,24 @@ describe('the run remembers its best argument', () => {
 })
 
 describe('saved runs from earlier versions keep loading', () => {
+  it('a version 5 save, mid-battle with a played card and a last round, is migrated and plays on', () => {
+    const saved = JSON.parse(readFileSync(path.join(__dirname, 'fixtures/run-v5.json'), 'utf8'))
+    expect(saved.version).toBe(5)
+    const run = migrateRun(saved.state.run, saved.version) as RunState
+    expect(run.version).toBe(RUN_VERSION)
+    expect(run.defeatRound).toBeNull()
+    expect(run.battle?.hand).toEqual(saved.state.run.battle.hand)
+    expect(run.battle?.played).toEqual(saved.state.run.battle.played)
+    expect(run.battle?.tiresFrom).toBe(TIRING.gentle)
+    expect(run.battle?.undo.every((core) => core.tiresFrom === TIRING.gentle)).toBe(true)
+    expect(run.battle?.lastRound).toBeNull()
+    expect(battleAction(run, undoPlay).battle?.played).toHaveLength(0)
+    let next = battleAction(run, endTurn)
+    expect(next.battle?.lastRound?.chain).toBeDefined()
+    for (let i = 0; i < 60 && next.screen === 'battle'; i++) next = battleAction(next, endTurn)
+    expect(['reward', 'defeat']).toContain(next.screen)
+  })
+
   it('a version 4 save, mid-battle with a played card and a last round, is migrated and plays on', () => {
     const saved = JSON.parse(readFileSync(path.join(__dirname, 'fixtures/run-v4.json'), 'utf8'))
     expect(saved.version).toBe(4)
@@ -215,7 +233,7 @@ describe('saved runs from earlier versions keep loading', () => {
     expect(undone.battle?.evidencePlayed).toBe(0)
     let next = battleAction(run, endTurn)
     expect(next.battle?.lastRound?.steps.every((s) => s.times >= 1)).toBe(true)
-    for (let i = 0; i < 30 && next.screen === 'battle'; i++) next = battleAction(next, endTurn)
+    for (let i = 0; i < 60 && next.screen === 'battle'; i++) next = battleAction(next, endTurn)
     expect(['reward', 'defeat']).toContain(next.screen)
   })
 
@@ -231,7 +249,7 @@ describe('saved runs from earlier versions keep loading', () => {
     expect(run.battle?.hand).toEqual(saved.state.run.battle.hand)
     let next = battleAction(run, endTurn)
     expect(next.battle?.turn ?? 99).toBeGreaterThan(run.battle?.turn as number)
-    for (let i = 0; i < 30 && next.screen === 'battle'; i++) next = battleAction(next, endTurn)
+    for (let i = 0; i < 60 && next.screen === 'battle'; i++) next = battleAction(next, endTurn)
     expect(['reward', 'defeat']).toContain(next.screen)
     if (next.screen === 'reward') expect(leaveReward(skipCards(next)).screen).toBe('map')
   })

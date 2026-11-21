@@ -4,8 +4,8 @@ import { test, expect, Page } from '@playwright/test'
 import { RUN_VERSION, availableNodes, chooseNode, newRun } from '@/lib/games/thought-pockets/engine/run'
 import { COMPOSURE_GUARD, KNOWN_UNSETTLE, endTurn, playCard } from '@/lib/games/thought-pockets/engine/battle'
 import { CONCLUSION_TIMES, EMPIRICIST_EVIDENCE_TIMES, timesWord } from '@/lib/games/thought-pockets/data/conclusion'
-import { MAX_RIGOR } from '@/lib/games/thought-pockets/data/pace'
-import { TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { MAX_RIGOR, TIRING } from '@/lib/games/thought-pockets/data/pace'
+import { BURIDAN_GUARD, PHASE_SPILL, SORITES_CAP, TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { BattleState, CardInstance, MapNode, RunState, School } from '@/types/thought-pockets'
 import { playRun, planning } from '../lib/thought-pockets/bots'
 
@@ -343,7 +343,7 @@ test.describe('The Philosopher', () => {
     let finalTurn: RunState | null = null
     let seed = 1
     for (; seed < 60; seed++) {
-      let lastBoss: RunState | null = null
+      let lastBoss = null as RunState | null
       const record = playRun('rationalist', seed, { turn: planning, draft: 'archetype', habits: 'careful' }, (run) => {
         if (run.floor === 3 && run.battle?.enemy.id === 'meaning_of_life') lastBoss = run
       })
@@ -407,7 +407,7 @@ test.describe('The Philosopher', () => {
     await expect(page.getByTestId('screen-battle')).toBeVisible()
   })
 
-  test('a Guard card as the Conclusion says it has nothing to double', async ({ page }) => {
+  test('a Guard card as the Conclusion says it has nothing to count, with the count the school gives', async ({ page }) => {
     const run = inFirstBattle(121, (b) => ({ ...b, hand: cards(['observation', 'caveat']) }))
     await fresh(page, 121, true)
     await load(page, run)
@@ -415,7 +415,8 @@ test.describe('The Philosopher', () => {
     await hand(page).filter({ hasText: 'Caveat' }).click()
     await expect(page.getByTestId('empty-conclusion')).toBeVisible()
     const steps = page.getByLabel('Cards in your argument, in order')
-    await expect(steps).toContainText('Conclusion: nothing to double')
+    await expect(steps).toContainText(`Conclusion: nothing to count ${timesWord(CONCLUSION_TIMES)}`)
+    await expect(page.getByTestId('empty-conclusion')).toContainText(`nothing to count ${timesWord(CONCLUSION_TIMES)}`)
     await expect(steps).not.toContainText('counts twice')
   })
 
@@ -444,8 +445,7 @@ test.describe('The Philosopher', () => {
     await expect(page.getByTestId('announcer')).toContainText('Your argument dealt')
   })
 
-  test('the round replays card by card, can be skipped with S, and shows the same steps with reduced motion', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' })
+  test('the round replays card by card and can be skipped with S; with reduced motion it is one still frame at once', async ({ page }) => {
     const run = inFirstBattle(124, (b) => ({ ...b, hand: cards(['observation', 'therefore']) }))
     await fresh(page, 124, true)
     await load(page, run)
@@ -455,6 +455,12 @@ test.describe('The Philosopher', () => {
     await expect(page.getByTestId('last-round')).toHaveAttribute('data-show', 'playing')
     await page.keyboard.press('s')
     await expect(page.getByTestId('last-round')).toHaveAttribute('data-show', 'done')
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await load(page, run)
+    await hand(page).first().click()
+    await hand(page).first().click()
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByTestId('last-round')).toHaveAttribute('data-show', 'done', { timeout: 300 })
     await expect(page.getByTestId('last-round')).toContainText('Weight 4 × Multiplier 2 = 8')
     await expect(page.getByTestId('last-round')).toContainText('8 damage')
     await expect(page.getByTestId('last-round')).toContainText('It attacked for')
@@ -602,6 +608,114 @@ test.describe('The Philosopher', () => {
   test('a run saved by the previous version still loads and plays on', async ({ page }) => {
     const saved = JSON.parse(readFileSync(path.join(process.cwd(), '__tests__/lib/thought-pockets/fixtures/run-v3.json'), 'utf8'))
     await fresh(page, 129, true)
+    await load(page, saved.state.run, saved.version)
+    await expect(page.getByTestId('screen-battle')).toBeVisible()
+    await expect(page.getByTestId('argument').locator('li')).toHaveCount(saved.state.run.battle.played.length)
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByTestId('last-round')).toBeVisible()
+  })
+  test('no hidden turn limit: at turn 40 with full Resolve the fight goes on, the turn is shown, and the tiring rule is stated', async ({ page }) => {
+    const run = inFirstBattle(140, (b) => ({ ...b, turn: 40, enemy: { ...b.enemy, health: 400, maxHealth: 400 }, player: { ...b.player, resolve: 60 }, hand: cards(['caveat']), focus: 3 }))
+    await fresh(page, 140, true)
+    await load(page, run)
+    await expect(page.getByTestId('turn')).toHaveText('Turn 40')
+    await expect(page.getByTestId('tiring')).toContainText('tiring')
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByTestId('screen-battle')).toBeVisible()
+    await expect(page.getByTestId('turn')).toHaveText('Turn 41')
+    await page.getByRole('button', { name: 'How to play' }).click()
+    await expect(page.getByRole('dialog')).toContainText(`From turn ${TIRING.gentle} in Gentle pace`)
+    await expect(page.getByRole('dialog')).toContainText(`Every ${PHASE_SPILL} damage past the line shakes it`)
+  })
+
+  test('a defeat names what took the last Resolve', async ({ page }) => {
+    const base = newRun('empiricist', 141, 'rigorous', [], 1)
+    const started = chooseNode(base, availableNodes(base)[0].id)
+    const battle = started.battle as BattleState
+    await fresh(page, 141, true)
+    await load(page, { ...started, resolve: 3, battle: { ...battle, player: { ...battle.player, resolve: 3 }, hand: [], focus: 0 } })
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByTestId('screen-defeat')).toBeVisible()
+    const attack = getEnemyDef(TUTORIAL_ENEMY).moves[0].attack as number
+    await expect(page.getByTestId('defeat-cause')).toHaveText(`${getEnemyDef(TUTORIAL_ENEMY).name} attacked for ${attack}. All ${attack} got through and took the last of your Resolve.`)
+  })
+
+  test('on a phone, a losing End turn says so on the button itself, and the intent stays on screen', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    const run = inFirstBattle(142, (b) => ({ ...b, player: { ...b.player, resolve: 2 }, hand: cards(['observation', 'observation', 'observation']), focus: 3 }))
+    await fresh(page, 142, true)
+    await load(page, { ...run, resolve: 2 })
+    await hand(page).first().click()
+    await hand(page).first().click()
+    await hand(page).first().click()
+    const end = page.getByTestId('end-turn')
+    await expect(end).toContainText('you fall')
+    await expect(end).toHaveAttribute('data-danger', 'certain')
+    await expect(end).toHaveAccessibleName(/That is all your Resolve/)
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+    const compact = page.getByTestId('intent-compact')
+    await expect(compact).toBeInViewport()
+    await expect(compact).toContainText(`You lose ${getEnemyDef(TUTORIAL_ENEMY).moves[0].attack}`)
+  })
+
+  test('damage steps are listed in the order the engine applies them: Guard, then the cap, then the half-Resolve line', async ({ page }) => {
+    const def = getEnemyDef('sorites')
+    const half = Math.floor(def.health / 2)
+    const run = inFirstBattle(143, (b) => ({
+      ...b,
+      enemy: { ...b.enemy, id: def.id, health: half + 10, maxHealth: def.health, guard: 3, phase: 1 as const, moveIndex: 0 },
+      hand: cards(['observation', 'smoking_gun']),
+      focus: 4,
+    }))
+    await fresh(page, 143, true)
+    await load(page, run)
+    await hand(page).filter({ hasText: 'Observation' }).click()
+    await hand(page).filter({ hasText: 'Smoking Gun' }).click()
+    const steps = page.getByTestId('equation').getByTestId('chain-step')
+    await expect(steps).toHaveCount(3)
+    await expect(steps.nth(0)).toContainText('Its Guard absorbs 3')
+    await expect(steps.nth(1)).toContainText(`Capped at ${SORITES_CAP}`)
+    await expect(steps.nth(2)).toContainText(`It stops at ${half} and changes. Your extra ${SORITES_CAP - 10} shakes it`)
+    await expect(page.getByTestId('damage-preview')).toHaveText('10')
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByTestId('enemy-rule')).toHaveText(def.ruleText)
+    await page.getByTestId('skip-show').click()
+    await expect(page.getByTestId('last-round').getByTestId('show-chain').locator('li')).toHaveCount(3)
+    await expect(page.getByTestId('enemy-rule')).toHaveText(def.phase2?.ruleText as string)
+  })
+
+  test("the new problems state their rules from the engine: Buridan's Ass counts the cards left in your hand", async ({ page }) => {
+    const def = getEnemyDef('buridans_ass')
+    const run = inFirstBattle(144, (b) => ({ ...b, enemy: { ...b.enemy, id: def.id, health: def.health, maxHealth: def.health }, hand: cards(['observation', 'caveat', 'caveat']), focus: 3 }))
+    await fresh(page, 144, true)
+    await load(page, run)
+    await expect(page.getByTestId('enemy-rule')).toHaveText(def.ruleText)
+    await expect(page.getByTestId('phase-warning')).toContainText(def.phase2?.ruleText as string)
+    await hand(page).filter({ hasText: 'Observation' }).click()
+    await expect(page.getByTestId('rule-guard')).toHaveText(`2 cards left in your hand: it gains ${2 * BURIDAN_GUARD} Guard`)
+    await hand(page).filter({ hasText: 'Caveat' }).first().click()
+    await expect(page.getByTestId('rule-guard')).toHaveText(`1 card left in your hand: it gains ${BURIDAN_GUARD} Guard`)
+  })
+
+  test('a new screen starts at the top with focus on its heading or first choice, clear of the site header', async ({ page }) => {
+    await fresh(page, 145, true)
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+    await page.getByTestId('school-empiricist').click()
+    const first = page.locator('button[data-available]').first()
+    await expect(first).toBeFocused()
+    const header = await page.locator('header[role=banner]').boundingBox()
+    const node = await first.boundingBox()
+    expect(header && node && node.y >= header.y + header.height, 'the first node is below the sticky header').toBe(true)
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('enemy-name')).toBeFocused()
+    const panel = await page.getByRole('region', { name: 'Opponent' }).boundingBox()
+    const after = await page.locator('header[role=banner]').boundingBox()
+    expect(after && panel && panel.y >= after.y + after.height, 'the opponent panel is below the sticky header').toBe(true)
+  })
+
+  test('a run saved by version 5 still loads mid-battle and plays on', async ({ page }) => {
+    const saved = JSON.parse(readFileSync(path.join(process.cwd(), '__tests__/lib/thought-pockets/fixtures/run-v5.json'), 'utf8'))
+    await fresh(page, 146, true)
     await load(page, saved.state.run, saved.version)
     await expect(page.getByTestId('screen-battle')).toBeVisible()
     await expect(page.getByTestId('argument').locator('li')).toHaveCount(saved.state.run.battle.played.length)

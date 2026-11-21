@@ -6,6 +6,7 @@ import { SCHOOLS } from '@/lib/games/thought-pockets/data/schools'
 import { ENEMIES, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { getCardDef } from '@/lib/games/thought-pockets/data/cards'
 import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
+import { defeatLine } from '@/lib/games/thought-pockets/data/defeat'
 import { MAX_RIGOR, REST_HEAL_PERCENT, RIGOR_LEVELS, rigorRules } from '@/lib/games/thought-pockets/data/pace'
 import { KNOWN_UNSETTLE } from '@/lib/games/thought-pockets/engine/battle'
 import { FLOORS, reconsider } from '@/lib/games/thought-pockets/engine/run'
@@ -302,6 +303,11 @@ export function EndScreen({ run, onMenu }: { run: RunState; onMenu: () => void }
             <p className="mt-2">You argued your way through all {FLOORS} floors. The questions will still be there tomorrow, and that is fine. Take a slow breath before whatever comes next.</p>
           ) : (
             <p className="mt-2">
+              {foe && run.defeatRound && (
+                <span className="block" data-testid="defeat-cause">
+                  {defeatLine(run.defeatRound, foe)}
+                </span>
+              )}
               {foe && (
                 <>
                   <strong>{foe.name}</strong> held its ground. Its rule: {foe.ruleText}{' '}

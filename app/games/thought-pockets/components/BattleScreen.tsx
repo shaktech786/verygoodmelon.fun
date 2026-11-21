@@ -6,6 +6,7 @@ import {
   KNOWN_UNSETTLE,
   canPlay,
   cardCost,
+  chargeBonus,
   currentMove,
   endTurn,
   enemyRuleText,
@@ -13,12 +14,15 @@ import {
   phaseThreshold,
   playCard,
   previewArgument,
+  tiringUnsettle,
   undoPlay,
 } from '@/lib/games/thought-pockets/engine/battle'
 import { battleAction } from '@/lib/games/thought-pockets/engine/run'
 import { tutorialHint } from '@/lib/games/thought-pockets/engine/tutorial'
 import { describeCard, resolveCard } from '@/lib/games/thought-pockets/data/cards'
+import { timesWord } from '@/lib/games/thought-pockets/data/conclusion'
 import { TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { TIRING } from '@/lib/games/thought-pockets/data/pace'
 import { keywordText } from '@/lib/games/thought-pockets/data/keywords'
 import { useInsightStore, useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
@@ -31,6 +35,8 @@ import { RoundShow, RoundShowState, format, showProgress, useRoundShow } from '.
 const TIER_LABELS = { normal: 'Bias', elite: 'Stubborn bias', boss: 'Philosophical problem' }
 const ASK_LABELS = { evidence: 'Evidence', logic: 'Logic', guard: 'Guard' }
 const BIG_FLINCH = 20
+/** How many turns ahead the screen says a long fight is about to tire the bias. */
+const TIRING_NOTICE = 2
 
 export const SHOW_CSS = `
 @keyframes tp-appear { from { opacity: 0; } to { opacity: 1; } }
@@ -57,7 +63,9 @@ function intentText(move: EnemyMove, battle: BattleState): string[] {
   const parts: string[] = []
   if (move.attack) {
     const hit = incomingDamage(battle, 0)
-    parts.push(hit.hits > 1 ? `Attack ${hit.perHit} × ${hit.hits}` : `Attack ${hit.perHit}`)
+    const charge = chargeBonus(battle)
+    const spur = charge > 0 ? ` (+${charge} a hit from the cards in your hand)` : ''
+    parts.push(hit.hits > 1 ? `Attack ${hit.perHit} × ${hit.hits}${spur}` : `Attack ${hit.perHit}${spur}`)
   }
   if (move.guard) parts.push(`Guard ${move.guard}`)
   if (move.addDoubt) parts.push('Add a Doubt to your draw pile')
@@ -99,13 +107,34 @@ function incomingLine(preview: ArgumentPreview): string {
   return preview.risk ? `${usual} If its gamble comes off, you lose ${preview.risk.afterGuard}.` : usual
 }
 
-function lethalLine(battle: BattleState, preview: ArgumentPreview): string | null {
+interface Lethal {
+  /** The full warning, read out and shown above. */
+  line: string
+  /** A few words for the End turn button. */
+  short: string
+  certain: boolean
+}
+
+function lethal(battle: BattleState, preview: ArgumentPreview): Lethal | null {
   if (preview.enemyFalls) return null
   const resolve = battle.player.resolve
-  if (preview.incomingAfterGuard + preview.selfLoss >= resolve) return 'That is all your Resolve. Guard, hold back Focus, or end it first.'
+  if (preview.incomingAfterGuard + preview.selfLoss >= resolve)
+    return { line: 'That is all your Resolve. Guard, hold back Focus, or end it first.', short: 'you fall', certain: true }
   if (preview.risk && preview.risk.afterGuard + preview.selfLoss >= resolve)
-    return `If its gamble comes off (${odds(preview.risk.chance)}), that is all your Resolve. More Guard makes you safe either way.`
+    return {
+      line: `If its gamble comes off (${odds(preview.risk.chance)}), that is all your Resolve. More Guard makes you safe either way.`,
+      short: `${odds(preview.risk.chance)}: you fall`,
+      certain: false,
+    }
   return null
+}
+
+/** The intent and what it costs you, in one line for the bar that stays on screen on a phone. */
+function compactIntent(battle: BattleState, preview: ArgumentPreview): string {
+  const next = `Next: ${intentText(currentMove(battle), battle).join(' · ')}`
+  if (preview.enemyFalls || preview.postpone) return `${next}. It will not act.`
+  if (preview.incoming === 0) return `${next}.`
+  return `${next}. You lose ${preview.incomingAfterGuard} of ${preview.incoming}.`
 }
 
 function aftermathLines(report: RoundReport, shift: string | null): string[] {
@@ -117,7 +146,9 @@ function aftermathLines(report: RoundReport, shift: string | null): string[] {
     )
   else lines.push('It did not attack.')
   if (report.gamble === 'miss') lines.push('Its gamble did not come off. The odds next round are exactly the same.')
-  if (report.enemyGuardGained > 0) lines.push(`It raised ${report.enemyGuardGained} Guard.`)
+  const why = report.ruleGuardNote ? ` (${report.ruleGuardNote.charAt(0).toLowerCase()}${report.ruleGuardNote.slice(1)})` : ''
+  if (report.enemyGuardGained > 0) lines.push(`It raised ${report.enemyGuardGained} Guard${why}.`)
+  if (report.spill > 0) lines.push(`What went past its half-Resolve line shook it: Unsettle ${report.spill}, felt next round.`)
   if (report.doubtsAdded > 0) lines.push('A Doubt went into your draw pile.')
   if (report.restored > 0) lines.push(`You lost nothing this round, so you restored ${report.restored} Resolve.`)
   if (report.phaseChanged && shift) lines.push(shift)
@@ -134,9 +165,13 @@ function roundSummary(report: RoundReport, battle: BattleState): string {
 
 function argumentSummary(battle: BattleState, preview: ArgumentPreview, added: string | null): string {
   const lead = added ? `${added} added.` : battle.played.length === 0 ? 'Argument cleared.' : 'Undone.'
-  if (battle.played.length === 0) return `${lead} ${incomingLine(preview)}`
-  const empty = preview.conclusionEmpty ? ' Your Conclusion has nothing to double.' : ''
-  return `${lead} Weight ${preview.weight} × ${format(preview.multiplier)} = ${preview.damage} damage.${empty} ${incomingLine(preview)}`
+  const warning = lethal(battle, preview)
+  const fall = warning ? ` ${warning.line}` : ''
+  if (battle.played.length === 0) return `${lead} ${incomingLine(preview)}${fall}`
+  const empty = preview.conclusionEmpty ? ` Your Conclusion has nothing to count ${timesWord(preview.conclusionCount)}.` : ''
+  const steps = preview.chain.map((step) => ` ${step.text}: ${step.after}.`).join('')
+  const sum = steps ? `${preview.product}.${steps} ${preview.damage} damage.` : `${preview.damage} damage.`
+  return `${lead} Weight ${preview.weight} × ${format(preview.multiplier)} = ${sum}${empty} ${incomingLine(preview)}${fall}`
 }
 
 function Bar({ value, max, color, label }: { value: number; max: number; color: string; label: string }) {
@@ -167,10 +202,33 @@ function shownHealth(battle: BattleState, show: RoundShowState): number {
   return Math.min(battle.enemy.maxHealth, battle.enemy.health + unsettle + argument)
 }
 
-function ThreatPanel({ battle, preview, known, show }: { battle: BattleState; preview: ArgumentPreview; known: boolean; show: RoundShowState }) {
+/** Until the replay reaches the moment it changes, a problem still looks and reads as it did when the round began. */
+function shownBattle(battle: BattleState, show: RoundShowState): BattleState {
+  const { reached } = showProgress(show)
+  return battle.lastRound?.phaseChanged && !reached('shift') ? { ...battle, enemy: { ...battle.enemy, phase: 1 } } : battle
+}
+
+function TiringNote({ battle }: { battle: BattleState }) {
+  const now = tiringUnsettle(battle)
+  if (now > 0)
+    return (
+      <p className="mt-0.5 text-xs leading-snug text-[var(--tp-text)]" data-testid="tiring">
+        Turn {battle.turn}: this argument has gone on long enough that it is tiring. It took on Unsettle {now} this turn, and {now + TIRING.step} next turn.
+      </p>
+    )
+  if (battle.turn + TIRING_NOTICE < battle.tiresFrom) return null
+  return (
+    <p className="mt-0.5 text-xs leading-snug text-[var(--tp-muted)]" data-testid="tiring">
+      Turn {battle.turn}. There is no turn limit: from turn {battle.tiresFrom} a long argument tires it, Unsettle {TIRING.step} more each turn.
+    </p>
+  )
+}
+
+function ThreatPanel({ battle: live, preview, known, show }: { battle: BattleState; preview: ArgumentPreview; known: boolean; show: RoundShowState }) {
+  const battle = shownBattle(live, show)
   const def = getEnemyDef(battle.enemy.id)
-  const move = currentMove(battle)
-  const lethal = lethalLine(battle, preview)
+  const move = currentMove(live)
+  const warning = lethal(live, preview)
   const { landing } = showProgress(show)
   const hit = landing && battle.lastRound ? battle.lastRound.damage : 0
   const health = shownHealth(battle, show)
@@ -195,7 +253,7 @@ function ThreatPanel({ battle, preview, known, show }: { battle: BattleState; pr
             {TIER_LABELS[def.tier]}
             {battle.enemy.phase === 2 && def.phase2 && ' · changed'}
           </p>
-          <h2 className="font-serif text-lg font-semibold leading-tight text-[var(--tp-text)] sm:text-xl" data-testid="enemy-name">
+          <h2 tabIndex={-1} data-focus-start className="font-serif text-lg font-semibold leading-tight text-[var(--tp-text)] outline-none sm:text-xl" data-testid="enemy-name">
             {def.name}
           </h2>
           <p className="mt-0.5 text-[0.8rem] leading-snug text-[var(--tp-text)] sm:text-sm" data-testid="enemy-rule">
@@ -206,6 +264,7 @@ function ThreatPanel({ battle, preview, known, show }: { battle: BattleState; pr
               At half Resolve ({threshold}) it changes, and no round can take it lower until it has. {def.phase2.ruleText}
             </p>
           )}
+          <TiringNote battle={live} />
           {gamble && battle.enemy.misses >= 2 && (
             <p className="mt-0.5 text-xs leading-snug text-[var(--tp-muted)]" data-testid="gamble-streak">
               It has missed {battle.enemy.misses} rounds in a row and says it is due. The odds are still {odds(gamble.chance)}.
@@ -240,13 +299,13 @@ function ThreatPanel({ battle, preview, known, show }: { battle: BattleState; pr
         data-testid="intent"
       >
         <p className="text-[0.68rem] uppercase tracking-wider text-[var(--tp-muted)]">Next, it will</p>
-        <p className="font-serif text-base font-semibold text-[var(--tp-text)] sm:text-lg">{intentText(move, battle).join(' · ')}</p>
+        <p className="font-serif text-base font-semibold text-[var(--tp-text)] sm:text-lg">{intentText(move, live).join(' · ')}</p>
         <p className="w-full text-sm text-[var(--tp-text)]" data-testid="incoming">
           {incomingLine(preview)}
         </p>
-        {lethal && (
+        {warning && (
           <p className="mt-1 text-sm font-semibold text-[var(--tp-warn)]" data-testid="lethal-warning">
-            {lethal}
+            {warning.line}
           </p>
         )}
       </div>
@@ -320,16 +379,23 @@ function Equation({ preview, focus }: { preview: ArgumentPreview; focus: number 
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--tp-text)]" data-testid="equation">
       <span>
-        Weight <strong>{preview.weight}</strong> × Multiplier <strong>{format(preview.multiplier)}</strong> = <strong>{preview.product}</strong>
+        Weight <strong>{preview.weight}</strong> × Multiplier <strong>{format(preview.multiplier)}</strong>
       </span>
       {preview.modifiers.map((m) => (
         <Chip key={m}>{m}</Chip>
       ))}
-      {preview.raw !== preview.product && (
-        <span>
-          = <strong>{preview.raw}</strong>
+      <span>
+        = <strong>{preview.product}</strong>
+      </span>
+      {preview.chain.map((step) => (
+        <span key={step.kind} className="contents" data-testid="chain-step">
+          <span aria-hidden="true">→</span>
+          <Chip tone={step.kind === 'guard' ? 'guard' : 'plain'}>{step.text}</Chip>
+          <span>
+            = <strong>{step.after}</strong>
+          </span>
         </span>
-      )}
+      ))}
       {preview.steps.length > 0 && preview.weight === 0 && preview.multiplier > 1 && (
         <Chip tone="warn">
           <span data-testid="no-weight">No Weight yet: a Multiplier has nothing to multiply</span>
@@ -337,11 +403,12 @@ function Equation({ preview, focus }: { preview: ArgumentPreview; focus: number 
       )}
       {preview.conclusionEmpty && (
         <Chip tone="warn">
-          <span data-testid="empty-conclusion">Conclusion: nothing to double. Finish on Evidence or Logic.</span>
+          <span data-testid="empty-conclusion">
+            Conclusion: nothing to count {timesWord(preview.conclusionCount)}. Finish on a card with Weight or Multiplier.
+          </span>
         </Chip>
       )}
       {preview.pierce && <Chip tone="good">Pierce: ignores Guard</Chip>}
-      {preview.blocked > 0 && <Chip tone="guard">Its Guard absorbs {preview.blocked}</Chip>}
       <span aria-hidden="true">→</span>
       <span className="text-base">
         <strong data-testid="damage-preview">{preview.damage}</strong> damage
@@ -357,6 +424,11 @@ function Equation({ preview, focus }: { preview: ArgumentPreview; focus: number 
         </Chip>
       )}
       {preview.unsettle > 0 && <Chip tone="good">Unsettle +{preview.unsettle}</Chip>}
+      {preview.ruleGuardNote && (
+        <Chip tone="warn">
+          <span data-testid="rule-guard">{preview.ruleGuardNote}</span>
+        </Chip>
+      )}
       {preview.postpone && <Chip tone="good">Postpone</Chip>}
     </div>
   )
@@ -402,7 +474,7 @@ export function BattleScreen({ run }: { run: RunState }) {
   const preview = previewArgument(battle)
   const hint = !tutorialDone && battle.enemy.id === TUTORIAL_ENEMY ? tutorialHint(battle) : null
   const report = battle.lastRound
-  const show = useRoundShow(report ? `${run.stats.fights}-${report.turn}` : null, report)
+  const show = useRoundShow(report ? `${run.stats.fights}-${report.turn}` : null, report, reduced)
   const announcement = useAnnouncement(battle, preview)
   const skipShow = show.skip
 
@@ -443,6 +515,8 @@ export function BattleScreen({ run }: { run: RunState }) {
   const inspectedCard = battle.hand.find((c) => c.uid === inspected)
   const inspectedDef = inspectedCard ? resolveCard(inspectedCard) : null
   const nothingPlayed = preview.steps.length === 0 && preview.carriedWeight + preview.doubtWeight === 0
+  const action = nothingPlayed ? (preview.composure > 0 ? `Hold: ${preview.composure} Guard` : 'No argument') : `Argue for ${preview.damage}`
+  const danger = lethal(battle, preview)
 
   return (
     <div className="flex flex-col gap-2 sm:gap-3">
@@ -499,7 +573,10 @@ export function BattleScreen({ run }: { run: RunState }) {
         </p>
       </section>
 
-      <div className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-2 border-t border-[var(--tp-line)] bg-[var(--tp-ink)] py-2 pl-4 pr-20 sm:mx-0 sm:rounded-lg sm:border sm:py-3 sm:pr-4">
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-[var(--tp-line)] bg-[var(--tp-ink)] py-2 pl-4 pr-20 sm:mx-0 sm:rounded-lg sm:border sm:py-3 sm:pr-4">
+        <p className="w-full text-xs leading-snug text-[var(--tp-text)] sm:hidden" data-testid="intent-compact">
+          {compactIntent(battle, preview)}
+        </p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-[var(--tp-text)]" data-testid="focus">
           <Term word="Focus" />
           <span className="flex gap-1" aria-hidden="true">
@@ -508,6 +585,9 @@ export function BattleScreen({ run }: { run: RunState }) {
             ))}
           </span>
           <span>{battle.focus} left</span>
+          <span className="text-xs text-[var(--tp-muted)]" data-testid="turn">
+            Turn {battle.turn}
+          </span>
           <span className="hidden text-xs text-[var(--tp-muted)] sm:inline">
             Draw pile {battle.drawPile.length} · Discard {battle.discardPile.length}
             {battle.exhausted.length > 0 && ` · Gone this fight ${battle.exhausted.length}`}
@@ -529,11 +609,18 @@ export function BattleScreen({ run }: { run: RunState }) {
               wakeTones()
               act((r) => battleAction(r, endTurn))
             }}
-            className="rounded-md bg-[var(--tp-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--tp-on-accent)] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] sm:px-4"
+            aria-label={`End turn: ${action}.${danger ? ` ${danger.line}` : ''}`}
+            className={`rounded-md px-3 py-1.5 text-sm font-semibold hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] sm:px-4 ${
+              danger ? 'border-2 border-[var(--tp-warn)] bg-[var(--tp-ink)] text-[var(--tp-warn)]' : 'bg-[var(--tp-accent)] text-[var(--tp-on-accent)]'
+            }`}
             data-testid="end-turn"
+            data-danger={danger ? (danger.certain ? 'certain' : 'risk') : undefined}
           >
             End turn <span className="hidden text-xs sm:inline">(E)</span>
-            <span className="block text-xs font-normal">{nothingPlayed ? (preview.composure > 0 ? `Hold: ${preview.composure} Guard` : 'No argument') : `Argue for ${preview.damage}`}</span>
+            <span className="block text-xs font-normal">
+              {action}
+              {danger && <strong className="font-semibold"> · {danger.short}</strong>}
+            </span>
           </button>
         </div>
       </div>

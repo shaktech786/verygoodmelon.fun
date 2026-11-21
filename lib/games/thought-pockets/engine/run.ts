@@ -16,7 +16,7 @@ import {
 import { CARDS, canUpgrade, getCardDef, isDoubt, usesKeyword } from '../data/cards'
 import { getSchoolDef } from '../data/schools'
 import { RELICS } from '../data/relics'
-import { REST_HEAL_PERCENT, RIGOR, RIGOROUS_FLOOR_HEAL } from '../data/pace'
+import { REST_HEAL_PERCENT, RIGOR, RIGOROUS_FLOOR_HEAL, TIRING } from '../data/pace'
 import {
   ARCHIVE_COST,
   ARGUE_COST,
@@ -55,7 +55,7 @@ import {
 import { generateFloor } from './map'
 import { pick, roll, rollInt, seedRng, shuffle } from './rng'
 
-export const RUN_VERSION = 5
+export const RUN_VERSION = 6
 export const START_RESOLVE = 60
 export const FLOORS = 3
 const DEFAULT_RIGOR = RIGOR.harder
@@ -107,6 +107,7 @@ export function newRun(school: School, seed: number, mode: Mode = 'gentle', know
     eventsSeen: [],
     pick: null,
     defeatedBy: null,
+    defeatRound: null,
     beaten: [],
     stats: { turns: 0, fights: 0, nodes: 0, best: 0 },
   }
@@ -140,14 +141,18 @@ function rollRarity(rng: number, source: RewardState['source'] | 'shop'): { rari
   return { rarity, rng: r.rng }
 }
 
-/** On the first floor the first offer leans toward your school so a build can start; after that every offer comes from everything. */
+/**
+ * On the first floor the first offer leans toward your school so a build can start, and the first
+ * problem always offers one of your school's rares; after that every offer comes from everything.
+ */
 function rollCards(run: RunState, count: number, source: RewardState['source'] | 'shop'): { cards: string[]; rng: number } {
   let state = run.rng
   const cards: string[] = []
   for (let i = 0; i < count; i++) {
     const rarity = rollRarity(state, source)
     state = rarity.rng
-    let pool = cardPool(run, rarity.rarity).filter((c) => !cards.includes(c.id))
+    const wanted = i === 0 && run.floor === 1 && source === 'boss' ? 'rare' : rarity.rarity
+    let pool = cardPool(run, wanted).filter((c) => !cards.includes(c.id))
     const ownSchool = pool.filter((c) => c.school === run.school)
     if (i === 0 && run.floor === 1 && ownSchool.length > 0) pool = ownSchool
     if (pool.length === 0) pool = CARDS.filter((c) => c.rarity === 'common' && !cards.includes(c.id))
@@ -308,7 +313,7 @@ function currentNode(run: RunState): MapNode | undefined {
 
 function finishBattle(run: RunState, battle: BattleState): RunState {
   const stats = { ...run.stats, turns: run.stats.turns + battle.turn }
-  if (battle.outcome === 'lost') return { ...run, battle: null, screen: 'defeat', defeatedBy: battle.enemy.id, stats }
+  if (battle.outcome === 'lost') return { ...run, battle: null, screen: 'defeat', defeatedBy: battle.enemy.id, defeatRound: battle.lastRound, stats }
   const tea = run.relics.includes('tea_flask') ? TEA_FLASK_HEAL : 0
   const won: RunState = {
     ...run,
@@ -335,7 +340,7 @@ export function battleAction(run: RunState, action: (battle: BattleState) => Bat
 export function reconsider(run: RunState): RunState {
   const enemyId = run.defeatedBy
   if (run.screen !== 'defeat' || run.reconsiders === 0 || !enemyId) return run
-  return startFight({ ...run, reconsiders: run.reconsiders - 1, defeatedBy: null }, enemyId)
+  return startFight({ ...run, reconsiders: run.reconsiders - 1, defeatedBy: null, defeatRound: null }, enemyId)
 }
 
 export function takeCard(run: RunState, cardId: string): RunState {
@@ -639,11 +644,19 @@ function fromVersion4(saved: Saved): Saved {
   return { ...saved, battle, reward: isRecord(saved.reward) ? { ...saved.reward, finalRound: null } : null }
 }
 
+/** Version 6 added the tiring of long fights, the ordered damage steps and the lost round; round summaries are dropped because they lack the steps. */
+function fromVersion5(saved: Saved): Saved {
+  const tiresFrom = saved.mode === 'gentle' ? TIRING.gentle : TIRING.rigorous
+  const battle = isRecord(saved.battle) ? eachCore(saved.battle, (core) => ({ ...core, tiresFrom, lastRound: null })) : null
+  return { ...saved, battle, defeatRound: null, reward: isRecord(saved.reward) ? { ...saved.reward, finalRound: null } : null }
+}
+
 /** Loads a saved run from any earlier version this game shipped, or returns null if it cannot be read. */
 export function migrateRun(saved: unknown, version: number): RunState | null {
   if (!isRecord(saved)) return null
   if (version === RUN_VERSION) return saved as unknown as RunState
-  if (version !== 3 && version !== 4) return null
+  if (version < 3 || version > RUN_VERSION) return null
   const v4 = version === 3 ? fromVersion3(saved) : saved
-  return { ...fromVersion4(v4), version: RUN_VERSION } as unknown as RunState
+  const v5 = version <= 4 ? fromVersion4(v4) : v4
+  return { ...fromVersion5(v5), version: RUN_VERSION } as unknown as RunState
 }

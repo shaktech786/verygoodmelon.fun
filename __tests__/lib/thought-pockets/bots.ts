@@ -1,4 +1,4 @@
-import { MAX_TURNS, canPlay, endTurn, incomingDamage, playCard, previewArgument, undoPlay } from '@/lib/games/thought-pockets/engine/battle'
+import { canPlay, endTurn, incomingDamage, playCard, previewArgument, undoPlay } from '@/lib/games/thought-pockets/engine/battle'
 import {
   availableNodes,
   battleAction,
@@ -374,7 +374,8 @@ export interface RunRecord {
   fights: FightRecord[]
   deck: string[]
   relics: string[]
-  hitTurnCap: boolean
+  /** The most turns any fight in the run took. */
+  longestFight: number
   reconsidered: boolean
   goldLeft: number
 }
@@ -496,7 +497,6 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
   const habits = config.habits
   let run = newRun(school, seed, mode, [], rigor)
   const fights: FightRecord[] = []
-  let hitTurnCap = false
   let reconsidered = false
   for (let guard = 0; guard < 500; guard++) {
     if (run.screen === 'defeat' && run.reconsiders > 0) {
@@ -521,7 +521,6 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
         }
         const finished = last
         run = battleAction(run, () => finished)
-        if (last.turn >= MAX_TURNS) hitTurnCap = true
         fights.push({
           enemyId,
           tier: getEnemyDef(enemyId).tier,
@@ -567,7 +566,7 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
     fights,
     deck: run.deck.map((c) => c.cardId),
     relics: run.relics,
-    hitTurnCap,
+    longestFight: Math.max(0, ...fights.map((f) => f.turns)),
     reconsidered,
     goldLeft: run.gold,
   }

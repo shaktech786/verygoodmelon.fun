@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   COMPOSURE_GUARD,
   DOUBT_WEIGHT,
-  MAX_TURNS,
   OCKHAM_MULTIPLIER,
-  SORITES_CAP,
   WORRY_STONE_GUARD,
   canPlay,
   endTurn,
@@ -14,7 +12,7 @@ import {
   undoPlay,
 } from '@/lib/games/thought-pockets/engine/battle'
 import { BattleState } from '@/types/thought-pockets'
-import { MEANING_ANSWER, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { MEANING_ANSWER, SORITES_CAP, SORITES_GRAIN, STATUS_QUO_MAX_GUARD, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
 import { getSchoolDef } from '@/lib/games/thought-pockets/data/schools'
 import { battleWith, card, deepFreeze } from './helpers'
@@ -151,11 +149,6 @@ describe('playing cards', () => {
     expect(after.hand).toHaveLength(5)
     expect(after.focus).toBe(3)
     expect(after.turn).toBe(2)
-  })
-
-  it('ends the fight as a loss when the turn cap is reached', () => {
-    const start = battleWith({ hand: [] })
-    expect(endTurn({ ...start, turn: MAX_TURNS }).outcome).toBe('lost')
   })
 })
 
@@ -308,19 +301,21 @@ describe('enemy rules are real', () => {
     expect(previewArgument(varied).damage).toBe(24)
   })
 
-  it('The Sorites Paradox caps one argument and turns every 5 beyond the cap into 1 Unsettle', () => {
-    const battle = playCard({ ...battleWith({ enemyId: 'sorites', hand: ['smoking_gun'] }), focus: 3 }, 100)
+  it(`The Sorites Paradox caps one argument and turns every ${SORITES_GRAIN} beyond the cap into 1 Unsettle`, () => {
+    const start = battleWith({ enemyId: 'sorites', hand: ['smoking_gun', 'therefore'] })
+    const battle = playAll({ ...start, focus: 4 }, [101, 100])
     const preview = previewArgument(battle)
+    expect(preview.raw).toBe(36)
     expect(preview.damage).toBe(SORITES_CAP)
-    expect(preview.unsettle).toBe(Math.floor((24 - SORITES_CAP) / 5))
-    expect(endTurn(battle).lastRound?.unsettleLoss).toBe(1)
+    expect(preview.unsettle).toBe(Math.floor((36 - SORITES_CAP) / SORITES_GRAIN))
+    expect(endTurn(battle).lastRound?.unsettleLoss).toBe(preview.unsettle)
   })
 
-  it("Status Quo Bias keeps its Guard between rounds", () => {
+  it("Status Quo Bias keeps its Guard between rounds, up to its limit", () => {
     const moves = getEnemyDef('status_quo').moves
     const after = endTurn(battleWith({ enemyId: 'status_quo' }))
     expect(after.enemy.guard).toBe(moves[0].guard)
-    expect(endTurn(after).enemy.guard).toBe((moves[0].guard ?? 0) + (moves[1].guard ?? 0))
+    expect(endTurn(after).enemy.guard).toBe(Math.min(STATUS_QUO_MAX_GUARD, (moves[0].guard ?? 0) + (moves[1].guard ?? 0)))
   })
 
   it('Halo Effect halves all but your strongest Evidence', () => {
@@ -343,7 +338,7 @@ describe('enemy rules are real', () => {
     expect(previewArgument(answered).damage).toBe(8 + MEANING_ANSWER)
     const unanswered = playCard(battleWith({ enemyId: 'meaning_of_life', hand: ['therefore'], school: 'skeptic' }), 100)
     expect(previewArgument(unanswered).damage).toBe(0)
-    expect(previewArgument(unanswered).modifiers).toContain(`Not answered: include an Evidence card for +${MEANING_ANSWER}`)
+    expect(previewArgument(unanswered).chain.map((s) => s.text)).toContain(`Not answered: include an Evidence card for +${MEANING_ANSWER}`)
   })
 })
 

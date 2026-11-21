@@ -56,12 +56,16 @@ describe('a round resolves in order: your argument, then Unsettle, then the bias
 })
 
 describe('every text matches what happens', () => {
-  it('a Conclusion with nothing to double says so instead of claiming it counts twice', () => {
+  it('a Conclusion with nothing to count says so, with the count this school would have given it', () => {
     const battle = playAll(battleWith({ hand: ['observation', 'caveat'], school: 'skeptic' }), [100, 101])
     const preview = previewArgument(battle)
     expect(preview.conclusionEmpty).toBe(true)
-    expect(preview.steps.at(-1)?.notes).toContain('Conclusion: nothing to double')
+    expect(preview.conclusionCount).toBe(2)
+    expect(preview.steps.at(-1)?.notes).toContain('Conclusion: nothing to count twice')
     expect(preview.steps.at(-1)?.notes).not.toContain('Conclusion: counts twice')
+    const weightless = previewArgument(playCard(battleWith({ hand: ['cash_value'], school: 'empiricist' }), 100))
+    expect(weightless.conclusionCount).toBe(3)
+    expect(weightless.steps[0].notes).toContain('Conclusion: nothing to count three times')
     const marginal = playAll(battleWith({ hand: ['observation', 'caveat'], relics: ['marginalia'], school: 'skeptic' }), [100, 101])
     expect(previewArgument(marginal).conclusionEmpty).toBe(false)
   })
@@ -100,7 +104,7 @@ describe('every text matches what happens', () => {
       ['exhaust', /^Once\.$/],
       ['lastingMultiplier', /^For the rest of this fight, every argument gets \+[\d.]+ Multiplier\.$/],
       ['nextTurnFocus', /^Next turn, gain \d+ Focus\.$/],
-      ['weightPerEarlierEvidence', /^\+\d+ Weight for each Evidence you played earlier in this fight\.$/],
+      ['weightPerEarlierEvidence', /^\+\d+ Weight for each Evidence you played in earlier turns of this fight\.$/],
       ['conclusionBonus', /^While this is in your argument, your Conclusion counts (one more time|\d+ more times)\.$/],
       ['guardPerEvidence', /^\+\d+ Guard for each Evidence in this argument\.$/],
       ['weightPerGuard', /^\+1 Weight for (every \d+|each) Guard your cards give in this argument\.$/],
@@ -197,7 +201,7 @@ describe('a philosophical problem cannot be argued past half Resolve in one roun
     const preview = previewArgument(battle)
     expect(preview.raw).toBeGreaterThan(10)
     expect(preview.damage).toBe(10)
-    expect(preview.modifiers.some((m) => m.includes('half'))).toBe(true)
+    expect(preview.chain.some((m) => m.kind === 'half')).toBe(true)
     const after = endTurn(battle)
     expect(after.enemy.health).toBe(half('meaning_of_life'))
     expect(after.enemy.phase).toBe(2)

@@ -7,6 +7,17 @@ const GAMBLE = { chance: 0.25, attack: 22 }
 export const MEANING_ANSWER = 10
 /** What varying your Conclusion does against The Problem of Induction. */
 export const INDUCTION_BONUS = 1.5
+export const SORITES_CAP = 20
+export const SORITES_GRAIN = 5
+/** Damage past a philosophical problem's half-Resolve line is not lost: every this much becomes 1 Unsettle. */
+export const PHASE_SPILL = 4
+export const STATUS_QUO_MAX_GUARD = 12
+/** Below this, an argument does not move Zeno's Arrow. */
+export const ARROW_MIN = 12
+/** Guard Buridan's Ass gains for each card you leave in your hand. */
+export const BURIDAN_GUARD = 2
+/** Once it has chosen, how much stronger each of its hits is for each card you leave in your hand. */
+export const BURIDAN_CHARGE = 1
 
 function percentMore(factor: number): string {
   return `+${Math.round((factor - 1) * 100)}%`
@@ -67,7 +78,7 @@ export const ENEMIES: EnemyDef[] = [
     name: 'The Problem of Induction',
     tier: 'boss',
     floor: 1,
-    health: 70,
+    health: 74,
     rule: 'induction',
     ruleText: `The future need not resemble the past: an argument whose Conclusion is a different type from last turn’s deals ${percentMore(INDUCTION_BONUS)}.`,
     intro: 'The sun rose yesterday. Why are you so sure it will rise tomorrow?',
@@ -78,6 +89,25 @@ export const ENEMIES: EnemyDef[] = [
       ruleText: `The pattern does not hold: below half Resolve it starts a new sequence of actions. Varying your Conclusion still deals ${percentMore(INDUCTION_BONUS)}.`,
       shift: 'The pattern broke. What it did before tells you nothing now: read its next action.',
       moves: [{ attack: 5, hits: 2 }, { attack: 14 }, { guard: 8 }],
+    },
+  },
+
+  {
+    id: 'zenos_arrow',
+    name: "Zeno's Arrow",
+    tier: 'boss',
+    floor: 1,
+    health: 64,
+    rule: 'arrow',
+    ruleText: `Motionless at every instant: an argument that would deal less than ${ARROW_MIN} damage deals none. Unsettle still works.`,
+    intro: 'At every instant the arrow is exactly where it is. So when does it ever move?',
+    insight: 'Moment by moment, nothing seems to change. Gather yourself for one real step, and you find you were moving all along.',
+    moves: [{ attack: 7 }, { guard: 8 }, { attack: 11 }, { attack: 3, hits: 3 }],
+    phase2: {
+      rule: 'none',
+      ruleText: 'In flight at last: below half Resolve every argument lands, however small, but it looses its arrows in volleys.',
+      shift: 'The arrow was moving all along. Every argument lands now, and so do its volleys.',
+      moves: [{ attack: 3, hits: 3 }, { guard: 8 }, { attack: 4, hits: 3 }],
     },
   },
 
@@ -135,9 +165,9 @@ export const ENEMIES: EnemyDef[] = [
     name: 'The Sorites Paradox',
     tier: 'boss',
     floor: 2,
-    health: 80,
+    health: 76,
     rule: 'sorites',
-    ruleText: 'One grain at a time: no single argument can deal more than 15 damage. Every 5 beyond that becomes 1 Unsettle instead.',
+    ruleText: `One grain at a time: no single argument can deal more than ${SORITES_CAP} damage. Every ${SORITES_GRAIN} beyond that becomes 1 Unsettle instead.`,
     intro: 'Take one grain from a heap. Still a heap. So when does it stop being one?',
     insight: 'Vague words still mean something. Lots of small steps can add up to a real change.',
     moves: [{ attack: 9 }, { attack: 4, hits: 3 }, { guard: 12 }, { attack: 15 }],
@@ -145,7 +175,26 @@ export const ENEMIES: EnemyDef[] = [
       rule: 'none',
       ruleText: 'No longer a heap: below half Resolve the cap is gone, and it attacks in many small grains.',
       shift: 'Somewhere along the way it stopped being a heap. No cap now, but it comes at you grain by grain.',
-      moves: [{ attack: 2, hits: 4 }, { guard: 10 }, { attack: 2, hits: 5 }],
+      moves: [{ attack: 2, hits: 3 }, { guard: 10 }, { attack: 3, hits: 3 }],
+    },
+  },
+
+  {
+    id: 'buridans_ass',
+    name: "Buridan's Ass",
+    tier: 'boss',
+    floor: 2,
+    health: 72,
+    rule: 'buridan',
+    ruleText: `Stuck between two haystacks: when it acts, it gains ${BURIDAN_GUARD} Guard for each card still in your hand (Doubts aside).`,
+    intro: 'Two haystacks, exactly as good as each other. Which one, which one, which one?',
+    insight: 'Waiting for the perfect choice is a choice too. Between two good options, picking one is better than starving.',
+    moves: [{ attack: 8 }, { attack: 4, hits: 2 }, { guard: 6 }, { attack: 12 }],
+    phase2: {
+      rule: 'buridan_charge',
+      ruleText: `It chose at last, and charges: below half Resolve every hit it makes is ${BURIDAN_CHARGE} stronger for each card still in your hand (Doubts aside).`,
+      shift: 'It finally picked a haystack. Now every card you hold back spurs it on.',
+      moves: [{ attack: 9 }, { attack: 5, hits: 2 }, { guard: 6 }, { attack: 12 }],
     },
   },
 
@@ -169,7 +218,7 @@ export const ENEMIES: EnemyDef[] = [
     floor: 3,
     health: 66,
     rule: 'status_quo',
-    ruleText: 'Change is hard: its Guard never wears off. Break through it or Pierce it.',
+    ruleText: `Change is hard: its Guard never wears off, though it holds no more than ${STATUS_QUO_MAX_GUARD}. Break through it or Pierce it.`,
     intro: "It's always been this way. Why change?",
     insight: 'Keeping things as they are is also a choice, and it deserves the same scrutiny as change.',
     moves: [{ guard: 8, attack: 6 }, { guard: 8 }, { attack: 14 }],
@@ -194,7 +243,7 @@ export const ENEMIES: EnemyDef[] = [
     health: 80,
     rule: 'motivated',
     ruleText: 'It explains away anything thin: it recovers half the damage from an argument of fewer than 3 cards.',
-    secondRule: { rule: 'status_quo', ruleText: 'And it will not budge: its Guard never wears off. Break through it or Pierce it.' },
+    secondRule: { rule: 'status_quo', ruleText: `And it will not budge: its Guard never wears off, though it holds no more than ${STATUS_QUO_MAX_GUARD}. Break through it or Pierce it.` },
     intro: 'I need this to be true, so it is.',
     insight: 'When we want a conclusion, we argue toward it. Ask what you would think if you wanted the opposite.',
     moves: [{ attack: 12 }, { guard: 10 }, { attack: 7, hits: 2 }],
@@ -224,6 +273,24 @@ export const ENEMIES: EnemyDef[] = [
         { guard: 12, attack: 5, asks: ['guard', 'evidence'] },
         { attack: 18, asks: ['logic', 'guard'] },
       ],
+    },
+  },
+  {
+    id: 'newcomb',
+    name: "Newcomb's Problem",
+    tier: 'boss',
+    floor: 3,
+    health: 84,
+    rule: 'newcomb',
+    ruleText: 'It predicted you: when it acts, it gains Guard equal to half the damage your argument dealt this round.',
+    intro: 'I already know what you will choose. Go on, surprise me.',
+    insight: 'Being predictable is not the same as being unfree. Knowing your habits is how you get to choose them.',
+    moves: [{ attack: 10 }, { attack: 5, hits: 2 }, { guard: 8 }, { attack: 14 }],
+    phase2: {
+      rule: 'newcomb_caution',
+      ruleText: 'Below half Resolve it predicts your caution instead: when it acts, it gains Guard equal to half your Guard.',
+      shift: 'It has read you again. Now it is your caution it sees coming.',
+      moves: [{ attack: 12 }, { attack: 7, hits: 2 }, { guard: 6 }, { attack: 16 }],
     },
   },
 ]

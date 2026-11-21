@@ -28,12 +28,12 @@ describe('every school has build-around rares', () => {
 })
 
 describe('the rares do what they say', () => {
-  it('Meta-Analysis: +1 Weight for each Evidence played earlier in this fight', () => {
+  it('Meta-Analysis: +1 Weight for each Evidence played in earlier turns of this fight', () => {
     const start = withFocus(battleWith({ hand: ['observation', 'observation', 'therefore'], school: 'skeptic' }))
     const next = endTurn(playAll(start, [100, 101, 102]))
     const per = getCardDef('meta_analysis').weightPerEarlierEvidence ?? 0
     const later = playCard({ ...next, hand: [card('meta_analysis', 400)], focus: 3 }, 400)
-    expect(describeCard(getCardDef('meta_analysis'))).toContain(`+${per} Weight for each Evidence you played earlier in this fight.`)
+    expect(describeCard(getCardDef('meta_analysis'))).toContain(`+${per} Weight for each Evidence you played in earlier turns of this fight.`)
     expect(previewArgument(later).steps[0].weight).toBe(((getCardDef('meta_analysis').weight ?? 0) + per * 2) * 2)
   })
 

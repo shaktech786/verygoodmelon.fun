@@ -112,7 +112,7 @@ function FinalArgument({ run }: { run: RunState }) {
   const reduced = useReducedMotion()
   const report = run.reward?.finalRound ?? null
   const enemyId = run.map.find((n) => n.id === run.position)?.enemyId
-  const show = useRoundShow(report ? `final-${run.stats.fights}` : null, report)
+  const show = useRoundShow(report ? `final-${run.stats.fights}` : null, report, reduced)
   if (!report || !enemyId) return null
   const foe = getEnemyDef(enemyId)
   return (

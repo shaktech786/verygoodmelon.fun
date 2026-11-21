@@ -6,6 +6,7 @@ import {
   CardDef,
   CardInstance,
   CardType,
+  DamageStep,
   EnemyMove,
   EnemyRule,
   RelicId,
@@ -15,14 +16,25 @@ import {
 } from '@/types/thought-pockets'
 import { isDoubt, resolveCard } from '../data/cards'
 import { CONCLUSION_TIMES, EMPIRICIST_EVIDENCE_TIMES, FOOTNOTES_TIMES, timesWord } from '../data/conclusion'
-import { INDUCTION_BONUS, MEANING_ANSWER, TUTORIAL_ENEMY, getEnemyDef } from '../data/enemies'
-import { RIGOR, RIGOROUS_ATTACK, RIGOROUS_HEALTH } from '../data/pace'
+import {
+  ARROW_MIN,
+  BURIDAN_CHARGE,
+  BURIDAN_GUARD,
+  INDUCTION_BONUS,
+  MEANING_ANSWER,
+  PHASE_SPILL,
+  SORITES_CAP,
+  SORITES_GRAIN,
+  STATUS_QUO_MAX_GUARD,
+  TUTORIAL_ENEMY,
+  getEnemyDef,
+} from '../data/enemies'
+import { RIGOR, RIGOROUS_ATTACK, RIGOROUS_HEALTH, TIRING } from '../data/pace'
 import { roll, rollInt, shuffle } from './rng'
 
 export const FOCUS_PER_TURN = 3
 export const HAND_SIZE = 5
 export const MAX_HAND = 10
-export const MAX_TURNS = 30
 
 export const DOUBT_WEIGHT = 4
 const OVERCONFIDENT_BONUS = 4
@@ -30,8 +42,6 @@ const SKEPTIC_BONUS = 2
 const MOTIVATED_CARDS = 3
 const GROWTH_PER_ACTION = 2
 const BANDWAGON_GROWTH = 1
-export const SORITES_CAP = 15
-const SORITES_GRAIN = 5
 export const COMPOSURE_GUARD = 2
 export const WORRY_STONE_GUARD = 3
 export const OCKHAM_MULTIPLIER = 0.5
@@ -115,6 +125,21 @@ function bigMove(core: BattleCore): EnemyMove | null {
   return gamble ? { attack: gamble.attack } : null
 }
 
+/** Cards still in hand that a bias can count against you: everything but Doubts. */
+function cardsLeft(core: BattleCore): number {
+  return core.hand.filter((c) => !isDoubt(c)).length
+}
+
+/** How much stronger each hit of a charging Buridan's Ass is, for the hand as it stands. */
+export function chargeBonus(core: BattleCore): number {
+  return hasRule(core, 'buridan_charge') ? BURIDAN_CHARGE * cardsLeft(core) : 0
+}
+
+/** The extra Unsettle a long fight adds at the start of this turn. */
+export function tiringUnsettle(core: BattleCore): number {
+  return core.turn >= core.tiresFrom ? TIRING.step * (core.turn - core.tiresFrom + 1) : 0
+}
+
 function attackAgainst(core: BattleCore, move: EnemyMove, guard: number, enemyHealth: number, strength: number): Incoming {
   if (!move.attack) return { perHit: 0, hits: 0, total: 0, afterGuard: 0 }
   const overconfident = hasRule(core, 'overconfident') && enemyHealth * 2 > core.enemy.maxHealth
@@ -128,7 +153,7 @@ function attackAgainst(core: BattleCore, move: EnemyMove, guard: number, enemyHe
 
 /** What the enemy's shown intent would cost you if you had this much Guard. */
 export function incomingDamage(core: BattleCore, guard: number): Incoming {
-  return attackAgainst(core, currentMove(core), guard, core.enemy.health, core.enemy.strength)
+  return attackAgainst(core, currentMove(core), guard, core.enemy.health, core.enemy.strength + chargeBonus(core))
 }
 
 /** The big attack a gambling bias might make instead, as it would land with no Guard. */
@@ -167,6 +192,7 @@ function startTurn(core: BattleCore): BattleCore {
     played: [],
     player: { ...core.player, guard: 0 },
   }
+  next = { ...next, enemy: { ...next.enemy, unsettle: next.enemy.unsettle + tiringUnsettle(next) } }
   const gamble = getEnemyDef(core.enemy.id).gamble
   if (gamble) {
     const r = roll(next.rng)
@@ -226,6 +252,7 @@ export function createBattle(setup: BattleSetup): BattleState {
     carriedFocus: 0,
     lastConclusionType: null,
     piercedOnce: false,
+    tiresFrom: setup.rigor === 0 ? TIRING.gentle : TIRING.rigorous,
     nextUid: setup.deck.reduce((max, c) => Math.max(max, c.uid), 0) + 1,
     rng: shuffled.rng,
     outcome: 'ongoing',
@@ -366,6 +393,7 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   const seenNames = new Set<string>()
   let growth = 0
   let conclusionEmpty = false
+  let conclusionCount = 0
   const steps: StepView[] = defs.map((def, i) => {
     const notes: string[] = []
     const isEvidence = def.type === 'evidence'
@@ -401,13 +429,15 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
     const isConclusion = i === conclusion
     let times = 1
     if (isConclusion) {
+      let count = def.conclusionTimes ?? conclusionTimes(core.school, def.type)
+      if (has(core, 'footnotes') && defs.length >= FOOTNOTES_CARDS) count = Math.max(count, FOOTNOTES_TIMES)
+      count += conclusionBonus
+      conclusionCount = count
       if (weight === 0 && multiplier === 0) {
         conclusionEmpty = true
-        notes.push('Conclusion: nothing to double')
+        notes.push(`Conclusion: nothing to count ${timesWord(count)}`)
       } else {
-        times = def.conclusionTimes ?? conclusionTimes(core.school, def.type)
-        if (has(core, 'footnotes') && defs.length >= FOOTNOTES_CARDS) times = Math.max(times, FOOTNOTES_TIMES)
-        times += conclusionBonus
+        times = count
         weight *= times
         multiplier *= times
         notes.push(`Conclusion: counts ${timesWord(times)}`)
@@ -426,38 +456,50 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   }
 
   const product = Math.floor(weight * multiplier + 1e-9)
-  let raw = product
+  const chain: DamageStep[] = []
+  let value = product
   const move = currentMove(core)
   if (hasRule(core, 'meaning') && move.asks) {
     if (move.asks.every((type) => defs.some((d) => d.type === type))) {
-      raw += MEANING_ANSWER
-      modifiers.push(`You answered its question: +${MEANING_ANSWER}`)
+      value += MEANING_ANSWER
+      chain.push({ kind: 'answer', text: `You answered its question: +${MEANING_ANSWER}`, after: value })
     } else {
-      modifiers.push(`Not answered: include ${move.asks.map((type) => ASK_NAMES[type]).join(' and ')} for +${MEANING_ANSWER}`)
+      chain.push({ kind: 'answer', text: `Not answered: include ${move.asks.map((type) => ASK_NAMES[type]).join(' and ')} for +${MEANING_ANSWER}`, after: value })
     }
   }
   if (hasRule(core, 'induction') && conclusion >= 0 && core.lastConclusionType && defs[conclusion].type !== core.lastConclusionType) {
-    raw = Math.floor(raw * INDUCTION_BONUS)
-    modifiers.push(`A different Conclusion from last turn: +${Math.round((INDUCTION_BONUS - 1) * 100)}%`)
+    value = Math.floor(value * INDUCTION_BONUS)
+    chain.push({ kind: 'induction', text: `A different Conclusion from last turn: +${Math.round((INDUCTION_BONUS - 1) * 100)}%`, after: value })
   }
+  const raw = value
 
   const pierce = defs.some((d) => d.pierce) || (has(core, 'lantern') && !core.piercedOnce)
-  const blocked = pierce ? 0 : Math.min(core.enemy.guard, raw)
-  let damage = raw - blocked
+  const blocked = pierce ? 0 : Math.min(core.enemy.guard, value)
+  if (blocked > 0) {
+    value -= blocked
+    chain.push({ kind: 'guard', text: `Its Guard absorbs ${blocked}`, after: value })
+  }
+  if (hasRule(core, 'arrow') && value > 0 && value < ARROW_MIN) {
+    value = 0
+    chain.push({ kind: 'arrow', text: `Under ${ARROW_MIN}: the arrow does not move`, after: value })
+  }
   let grains = 0
-  if (hasRule(core, 'sorites') && damage > SORITES_CAP) {
-    grains = Math.floor((damage - SORITES_CAP) / SORITES_GRAIN)
-    damage = SORITES_CAP
-    modifiers.push(`Capped at ${SORITES_CAP}${grains > 0 ? `, the rest becomes Unsettle ${grains}` : ''}`)
+  if (hasRule(core, 'sorites') && value > SORITES_CAP) {
+    grains = Math.floor((value - SORITES_CAP) / SORITES_GRAIN)
+    value = SORITES_CAP
+    chain.push({ kind: 'cap', text: `Capped at ${SORITES_CAP}${grains > 0 ? `: the rest becomes Unsettle ${grains}` : ''}`, after: value })
   }
   const threshold = phaseThreshold(core)
   const room = threshold !== null && core.enemy.health > threshold ? core.enemy.health - threshold : null
-  if (room !== null && damage > room) {
-    modifiers.push(`It changes at half (${threshold}): ${damage - room} of this argument is lost`)
-    damage = room
+  let spill = 0
+  if (room !== null && value > room) {
+    const extra = value - room
+    spill = Math.floor(extra / PHASE_SPILL)
+    value = room
+    chain.push({ kind: 'half', text: `It stops at ${threshold} and changes. Your extra ${extra} shakes it${spill > 0 ? `: Unsettle +${spill}` : ''}`, after: value })
   }
+  const damage = value
   const healedBack = hasRule(core, 'motivated') && defs.length < MOTIVATED_CARDS ? Math.floor(damage / 2) : 0
-  if (healedBack > 0) modifiers.push('Fewer than 3 cards: it explains half away')
   const selfLoss = hasRule(core, 'backfire') && damage > 0 ? defs.length : 0
 
   const heldFocus = core.focus - longViewCarry(core)
@@ -473,8 +515,24 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   const enemyFalls = argumentFinishes ? 'argument' : healthAfterArgument - unsettleTick <= 0 ? 'unsettle' : null
   const acts = !postpone && enemyFalls === null
   const healthWhenActing = healthAfterArgument - unsettleTick
-  const strength = core.enemy.strength + growth
+  const strength = core.enemy.strength + growth + chargeBonus(core)
   const incoming = acts ? attackAgainst(core, move, guard, healthWhenActing, strength) : null
+  let ruleGuard = 0
+  let ruleGuardNote: string | null = null
+  if (acts && hasRule(core, 'buridan')) {
+    const left = cardsLeft(core)
+    ruleGuard = BURIDAN_GUARD * left
+    ruleGuardNote = `${left} ${left === 1 ? 'card' : 'cards'} left in your hand: it gains ${ruleGuard} Guard`
+  }
+  if (acts && hasRule(core, 'newcomb')) {
+    ruleGuard = Math.floor(damage / 2)
+    ruleGuardNote = `It predicted this: half your ${damage} damage becomes ${ruleGuard} Guard`
+  }
+  if (acts && hasRule(core, 'newcomb_caution')) {
+    ruleGuard = Math.floor(guard / 2)
+    ruleGuardNote = `It reads your caution: half your ${guard} Guard becomes ${ruleGuard} Guard for it`
+  }
+  if (ruleGuard === 0) ruleGuardNote = null
   const big = acts ? bigMove(core) : null
   const gamble = getEnemyDef(core.enemy.id).gamble
   const riskHit = big ? attackAgainst(core, big, guard, healthWhenActing, strength) : null
@@ -488,6 +546,7 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
     product,
     raw,
     modifiers,
+    chain,
     pierce,
     enemyGuard: core.enemy.guard,
     blocked,
@@ -501,6 +560,10 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
     unsettleTick,
     enemyFalls,
     conclusionEmpty,
+    conclusionCount,
+    spill,
+    ruleGuard,
+    ruleGuardNote,
     lastingMultiplier: core.lastingMultiplier,
     postpone,
     growth,
@@ -545,6 +608,7 @@ export function endTurn(battle: BattleState): BattleState {
     multiplier: preview.multiplier,
     product: preview.product,
     modifiers: preview.modifiers,
+    chain: preview.chain,
     raw: preview.raw,
     guardBroken: preview.blocked > 0 && preview.blocked === preview.enemyGuard,
     blocked: preview.blocked,
@@ -562,6 +626,9 @@ export function endTurn(battle: BattleState): BattleState {
     phaseChanged: false,
     gamble: null,
     restored: 0,
+    spill: preview.spill,
+    ruleGuard: preview.ruleGuard,
+    ruleGuardNote: preview.ruleGuardNote,
   }
 
   const unsettle = core.enemy.unsettle + preview.unsettle
@@ -570,7 +637,7 @@ export function endTurn(battle: BattleState): BattleState {
     guard: core.enemy.guard - preview.blocked,
     health: Math.max(0, core.enemy.health - preview.damage + preview.healedBack) - preview.unsettleTick,
     strength: core.enemy.strength + preview.growth,
-    unsettle: preview.enemyFalls === 'argument' || core.unsettleLasts ? unsettle : Math.floor(unsettle / 2),
+    unsettle: (preview.enemyFalls === 'argument' || core.unsettleLasts ? unsettle : Math.floor(unsettle / 2)) + preview.spill,
     seen: [...new Set([...core.enemy.seen, ...playedDefs.filter((d) => d.type === 'evidence').map((d) => d.id)])],
   }
   const player = { ...core.player, resolve: Math.max(0, core.player.resolve - preview.selfLoss), guard: preview.guard }
@@ -607,17 +674,17 @@ export function endTurn(battle: BattleState): BattleState {
     if (!hasRule(core, 'status_quo')) actingEnemy.guard = 0
     const actingPlayer = { ...next.player }
     if (move.attack) {
-      const hit = attackAgainst(next, move, actingPlayer.guard, actingEnemy.health, actingEnemy.strength)
+      const hit = attackAgainst(next, move, actingPlayer.guard, actingEnemy.health, actingEnemy.strength + chargeBonus(core))
       report.enemyAttack = hit.total
       report.enemyBlocked = Math.min(actingPlayer.guard, hit.total)
       actingPlayer.guard -= report.enemyBlocked
       report.playerLoss = hit.afterGuard
       actingPlayer.resolve = Math.max(0, actingPlayer.resolve - hit.afterGuard)
     }
-    if (move.guard) {
-      actingEnemy.guard += move.guard
-      report.enemyGuardGained = move.guard
-    }
+    const guardBefore = actingEnemy.guard
+    actingEnemy.guard += (move.guard ?? 0) + preview.ruleGuard
+    if (hasRule(core, 'status_quo')) actingEnemy.guard = Math.min(STATUS_QUO_MAX_GUARD, actingEnemy.guard)
+    report.enemyGuardGained = Math.max(0, actingEnemy.guard - guardBefore)
     if (def.gamble) {
       report.gamble = gambled ? 'hit' : 'miss'
       actingEnemy.misses = gambled ? 0 : actingEnemy.misses + 1
@@ -644,7 +711,7 @@ export function endTurn(battle: BattleState): BattleState {
     report.phaseChanged = true
   }
 
-  if (next.player.resolve <= 0 || core.turn >= MAX_TURNS) return { ...next, outcome: 'lost', lastRound: report, undo: [] }
+  if (next.player.resolve <= 0) return { ...next, outcome: 'lost', lastRound: report, undo: [] }
 
   return { ...startTurn({ ...next, lastRound: report }), undo: [] }
 }

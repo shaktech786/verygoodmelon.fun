@@ -1,6 +1,6 @@
 import { BattleState } from '@/types/thought-pockets'
 import { resolveCard } from '../data/cards'
-import { conclusionLine } from '../data/conclusion'
+import { conclusionLine, timesWord } from '../data/conclusion'
 import { COMPOSURE_GUARD, canPlay, playCard, previewArgument } from './battle'
 
 /**
@@ -13,7 +13,8 @@ export function tutorialHint(battle: BattleState): string | null {
   const playable = battle.hand.filter((c) => canPlay(battle, c.uid))
   const types = playable.map((c) => resolveCard(c).type)
   if (battle.turn === 1 && played.length === 0) return 'Play an Evidence card: tap it, or press its number. It adds Weight to your argument.'
-  if (preview.conclusionEmpty) return 'Your last card has no Weight or Multiplier, so as the Conclusion it doubles nothing. Undo it, or finish on Evidence or Logic.'
+  if (preview.conclusionEmpty)
+    return `Your last card has no Weight or Multiplier, so counting it ${timesWord(preview.conclusionCount)} as the Conclusion adds nothing. Undo it, or finish on a card with Weight or Multiplier.`
   if (battle.turn === 1 && !played.some((d) => d.type === 'logic') && types.includes('logic'))
     return 'Now add a Logic card. It raises the Multiplier, and the damage preview updates.'
   if (preview.enemyFalls) return 'That finishes it before it can act. Press End turn.'

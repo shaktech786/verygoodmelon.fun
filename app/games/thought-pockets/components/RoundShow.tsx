@@ -23,7 +23,7 @@ export function format(n: number): string {
 }
 
 function hasAdjustments(report: RoundReport): boolean {
-  return report.modifiers.length > 0 || report.blocked > 0 || report.raw !== report.product
+  return report.chain.length > 0
 }
 
 /** The beats of one round in the order they happened: each card, the sum, what changed it, the hit, then the bias's turn. */
@@ -77,13 +77,20 @@ export interface RoundShowState {
   skip: () => void
 }
 
-/** Plays a round's beats one after another. A new `id` starts again; skipping jumps to the end. */
-export function useRoundShow(id: string | null, report: RoundReport | null): RoundShowState {
+/**
+ * Plays a round's beats one after another. A new `id` starts again; skipping jumps to the end.
+ * With reduced motion the whole round appears at once, as one still frame, with a single tone.
+ */
+export function useRoundShow(id: string | null, report: RoundReport | null, reduced: boolean): RoundShowState {
   const [state, setState] = useState<{ id: string | null; stage: number; skipped: boolean }>({ id, stage: 0, skipped: false })
   if (state.id !== id) setState({ id, stage: 0, skipped: false })
   const beats = useMemo(() => (report ? roundBeats(report) : []), [report])
   const current = state.id === id ? state : { id, stage: 0, skipped: false }
-  const done = id === null || current.skipped || current.stage >= beats.length
+  const done = id === null || reduced || current.skipped || current.stage >= beats.length
+
+  useEffect(() => {
+    if (reduced && id !== null && report) soundFor('land', 0, report)
+  }, [reduced, id, report])
 
   useEffect(() => {
     if (done || !report) return
@@ -179,20 +186,22 @@ export function RoundShow({ report, show, reduced, aftermath, title, testId = 'l
           </ol>
           {reached('total') && (
             <p className={`mt-1.5 ${appear}`}>
-              Weight {report.weight} × Multiplier {format(report.multiplier)} = <strong>{report.product}</strong>
-              {reached('adjust') && report.modifiers.length > 0 && (
-                <>
-                  {' '}
-                  ({report.modifiers.join('; ')}) = <strong>{report.raw}</strong>
-                </>
-              )}
-              {reached('adjust') && report.blocked > 0 && (
-                <>
-                  , its Guard absorbed {report.blocked}
-                  {report.guardBroken && <strong className="ml-1 rounded-sm border border-[var(--tp-guard)] px-1 text-[var(--tp-guard)]">Guard broken</strong>}
-                </>
-              )}
+              Weight {report.weight} × Multiplier {format(report.multiplier)}
+              {report.modifiers.length > 0 && ` (${report.modifiers.join('; ')})`} = <strong>{report.product}</strong>
             </p>
+          )}
+          {reached('adjust') && report.chain.length > 0 && (
+            <ol className={`mt-1 space-y-0.5 ${appear}`} aria-label="Then, in order" data-testid="show-chain">
+              {report.chain.map((step) => (
+                <li key={step.kind}>
+                  → {step.text}
+                  {step.kind === 'guard' && report.guardBroken && (
+                    <strong className="ml-1 rounded-sm border border-[var(--tp-guard)] px-1 text-[var(--tp-guard)]">Guard broken</strong>
+                  )}{' '}
+                  = <strong>{step.after}</strong>
+                </li>
+              ))}
+            </ol>
           )}
           {reached('land') && (
             <p className={`mt-1 ${appear}`}>

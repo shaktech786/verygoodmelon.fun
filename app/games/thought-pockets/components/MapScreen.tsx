@@ -102,6 +102,7 @@ export function MapScreen({ run }: { run: RunState }) {
                     aria-label={`Step ${node.row + 1}: ${name(node)}, ${state}${past ? '' : leadsTo(node)}`}
                     data-testid={`node-${node.type}`}
                     data-available={available || undefined}
+                    data-focus-start={node.id === open[0]?.id || undefined}
                     className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-md border-2 sm:h-12 sm:w-12 ${isFight(node) ? 'p-0.5' : ''} ${
                       available
                         ? 'cursor-pointer border-[var(--tp-accent)] bg-[var(--tp-paper)] text-[var(--tp-paper-ink)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--tp-accent)_25%,transparent)] motion-safe:hover:scale-105'

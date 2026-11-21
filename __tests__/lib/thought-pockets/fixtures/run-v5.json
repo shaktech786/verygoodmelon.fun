@@ -1,0 +1,459 @@
+{
+ "state": {
+  "run": {
+   "version": 5,
+   "seed": 5151,
+   "rng": 2526550284,
+   "school": "pragmatist",
+   "mode": "gentle",
+   "rigor": 0,
+   "reconsiders": 1,
+   "known": [],
+   "floor": 1,
+   "map": [
+    {
+     "id": "f1-r0-l0",
+     "type": "battle",
+     "row": 0,
+     "lane": 0,
+     "lanes": 1,
+     "next": [
+      "f1-r1-l0",
+      "f1-r1-l1",
+      "f1-r1-l2"
+     ],
+     "enemyId": "jumping_to_conclusions"
+    },
+    {
+     "id": "f1-r1-l0",
+     "type": "shop",
+     "row": 1,
+     "lane": 0,
+     "lanes": 3,
+     "next": [
+      "f1-r2-l0"
+     ]
+    },
+    {
+     "id": "f1-r1-l1",
+     "type": "event",
+     "row": 1,
+     "lane": 1,
+     "lanes": 3,
+     "next": [
+      "f1-r2-l0",
+      "f1-r2-l1",
+      "f1-r2-l2"
+     ]
+    },
+    {
+     "id": "f1-r1-l2",
+     "type": "battle",
+     "row": 1,
+     "lane": 2,
+     "lanes": 3,
+     "next": [
+      "f1-r2-l2"
+     ],
+     "enemyId": "dunning_kruger"
+    },
+    {
+     "id": "f1-r2-l0",
+     "type": "battle",
+     "row": 2,
+     "lane": 0,
+     "lanes": 3,
+     "next": [
+      "f1-r3-l0"
+     ],
+     "enemyId": "sunk_cost"
+    },
+    {
+     "id": "f1-r2-l1",
+     "type": "treasure",
+     "row": 2,
+     "lane": 1,
+     "lanes": 3,
+     "next": [
+      "f1-r3-l1"
+     ]
+    },
+    {
+     "id": "f1-r2-l2",
+     "type": "elite",
+     "row": 2,
+     "lane": 2,
+     "lanes": 3,
+     "next": [
+      "f1-r3-l1",
+      "f1-r3-l2"
+     ],
+     "enemyId": "confirmation_bias"
+    },
+    {
+     "id": "f1-r3-l0",
+     "type": "rest",
+     "row": 3,
+     "lane": 0,
+     "lanes": 3,
+     "next": [
+      "f1-r4-l0"
+     ]
+    },
+    {
+     "id": "f1-r3-l1",
+     "type": "event",
+     "row": 3,
+     "lane": 1,
+     "lanes": 3,
+     "next": [
+      "f1-r4-l0"
+     ]
+    },
+    {
+     "id": "f1-r3-l2",
+     "type": "shop",
+     "row": 3,
+     "lane": 2,
+     "lanes": 3,
+     "next": [
+      "f1-r4-l0"
+     ]
+    },
+    {
+     "id": "f1-r4-l0",
+     "type": "boss",
+     "row": 4,
+     "lane": 0,
+     "lanes": 1,
+     "next": [],
+     "enemyId": "problem_of_induction"
+    }
+   ],
+   "position": "f1-r0-l0",
+   "visited": [
+    "f1-r0-l0"
+   ],
+   "resolve": 60,
+   "maxResolve": 60,
+   "gold": 40,
+   "deck": [
+    {
+     "uid": 1,
+     "cardId": "observation",
+     "upgraded": false
+    },
+    {
+     "uid": 2,
+     "cardId": "observation",
+     "upgraded": false
+    },
+    {
+     "uid": 3,
+     "cardId": "observation",
+     "upgraded": false
+    },
+    {
+     "uid": 4,
+     "cardId": "observation",
+     "upgraded": false
+    },
+    {
+     "uid": 5,
+     "cardId": "caveat",
+     "upgraded": false
+    },
+    {
+     "uid": 6,
+     "cardId": "caveat",
+     "upgraded": false
+    },
+    {
+     "uid": 7,
+     "cardId": "caveat",
+     "upgraded": false
+    },
+    {
+     "uid": 8,
+     "cardId": "steelman",
+     "upgraded": false
+    },
+    {
+     "uid": 9,
+     "cardId": "measured_reply",
+     "upgraded": false
+    },
+    {
+     "uid": 10,
+     "cardId": "measured_reply",
+     "upgraded": false
+    }
+   ],
+   "nextUid": 11,
+   "relics": [],
+   "removals": 0,
+   "screen": "battle",
+   "battle": {
+    "enemy": {
+     "id": "jumping_to_conclusions",
+     "health": 26,
+     "maxHealth": 26,
+     "guard": 0,
+     "strength": 0,
+     "unsettle": 0,
+     "moveIndex": 1,
+     "seen": [],
+     "phase": 1,
+     "gambleHit": false,
+     "misses": 0,
+     "secondRule": false
+    },
+    "player": {
+     "resolve": 60,
+     "maxResolve": 60,
+     "guard": 0
+    },
+    "relics": [],
+    "school": "pragmatist",
+    "turn": 2,
+    "focus": 2,
+    "hand": [
+     {
+      "uid": 10,
+      "cardId": "measured_reply",
+      "upgraded": false
+     },
+     {
+      "uid": 1,
+      "cardId": "observation",
+      "upgraded": false
+     },
+     {
+      "uid": 7,
+      "cardId": "caveat",
+      "upgraded": false
+     },
+     {
+      "uid": 9,
+      "cardId": "measured_reply",
+      "upgraded": false
+     }
+    ],
+    "drawPile": [],
+    "discardPile": [
+     {
+      "uid": 2,
+      "cardId": "observation",
+      "upgraded": false
+     },
+     {
+      "uid": 8,
+      "cardId": "steelman",
+      "upgraded": false
+     },
+     {
+      "uid": 6,
+      "cardId": "caveat",
+      "upgraded": false
+     },
+     {
+      "uid": 5,
+      "cardId": "caveat",
+      "upgraded": false
+     },
+     {
+      "uid": 4,
+      "cardId": "observation",
+      "upgraded": false
+     }
+    ],
+    "played": [
+     {
+      "uid": 3,
+      "cardId": "observation",
+      "upgraded": false
+     }
+    ],
+    "exhausted": [],
+    "lastingMultiplier": 0,
+    "evidencePlayed": 0,
+    "lastingRestore": 0,
+    "unsettleLasts": false,
+    "firstLogicDiscountUsed": false,
+    "carriedWeight": 0,
+    "carriedFocus": 0,
+    "lastConclusionType": null,
+    "piercedOnce": false,
+    "nextUid": 11,
+    "rng": 176802261,
+    "outcome": "ongoing",
+    "lastRound": {
+     "turn": 1,
+     "steps": [],
+     "carriedWeight": 0,
+     "doubtWeight": 0,
+     "lastingMultiplier": 0,
+     "weight": 0,
+     "multiplier": 1,
+     "product": 0,
+     "modifiers": [],
+     "raw": 0,
+     "guardBroken": false,
+     "blocked": 0,
+     "damage": 0,
+     "healedBack": 0,
+     "selfLoss": 0,
+     "postponed": false,
+     "enemyAttack": 6,
+     "enemyBlocked": 6,
+     "playerLoss": 0,
+     "enemyGuardGained": 0,
+     "unsettleLoss": 0,
+     "doubtsAdded": 0,
+     "growth": 0,
+     "phaseChanged": false,
+     "gamble": null,
+     "restored": 0
+    },
+    "undo": [
+     {
+      "enemy": {
+       "id": "jumping_to_conclusions",
+       "health": 26,
+       "maxHealth": 26,
+       "guard": 0,
+       "strength": 0,
+       "unsettle": 0,
+       "moveIndex": 1,
+       "seen": [],
+       "phase": 1,
+       "gambleHit": false,
+       "misses": 0,
+       "secondRule": false
+      },
+      "player": {
+       "resolve": 60,
+       "maxResolve": 60,
+       "guard": 0
+      },
+      "relics": [],
+      "school": "pragmatist",
+      "turn": 2,
+      "focus": 3,
+      "hand": [
+       {
+        "uid": 3,
+        "cardId": "observation",
+        "upgraded": false
+       },
+       {
+        "uid": 10,
+        "cardId": "measured_reply",
+        "upgraded": false
+       },
+       {
+        "uid": 1,
+        "cardId": "observation",
+        "upgraded": false
+       },
+       {
+        "uid": 7,
+        "cardId": "caveat",
+        "upgraded": false
+       },
+       {
+        "uid": 9,
+        "cardId": "measured_reply",
+        "upgraded": false
+       }
+      ],
+      "drawPile": [],
+      "discardPile": [
+       {
+        "uid": 2,
+        "cardId": "observation",
+        "upgraded": false
+       },
+       {
+        "uid": 8,
+        "cardId": "steelman",
+        "upgraded": false
+       },
+       {
+        "uid": 6,
+        "cardId": "caveat",
+        "upgraded": false
+       },
+       {
+        "uid": 5,
+        "cardId": "caveat",
+        "upgraded": false
+       },
+       {
+        "uid": 4,
+        "cardId": "observation",
+        "upgraded": false
+       }
+      ],
+      "played": [],
+      "exhausted": [],
+      "lastingMultiplier": 0,
+      "evidencePlayed": 0,
+      "lastingRestore": 0,
+      "unsettleLasts": false,
+      "firstLogicDiscountUsed": false,
+      "carriedWeight": 0,
+      "carriedFocus": 0,
+      "lastConclusionType": null,
+      "piercedOnce": false,
+      "nextUid": 11,
+      "rng": 176802261,
+      "outcome": "ongoing",
+      "lastRound": {
+       "turn": 1,
+       "steps": [],
+       "carriedWeight": 0,
+       "doubtWeight": 0,
+       "lastingMultiplier": 0,
+       "weight": 0,
+       "multiplier": 1,
+       "product": 0,
+       "modifiers": [],
+       "raw": 0,
+       "guardBroken": false,
+       "blocked": 0,
+       "damage": 0,
+       "healedBack": 0,
+       "selfLoss": 0,
+       "postponed": false,
+       "enemyAttack": 6,
+       "enemyBlocked": 6,
+       "playerLoss": 0,
+       "enemyGuardGained": 0,
+       "unsettleLoss": 0,
+       "doubtsAdded": 0,
+       "growth": 0,
+       "phaseChanged": false,
+       "gamble": null,
+       "restored": 0
+      }
+     }
+    ]
+   },
+   "reward": null,
+   "shop": null,
+   "event": null,
+   "eventsSeen": [],
+   "pick": null,
+   "defeatedBy": null,
+   "beaten": [],
+   "stats": {
+    "turns": 0,
+    "fights": 1,
+    "nodes": 1,
+    "best": 0
+   }
+  }
+ },
+ "version": 5
+}

@@ -10,6 +10,7 @@ const MIDDLE_ROWS: NodeType[][] = [
   ['elite', 'battle', 'treasure'],
   ['rest', 'event', 'shop'],
 ]
+const ELITE_ROW = 2
 
 function nodeId(floor: number, row: number, lane: number): string {
   return `f${floor}-r${row}-l${lane}`
@@ -49,6 +50,11 @@ export function generateFloor(floor: 1 | 2 | 3, rng: number): { nodes: MapNode[]
     rows.push(shuffled.items)
   }
   rows.push(['boss'])
+  // Every lane always leads straight on, so a rest in the hard fight's lane is always reachable after it.
+  const recovery = rows[ELITE_ROW + 1]
+  const lane = rows[ELITE_ROW].indexOf('elite')
+  recovery.splice(recovery.indexOf('rest'), 1)
+  recovery.splice(lane, 0, 'rest')
 
   const nodes: MapNode[] = []
   rows.forEach((types, row) => {

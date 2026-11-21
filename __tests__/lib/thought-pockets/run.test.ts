@@ -33,7 +33,7 @@ function loseFight(run: RunState): RunState {
   const battle = run.battle
   if (!battle) throw new Error('no battle')
   const doomed = { ...run, battle: { ...battle, player: { ...battle.player, resolve: 1 }, hand: [], played: [] } }
-  let next = doomed
+  let next: RunState = doomed
   for (let i = 0; i < 40 && next.screen === 'battle'; i++) next = battleAction(next, endTurn)
   return next
 }

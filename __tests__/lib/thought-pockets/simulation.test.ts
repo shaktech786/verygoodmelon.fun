@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createBattle, MAX_TURNS } from '@/lib/games/thought-pockets/engine/battle'
+import { createBattle } from '@/lib/games/thought-pockets/engine/battle'
 import { ENEMIES } from '@/lib/games/thought-pockets/data/enemies'
 import { SCHOOLS } from '@/lib/games/thought-pockets/data/schools'
 import { CARDS } from '@/lib/games/thought-pockets/data/cards'
@@ -11,6 +11,7 @@ import { AWARE_HABITS, BotConfig, HABITS, RunRecord, careful, firstTimer, leftTo
 // Seeded, so the numbers are exact for a given RUNS. Set TP_SIM_RUNS for a fuller report.
 const RUNS = Number(process.env.TP_SIM_RUNS ?? 100)
 const SIM_TIMEOUT = 600_000
+const LONGEST_FIGHT = 25
 
 const CONFIGS: Record<string, BotConfig> = {
   naive: { turn: leftToRight, draft: 'first', habits: 'naive' },
@@ -78,7 +79,7 @@ describe('simulation', () => {
     }
     console.log(lines.join('\n'))
     const all = [...results.values()].flat()
-    expect(all.some((r) => r.hitTurnCap)).toBe(false)
+    expect(Math.max(...all.map((r) => r.longestFight)), 'no fight drags on: a long one tires the bias out').toBeLessThanOrEqual(LONGEST_FIGHT)
   })
 
   const rate = (keys: string[], test: (r: RunRecord) => boolean) => {
@@ -115,6 +116,12 @@ describe('simulation', () => {
     expect(planned).toBeLessThan(0.95)
     expect(planned - steady).toBeGreaterThan(0.1)
     expect(steady - newcomer).toBeGreaterThan(0.3)
+  })
+
+  it('careful play wins at least half the default Rigorous runs, and no single opponent ends more than a fifth of them', { timeout: SIM_TIMEOUT }, () => {
+    const runs = SCHOOLS.flatMap((s) => results.get(`${s.id}/careful rigorous`) ?? [])
+    expect(runs.filter(won).length / runs.length).toBeGreaterThanOrEqual(0.5)
+    for (const enemy of ENEMIES) expect(runs.filter((r) => r.defeatedBy === enemy.id).length / runs.length, enemy.id).toBeLessThanOrEqual(0.2)
   })
 
   it(`the top Rigorous level is genuinely hard: a planner that peeks at its next draw wins 25-50%`, { timeout: SIM_TIMEOUT }, () => {
@@ -166,10 +173,14 @@ describe('simulation', () => {
 
   it('reports how many turns each philosophical problem lasts', { timeout: SIM_TIMEOUT }, () => {
     const bosses = ENEMIES.filter((e) => e.tier === 'boss')
-    const lines = ['policy | ' + bosses.map((b) => `${b.id} turns (won fights)`).join(' | ')]
-    for (const policy of ['first-timer', 'careful', 'planner', `planner rigorous ${OLD_TOP}`, `planner rigorous ${MAX_RIGOR}`]) {
+    const lines = ['policy | ' + bosses.map((b) => `${b.id} turns when won (share of its fights lost)`).join(' | ')]
+    for (const policy of ['first-timer', 'careful', 'planner', 'careful rigorous', `planner rigorous ${OLD_TOP}`, `planner rigorous ${MAX_RIGOR}`]) {
       const fights = SCHOOLS.flatMap((s) => results.get(`${s.id}/${policy}`) ?? []).flatMap((r) => r.fights)
-      lines.push(`${policy} | ${bosses.map((b) => avg(fights.filter((f) => f.enemyId === b.id && f.won).map((f) => f.turns))).join(' | ')}`)
+      const cell = (id: string) => {
+        const met = fights.filter((f) => f.enemyId === id)
+        return `${avg(met.filter((f) => f.won).map((f) => f.turns))} (${pct(met.filter((f) => !f.won).length, met.length)})`
+      }
+      lines.push(`${policy} | ${bosses.map((b) => cell(b.id)).join(' | ')}`)
     }
     console.log(lines.join('\n'))
     expect(lines.length).toBeGreaterThan(1)
@@ -203,7 +214,7 @@ describe('simulation', () => {
         const losses: number[] = []
         for (let seed = 0; seed < 24; seed++) {
           let battle = createBattle({ enemyId: enemy.id, deck: deck(enemy.floor), resolve: 60, maxResolve: 60, relics: [], school: 'empiricist', rng: seed + 1, rigor: 0, known: false })
-          while (battle.outcome === 'ongoing' && battle.turn <= MAX_TURNS) battle = policy(battle)
+          while (battle.outcome === 'ongoing') battle = policy(battle)
           losses.push(battle.outcome === 'won' ? 60 - battle.player.resolve : 80)
         }
         return losses.reduce((a, b) => a + b, 0) / losses.length

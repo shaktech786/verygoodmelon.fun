@@ -114,6 +114,11 @@ export type EnemyRule =
   | 'motivated'
   | 'meaning'
   | 'gambler'
+  | 'arrow'
+  | 'buridan'
+  | 'buridan_charge'
+  | 'newcomb'
+  | 'newcomb_caution'
 
 export type Ask = 'evidence' | 'logic' | 'guard'
 
@@ -193,6 +198,14 @@ export interface StepView {
   notes: string[]
 }
 
+/** One thing that happens to the argument after Weight × Multiplier, in the order the engine applies it. */
+export interface DamageStep {
+  kind: 'answer' | 'induction' | 'pierce' | 'guard' | 'arrow' | 'cap' | 'half'
+  text: string
+  /** The damage after this step. */
+  after: number
+}
+
 export interface ArgumentPreview {
   steps: StepView[]
   carriedWeight: number
@@ -201,7 +214,9 @@ export interface ArgumentPreview {
   multiplier: number
   product: number
   raw: number
+  /** What changed the Multiplier from outside the cards. */
   modifiers: string[]
+  chain: DamageStep[]
   pierce: boolean
   enemyGuard: number
   blocked: number
@@ -216,8 +231,15 @@ export interface ArgumentPreview {
   /** What Unsettle takes before it acts, after this argument lands. */
   unsettleTick: number
   enemyFalls: 'argument' | 'unsettle' | null
-  /** The Conclusion has no Weight or Multiplier, so counting it twice adds nothing. */
+  /** The Conclusion has no Weight or Multiplier, so counting it again adds nothing. */
   conclusionEmpty: boolean
+  /** How many times the Conclusion counts, or would have counted had it brought anything. */
+  conclusionCount: number
+  /** Unsettle the bias takes on from damage past its half-Resolve line, felt next round. */
+  spill: number
+  /** Guard the bias will raise when it acts because of its rule and what you did. */
+  ruleGuard: number
+  ruleGuardNote: string | null
   lastingMultiplier: number
   postpone: boolean
   growth: number
@@ -238,6 +260,7 @@ export interface RoundReport {
   multiplier: number
   product: number
   modifiers: string[]
+  chain: DamageStep[]
   raw: number
   guardBroken: boolean
   blocked: number
@@ -256,6 +279,9 @@ export interface RoundReport {
   gamble: 'hit' | 'miss' | null
   /** Resolve restored at the end of the round by a lasting effect. */
   restored: number
+  spill: number
+  ruleGuard: number
+  ruleGuardNote: string | null
 }
 
 export interface BattleCore {
@@ -280,6 +306,8 @@ export interface BattleCore {
   carriedFocus: number
   lastConclusionType: CardType | null
   piercedOnce: boolean
+  /** The turn from which a long fight wears the bias down. */
+  tiresFrom: number
   nextUid: number
   rng: number
   outcome: BattleOutcome
@@ -362,7 +390,7 @@ export interface RunStats {
 }
 
 export interface RunState {
-  version: 5
+  version: 6
   seed: number
   rng: number
   school: School
@@ -391,6 +419,8 @@ export interface RunState {
   eventsSeen: EventId[]
   pick: DeckPickPurpose | null
   defeatedBy: string | null
+  /** The round that was lost, so the defeat can say what happened. */
+  defeatRound: RoundReport | null
   beaten: string[]
   stats: RunStats
 }

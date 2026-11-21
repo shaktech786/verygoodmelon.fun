@@ -20,9 +20,11 @@ describe('the first-fight hint', () => {
     expect(tutorialHint(battle)).toMatch(/Guard card absorbs/)
   })
 
-  it('says so when the Conclusion doubles nothing', () => {
+  it('says so when the Conclusion counts nothing, with the count this school would give it', () => {
     const battle = playAll(battleWith({ hand: ['observation', 'caveat'], school: 'skeptic' }), [100, 101])
-    expect(tutorialHint(battle)).toMatch(/doubles nothing/)
+    expect(tutorialHint(battle)).toMatch(/counting it twice as the Conclusion adds nothing/)
+    const empiricist = playAll(battleWith({ hand: ['observation', 'cash_value'], school: 'empiricist' }), [100, 101])
+    expect(tutorialHint(empiricist)).toMatch(/counting it three times as the Conclusion adds nothing/)
   })
 
   it('opens by asking for Evidence, and says End turn when the argument will finish it', () => {
