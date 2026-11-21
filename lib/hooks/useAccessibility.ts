@@ -10,8 +10,9 @@ import {
   DEFAULT_ACCESSIBILITY_SETTINGS,
   ACCESSIBILITY_PRESETS,
 } from '@/types/accessibility'
+import { ACCESSIBILITY_STORAGE_KEY } from '@/lib/accessibility/boot-script'
 
-const STORAGE_KEY = 'verygoodmelon:accessibility:settings'
+const STORAGE_KEY = ACCESSIBILITY_STORAGE_KEY
 
 const THEMES: readonly ThemeMode[] = ['light', 'dark', 'auto']
 const TEXT_SIZES: readonly TextSize[] = ['default', 'large', 'larger']

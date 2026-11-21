@@ -11,6 +11,7 @@ import { FeedbackButton } from "@/components/FeedbackButton";
 import { AmbientParticles } from "@/components/ui/AmbientParticles";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { CareModeProvider } from "@/components/games/CareMode";
+import { ACCESSIBILITY_BOOT_SCRIPT } from "@/lib/accessibility/boot-script";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
@@ -67,6 +68,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: ACCESSIBILITY_BOOT_SCRIPT }} />
         {/* Import map for TalkingHead 3D avatar library (loaded at runtime from /talkinghead/) */}
         <script
           type="importmap"
