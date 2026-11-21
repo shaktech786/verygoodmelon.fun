@@ -41,13 +41,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Get updated vote counts
-    const { data: votesA, error: errorA } = await supabase
+    const { count: countA, error: errorA } = await supabase
       .from('hard_choices_votes')
       .select('*', { count: 'exact', head: true })
       .eq('dilemma_id', dilemmaId)
       .eq('choice', 'A')
 
-    const { data: votesB, error: errorB } = await supabase
+    const { count: countB, error: errorB } = await supabase
       .from('hard_choices_votes')
       .select('*', { count: 'exact', head: true })
       .eq('dilemma_id', dilemmaId)
@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       results: {
-        choiceA: votesA?.length || 0,
-        choiceB: votesB?.length || 0
+        choiceA: countA || 0,
+        choiceB: countB || 0
       }
     })
   } catch (error) {

@@ -65,7 +65,7 @@ describe('HardChoices', () => {
   it('shows vote results after voting', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ choiceA: 60, choiceB: 40 }),
+      json: async () => ({ success: true, results: { choiceA: 60, choiceB: 40 } }),
     })
 
     render(<HardChoices />)

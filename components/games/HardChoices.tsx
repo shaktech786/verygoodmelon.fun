@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
-import { ErrorState } from '@/components/ui/ErrorState'
 import { useRealtimeVotes, mergeVotes } from '@/lib/hooks/useRealtimeVotes'
 
 interface Choice {
@@ -235,7 +234,6 @@ export default function HardChoices() {
   const [voteResults, setVoteResults] = useState<VoteResults | null>(null)
   const [hasVoted, setHasVoted] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
   const [pulseChoice, setPulseChoice] = useState<'A' | 'B' | null>(null)
   const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -302,23 +300,23 @@ export default function HardChoices() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDilemmaIndex, currentDilemma.id]) // loadResults is stable, doesn't need to be in deps
 
+  // The reflection never depends on the crowd counts: if they can't be
+  // reached, the choice and both perspectives are still shown without them.
   const loadResults = async () => {
     setLoading(true)
-    setError(null)
     try {
       const response = await fetch(`/api/hard-choices/votes?dilemmaId=${currentDilemma.id}`)
-      if (response.ok) {
-        const data = await response.json()
-        setVoteResults(data)
-        setShowResults(true)
-        seedVotes(currentDilemma.id, data.choiceA, data.choiceB)
-      } else {
-        throw new Error(`Failed to load results: ${response.statusText}`)
+      if (!response.ok) {
+        throw new Error(`Failed to load results: ${response.status}`)
       }
+      const data = await response.json()
+      setVoteResults(data)
+      seedVotes(currentDilemma.id, data.choiceA, data.choiceB)
     } catch (err) {
       console.error('Error loading results:', err)
-      setError(err instanceof Error ? err : new Error('Failed to load results'))
+      setVoteResults(null)
     } finally {
+      setShowResults(true)
       setLoading(false)
     }
   }
@@ -327,8 +325,12 @@ export default function HardChoices() {
     if (hasVoted) return
 
     setSelectedChoice(choiceId)
+    setHasVoted(true)
     setLoading(true)
-    setError(null)
+
+    const votedDilemmas = JSON.parse(localStorage.getItem('hardChoicesVotes') || '{}')
+    votedDilemmas[currentDilemma.id] = choiceId
+    localStorage.setItem('hardChoicesVotes', JSON.stringify(votedDilemmas))
 
     try {
       const response = await fetch('/api/hard-choices/vote', {
@@ -340,25 +342,16 @@ export default function HardChoices() {
         })
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        setVoteResults(data.results)
-        setShowResults(true)
-        setHasVoted(true)
-        seedVotes(currentDilemma.id, data.results.choiceA, data.results.choiceB)
-
-        // Save to local storage
-        const votedDilemmas = JSON.parse(localStorage.getItem('hardChoicesVotes') || '{}')
-        votedDilemmas[currentDilemma.id] = choiceId
-        localStorage.setItem('hardChoicesVotes', JSON.stringify(votedDilemmas))
-      } else {
-        throw new Error(`Failed to submit vote: ${response.statusText}`)
+      if (!response.ok) {
+        throw new Error(`Failed to submit vote: ${response.status}`)
       }
+      const data = await response.json()
+      setVoteResults(data.results)
+      seedVotes(currentDilemma.id, data.results.choiceA, data.results.choiceB)
     } catch (err) {
       console.error('Error submitting vote:', err)
-      setError(err instanceof Error ? err : new Error('Failed to submit vote'))
-      setSelectedChoice(null) // Reset selection on error
     } finally {
+      setShowResults(true)
       setLoading(false)
     }
   }
@@ -366,14 +359,6 @@ export default function HardChoices() {
   const handleNext = () => {
     const nextIndex = (currentDilemmaIndex + 1) % DILEMMAS.length
     setCurrentDilemmaIndex(nextIndex)
-    setError(null) // Clear error when moving to next dilemma
-  }
-
-  const handleRetry = async () => {
-    setError(null)
-    if (hasVoted) {
-      await loadResults()
-    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent, choiceId: string) => {
@@ -425,19 +410,6 @@ export default function HardChoices() {
             </div>
           </div>
 
-          {/* Error state */}
-          {error && (
-            <div className="mb-6">
-              <ErrorState
-                title="Couldn't Load This Dilemma"
-                description="We had trouble connecting to the server. Your choice wasn't submitted."
-                error={error}
-                onRetry={handleRetry}
-                showDetails={true}
-              />
-            </div>
-          )}
-
           {/* Dilemma card */}
           <div className="bg-card-bg border border-card-border rounded-lg p-4 sm:p-8 mb-6">
             {currentDilemma.context && (
@@ -487,7 +459,7 @@ export default function HardChoices() {
                         {currentDilemma.choiceA.perspective}
                       </p>
                     )}
-                    {showResults && (
+                    {showResults && displayResults && (
                       <div className="mt-3">
                         <div className="flex items-center justify-between text-sm mb-1">
                           <span className="text-foreground/60">
@@ -551,7 +523,7 @@ export default function HardChoices() {
                         {currentDilemma.choiceB.perspective}
                       </p>
                     )}
-                    {showResults && (
+                    {showResults && displayResults && (
                       <div className="mt-3">
                         <div className="flex items-center justify-between text-sm mb-1">
                           <span className="text-foreground/60">
@@ -583,18 +555,20 @@ export default function HardChoices() {
             {/* Results message - deeper reflection */}
             {showResults && (
               <div className="mt-6 p-5 bg-gradient-to-br from-accent/5 to-transparent border border-accent/10 rounded-lg">
-                <p className="text-sm text-foreground/80 text-center leading-relaxed">
-                  {getPercentage('A') > 60 || getPercentage('B') > 60 ? (
-                    <>
-                      <span className="font-medium">Interesting.</span> Most people lean one way here—but the minority perspective often holds wisdom worth considering.
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-medium">A true dilemma.</span> Humanity is genuinely split on this one. That&apos;s what makes it worth thinking about.
-                    </>
-                  )}
-                </p>
-                <p className="text-xs text-foreground/50 text-center mt-2 italic">
+                {displayResults && (
+                  <p className="text-sm text-foreground/80 text-center leading-relaxed mb-2">
+                    {getPercentage('A') > 60 || getPercentage('B') > 60 ? (
+                      <>
+                        <span className="font-medium">Interesting.</span> Most people lean one way here—but the minority perspective often holds wisdom worth considering.
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-medium">A true dilemma.</span> Humanity is genuinely split on this one. That&apos;s what makes it worth thinking about.
+                      </>
+                    )}
+                  </p>
+                )}
+                <p className="text-xs text-foreground/50 text-center italic">
                   Your answer reveals something about your values. Neither choice is wrong.
                 </p>
               </div>
