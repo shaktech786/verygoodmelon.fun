@@ -39,7 +39,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     id: 'timeless-minds',
     slug: 'ancient-voices', // Enigmatic: wisdom from the past
     title: 'The Sage',
-    description: 'Chat with 61 wisdom figures',
+    description: 'Talk with 39 great minds from history',
     hook: 'Ask life questions to history\'s greatest thinkers',
     cardImage: '/games/timeless-minds/card.svg',
     category: 'Reflect',
@@ -105,7 +105,7 @@ export const ALL_GAMES: readonly GameConfig[] = [
     slug: 'idea-lab', // Direct: the name evokes the experience
     title: 'The Alchemist',
     description: 'Combine concepts to discover new ideas',
-    hook: 'Mix two ideas together and see what emerges',
+    hook: 'Mix two ideas and find the seven golds',
     cardImage: '/games/idea-lab/card.svg',
     category: 'Play',
     accentColor: 'warning',

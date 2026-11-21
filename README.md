@@ -26,7 +26,7 @@ Fourteen games in three groups. The list in `lib/games/config.ts` is the source 
 
 ### Play
 - **[The Optimist](https://verygoodmelon.fun/games/the-silver-lining)**: Guess the word, discover something good about the world
-- **[The Alchemist](https://verygoodmelon.fun/games/idea-lab)**: Mix two ideas together and see what emerges
+- **[The Alchemist](https://verygoodmelon.fun/games/idea-lab)**: Mix two ideas and find the seven golds
 - **[The Philosopher](https://verygoodmelon.fun/games/thought-pockets)**: A deckbuilder where you build arguments against cognitive biases
 - **[The Shapeshifter](https://verygoodmelon.fun/games/the-mutation)**: Play an arcade game that rewrites its own rules
 
