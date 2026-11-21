@@ -189,6 +189,40 @@ test.describe('The Gardener', () => {
     await expect(page).toHaveURL(/\/$/)
   })
 
+  test('a suggestion waits until you plant it or set it aside', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-11-21T13:00:00') })
+    await mockSuggestion(page)
+    await openGarden(page)
+    for (let i = 0; i < 3; i++) await plantAt(page, 0.2 + i * 0.2, 0.6)
+    const hint = page.getByRole('button', { name: /would welcome a Willow/ })
+    await expect(hint).toBeVisible()
+
+    // No time pressure: a long pause leaves the idea where it was.
+    await page.clock.fastForward(5 * 60_000)
+    await expect(hint).toBeVisible()
+
+    await page.getByRole('button', { name: 'Not now' }).click()
+    await expect(hint).toBeHidden()
+    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 3 plants/)
+    expect(await stored(page)).toHaveLength(3)
+  })
+
+  test('flowers draw a visitor to the garden, announced for screen readers', async ({ page }) => {
+    await mockSuggestion(page, (route) => route.fulfill({ status: 503 }))
+    await openGarden(page)
+    const live = page.getByRole('application').locator('[aria-live="polite"]').first()
+    await plantAt(page, 0.3, 0.6)
+    await plantAt(page, 0.5, 0.7)
+    await expect(live).not.toContainText('found your garden')
+    await plantAt(page, 0.7, 0.6)
+    await expect(live).toHaveText(/A (butterfly|firefly) has found your garden\./)
+
+    // A garden that already has visitors does not announce them again on reload.
+    await page.reload()
+    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 3 plants/)
+    await expect(live).not.toContainText('found your garden')
+  })
+
   test('a failing or broken suggestion service never interrupts the garden', async ({ page }) => {
     const errors = collectPageErrors(page)
     const bodies = await mockSuggestion(page, (route) => route.fulfill({ status: 500, json: { error: 'down' } }))
@@ -277,9 +311,12 @@ test.describe('The Gardener on a touch screen', () => {
     await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 1 plant\./)
     expect(await stored(page)).toHaveLength(1)
 
-    await page.getByRole('button', { name: /tap to change/ }).tap()
+    // Every plant is visible without opening anything, and nothing scrolls sideways.
+    await expect(page.getByRole('radio')).toHaveCount(15)
+    for (const radio of await page.getByRole('radio').all()) await expect(radio).toBeInViewport({ ratio: 0 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
     await page.getByRole('radio', { name: 'Pine Tree' }).tap()
-    await expect(page.getByRole('button', { name: /Pine Tree \(tap to change\)/ })).toBeVisible()
+    await expect(page.getByRole('radio', { name: 'Pine Tree' })).toHaveAttribute('aria-checked', 'true')
     await garden(page).tap({ position: { x: box.width * 0.6, y: box.height * 0.6 } })
     await garden(page).tap({ position: { x: box.width * 0.8, y: box.height * 0.9 } })
 
