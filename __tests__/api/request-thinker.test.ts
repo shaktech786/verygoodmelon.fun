@@ -1,53 +1,40 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// Mock @supabase/supabase-js - the route uses createClient directly (not @/lib/supabase/server)
 const mockInsert = vi.fn()
-const mockFrom = vi.fn()
+const mockProbe = vi.fn()
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
-    from: (...args: unknown[]) => mockFrom(...args),
+    from: (table: string) => (table === 'thinker_requests' ? { insert: mockInsert, select: () => ({ limit: mockProbe }) } : {}),
   }),
 }))
 
+vi.mock('@/lib/email/send-email', () => ({ sendEmail: vi.fn(() => Promise.resolve()) }))
+
 import { POST, GET } from '@/app/api/timeless-minds/request-thinker/route'
+
+const post = (body: unknown) =>
+  POST(new Request('http://localhost/api/timeless-minds/request-thinker', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json' },
+  }) as never)
+
+const validRequest = {
+  requesterEmail: 'test@example.com',
+  requestedName: 'Nikola Tesla',
+  reasonForRequest: 'Interested in his views on innovation',
+}
 
 describe('/api/timeless-minds/request-thinker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key'
-
-    // Default mock: successful insert chain
     mockInsert.mockReturnValue({
-      select: () => ({
-        single: () => Promise.resolve({ data: { id: 'test-id-123' }, error: null }),
-      }),
+      select: () => ({ single: () => Promise.resolve({ data: { id: 'test-id-123' }, error: null }) }),
     })
-
-    // Default mock for from()
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'thinker_requests') {
-        return { insert: mockInsert }
-      }
-      if (table === 'thinker_phone_book_access') {
-        return {
-          insert: () => Promise.resolve({ error: null }),
-          select: () => ({
-            eq: () => ({
-              eq: () => ({
-                order: () => ({
-                  limit: () => ({
-                    single: () => Promise.resolve({ data: null, error: { code: 'PGRST116' } }),
-                  }),
-                }),
-              }),
-            }),
-          }),
-        }
-      }
-      return {}
-    })
+    mockProbe.mockResolvedValue({ data: [], error: null })
   })
 
   afterEach(() => {
@@ -55,177 +42,75 @@ describe('/api/timeless-minds/request-thinker', () => {
     delete process.env.SUPABASE_SERVICE_ROLE_KEY
   })
 
+  describe('GET: whether requests can be kept right now', () => {
+    it('says yes when storage answers', async () => {
+      const response = await GET()
+      expect(await response.json()).toEqual({ available: true })
+    })
+
+    it('says no when storage is not set up', async () => {
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL
+      const response = await GET()
+      expect(await response.json()).toEqual({ available: false })
+    })
+
+    it('says no when storage cannot be reached', async () => {
+      mockProbe.mockResolvedValue({ data: null, error: { message: 'TypeError: fetch failed' } })
+      expect(await (await GET()).json()).toEqual({ available: false })
+
+      mockProbe.mockRejectedValue(new Error('getaddrinfo ENOTFOUND'))
+      expect(await (await GET()).json()).toEqual({ available: false })
+    })
+  })
+
   describe('POST', () => {
     it('returns 400 for missing required fields', async () => {
-      const request = new Request('http://localhost/api/timeless-minds/request-thinker', {
-        method: 'POST',
-        body: JSON.stringify({ requesterName: 'Test' }),
-        headers: { 'Content-Type': 'application/json' },
-      })
-
-      const response = await POST(request as never)
+      const response = await post({ requesterName: 'Test' })
       expect(response.status).toBe(400)
     })
 
     it('returns 400 for missing email', async () => {
-      const request = new Request('http://localhost/api/timeless-minds/request-thinker', {
-        method: 'POST',
-        body: JSON.stringify({
-          requesterName: 'Test User',
-          requestedName: 'Nikola Tesla',
-          reasonForRequest: 'Interested in his views',
-        }),
-        headers: { 'Content-Type': 'application/json' },
-      })
-
-      const response = await POST(request as never)
+      const response = await post({ requestedName: 'Nikola Tesla', reasonForRequest: 'Interested in his views' })
       expect(response.status).toBe(400)
     })
 
     it('blocks living people', async () => {
-      const request = new Request('http://localhost/api/timeless-minds/request-thinker', {
-        method: 'POST',
-        body: JSON.stringify({
-          requesterName: 'Test User',
-          requesterEmail: 'test@example.com',
-          requestedName: 'Elon Musk',
-          reasonForRequest: 'I want to chat',
-        }),
-        headers: { 'Content-Type': 'application/json' },
-      })
-
-      const response = await POST(request as never)
+      const response = await post({ ...validRequest, requestedName: 'Elon Musk' })
       expect(response.status).toBe(400)
+      expect((await response.json()).error).toContain('deceased')
+    })
 
-      const data = await response.json()
-      expect(data.error).toContain('deceased')
+    it('still explains the rules when there is nowhere to keep requests', async () => {
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL
+      const response = await post({ ...validRequest, requestedName: 'Elon Musk' })
+      expect(response.status).toBe(400)
+      expect((await response.json()).error).toContain('deceased')
     })
 
     it('blocks harmful figures', async () => {
-      const request = new Request('http://localhost/api/timeless-minds/request-thinker', {
-        method: 'POST',
-        body: JSON.stringify({
-          requesterName: 'Test User',
-          requesterEmail: 'test@example.com',
-          requestedName: 'Hitler',
-          reasonForRequest: 'Historical interest',
-        }),
-        headers: { 'Content-Type': 'application/json' },
-      })
-
-      const response = await POST(request as never)
+      const response = await post({ ...validRequest, requestedName: 'Hitler' })
       expect(response.status).toBe(400)
-
-      const data = await response.json()
-      expect(data.error).toContain('positive historical figures')
+      expect((await response.json()).error).toContain('positive historical figures')
     })
 
-    it('accepts valid submission', async () => {
-      const request = new Request('http://localhost/api/timeless-minds/request-thinker', {
-        method: 'POST',
-        body: JSON.stringify({
-          requesterName: 'Test User',
-          requesterEmail: 'test@example.com',
-          requestedName: 'Nikola Tesla',
-          reasonForRequest: 'Interested in his views on innovation',
-        }),
-        headers: { 'Content-Type': 'application/json' },
-      })
-
-      const response = await POST(request as never)
+    it('keeps a valid request, with or without a name', async () => {
+      const response = await post(validRequest)
       const data = await response.json()
 
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
-      expect(data.requestId).toBeDefined()
+      expect(data.requestId).toBe('test-id-123')
+      expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({ requester_name: null, requested_name: 'Nikola Tesla' }))
     })
 
-    it('returns success in dev mode when Supabase is not configured', async () => {
+    it('never claims success when there is nowhere to keep the request', async () => {
       delete process.env.NEXT_PUBLIC_SUPABASE_URL
       delete process.env.SUPABASE_SERVICE_ROLE_KEY
 
-      const request = new Request('http://localhost/api/timeless-minds/request-thinker', {
-        method: 'POST',
-        body: JSON.stringify({
-          requesterName: 'Test User',
-          requesterEmail: 'test@example.com',
-          requestedName: 'Nikola Tesla',
-          reasonForRequest: 'Interested in his views on innovation',
-        }),
-        headers: { 'Content-Type': 'application/json' },
-      })
+      const response = await post(validRequest)
 
-      const response = await POST(request as never)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-      expect(data.requestId).toContain('req_')
-    })
-  })
-
-  describe('GET', () => {
-    it('returns 400 for missing email', async () => {
-      const request = new Request('http://localhost/api/timeless-minds/request-thinker')
-
-      const response = await GET(request as never)
-      expect(response.status).toBe(400)
-    })
-
-    it('returns hasAccess false when no access record exists', async () => {
-      const request = new Request('http://localhost/api/timeless-minds/request-thinker?email=test@example.com')
-
-      const response = await GET(request as never)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.hasAccess).toBe(false)
-    })
-
-    it('returns hasAccess true when access record exists', async () => {
-      mockFrom.mockImplementation((table: string) => {
-        if (table === 'thinker_phone_book_access') {
-          return {
-            select: () => ({
-              eq: () => ({
-                eq: () => ({
-                  order: () => ({
-                    limit: () => ({
-                      single: () => Promise.resolve({
-                        data: { id: 'access-1', user_email: 'test@example.com', is_active: true },
-                        error: null,
-                      }),
-                    }),
-                  }),
-                }),
-              }),
-            }),
-          }
-        }
-        return {}
-      })
-
-      const request = new Request('http://localhost/api/timeless-minds/request-thinker?email=test@example.com')
-
-      const response = await GET(request as never)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.hasAccess).toBe(true)
-      expect(data.accessDetails).toBeDefined()
-    })
-
-    it('returns hasAccess false when Supabase is not configured', async () => {
-      delete process.env.NEXT_PUBLIC_SUPABASE_URL
-      delete process.env.SUPABASE_SERVICE_ROLE_KEY
-
-      const request = new Request('http://localhost/api/timeless-minds/request-thinker?email=test@example.com')
-
-      const response = await GET(request as never)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.hasAccess).toBe(false)
+      expect(response.status).toBe(503)
+      expect((await response.json()).success).toBeUndefined()
     })
   })
 })
