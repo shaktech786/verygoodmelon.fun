@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
 interface Task {
   id: string
@@ -10,7 +11,7 @@ interface Task {
   duration: number // seconds
   reward: string
   icon: string
-  guidance?: string[] // Rotating guidance text during task
+  guidance: string[] // Rotating guidance text during task
 }
 
 const TASKS: Task[] = [
@@ -86,113 +87,141 @@ const TASKS: Task[] = [
   }
 ]
 
+type BreathPhase = 'inhale' | 'hold' | 'exhale' | 'pause'
+
+const BREATH_PHASES: { phase: BreathPhase; endsAtMs: number }[] = [
+  { phase: 'inhale', endsAtMs: 4000 },
+  { phase: 'hold', endsAtMs: 11000 },
+  { phase: 'exhale', endsAtMs: 19000 },
+  { phase: 'pause', endsAtMs: 20000 }
+]
+const BREATH_CYCLE_MS = 20000
+const TICK_MS = 200
+
+function breathPhaseIndexAt(elapsedMs: number): number {
+  const inCycle = elapsedMs % BREATH_CYCLE_MS
+  return BREATH_PHASES.findIndex(({ endsAtMs }) => inCycle < endsAtMs)
+}
+
+// Negative delays start each seed part-way through its 8s drift, so the field is never empty.
+const FLOATING_SEEDS = Array.from({ length: 8 }, (_, i) => {
+  const seededRandom = (seed: number) => {
+    const x = Math.sin(seed * 9301 + 49297) * 233280
+    return x - Math.floor(x)
+  }
+  return {
+    id: i,
+    x: seededRandom(i * 2) * 80 + 10,
+    delay: -(i + seededRandom(i * 2 + 1)),
+    restingTop: seededRandom(i * 2 + 7) * 70 + 10
+  }
+})
+
+type View = 'menu' | 'task' | 'reward'
+
+const STORAGE_KEY = 'verygoodmelon:unrusher-today'
+
+function todayKey(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+}
+
+// The menu promises moments "savored today", so the count survives a reload but not midnight.
+function loadToday(): string[] {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as { day: string; completed: string[] } | null
+    return saved?.day === todayKey() && Array.isArray(saved.completed) ? saved.completed : []
+  } catch {
+    return []
+  }
+}
+
+function saveToday(completed: string[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ day: todayKey(), completed }))
+  } catch {
+    // Without storage the count simply lasts for this visit.
+  }
+}
+
 export default function TheUnrusher() {
   const [currentTask, setCurrentTask] = useState<Task | null>(null)
-  const [timeRemaining, setTimeRemaining] = useState(0)
+  const [startedAt, setStartedAt] = useState(0)
+  const [elapsedMs, setElapsedMs] = useState(0)
   const [isActive, setIsActive] = useState(false)
   const [completed, setCompleted] = useState<string[]>([])
   const [showReward, setShowReward] = useState(false)
-  const [breathPhase, setBreathPhase] = useState<'inhale' | 'hold' | 'exhale' | 'pause'>('inhale')
-  const [guidanceIndex, setGuidanceIndex] = useState(0)
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const breathTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const guidanceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const previousViewRef = useRef<View>('menu')
+  const reducedMotion = useReducedMotion()
 
-  // Generate floating seeds for "Watch the Seeds" task
-  // Deterministic pseudo-random based on seed index for pure render
-  const floatingSeeds = useMemo(() => {
-    if (currentTask?.id !== 'watch') return []
-    const seededRandom = (seed: number) => {
-      const x = Math.sin(seed * 9301 + 49297) * 233280
-      return x - Math.floor(x)
-    }
-    return Array.from({ length: 8 }, (_, i) => ({
-      id: i,
-      x: seededRandom(i * 2) * 80 + 10, // 10-90% of width
-      delay: seededRandom(i * 2 + 1) * 2
-    }))
-  }, [currentTask?.id])
-
-  // Breathing cycle (4-7-8 pattern: 4s inhale, 7s hold, 8s exhale)
   useEffect(() => {
-    if (currentTask?.id === 'breathe' && isActive) {
-      const breathCycle = () => {
-        setBreathPhase('inhale')
-        breathTimerRef.current = setTimeout(() => {
-          setBreathPhase('hold')
-          breathTimerRef.current = setTimeout(() => {
-            setBreathPhase('exhale')
-            breathTimerRef.current = setTimeout(() => {
-              setBreathPhase('pause')
-              breathTimerRef.current = setTimeout(breathCycle, 1000) // Brief pause before next cycle
-            }, 8000)
-          }, 7000)
-        }, 4000)
-      }
-      breathCycle()
-    }
+    setCompleted(loadToday())
+  }, [])
 
-    return () => {
-      if (breathTimerRef.current) clearTimeout(breathTimerRef.current)
-    }
-  }, [currentTask?.id, isActive])
+  const view: View = currentTask ? (showReward ? 'reward' : 'task') : 'menu'
 
-  // Rotate guidance text
+  // Everything on screen is derived from one wall-clock reading, so the countdown,
+  // the breathing circle and the guidance cannot drift apart or stall in a background tab.
   useEffect(() => {
-    if (currentTask?.guidance && isActive) {
-      queueMicrotask(() => setGuidanceIndex(0))
-      const interval = Math.floor((currentTask.duration * 1000) / currentTask.guidance.length)
-      guidanceTimerRef.current = setInterval(() => {
-        setGuidanceIndex(prev => (prev + 1) % (currentTask.guidance?.length || 1))
-      }, interval)
-    }
+    if (!isActive || !currentTask) return
 
-    return () => {
-      if (guidanceTimerRef.current) clearInterval(guidanceTimerRef.current)
+    const stop = () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', tick)
     }
-  }, [currentTask, isActive])
-
-  // Timer logic
-  useEffect(() => {
-    if (isActive && timeRemaining > 0) {
-      timerRef.current = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            setIsActive(false)
-            setShowReward(true)
-            if (currentTask) {
-              setCompleted((prev) => [...prev, currentTask.id])
-            }
-            return 0
-          }
-          return prev - 1
+    const tick = () => {
+      const elapsed = Date.now() - startedAt
+      if (elapsed >= currentTask.duration * 1000) {
+        stop()
+        setIsActive(false)
+        setShowReward(true)
+        setCompleted((prev) => {
+          const next = [...prev, currentTask.id]
+          saveToday(next)
+          return next
         })
-      }, 1000)
+        return
+      }
+      setElapsedMs(elapsed)
     }
 
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-      }
-    }
-  }, [isActive, timeRemaining, currentTask])
+    const interval = setInterval(tick, TICK_MS)
+    document.addEventListener('visibilitychange', tick)
+    return stop
+  }, [isActive, currentTask, startedAt])
+
+  useEffect(() => {
+    if (previousViewRef.current === view) return
+    previousViewRef.current = view
+    headingRef.current?.focus()
+  }, [view])
 
   const startTask = (task: Task) => {
     setCurrentTask(task)
-    setTimeRemaining(task.duration)
+    setStartedAt(Date.now())
+    setElapsedMs(0)
     setIsActive(true)
     setShowReward(false)
   }
 
   const resetTask = () => {
     setCurrentTask(null)
-    setTimeRemaining(0)
+    setElapsedMs(0)
     setIsActive(false)
     setShowReward(false)
   }
 
   // Render active task
   if (currentTask) {
+    const timeRemaining = currentTask.duration - Math.floor(elapsedMs / 1000)
+    const breathPhaseIndex = breathPhaseIndexAt(elapsedMs)
+    const breathPhase = BREATH_PHASES[breathPhaseIndex].phase
+    const lungsFull = elapsedMs > 0 && (breathPhase === 'inhale' || breathPhase === 'hold')
+    const guidanceIndex = currentTask.id === 'breathe'
+      ? breathPhaseIndex
+      : Math.floor((elapsedMs / (currentTask.duration * 1000)) * currentTask.guidance.length)
+
     return (
       <div className="max-w-2xl mx-auto">
         <div className="bg-card-bg border border-card-border rounded-lg p-8 sm:p-12 text-center min-h-[500px] flex flex-col justify-center">
@@ -204,10 +233,10 @@ export default function TheUnrusher() {
                   <div
                     className={`
                       relative rounded-full transition-all
-                      ${breathPhase === 'inhale' ? 'w-48 h-48 sm:w-64 sm:h-64 duration-[4000ms]' : ''}
-                      ${breathPhase === 'hold' ? 'w-48 h-48 sm:w-64 sm:h-64 duration-100' : ''}
-                      ${breathPhase === 'exhale' ? 'w-24 h-24 sm:w-32 sm:h-32 duration-[8000ms]' : ''}
-                      ${breathPhase === 'pause' ? 'w-24 h-24 sm:w-32 sm:h-32 duration-100' : ''}
+                      ${lungsFull ? 'w-48 h-48 sm:w-64 sm:h-64' : 'w-24 h-24 sm:w-32 sm:h-32'}
+                      ${breathPhase === 'inhale' ? 'duration-[4000ms]' : ''}
+                      ${breathPhase === 'exhale' ? 'duration-[8000ms]' : ''}
+                      ${breathPhase === 'hold' || breathPhase === 'pause' ? 'duration-100' : ''}
                     `}
                     role="img"
                     aria-label={`Breathing circle - ${breathPhase}`}
@@ -216,11 +245,11 @@ export default function TheUnrusher() {
                     <div className="absolute inset-0 rounded-full bg-gradient-to-br from-accent/20 to-success/20 blur-xl" />
                     {/* Main circle */}
                     <div className="absolute inset-2 rounded-full bg-gradient-to-br from-accent/40 to-success/40 flex items-center justify-center">
-                      <span className="text-white/90 text-sm sm:text-base font-medium">
+                      <span className="text-foreground text-sm sm:text-base font-medium" aria-hidden="true">
                         {breathPhase === 'inhale' && 'Inhale...'}
                         {breathPhase === 'hold' && 'Hold...'}
                         {breathPhase === 'exhale' && 'Exhale...'}
-                        {breathPhase === 'pause' && '...'}
+                        {breathPhase === 'pause' && 'Rest...'}
                       </span>
                     </div>
                   </div>
@@ -235,28 +264,26 @@ export default function TheUnrusher() {
               )}
 
               {/* Task title */}
-              <h2 className="text-2xl sm:text-3xl font-semibold mb-4 text-foreground">
+              <h2 ref={headingRef} tabIndex={-1} className="text-2xl sm:text-3xl font-semibold mb-4 text-foreground">
                 {currentTask.title}
               </h2>
 
               {/* Guidance text - rotates during task */}
-              {currentTask.guidance && (
-                <p className="text-lg text-accent/80 mb-4 h-8 transition-opacity duration-500" key={guidanceIndex}>
-                  {currentTask.guidance[guidanceIndex]}
-                </p>
-              )}
+              <p className="text-lg text-accent mb-4 h-8" aria-live="polite">
+                {currentTask.guidance[guidanceIndex]}
+              </p>
 
               {/* Floating seeds animation for "Watch the Seeds" */}
-              {currentTask.id === 'watch' && floatingSeeds.length > 0 && (
-                <div className="relative h-64 mb-8 overflow-hidden rounded-xl bg-gradient-to-b from-transparent to-accent/5" role="img" aria-label="Watermelon seeds floating gently">
-                  {floatingSeeds.map((seed) => (
+              {currentTask.id === 'watch' && (
+                <div className="relative h-64 mb-8 overflow-hidden rounded-xl bg-gradient-to-b from-transparent to-accent/5" role="img" aria-label={reducedMotion ? 'Watermelon seeds resting' : 'Watermelon seeds floating gently'}>
+                  {FLOATING_SEEDS.map((seed) => (
                     <div
                       key={seed.id}
-                      className="absolute w-3 h-5 bg-foreground/70 rounded-full animate-float-seed shadow-lg"
+                      className={`absolute w-3 h-5 bg-foreground/70 rounded-full shadow-lg ${reducedMotion ? '' : 'animate-float-seed'}`}
                       style={{
                         left: `${seed.x}%`,
                         animationDelay: `${seed.delay}s`,
-                        top: '-20px'
+                        top: reducedMotion ? `${seed.restingTop}%` : '-20px'
                       }}
                     />
                   ))}
@@ -269,7 +296,7 @@ export default function TheUnrusher() {
                   <div className="absolute w-16 h-16 rounded-full bg-accent/10 animate-ping" style={{ animationDuration: '3s' }} />
                   <div className="absolute w-24 h-24 rounded-full bg-accent/5 animate-ping" style={{ animationDuration: '4s', animationDelay: '0.5s' }} />
                   <div className="absolute w-32 h-32 rounded-full bg-accent/3 animate-ping" style={{ animationDuration: '5s', animationDelay: '1s' }} />
-                  <div className="text-3xl">👂</div>
+                  <div className="text-3xl" aria-hidden="true">👂</div>
                 </div>
               )}
 
@@ -297,11 +324,11 @@ export default function TheUnrusher() {
           ) : (
             <>
               {/* Reward message */}
-              <div className="animate-fade">
+              <div className="animate-fade" role="status">
                 <div className="text-7xl mb-6" aria-hidden="true">
                   ✨
                 </div>
-                <h2 className="text-3xl font-semibold mb-4 text-foreground">
+                <h2 ref={headingRef} tabIndex={-1} className="text-3xl font-semibold mb-4 text-foreground">
                   You Did It
                 </h2>
                 <p className="text-xl italic text-primary-light mb-8 max-w-md mx-auto">
@@ -335,7 +362,7 @@ export default function TheUnrusher() {
         <div className="text-5xl mb-4" aria-hidden="true">
           🐌
         </div>
-        <h2 className="text-2xl sm:text-3xl font-semibold mb-3 text-foreground">
+        <h2 ref={headingRef} tabIndex={-1} className="text-2xl sm:text-3xl font-semibold mb-3 text-foreground">
           The Anti-Game
         </h2>
         <p className="text-base sm:text-lg text-primary-light max-w-2xl mx-auto">
@@ -390,6 +417,11 @@ export default function TheUnrusher() {
           <p className="text-sm text-foreground">
             🎉 You&rsquo;ve savored {completed.length} {completed.length === 1 ? 'moment' : 'moments'} today
           </p>
+          {TASKS.every((task) => completed.includes(task.id)) && (
+            <p className="text-sm text-primary-light mt-2">
+              Every moment here has been savored. Come back whenever the world speeds up.
+            </p>
+          )}
         </div>
       )}
 
