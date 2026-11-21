@@ -116,6 +116,16 @@ describe('POST /api/cascade/mutate', () => {
     expect(generateContent).not.toHaveBeenCalled()
   })
 
+  it('accepts a rule at any place in the run, because each run orders its rules differently', async () => {
+    reply({ mechanicId: 'gravity_well', title: 'Gentle Pull', description: 'Lights drift closer.', flavorText: 'No need to chase.' })
+
+    const { status, data } = await mutation({ wave: 2, category: 'modifier', options: ['gravity_well', 'combo_chain'] })
+
+    expect(status).toBe(200)
+    expect(data.mechanicId).toBe('gravity_well')
+    expect(prompt()).toContain('Rule 3 of 6')
+  })
+
   it('falls back to the first offered rule without text when the model is unavailable', async () => {
     generateContent.mockRejectedValue(new Error('quota'))
 

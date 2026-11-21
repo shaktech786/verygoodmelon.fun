@@ -8,9 +8,9 @@ const MECHANIC_DESCRIPTIONS: Record<string, string> = {
   mouse_follow: 'The orb glides after the pointer or a finger.',
   stars: 'Small stars appear and bob gently. Touch one to gather it.',
   pulse_gems: 'Gems slowly brighten and dim. Gather one while it shines.',
-  chasers: 'Shy round shadows drift toward the orb. A touch only nudges the orb away; nothing is lost.',
+  chasers: 'Shy round shadows wander slowly through the field on their own paths. Bumping one only nudges the orb away; nothing is lost.',
   sweepers: 'Slow tides of light sweep across and carry the orb along; nothing is lost.',
-  blaster: 'The orb sends out light. Shadows the light reaches turn into stars.',
+  blaster: 'The orb sends out light. Light gathers the stars it reaches and turns shadows into stars.',
   phase_dash: 'The orb can glide quickly. Gliding through a shadow turns it into a star.',
   combo_chain: 'Gathering in a steady rhythm grows a glow multiplier. A pause only lowers it one step.',
   gravity_well: 'Lights near the orb drift toward it on their own.',
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
 
 async function handleMutation(body: Record<string, unknown>) {
   const { wave, category } = body
-  if (!isCategory(category) || wave !== MECHANIC_CATEGORIES.indexOf(category)) {
+  if (!isCategory(category) || typeof wave !== 'number' || !Number.isInteger(wave) || wave < 0 || wave >= MECHANIC_CATEGORIES.length) {
     return NextResponse.json({ error: 'Unknown stage' }, { status: 400 })
   }
   const options = (Array.isArray(body.options) ? body.options : [])
@@ -114,7 +114,7 @@ async function handleMutation(body: Record<string, unknown>) {
 
     const prompt = `${VOICE}
 
-Wave ${(wave as number) + 1} of 7. The player ${STYLE_NOTES[picture.style]}.
+Rule ${wave + 1} of ${MECHANIC_CATEGORIES.length}. The player ${STYLE_NOTES[picture.style]}.
 Rules so far: ${picture.history.map(m => m.title || m.id).join(' → ') || 'none yet'}.
 
 ${optionsList}

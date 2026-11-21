@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { MutationRecord } from '../engine/types'
 import { isControlTarget } from './controls'
 import { MechanicIcon } from './MechanicIcon'
@@ -35,12 +35,20 @@ export default function FinaleScreen({
   retroFont,
   reducedMotion,
 }: FinaleScreenProps) {
-  const [phase, setPhase] = useState(0)
+  const [phase, setPhase] = useState(reducedMotion ? REVEAL_MS.length : 0)
+  const headingRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
+    if (reducedMotion) return
     const timers = REVEAL_MS.map((ms, i) => setTimeout(() => setPhase(i + 1), ms))
     return () => timers.forEach(clearTimeout)
-  }, [])
+  }, [reducedMotion])
+
+  // Focus waits for the name, so a screen reader hears the whole sentence once
+  const named = phase >= 1 && gameName !== ''
+  useEffect(() => {
+    if (named) headingRef.current?.focus({ preventScroll: true })
+  }, [named])
 
   const canPlayAgain = phase >= 3
 
@@ -49,6 +57,8 @@ export default function FinaleScreen({
     if (!canPlayAgain) return
     const handler = (e: KeyboardEvent) => {
       if (e.key !== 'Enter' || e.repeat || isControlTarget(e.target)) return
+      // Otherwise the same key press also activates BEGIN once the title takes focus, skipping it
+      e.preventDefault()
       onPlayAgain()
     }
     window.addEventListener('keydown', handler)
@@ -61,31 +71,38 @@ export default function FinaleScreen({
 
   return (
     <div
-      className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center px-4 py-8 bg-card-bg"
+      className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center px-4 py-5 sm:py-6 bg-card-bg"
       role="dialog"
-      aria-label={gameName ? `Your game is finished. It is called ${gameName}.` : 'Your game is finished.'}
+      aria-label="Your game is finished"
     >
       <div className="text-center w-full max-w-md">
         {phase >= 1 && (
-          <p className={`text-xs tracking-[0.2em] uppercase mb-3 text-foreground/70 ${fade}`}>
+          <p className={`text-xs tracking-[0.2em] uppercase mb-2 text-foreground/70 ${fade}`} aria-hidden="true">
             Your game is finished. It is called
           </p>
         )}
 
-        {phase >= 1 && gameName && (
+        {named ? (
           <div className={fade}>
-            <h2 className={`text-base sm:text-2xl leading-relaxed mb-2 break-words text-melon-green ${retroFont}`}>
+            <h2
+              ref={headingRef}
+              tabIndex={-1}
+              className={`text-base sm:text-xl leading-relaxed mb-1 break-words text-melon-green focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded ${retroFont}`}
+            >
+              <span className="sr-only">Your game is finished. It is called </span>
               {gameName}
             </h2>
             {tagline && <p className="text-sm italic text-foreground/80 break-words">{tagline}</p>}
           </div>
+        ) : (
+          phase >= 1 && <p className="text-sm text-foreground/70 py-2">Finding its name…</p>
         )}
 
         {phase >= 2 && (
           <div className={fade}>
-            <p className="text-sm sm:text-base text-foreground mt-5 mb-5 leading-relaxed">{closingLine}</p>
+            <p className="text-sm text-foreground mt-3 mb-3 leading-relaxed">{closingLine}</p>
 
-            <dl className="grid grid-cols-3 gap-2 mb-5 py-3 px-2 rounded-lg bg-background border border-card-border">
+            <dl className="grid grid-cols-3 gap-2 mb-3 py-2 px-2 rounded-lg bg-background border border-card-border">
               {[
                 ['light', String(score)],
                 [statLabel, String(statValue)],
@@ -93,20 +110,20 @@ export default function FinaleScreen({
               ].map(([label, value]) => (
                 <div key={label} className="flex flex-col-reverse">
                   <dt className="text-xs mt-0.5 text-foreground/70">{label}</dt>
-                  <dd className="text-lg font-semibold text-foreground tabular-nums">{value}</dd>
+                  <dd className="text-base font-semibold text-foreground tabular-nums">{value}</dd>
                 </div>
               ))}
             </dl>
 
-            <div className="text-left mb-5">
-              <p className="text-xs tracking-[0.15em] uppercase mb-2 text-foreground/70">How it grew</p>
-              <ol>
+            <div className="text-left mb-3">
+              <p className="text-xs tracking-[0.15em] uppercase mb-1 text-foreground/70">How it grew, in order</p>
+              <ol className="grid grid-cols-2 gap-x-4">
                 {mutations.map((m, i) => (
-                  <li key={i} className="flex items-center gap-3 py-1.5 border-b border-card-border last:border-b-0">
-                    <span className="w-5 flex justify-center text-melon-green shrink-0">
-                      <MechanicIcon id={m.id} />
+                  <li key={i} className="flex items-center gap-2 py-1 border-b border-card-border min-w-0">
+                    <span className="w-4 flex justify-center text-melon-green shrink-0">
+                      <MechanicIcon id={m.id} size={14} />
                     </span>
-                    <span className="text-sm text-foreground/85 flex-1 break-words">{m.title}</span>
+                    <span className="text-xs sm:text-sm text-foreground/85 break-words min-w-0">{m.title}</span>
                   </li>
                 ))}
               </ol>
@@ -123,8 +140,8 @@ export default function FinaleScreen({
             >
               PLAY AGAIN
             </button>
-            <p className="text-xs mt-4 text-foreground/70">
-              No one else will ever play this exact game.
+            <p className="text-xs mt-2 text-foreground/70">
+              Play again and its rules will arrive in a different order.
             </p>
           </div>
         )}

@@ -4,9 +4,10 @@ import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from '
 import { Press_Start_2P } from 'next/font/google'
 import { Pause } from 'lucide-react'
 import type { GameState, MutationResult, MutationRecord, PlayStyle } from './engine/types'
-import { MECHANIC_CATEGORIES, MECHANIC_OPTIONS, DEFAULT_PARAMS, MAX_WAVES } from './engine/types'
+import { MECHANIC_CATEGORIES, DEFAULT_PARAMS, GAME_W, GAME_H } from './engine/types'
 import { getProfileSummary } from './engine/engine'
 import { fallbackName, fallbackTagline, reflection } from './engine/naming'
+import { planRun, planOrder, type PlanStep } from './engine/plan'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import GameCanvas from './components/GameCanvas'
 import TitleScreen from './components/TitleScreen'
@@ -22,8 +23,11 @@ type ActiveMechanic = { id: string; params: Record<string, number> }
 
 const MUTATE_URL = '/api/cascade/mutate'
 const REQUEST_TIMEOUT_MS = 8000
-const BLOOM_SECONDS = DEFAULT_PARAMS.score_rush.duration
-const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '])
+const ARROW_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
+const LAST_PLAN_KEY = 'shapeshifter_lastPlan'
+// A phone gets a tall field so the game fills the screen instead of a third of it
+const PORTRAIT_W = 480
+const PORTRAIT_H = 720
 
 const FALLBACK_MUTATIONS: Record<string, Omit<MutationResult, 'params'>> = {
   arrow_keys: {
@@ -53,8 +57,8 @@ const FALLBACK_MUTATIONS: Record<string, Omit<MutationResult, 'params'>> = {
   chasers: {
     mechanicId: 'chasers',
     title: 'SHY SHADOWS',
-    description: 'Little shadows drift toward you. They only want to be near.',
-    flavorText: 'Every bright thing gathers company.',
+    description: 'Little shadows wander through on their own slow paths.',
+    flavorText: 'They are only passing by.',
   },
   sweepers: {
     mechanicId: 'sweepers',
@@ -65,7 +69,7 @@ const FALLBACK_MUTATIONS: Record<string, Omit<MutationResult, 'params'>> = {
   blaster: {
     mechanicId: 'blaster',
     title: 'A LANTERN',
-    description: 'Your orb can send out light. Shadows it reaches turn into stars.',
+    description: 'Your orb can send out light. It gathers stars, and turns shadows into stars.',
     flavorText: 'Shadows were only stars that had not been seen yet.',
   },
   phase_dash: {
@@ -94,27 +98,23 @@ const FALLBACK_MUTATIONS: Record<string, Omit<MutationResult, 'params'>> = {
   },
 }
 
-const DEFAULT_PICKS: Record<string, string> = {
-  movement: 'arrow_keys',
-  collectible: 'stars',
-  threat: 'chasers',
-  power: 'blaster',
-  modifier: 'combo_chain',
-  climax: 'score_rush',
-}
-
 function isTextEntry(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest('input, textarea, select, [contenteditable="true"]') !== null
 }
 
-const MUTATION_COUNT = MECHANIC_CATEGORIES.length
+const RULE_COUNT = MECHANIC_CATEGORIES.length
 const TOUCH_QUERY = '(pointer: coarse)'
+const NARROW_QUERY = '(max-width: 639px)'
 
-function subscribeTouch(onChange: () => void) {
-  const mq = window.matchMedia(TOUCH_QUERY)
-  mq.addEventListener('change', onChange)
-  return () => mq.removeEventListener('change', onChange)
+function subscribeQuery(query: string) {
+  return (onChange: () => void) => {
+    const mq = window.matchMedia(query)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }
 }
+const subscribeTouch = subscribeQuery(TOUCH_QUERY)
+const subscribeNarrow = subscribeQuery(NARROW_QUERY)
 
 function textOr(value: unknown, fallback: string): string {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback
@@ -131,33 +131,58 @@ function toMutation(mechanicId: string, data: Record<string, unknown>): Mutation
   }
 }
 
+function readLastPlan(): string | undefined {
+  try {
+    return localStorage.getItem(LAST_PLAN_KEY) ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+function rememberPlan(order: string) {
+  try {
+    localStorage.setItem(LAST_PLAN_KEY, order)
+  } catch {
+    // Without storage the in-memory order still keeps this visit's replays different
+  }
+}
+
+function rulesLabel(learned: number): string {
+  return learned === 0 ? 'No rules yet' : `Rule ${learned} of ${RULE_COUNT}`
+}
+
 export default function CascadeGame() {
   const [phase, setPhase] = useState<GamePhase>('title')
   const [runId, setRunId] = useState(0)
   const [currentWave, setCurrentWave] = useState(0)
   const [score, setScore] = useState(0)
-  const [multiplier, setMultiplier] = useState(1)
-  const [rushTimer, setRushTimer] = useState(0)
   const [currentMutation, setCurrentMutation] = useState<MutationResult | null>(null)
   const [allMutations, setAllMutations] = useState<MutationRecord[]>([])
   const [activeMechanics, setActiveMechanics] = useState<ActiveMechanic[]>([])
   const [gameName, setGameName] = useState('')
   const [tagline, setTagline] = useState('')
   const [finale, setFinale] = useState({ statValue: 0, statLabel: '', totalTime: 0, closingLine: '' })
+  const [lockedPortrait, setLockedPortrait] = useState<boolean | null>(null)
   const reducedMotion = useReducedMotion()
   // Arrow keys cannot be pressed on a phone, so touch players always get the follow control
   const isTouch = useSyncExternalStore(subscribeTouch, () => window.matchMedia(TOUCH_QUERY).matches, () => false)
+  const isNarrow = useSyncExternalStore(subscribeNarrow, () => window.matchMedia(NARROW_QUERY).matches, () => false)
+  // The field's shape is fixed once a run starts, so turning the phone never resets a game
+  const portrait = lockedPortrait ?? isNarrow
+  const [fieldW, fieldH] = portrait ? [PORTRAIT_W, PORTRAIT_H] : [GAME_W, GAME_H]
   const gameStateRef = useRef<GameState | null>(null)
   const prefetchRef = useRef<{ wave: number; promise: Promise<MutationResult> } | null>(null)
   const runRef = useRef(0)
+  const planRef = useRef<PlanStep[]>([])
+  const lastPlanRef = useRef<string | undefined>(undefined)
+  const boxRef = useRef<HTMLDivElement>(null)
 
   const fetchMutation = useCallback(async (
     wave: number,
     mechanics: ActiveMechanic[],
     mutations: MutationRecord[],
   ): Promise<MutationResult> => {
-    const category = MECHANIC_CATEGORIES[wave]
-    const options = category === 'movement' && isTouch ? ['mouse_follow'] : [...MECHANIC_OPTIONS[category]]
+    const { category, options } = planRef.current[wave]
     const s = gameStateRef.current
 
     try {
@@ -179,21 +204,28 @@ export default function CascadeGame() {
       if (!options.includes(data.mechanicId)) throw new Error('unknown mechanic')
       return toMutation(data.mechanicId, data)
     } catch {
-      const pick = options.includes(DEFAULT_PICKS[category]) ? DEFAULT_PICKS[category] : options[0]
-      return toMutation(pick, {})
+      // The run already leans toward one rule per step, so the game varies even with no reply
+      return toMutation(options[0], {})
     }
-  }, [isTouch])
+  }, [])
 
   const prefetch = useCallback((wave: number, mechanics: ActiveMechanic[], mutations: MutationRecord[]) => {
-    prefetchRef.current = wave < MUTATION_COUNT
+    prefetchRef.current = wave < RULE_COUNT
       ? { wave, promise: fetchMutation(wave, mechanics, mutations) }
       : null
   }, [fetchMutation])
 
   const handleStart = useCallback(() => {
+    const avoid = lastPlanRef.current ?? readLastPlan()
+    const plan = planRun(Math.random, isTouch, avoid)
+    const order = planOrder(plan)
+    planRef.current = plan
+    lastPlanRef.current = order
+    rememberPlan(order)
+    setLockedPortrait(isNarrow)
     setPhase('playing')
     prefetch(0, [], [])
-  }, [prefetch])
+  }, [prefetch, isTouch, isNarrow])
 
   const handleMutationReady = useCallback(async () => {
     setPhase('mutating')
@@ -239,7 +271,7 @@ export default function CascadeGame() {
     setScore(finalScore)
     setFinale({
       statValue: (hasChain ? s?.maxCombo : s?.collectTotal) ?? 0,
-      statLabel: hasChain ? 'longest rhythm' : 'stars gathered',
+      statLabel: hasChain ? 'longest rhythm' : 'lights gathered',
       totalTime: s?.totalTime ?? 0,
       closingLine: reflection({ transformed: s?.transformed ?? 0, nudges: s?.nudges ?? 0 }),
     })
@@ -282,13 +314,12 @@ export default function CascadeGame() {
     setPhase('title')
     setCurrentWave(0)
     setScore(0)
-    setMultiplier(1)
-    setRushTimer(0)
     setCurrentMutation(null)
     setAllMutations([])
     setActiveMechanics([])
     setGameName('')
     setTagline('')
+    setLockedPortrait(null)
     prefetchRef.current = null
   }, [])
 
@@ -318,83 +349,61 @@ export default function CascadeGame() {
     }
   }, [phase, pause, resume])
 
-  // A key still held from play would otherwise scroll the page and carry the new rule's card out of view
+  // The finale is taller than a short laptop screen allows only if the box is half scrolled away
   useEffect(() => {
-    if (phase !== 'mutating') return
-    const onKey = (e: KeyboardEvent) => {
-      if (SCROLL_KEYS.has(e.key) && !isControlTarget(e.target)) e.preventDefault()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [phase])
+    if (phase !== 'finale') return
+    boxRef.current?.scrollIntoView({ block: 'nearest', behavior: reducedMotion ? 'auto' : 'smooth' })
+  }, [phase, reducedMotion])
+
+  // While the game has focus, the arrow keys and Space belong to it, never to the page's scrollbar
+  const keepKeysInGame = (e: React.KeyboardEvent) => {
+    if (ARROW_KEYS.has(e.key) || (e.key === ' ' && !isControlTarget(e.target))) e.preventDefault()
+  }
 
   const showHud = phase === 'playing' || phase === 'paused' || phase === 'mutating'
-  const bloomLeft = rushTimer / BLOOM_SECONDS
+  const blooming = activeMechanics.some(m => m.id === 'score_rush')
+  const hudLabel = rulesLabel(currentWave)
 
   return (
-    <div className="w-full max-w-[640px] mx-auto">
+    <div className="w-full max-w-[640px] mx-auto" onKeyDown={keepKeysInGame}>
       <h1 className="sr-only">The Shapeshifter</h1>
       {/* Overlays share the canvas's grid cell so a tall screen grows the box instead of being clipped */}
-      <div className="grid rounded-xl overflow-hidden border border-card-border bg-card-bg">
+      <div ref={boxRef} className="grid rounded-xl overflow-hidden border border-card-border bg-card-bg scroll-mt-20">
         <div className="col-start-1 row-start-1">
           <GameCanvas
-            key={runId}
+            key={`${runId}-${fieldW}`}
+            width={fieldW}
+            height={fieldH}
             isPlaying={phase === 'playing'}
             activeMechanics={activeMechanics}
             onMutationReady={handleMutationReady}
             onGameComplete={handleGameComplete}
             onScoreChange={setScore}
-            onMultiplierChange={setMultiplier}
-            onRushTimerChange={setRushTimer}
             gameStateRef={gameStateRef}
             reducedMotion={reducedMotion}
           />
         </div>
 
         {showHud && (
-          <div className="col-start-1 row-start-1 self-start relative w-full aspect-[4/3] pointer-events-none z-10">
-            <p className="absolute top-2 left-3 text-xs text-foreground/80">
-              Wave {currentWave + 1} of {MAX_WAVES}
-            </p>
+          <div
+            className="col-start-1 row-start-1 self-start relative w-full pointer-events-none z-10"
+            style={{ aspectRatio: `${fieldW} / ${fieldH}` }}
+          >
+            <p className="absolute top-2 left-3 text-xs text-foreground/80">{hudLabel}</p>
 
             <p className="absolute top-2 right-3 text-right text-foreground">
               <span className="text-xs text-foreground/80 mr-1.5">light</span>
               <span className="text-sm sm:text-base font-semibold tabular-nums">{score}</span>
             </p>
 
-            {multiplier > 1 && (
-              <p className="absolute top-2 left-1/2 -translate-x-1/2 text-xs sm:text-sm font-semibold text-accent">
-                {multiplier}× glow
-              </p>
-            )}
-
             {phase === 'playing' && currentWave === 0 && (
-              <p className="absolute bottom-12 sm:bottom-16 inset-x-0 text-center text-sm text-foreground/80">
+              <p className="absolute bottom-6 sm:bottom-10 inset-x-0 text-center text-sm text-foreground/80">
                 {isTouch ? 'Tap the orb.' : 'Click the orb, or press Space.'}
               </p>
             )}
 
-            {rushTimer > 0 && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-1/2 max-w-[240px]" aria-hidden="true">
-                <p className="text-center text-xs text-foreground/80 mb-1">the bloom</p>
-                <div className="h-1.5 rounded-full bg-foreground/10 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full bg-[var(--melon-pink)] ${reducedMotion ? '' : 'transition-[width] duration-1000 ease-linear'}`}
-                    style={{ width: `${Math.max(0, Math.min(1, bloomLeft)) * 100}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {phase === 'playing' && (
-              <button
-                type="button"
-                onClick={pause}
-                aria-label="Pause"
-                className="pointer-events-auto absolute bottom-2 left-2 w-11 h-11 flex items-center justify-center rounded-lg border border-card-border bg-card-bg/90 text-foreground/80 hover:text-foreground cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-              >
-                <Pause size={18} aria-hidden="true" />
-              </button>
+            {blooming && (
+              <p className="absolute bottom-3 inset-x-0 text-center text-xs text-foreground/80">the bloom</p>
             )}
           </div>
         )}
@@ -418,7 +427,7 @@ export default function CascadeGame() {
             <button
               type="button"
               onClick={handlePlayAgain}
-              className="text-sm underline cursor-pointer text-foreground/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded px-1"
+              className="text-sm underline cursor-pointer text-foreground/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded px-1 min-h-[44px]"
             >
               Start over
             </button>
@@ -427,14 +436,15 @@ export default function CascadeGame() {
         )}
 
         {phase === 'title' && (
-          <TitleScreen onStart={handleStart} retroFont={retroFont.className} isTouch={isTouch} />
+          <TitleScreen onStart={handleStart} retroFont={retroFont.className} isTouch={isTouch} focusBegin={runId > 0} />
         )}
 
         {phase === 'mutating' && (
           <MutationScreen
             key={currentWave}
             mutation={currentMutation}
-            waveNumber={currentWave + 1}
+            ruleNumber={currentWave + 1}
+            ruleCount={RULE_COUNT}
             onContinue={handleMutationContinue}
             retroFont={retroFont.className}
             isTouch={isTouch}
@@ -459,9 +469,27 @@ export default function CascadeGame() {
         )}
       </div>
 
+      {/* Pause sits below the field, so a thumb guiding the orb can never press it by accident */}
+      <div className="flex items-center justify-between gap-3 mt-2 min-h-11">
+        {phase === 'playing' && (
+          <>
+            <button
+              type="button"
+              onClick={pause}
+              className="inline-flex items-center gap-2 min-h-11 px-4 rounded-lg border border-card-border bg-card-bg text-sm text-foreground/85 hover:text-foreground cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <Pause size={16} aria-hidden="true" />
+              Pause
+            </button>
+            {!isTouch && <p className="text-xs text-foreground/70">Esc or P also pauses</p>}
+          </>
+        )}
+      </div>
+
       <div className="sr-only" role="status" aria-live="polite">
-        {phase === 'playing' && `Wave ${currentWave + 1} of ${MAX_WAVES}.`}
+        {phase === 'playing' && `${hudLabel}.`}
         {phase === 'paused' && 'Paused.'}
+        {phase === 'finale' && 'Your game is finished.'}
       </div>
     </div>
   )

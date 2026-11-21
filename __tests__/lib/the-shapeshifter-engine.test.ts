@@ -130,6 +130,49 @@ describe('The Shapeshifter engine', () => {
     expect(glowing).toBeLessThan(3.5)
   })
 
+  it('shadows wander on their own way instead of chasing the orb', () => {
+    const s = withMechanics('arrow_keys', 'chasers')
+    s.spawnTimers.chasers = -999
+    const shadow = place(s, 'chaser', s.px + 150, s.py, 30, 0)
+
+    run(s, 3)
+
+    expect(Math.hypot(shadow.x - s.px, shadow.y - s.py)).toBeGreaterThan(190)
+  })
+
+  it('new shadows drift slowly', () => {
+    const s = withMechanics('arrow_keys', 'chasers')
+    run(s, 12)
+    const shadows = s.entities.filter((e) => e.type === 'chaser')
+    expect(shadows.length).toBeGreaterThan(0)
+    for (const e of shadows) expect(Math.hypot(e.vx, e.vy)).toBeLessThanOrEqual(40)
+  })
+
+  it('light gathers any star it reaches, so the lantern is useful before any shadow arrives', () => {
+    const s = withMechanics('arrow_keys', 'stars', 'blaster')
+    s.spawnTimers.stars = -999
+    place(s, 'star', s.px + 120, s.py).age = 2
+    s.mx = s.px + 200
+    s.my = s.py
+    s.keys.add(' ')
+
+    run(s, 0.6)
+
+    expect(s.collectTotal).toBe(1)
+    expect(count(s, 'star')).toBe(0)
+  })
+
+  it('can be laid out tall for a phone, keeping everything inside the taller field', () => {
+    const s = createState(480, 720)
+    for (const id of ['arrow_keys', 'stars', 'chasers']) activateMechanic(s, id, {})
+    expect([s.w, s.h, s.px, s.py]).toEqual([480, 720, 240, 360])
+    run(s, 20)
+    for (const e of s.entities.filter((e) => e.type === 'star')) {
+      expect(e.x).toBeLessThanOrEqual(480)
+      expect(e.y).toBeLessThanOrEqual(720)
+    }
+  })
+
   it('a player who stays still through every hazard ends with at least the light they had', () => {
     const s = withMechanics('arrow_keys', 'stars', 'chasers', 'sweepers')
     s.score = 30

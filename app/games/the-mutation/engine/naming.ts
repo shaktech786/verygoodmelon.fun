@@ -15,13 +15,20 @@ const STYLE_TAGLINE: Record<PlayStyle, string> = {
 }
 
 const COLLECTIBLE_WORD: Record<string, string> = { stars: 'STARS', pulse_gems: 'GEMS' }
-const COMPANION_WORD: Record<string, string> = { chasers: 'SHADOWS', sweepers: 'TIDES' }
+const RULE_WORD: Record<string, string> = {
+  chasers: 'SHADOWS',
+  sweepers: 'TIDES',
+  blaster: 'LANTERNS',
+  phase_dash: 'GLIDES',
+  combo_chain: 'RHYTHMS',
+  gravity_well: 'ORBITS',
+}
 
-/** Used when no name comes back from the server. */
+/** Used when no name comes back from the server. The third rule to arrive varies from run to run. */
 export function fallbackName(mechanicIds: string[], style: PlayStyle): string {
   const collectible = mechanicIds.map(id => COLLECTIBLE_WORD[id]).find(Boolean) ?? 'LIGHTS'
-  const companion = mechanicIds.map(id => COMPANION_WORD[id]).find(Boolean)
-  return [STYLE_WORD[style], collectible, companion && `& ${companion}`].filter(Boolean).join(' ')
+  const third = mechanicIds.map(id => RULE_WORD[id]).find(Boolean)
+  return [STYLE_WORD[style], collectible, third && `& ${third}`].filter(Boolean).join(' ')
 }
 
 export function fallbackTagline(style: PlayStyle): string {

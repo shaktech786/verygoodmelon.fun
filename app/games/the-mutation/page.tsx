@@ -5,7 +5,7 @@ import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 export const metadata: Metadata = {
   title: 'The Shapeshifter | VeryGoodMelon.Fun',
   description:
-    'A self-building arcade game that evolves as you play. Every game is unique — no two plays are alike.',
+    'A small, calm arcade game that learns six new rules as you play, in a new order every time. Nothing in it can hurt you.',
 }
 
 export default function CascadePage() {

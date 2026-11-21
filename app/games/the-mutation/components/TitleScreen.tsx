@@ -1,15 +1,23 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { isControlTarget } from './controls'
 
 interface TitleScreenProps {
   onStart: () => void
   retroFont: string
   isTouch: boolean
+  /** After Play Again, so keyboard focus lands on the game instead of the page. */
+  focusBegin: boolean
 }
 
-export default function TitleScreen({ onStart, retroFont, isTouch }: TitleScreenProps) {
+export default function TitleScreen({ onStart, retroFont, isTouch, focusBegin }: TitleScreenProps) {
+  const beginRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (focusBegin) beginRef.current?.focus({ preventScroll: true })
+  }, [focusBegin])
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.repeat || isControlTarget(e.target)) return
@@ -38,6 +46,7 @@ export default function TitleScreen({ onStart, retroFont, isTouch }: TitleScreen
         </p>
 
         <button
+          ref={beginRef}
           type="button"
           className={`text-xs sm:text-sm tracking-[0.15em] px-6 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${retroFont}`}
         >
@@ -45,7 +54,7 @@ export default function TitleScreen({ onStart, retroFont, isTouch }: TitleScreen
         </button>
 
         <p className="mt-6 sm:mt-8 text-sm text-foreground/80 leading-relaxed">
-          Each wave it learns one new rule. Nothing here can hurt you.
+          It learns six new rules as you play, in an order of its own. Nothing here can hurt you.
         </p>
         <p className="mt-1 text-xs text-foreground/70">
           {isTouch ? 'Tap to begin.' : 'Enter, Space or click to begin.'}

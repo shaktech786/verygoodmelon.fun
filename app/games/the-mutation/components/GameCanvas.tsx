@@ -2,7 +2,6 @@
 
 import { useRef, useEffect, useCallback } from 'react'
 import type { GameState } from '../engine/types'
-import { GAME_W, GAME_H } from '../engine/types'
 import {
   createState,
   update as updateEngine,
@@ -16,45 +15,43 @@ import { isControlTarget } from './controls'
 import { usePalette } from './usePalette'
 
 interface GameCanvasProps {
+  width: number
+  height: number
   isPlaying: boolean
   activeMechanics: Array<{ id: string; params: Record<string, number> }>
   onMutationReady: () => void
   onGameComplete: () => void
   onScoreChange: (score: number) => void
-  onMultiplierChange: (multiplier: number) => void
-  onRushTimerChange: (timer: number) => void
   gameStateRef: React.MutableRefObject<GameState | null>
   reducedMotion: boolean
 }
 
 type CascadeWindow = Window & { __cascadeState?: GameState }
 
-const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '])
-
 function normalizeKey(key: string): string {
   return key.length === 1 ? key.toLowerCase() : key
 }
 
 export default function GameCanvas({
+  width,
+  height,
   isPlaying,
   activeMechanics,
   onMutationReady,
   onGameComplete,
   onScoreChange,
-  onMultiplierChange,
-  onRushTimerChange,
   gameStateRef,
   reducedMotion,
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stateRef = useRef<GameState | null>(null)
   const playingRef = useRef(false)
-  const callbacksRef = useRef({ onMutationReady, onGameComplete, onScoreChange, onMultiplierChange, onRushTimerChange })
+  const callbacksRef = useRef({ onMutationReady, onGameComplete, onScoreChange })
   const palette = usePalette()
   const paletteRef = useRef(palette)
 
   useEffect(() => {
-    callbacksRef.current = { onMutationReady, onGameComplete, onScoreChange, onMultiplierChange, onRushTimerChange }
+    callbacksRef.current = { onMutationReady, onGameComplete, onScoreChange }
   })
 
   // A theme change while the game is paused or between waves still repaints the frozen frame
@@ -66,14 +63,14 @@ export default function GameCanvas({
   }, [palette, reducedMotion])
 
   useEffect(() => {
-    const state = createState()
+    const state = createState(width, height)
     stateRef.current = state
     gameStateRef.current = state
     // Lets the e2e suite fast-forward waves instead of waiting out real timers
     if (process.env.NODE_ENV !== 'production') {
       (window as CascadeWindow).__cascadeState = state
     }
-  }, [gameStateRef])
+  }, [gameStateRef, width, height])
 
   useEffect(() => {
     const s = stateRef.current
@@ -85,21 +82,19 @@ export default function GameCanvas({
 
   const toLogical = useCallback((clientX: number, clientY: number): [number, number] => {
     const canvas = canvasRef.current
-    if (!canvas) return [GAME_W / 2, GAME_H / 2]
+    if (!canvas) return [width / 2, height / 2]
     const rect = canvas.getBoundingClientRect()
     return [
-      (clientX - rect.left) * (GAME_W / rect.width),
-      (clientY - rect.top) * (GAME_H / rect.height),
+      (clientX - rect.left) * (width / rect.width),
+      (clientY - rect.top) * (height / rect.height),
     ]
-  }, [])
+  }, [width, height])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const s = stateRef.current
-      if (!s || !playingRef.current || isControlTarget(e.target)) return
+      if (!s || !playingRef.current || isControlTarget(e.target) || e.repeat) return
       const key = normalizeKey(e.key)
-      if (SCROLL_KEYS.has(key)) e.preventDefault()
-      if (e.repeat) return
       s.keys.add(key)
       // Before any mechanic exists the orb can only be pulsed, so the keyboard gets a way to do it
       if (s.activeMechanics.length === 0 && (key === ' ' || key === 'Enter')) {
@@ -183,8 +178,6 @@ export default function GameCanvas({
     let frame = 0
     let lastTime = performance.now()
     let lastScore = -1
-    let lastMultiplier = -1
-    let lastRush = -1
 
     const loop = (time: number) => {
       const s = stateRef.current
@@ -201,15 +194,6 @@ export default function GameCanvas({
       if (score !== lastScore) {
         lastScore = score
         cb.onScoreChange(score)
-      }
-      if (s.multiplier !== lastMultiplier) {
-        lastMultiplier = s.multiplier
-        cb.onMultiplierChange(s.multiplier)
-      }
-      const rush = s.rushActive ? Math.max(0, Math.ceil(s.rushTimer)) : 0
-      if (rush !== lastRush) {
-        lastRush = rush
-        cb.onRushTimerChange(rush)
       }
 
       if (shouldMutate(s)) {
@@ -234,10 +218,10 @@ export default function GameCanvas({
     <div className="relative select-none">
       <canvas
         ref={canvasRef}
-        width={GAME_W}
-        height={GAME_H}
+        width={width}
+        height={height}
         className="w-full block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-        style={{ aspectRatio: '4/3', touchAction: 'none' }}
+        style={{ aspectRatio: `${width} / ${height}`, touchAction: 'none' }}
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}
         onMouseUp={release}

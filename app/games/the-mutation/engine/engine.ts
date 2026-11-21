@@ -22,17 +22,22 @@ const TIDE_HALF_WIDTH = 10
 const TRANSFORM_SCORE = 5
 const BLOOM_BREATH_HZ = 0.25
 const MAX_CHAIN_LEVEL = 4
+const SHADOW_SHY_RANGE = 90
+const SHADOW_WANDER = 0.5
+const SHADOW_EXIT_MARGIN = 40
+// A star made from a shadow stays long enough to be seen before light can gather it
+const NEW_STAR_SETTLE = 0.8
 
 // ==========================================
 // STATE CREATION
 // ==========================================
 
-export function createState(): GameState {
+export function createState(w: number = GAME_W, h: number = GAME_H): GameState {
   return {
-    w: GAME_W,
-    h: GAME_H,
-    px: GAME_W / 2,
-    py: GAME_H / 2,
+    w,
+    h,
+    px: w / 2,
+    py: h / 2,
     pvx: 0,
     pvy: 0,
     driftX: 0,
@@ -61,8 +66,8 @@ export function createState(): GameState {
     rushTimer: 0,
     rushActive: false,
     keys: new Set(),
-    mx: GAME_W / 2,
-    my: GAME_H / 2,
+    mx: w / 2,
+    my: h / 2,
     mDown: false,
     clickThisFrame: false,
     moveDistTotal: 0,
@@ -429,13 +434,13 @@ function checkCollisions(s: GameState): void {
     }
 
     if (e.type === 'bullet') {
-      for (const shadow of s.entities) {
-        if (!shadow.active || shadow.type !== 'chaser') continue
-        if (dist(e.x, e.y, shadow.x, shadow.y) < e.size + shadow.size) {
-          transformShadow(s, shadow)
-          e.active = false
-          break
-        }
+      for (const other of s.entities) {
+        if (!other.active || other === e || dist(e.x, e.y, other.x, other.y) >= e.size + other.size) continue
+        if (other.type === 'chaser') transformShadow(s, other)
+        else if ((other.type === 'star' || other.type === 'gem') && other.age > NEW_STAR_SETTLE) collectItem(s, other)
+        else continue
+        e.active = false
+        break
       }
     }
   }
@@ -626,19 +631,28 @@ function updateChasers(s: GameState, dt: number): void {
     else if (side === 1) { x = s.w + 15; y = Math.random() * s.h }
     else if (side === 2) { x = Math.random() * s.w; y = -15 }
     else { x = Math.random() * s.w; y = s.h + 15 }
-    s.entities.push({ id: s.nextId++, type: 'chaser', x, y, vx: 0, vy: 0, size: 8, alpha: 1, active: true, age: 0, hp: 1 })
+    // Each shadow heads for its own spot somewhere in the field, not for the orb
+    const tx = s.w * (0.2 + Math.random() * 0.6)
+    const ty = s.h * (0.2 + Math.random() * 0.6)
+    const d = Math.max(1, dist(x, y, tx, ty))
+    s.entities.push({
+      id: s.nextId++, type: 'chaser', x, y,
+      vx: ((tx - x) / d) * p.speed, vy: ((ty - y) / d) * p.speed,
+      size: 8, alpha: 1, active: true, age: 0, hp: 1,
+    })
     s.spawnTimers.chasers = 0
   }
 
   for (const e of s.entities) {
     if (e.type !== 'chaser' || !e.active) continue
-    const dx = s.px - e.x
-    const dy = s.py - e.y
-    const d = Math.sqrt(dx * dx + dy * dy)
-    if (d > 1) {
-      e.vx = (dx / d) * p.speed
-      e.vy = (dy / d) * p.speed
-    }
+    // A slow, curving drift that never turns toward the orb; close by, a shadow only slows down to look
+    const heading = Math.atan2(e.vy, e.vx) + Math.sin(s.totalTime * 0.7 + e.id) * SHADOW_WANDER * dt
+    const shy = dist(s.px, s.py, e.x, e.y) < SHADOW_SHY_RANGE ? 0.5 : 1
+    e.vx = Math.cos(heading) * p.speed * shy
+    e.vy = Math.sin(heading) * p.speed * shy
+    const outside = e.x < -SHADOW_EXIT_MARGIN || e.x > s.w + SHADOW_EXIT_MARGIN
+      || e.y < -SHADOW_EXIT_MARGIN || e.y > s.h + SHADOW_EXIT_MARGIN
+    if (outside && e.age > 3) e.active = false
   }
 }
 

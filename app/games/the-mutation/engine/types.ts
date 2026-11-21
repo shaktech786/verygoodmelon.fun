@@ -39,7 +39,7 @@ export const DEFAULT_PARAMS: Record<string, Record<string, number>> = {
   mouse_follow: { responsiveness: 3.5 },
   stars:        { spawnRate: 1.5, value: 10 },
   pulse_gems:   { spawnRate: 2.0, pulseSpeed: 0.6, value: 15 },
-  chasers:      { spawnRate: 4.0, speed: 55, maxCount: 5 },
+  chasers:      { spawnRate: 4.0, speed: 32, maxCount: 5 },
   sweepers:     { spawnRate: 4.5, speed: 100 },
   blaster:      { fireRate: 0.3, bulletSpeed: 400, bulletSize: 4 },
   phase_dash:   { cooldown: 1.5, duration: 0.2, speedMult: 3.5 },

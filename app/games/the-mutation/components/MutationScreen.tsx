@@ -2,21 +2,20 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { MutationResult } from '../engine/types'
-import { MECHANIC_CATEGORIES } from '../engine/types'
 import { isControlTarget } from './controls'
 import { MechanicIcon } from './MechanicIcon'
 
 interface MutationScreenProps {
   /** Null while the next rule is still being chosen. */
   mutation: MutationResult | null
-  waveNumber: number
+  ruleNumber: number
+  ruleCount: number
   onContinue: () => void
   retroFont: string
   isTouch: boolean
   reducedMotion: boolean
 }
 
-const SHIFT_COUNT = MECHANIC_CATEGORIES.length
 const SETTLE_MS = 700
 // Long enough that a click or key press meant for the game cannot dismiss the card unread
 const READ_GUARD_MS = 800
@@ -26,7 +25,7 @@ const KEYBOARD_HINTS: Record<string, string> = {
   mouse_follow: 'Move the mouse, or use the arrow keys.',
   stars: 'Touch a star to gather it.',
   pulse_gems: 'Gather one while it shines. There is no hurry.',
-  chasers: 'A touch only nudges you. Nothing is lost.',
+  chasers: 'A bump only nudges you. Nothing is lost.',
   sweepers: 'If one carries you, let it. Nothing is lost.',
   blaster: 'Hold Space or click to send light.',
   phase_dash: 'Press Space or click to glide.',
@@ -43,7 +42,8 @@ const TOUCH_HINTS: Record<string, string> = {
 
 export default function MutationScreen({
   mutation,
-  waveNumber,
+  ruleNumber,
+  ruleCount,
   onContinue,
   retroFont,
   isTouch,
@@ -82,6 +82,7 @@ export default function MutationScreen({
   const controlHint = mutation
     ? (isTouch && TOUCH_HINTS[mutation.mechanicId]) || KEYBOARD_HINTS[mutation.mechanicId] || ''
     : ''
+  const counter = `Rule ${ruleNumber} of ${ruleCount}`
 
   return (
     <div
@@ -91,8 +92,8 @@ export default function MutationScreen({
       aria-live="polite"
       aria-label={
         mutation
-          ? `Shift ${waveNumber} of ${SHIFT_COUNT}: ${mutation.title}. ${mutation.description} ${controlHint}`
-          : 'The game is shifting'
+          ? `${counter}: ${mutation.title}. ${mutation.description} ${controlHint}`
+          : 'A new rule is arriving'
       }
     >
       {!revealed && (
@@ -103,9 +104,7 @@ export default function MutationScreen({
 
       {revealed && mutation && (
         <div className={`text-center max-w-sm ${reducedMotion ? '' : 'animate-fade'}`}>
-          <p className="text-xs tracking-[0.2em] uppercase mb-3 text-foreground/70">
-            Shift {waveNumber} of {SHIFT_COUNT}
-          </p>
+          <p className="text-xs tracking-[0.2em] uppercase mb-3 text-foreground/70">{counter}</p>
 
           <div className="flex justify-center mb-3 text-melon-green" aria-hidden="true">
             <MechanicIcon id={mutation.mechanicId} size={28} />

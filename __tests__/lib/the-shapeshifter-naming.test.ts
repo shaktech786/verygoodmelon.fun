@@ -11,6 +11,12 @@ describe('The Shapeshifter naming', () => {
     expect(fallbackName(RUN, 'gentle')).not.toMatch(/\d/)
   })
 
+  it('takes the name from whichever rule arrived third, so the same play grows a different name in a different order', () => {
+    expect(fallbackName(['arrow_keys', 'stars', 'blaster', 'chasers', 'combo_chain', 'score_rush'], 'gentle')).toBe('QUIET STARS & LANTERNS')
+    expect(fallbackName(['mouse_follow', 'pulse_gems', 'gravity_well', 'sweepers', 'phase_dash', 'score_rush'], 'collector')).toBe('GATHERING GEMS & ORBITS')
+    expect(fallbackName(['arrow_keys', 'stars', 'combo_chain', 'chasers', 'phase_dash', 'score_rush'], 'bold')).toBe('BRIGHT STARS & RHYTHMS')
+  })
+
   it('gives every play style a kind tagline', () => {
     for (const style of ['gentle', 'explorer', 'collector', 'bold'] as const) {
       const line = fallbackTagline(style)
