@@ -11,18 +11,21 @@ interface Setup {
   school?: School
   relics?: RelicId[]
   resolve?: number
+  rng?: number
 }
 
 /** A battle with a fixed hand and an empty draw pile, so tests control every card. */
-export function battleWith({ enemyId = 'jumping_to_conclusions', hand = [], school = 'rationalist', relics = [], resolve = 50 }: Setup): BattleState {
+export function battleWith({ enemyId = 'jumping_to_conclusions', hand = [], school = 'rationalist', relics = [], resolve = 50, rng = 1 }: Setup): BattleState {
   const base = createBattle({
     enemyId,
     deck: [],
     resolve,
-    maxResolve: 50,
+    maxResolve: Math.max(50, resolve),
     relics,
     school,
-    rng: 1,
+    rng,
+    rigor: 0,
+    known: false,
   })
   const cards = hand.map((id, index) => card(id, 100 + index))
   return { ...base, hand: cards, drawPile: [], discardPile: [], nextUid: 200 }

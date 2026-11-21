@@ -17,7 +17,7 @@ import {
   takeCard,
   takeRelic,
 } from '@/lib/games/thought-pockets/engine/run'
-import { endTurn } from '@/lib/games/thought-pockets/engine/battle'
+import { KNOWN_UNSETTLE, endTurn } from '@/lib/games/thought-pockets/engine/battle'
 import { MapNode, RunState } from '@/types/thought-pockets'
 import { TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { getCardDef } from '@/lib/games/thought-pockets/data/cards'
@@ -291,10 +291,10 @@ describe('mercy and modes', () => {
     expect(reconsider(loseFight(chooseNode(rigorous, availableNodes(rigorous)[0].id))).screen).toBe('defeat')
   })
 
-  it('a bias you understood in an earlier run starts every fight Unsettled 2', () => {
+  it('a bias you understood in an earlier run starts every fight Unsettled', () => {
     const run = newRun('empiricist', 9, 'gentle', [TUTORIAL_ENEMY])
     const fight = chooseNode(run, availableNodes(run)[0].id).battle
-    expect(fight?.enemy.unsettle).toBe(2)
+    expect(fight?.enemy.unsettle).toBe(KNOWN_UNSETTLE)
     const stranger = newRun('empiricist', 9)
     expect(chooseNode(stranger, availableNodes(stranger)[0].id).battle?.enemy.unsettle).toBe(0)
   })

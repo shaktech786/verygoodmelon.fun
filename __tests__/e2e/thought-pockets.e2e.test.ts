@@ -1,8 +1,8 @@
 import { readFileSync } from 'fs'
 import path from 'path'
 import { test, expect, Page } from '@playwright/test'
-import { availableNodes, chooseNode, newRun } from '@/lib/games/thought-pockets/engine/run'
-import { endTurn, playCard } from '@/lib/games/thought-pockets/engine/battle'
+import { RUN_VERSION, availableNodes, chooseNode, newRun } from '@/lib/games/thought-pockets/engine/run'
+import { KNOWN_UNSETTLE, endTurn, playCard } from '@/lib/games/thought-pockets/engine/battle'
 import { TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { BattleState, CardInstance, MapNode, RunState, School } from '@/types/thought-pockets'
 import { playRun, planning } from '../lib/thought-pockets/bots'
@@ -18,24 +18,24 @@ const INSIGHT_KEY = 'thought-pockets-insights'
 const FIRST_FOE = getEnemyDef(TUTORIAL_ENEMY).health
 const AXE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
 
-async function fresh(page: Page, seed: number, tutorialDone = false, beaten: string[] = []) {
+async function fresh(page: Page, seed: number, tutorialDone = false, beaten: string[] = [], rigorWon = 0) {
   await page.goto(`${URL}?seed=${seed}`)
   await page.evaluate(
-    ({ runKey, insightKey, done, known }) => {
+    ({ runKey, insightKey, done, known, won }) => {
       localStorage.removeItem(runKey)
-      localStorage.setItem(insightKey, JSON.stringify({ state: { beaten: known, finishedWith: [], tutorialDone: done }, version: 0 }))
+      localStorage.setItem(insightKey, JSON.stringify({ state: { beaten: known, finishedWith: [], tutorialDone: done, rigorWon: won }, version: 0 }))
     },
-    { runKey: RUN_KEY, insightKey: INSIGHT_KEY, done: tutorialDone, known: beaten },
+    { runKey: RUN_KEY, insightKey: INSIGHT_KEY, done: tutorialDone, known: beaten, won: rigorWon },
   )
   await page.reload()
   await expect(page.getByTestId('screen-menu')).toBeVisible()
 }
 
-async function load(page: Page, run: RunState) {
+async function load(page: Page, run: RunState | unknown, version = RUN_VERSION) {
   await page.goto(URL)
   await page.evaluate(
     ([key, value]) => localStorage.setItem(key, value),
-    [RUN_KEY, JSON.stringify({ state: { run }, version: 3 })],
+    [RUN_KEY, JSON.stringify({ state: { run }, version })],
   )
   await page.reload()
   await page.getByTestId('continue-run').click()
@@ -239,7 +239,13 @@ test.describe('The Philosopher', () => {
   })
 
   test('a lost argument can be reconsidered once, from its start, and survives a reload', async ({ page }) => {
-    const run = inFirstBattle(111, (b) => ({ ...b, player: { ...b.player, resolve: 1 }, focus: 0 }))
+    const overconfident = getEnemyDef('dunning_kruger')
+    const run = inFirstBattle(111, (b) => ({
+      ...b,
+      player: { ...b.player, resolve: 1 },
+      focus: 0,
+      enemy: { ...b.enemy, id: overconfident.id, health: overconfident.health, maxHealth: overconfident.health },
+    }))
     await fresh(page, 111, true)
     await load(page, { ...run, resolve: 1 })
     await page.getByTestId('end-turn').click()
@@ -247,20 +253,24 @@ test.describe('The Philosopher', () => {
     await page.reload()
     await page.getByTestId('continue-run').click()
     await page.getByTestId('reconsider').click()
-    await expect(page.getByTestId('enemy-resolve')).toHaveText(String(FIRST_FOE))
+    await expect(page.getByTestId('enemy-resolve')).toHaveText(String(overconfident.health))
     await expect(page.getByTestId('player-resolve')).toContainText('Resolve 1/60')
-    const playable = page.getByTestId('hand').locator(':scope > button:not([aria-disabled])')
-    while ((await playable.count()) > 0) await playable.first().click()
     await page.getByTestId('end-turn').click()
     await expect(page.getByRole('heading', { name: 'You ran out of Resolve' })).toBeVisible()
     await expect(page.getByTestId('reconsider')).toHaveCount(0)
   })
 
-  test('rigorous pace is chosen before the run and shows on every opponent', async ({ page }) => {
-    await fresh(page, 112, true)
+  test('rigorous pace is a ladder of levels, each stating its constraints, and shows on every opponent', async ({ page }) => {
+    await fresh(page, 112, true, [], 2)
     await page.getByTestId('mode-rigorous').check()
+    await expect(page.getByTestId('rigor-4')).toBeDisabled()
+    await page.getByTestId('rigor-1').check()
+    await expect(page.getByTestId('rigor-rules')).toContainText('Rests heal 30%')
+    await expect(page.getByTestId('rigor-rules')).toContainText('restores 20 Resolve')
+    await page.getByTestId('rigor-3').check()
+    await expect(page.getByTestId('rigor-rules').locator('li')).toHaveCount(3)
     await page.getByTestId('school-empiricist').click()
-    await expect(page.getByText('Rigorous', { exact: true })).toBeVisible()
+    await expect(page.getByText('Rigorous 3', { exact: true })).toBeVisible()
     await page.locator('button[data-available]').first().click()
     await expect(page.getByTestId('enemy-resolve')).toHaveText(String(Math.round(FIRST_FOE * 1.25)))
     await expect(page.getByText('Attacks +2')).toBeVisible()
@@ -271,7 +281,7 @@ test.describe('The Philosopher', () => {
     await page.getByTestId('school-empiricist').click()
     await page.locator('button[data-available]').first().click()
     await expect(page.getByTestId('known')).toBeVisible()
-    await expect(page.getByText('Unsettled 2', { exact: true })).toBeVisible()
+    await expect(page.getByText(`Unsettled ${KNOWN_UNSETTLE}`, { exact: true })).toBeVisible()
     const won = inFirstBattle(113, (b) => ({ ...b, enemy: { ...b.enemy, health: 1 } }))
     await load(page, won)
     await hand(page).filter({ hasText: 'Evidence' }).first().click()
@@ -294,10 +304,15 @@ test.describe('The Philosopher', () => {
     await fresh(page, 115, true)
     await page.getByTestId('school-empiricist').click()
     await page.locator('button[data-available]').first().click()
-    const card = await hand(page).first().boundingBox()
+    const intent = await page.getByTestId('intent').boundingBox()
+    const last = await hand(page).last().boundingBox()
     const bar = await page.getByTestId('end-turn').boundingBox()
-    expect(card && bar && card.y + card.height / 2 < bar.y).toBe(true)
+    expect(intent && intent.y >= 0).toBe(true)
+    expect(last && bar && last.y + last.height <= bar.y + 2, 'the whole hand sits above the End turn bar').toBe(true)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+    for (const name of await hand(page).locator('span.font-serif').all()) {
+      expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), 'card names fit').toBe(true)
+    }
   })
 
   for (const colorScheme of ['light', 'dark'] as const) {
@@ -311,6 +326,12 @@ test.describe('The Philosopher', () => {
       await hand(page).first().click()
       expect(await axeViolations(page)).toEqual([])
       await page.getByTestId('end-turn').click()
+      await page.getByTestId('skip-show').click()
+      expect(await axeViolations(page)).toEqual([])
+      await load(page, inFirstBattle(116, (b) => ({ ...b, enemy: { ...b.enemy, health: 1 } })))
+      await hand(page).filter({ hasText: 'Evidence' }).first().click()
+      await page.getByTestId('end-turn').click()
+      await expect(page.getByTestId('screen-reward')).toBeVisible()
       expect(await axeViolations(page)).toEqual([])
     })
   }
@@ -362,8 +383,124 @@ test.describe('The Philosopher', () => {
     await page.getByTestId('continue').click()
     await expect(page.getByTestId('screen-victory')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Every question answered, for now' })).toBeVisible()
+    await expect(page.getByTestId('celebration')).toBeVisible()
+    await expect(page.getByTestId('run-summary')).toContainText('Best argument')
+    await expect(page.getByTestId('run-insights')).toContainText(getEnemyDef('meaning_of_life').insight)
     const insights = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).state, INSIGHT_KEY)
     expect(insights.beaten).toContain('meaning_of_life')
     expect(insights.finishedWith).toContain('rationalist')
+  })
+  test('a bias Unsettle finishes falls before it acts: you win with your Resolve and the next fight starts normally (regression: won at 0)', async ({ page }) => {
+    const run = inFirstBattle(120, (b) => ({ ...b, player: { ...b.player, resolve: 1 }, enemy: { ...b.enemy, health: 5, unsettle: 5 }, hand: cards(['caveat']), focus: 0 }))
+    await fresh(page, 120, true)
+    await load(page, { ...run, resolve: 1 })
+    await expect(page.getByTestId('incoming')).toContainText('Unsettle 5, will end this before it acts')
+    await expect(page.getByTestId('lethal-warning')).toHaveCount(0)
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByTestId('screen-reward')).toBeVisible()
+    await expect(page.getByTestId('player-resolve')).toContainText('Resolve 1/60')
+    await page.getByTestId('continue').click()
+    await page.locator('button[data-available]').and(page.getByTestId('node-battle')).first().click()
+    await expect(page.getByTestId('screen-battle')).toBeVisible()
+  })
+
+  test('a Guard card as the Conclusion says it has nothing to double', async ({ page }) => {
+    const run = inFirstBattle(121, (b) => ({ ...b, hand: cards(['observation', 'caveat']) }))
+    await fresh(page, 121, true)
+    await load(page, run)
+    await hand(page).filter({ hasText: 'Observation' }).click()
+    await hand(page).filter({ hasText: 'Caveat' }).click()
+    await expect(page.getByTestId('empty-conclusion')).toBeVisible()
+    const steps = page.getByLabel('Cards in your argument, in order')
+    await expect(steps).toContainText('Conclusion: nothing to double')
+    await expect(steps).not.toContainText('counts twice')
+  })
+
+  test('keyboard: Enter on a card plays it and focus moves to the next card, then to End turn when the hand is empty', async ({ page }) => {
+    const run = inFirstBattle(122, (b) => ({ ...b, hand: cards(['anecdote', 'anecdote']), focus: 3 }))
+    await fresh(page, 122, true)
+    await load(page, run)
+    await hand(page).first().focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('argument').locator('li')).toHaveCount(1)
+    await expect(hand(page).first()).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('end-turn')).toBeFocused()
+  })
+
+  test('screen reader: each play and each round is announced, with the new intent, and the map reads where paths lead', async ({ page }) => {
+    await fresh(page, 123, true)
+    await page.getByTestId('school-empiricist').click()
+    await expect(page.getByTestId('node-battle').first()).toHaveAttribute('aria-label', /leads to/)
+    await expect(page.locator('[data-testid^=node-][aria-label*="further along your path"]').first()).toBeVisible()
+    await page.locator('button[data-available]').first().click()
+    await page.keyboard.press('1')
+    await expect(page.getByTestId('announcer')).toContainText(/added\. Weight \d+ × [\d.]+ = \d+ damage/)
+    await page.keyboard.press('e')
+    await expect(page.getByTestId('announcer')).toContainText('Next, it will:')
+    await expect(page.getByTestId('announcer')).toContainText('Your argument dealt')
+  })
+
+  test('the round replays card by card, can be skipped with S, and shows the same steps with reduced motion', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const run = inFirstBattle(124, (b) => ({ ...b, hand: cards(['observation', 'therefore']) }))
+    await fresh(page, 124, true)
+    await load(page, run)
+    await hand(page).first().click()
+    await hand(page).first().click()
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByTestId('last-round')).toHaveAttribute('data-show', 'playing')
+    await page.keyboard.press('s')
+    await expect(page.getByTestId('last-round')).toHaveAttribute('data-show', 'done')
+    await expect(page.getByTestId('last-round')).toContainText('Weight 4 × Multiplier 2 = 8')
+    await expect(page.getByTestId('last-round')).toContainText('8 damage')
+    await expect(page.getByTestId('last-round')).toContainText('It attacked for')
+  })
+
+  test("Gambler's Fallacy shows its real odds and both outcomes", async ({ page }) => {
+    const base = newRun('empiricist', 125)
+    const started = chooseNode(base, availableNodes(base)[0].id)
+    const battle = { ...(started.battle as BattleState), enemy: { ...(started.battle as BattleState).enemy, id: 'gamblers_fallacy', health: 68, maxHealth: 68, misses: 3 }, focus: 0, hand: [] }
+    await fresh(page, 125, true)
+    await load(page, { ...started, battle })
+    await expect(page.getByTestId('intent')).toContainText('1 in 4: Attack 22')
+    await expect(page.getByTestId('incoming')).toContainText('If its gamble comes off, you lose')
+    await expect(page.getByTestId('gamble-streak')).toContainText('The odds are still 1 in 4')
+  })
+
+  test('a philosophical problem says in advance how it will change at half Resolve', async ({ page }) => {
+    const base = newRun('empiricist', 126)
+    const started = chooseNode(base, availableNodes(base)[0].id)
+    const def = getEnemyDef('problem_of_induction')
+    const battle = { ...(started.battle as BattleState), enemy: { ...(started.battle as BattleState).enemy, id: def.id, health: def.health, maxHealth: def.health } }
+    await fresh(page, 126, true)
+    await load(page, { ...started, battle })
+    await expect(page.getByTestId('phase-warning')).toContainText(`At half Resolve (${Math.floor(def.health / 2)}) it changes`)
+  })
+
+  test('rest can let a card go, and the shop sells a pot of tea', async ({ page }) => {
+    const { run } = standingBefore(newRun('empiricist', 127), 'rest')
+    await fresh(page, 127, true)
+    await load(page, run)
+    await page.locator('button[data-available]').and(page.getByTestId('node-rest')).first().click()
+    await page.getByTestId('rest-remove').click()
+    await page.getByTestId('deck-picker').locator(':scope > button').first().click()
+    await expect(page.getByTestId('open-deck')).toContainText('Deck 9')
+    const shop = standingBefore(newRun('empiricist', 128), 'shop')
+    await load(page, { ...shop.run, gold: 100, resolve: 30 })
+    await page.locator('button[data-available]').and(page.getByTestId('node-shop')).first().click()
+    await page.getByTestId('shop-tea').click()
+    await expect(page.getByTestId('player-resolve')).toContainText('Resolve 45/60')
+    await expect(page.getByTestId('shop-tea')).toBeDisabled()
+  })
+
+  test('a run saved by the previous version still loads and plays on', async ({ page }) => {
+    const saved = JSON.parse(readFileSync(path.join(process.cwd(), '__tests__/lib/thought-pockets/fixtures/run-v3.json'), 'utf8'))
+    await fresh(page, 129, true)
+    await load(page, saved.state.run, saved.version)
+    await expect(page.getByTestId('screen-battle')).toBeVisible()
+    await expect(page.getByTestId('argument').locator('li')).toHaveCount(saved.state.run.battle.played.length)
+    await page.getByTestId('end-turn').click()
+    await expect(page.getByTestId('last-round')).toBeVisible()
   })
 })

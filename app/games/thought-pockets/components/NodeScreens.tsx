@@ -1,13 +1,15 @@
 'use client'
 
-import { CardInstance, CardType, RelicId, RunState } from '@/types/thought-pockets'
+import { CardInstance, CardType, EventId, RelicId, RunState } from '@/types/thought-pockets'
 import { TYPE_LABELS, canUpgrade, getCardDef, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
 import { getEventDef } from '@/lib/games/thought-pockets/data/events'
 import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import {
+  FLOORS,
   buyCard,
   buyRelic,
+  buyTea,
   cancelPick,
   chooseEvent,
   eventChoiceAvailable,
@@ -18,15 +20,30 @@ import {
   restAmount,
   restHeal,
   skipCards,
+  startRestRemoval,
   startRestUpgrade,
   startShopRemoval,
   takeCard,
   takeRelic,
 } from '@/lib/games/thought-pockets/engine/run'
+import { TEA_HEAL } from '@/lib/games/thought-pockets/engine/economy'
+import { COPY_PRICE } from '@/lib/games/thought-pockets/data/events'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { CardFace } from './CardFace'
 import { NodeGlyph } from './Glyphs'
 import { BiasPortrait } from './Sprites'
+import { RoundShow, useRoundShow } from './RoundShow'
+import { SHOW_CSS } from './BattleScreen'
+
+const PICKER_TEXT = {
+  upgrade: { title: 'Choose one card to improve', note: 'Only this copy changes. The preview shows the improved version.', verb: 'Improve' },
+  remove: { title: 'Choose one card to let go', note: 'Only this copy leaves your deck.', verb: 'Remove' },
+  copy: { title: 'Choose one card to copy', note: `A copy joins your deck for ${COPY_PRICE} gold.`, verb: 'Copy' },
+} as const
+
+/** Encounter choices that take one of the cards on offer. */
+const CARD_CHOICES: Partial<Record<EventId, string>> = { lecture: 'attend', archive: 'dig', study_group: 'learn' }
 
 const panel = 'rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-4 text-[var(--tp-text)]'
 export const primaryButton =
@@ -50,16 +67,16 @@ export function RelicTile({ relicId, children }: { relicId: RelicId; children?: 
 /** Shown in place of a screen while you choose one specific card copy to upgrade or remove. */
 function DeckPicker({ run }: { run: RunState }) {
   const act = useRunStore((s) => s.act)
-  const upgrading = run.pick === 'upgrade'
-  const cards = run.deck.filter((c) => (upgrading ? canUpgrade(c) : true))
+  const purpose = run.pick ?? 'remove'
+  const upgrading = purpose === 'upgrade'
+  const text = PICKER_TEXT[purpose]
+  const cards = run.deck.filter((c) => (upgrading ? canUpgrade(c) : purpose === 'copy' ? resolveCard(c).type !== 'doubt' : true))
   return (
     <section className={panel} aria-labelledby="picker-title">
       <h2 id="picker-title" className="font-serif text-xl font-semibold">
-        {upgrading ? 'Choose one card to improve' : 'Choose one card to remove'}
+        {text.title}
       </h2>
-      <p className="mt-1 text-sm text-[var(--tp-muted)]">
-        {upgrading ? 'Only this copy changes. The preview shows the improved version.' : 'Only this copy leaves your deck.'}
-      </p>
+      <p className="mt-1 text-sm text-[var(--tp-muted)]">{text.note}</p>
       <div className="mt-3 flex flex-wrap justify-center gap-2" data-testid="deck-picker">
         {cards.map((card: CardInstance) => {
           const shown = upgrading ? resolveCard({ ...card, upgraded: true }) : resolveCard(card)
@@ -67,8 +84,8 @@ function DeckPicker({ run }: { run: RunState }) {
             <CardFace
               key={card.uid}
               card={shown}
-              compact
-              label={`${upgrading ? 'Improve' : 'Remove'} ${resolveCard(card).name}${upgrading ? `, becoming ${shown.name}` : ''}`}
+              size="compact"
+              label={`${text.verb} ${resolveCard(card).name}${upgrading ? `, becoming ${shown.name}` : ''}`}
               onActivate={() => act((r) => pickCard(r, card.uid))}
             />
           )
@@ -90,6 +107,22 @@ function deckMix(run: RunState): string {
   return [...counts.entries()].map(([type, n]) => `${n} ${TYPE_LABELS[type]}`).join(', ')
 }
 
+/** The argument that won the fight, played once more on the reward screen. */
+function FinalArgument({ run }: { run: RunState }) {
+  const reduced = useReducedMotion()
+  const report = run.reward?.finalRound ?? null
+  const enemyId = run.map.find((n) => n.id === run.position)?.enemyId
+  const show = useRoundShow(report ? `final-${run.stats.fights}` : null, report)
+  if (!report || !enemyId) return null
+  const foe = getEnemyDef(enemyId)
+  return (
+    <div className="mt-2 rounded-md border border-[var(--tp-line)] p-2.5" data-testid="final-argument">
+      <style>{SHOW_CSS}</style>
+      <RoundShow report={report} show={show} reduced={reduced} aftermath={[`${foe.name} has no answer left.`]} title="Your winning argument" />
+    </div>
+  )
+}
+
 export function RewardScreen({ run }: { run: RunState }) {
   const act = useRunStore((s) => s.act)
   const reward = run.reward
@@ -102,6 +135,7 @@ export function RewardScreen({ run }: { run: RunState }) {
       <h2 id="reward-title" className="font-serif text-2xl font-semibold">
         {title}
       </h2>
+      <FinalArgument run={run} />
       {foe && (
         <div className="mt-2 flex items-center gap-3 rounded-md bg-[var(--tp-ink)] p-2" data-testid="insight">
           <BiasPortrait enemyId={foe.id} tier={foe.tier} className="h-12 w-12 shrink-0" />
@@ -154,8 +188,13 @@ export function RewardScreen({ run }: { run: RunState }) {
           )}
         </div>
       )}
+      {reward.source === 'boss' && run.floor < FLOORS && (
+        <p className="mt-4 text-sm text-[var(--tp-muted)]" data-testid="pause-note">
+          Floor {run.floor} of {FLOORS} complete. Your run is saved, so this is a good place to stop and come back another time.
+        </p>
+      )}
       <button type="button" className={`${primaryButton} mt-5`} onClick={() => act(leaveReward)} data-testid="continue">
-        {reward.source === 'boss' ? (run.floor === 3 ? 'Finish the run' : 'On to the next floor') : 'Continue'}
+        {reward.source === 'boss' ? (run.floor === FLOORS ? 'Finish the run' : 'On to the next floor') : 'Continue'}
         {(!reward.cardTaken || !reward.relicTaken) && ' (leave the rest)'}
       </button>
     </section>
@@ -203,6 +242,15 @@ export function ShopScreen({ run }: { run: RunState }) {
         <button
           type="button"
           className={quietButton}
+          disabled={shop.teaTaken || run.gold < shop.teaPrice || run.resolve >= run.maxResolve}
+          onClick={() => act(buyTea)}
+          data-testid="shop-tea"
+        >
+          {shop.teaTaken ? 'Tea finished' : `Reading room tea: restore ${Math.min(TEA_HEAL, run.maxResolve - run.resolve)} Resolve, ${shop.teaPrice} gold`}
+        </button>
+        <button
+          type="button"
+          className={quietButton}
           disabled={shop.removed || run.gold < shop.removePrice}
           onClick={() => act(startShopRemoval)}
           data-testid="shop-remove"
@@ -234,6 +282,9 @@ export function RestScreen({ run }: { run: RunState }) {
         </button>
         <button type="button" className={quietButton} onClick={() => act(startRestUpgrade)} disabled={!run.deck.some(canUpgrade)} data-testid="rest-upgrade">
           Study: improve one card
+        </button>
+        <button type="button" className={quietButton} onClick={() => act(startRestRemoval)} disabled={run.deck.length <= 1} data-testid="rest-remove">
+          Let go: remove one card
         </button>
       </div>
     </section>
@@ -271,7 +322,7 @@ export function EventScreen({ run }: { run: RunState }) {
         <ul className="mt-4 space-y-3">
           {def.choices.map((choice) => {
             const available = eventChoiceAvailable(run, choice.id)
-            if (event.eventId === 'lecture' && choice.id === 'attend') {
+            if (CARD_CHOICES[event.eventId] === choice.id) {
               return (
                 <li key={choice.id}>
                   <p className="font-semibold">{choice.label}</p>
@@ -281,8 +332,9 @@ export function EventScreen({ run }: { run: RunState }) {
                       <CardFace
                         key={cardId}
                         card={getCardDef(cardId)}
-                        label={`Sit in the front row and take ${getCardDef(cardId).name}`}
-                        onActivate={() => act((r) => chooseEvent(r, 'attend', cardId))}
+                        label={`${choice.label}: take ${getCardDef(cardId).name}`}
+                        disabled={!available}
+                        onActivate={() => act((r) => chooseEvent(r, choice.id, cardId))}
                       />
                     ))}
                   </div>

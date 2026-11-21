@@ -4,6 +4,7 @@ import { ENEMIES } from '@/lib/games/thought-pockets/data/enemies'
 import { SCHOOLS } from '@/lib/games/thought-pockets/data/schools'
 import { CARDS } from '@/lib/games/thought-pockets/data/cards'
 import { RELICS } from '@/lib/games/thought-pockets/data/relics'
+import { MAX_RIGOR } from '@/lib/games/thought-pockets/data/pace'
 import { Mode, School } from '@/types/thought-pockets'
 import { AWARE_HABITS, BotConfig, HABITS, RunRecord, careful, firstTimer, leftToRight, planning, playRun, uiDriver } from './bots'
 
@@ -28,8 +29,8 @@ function avg(values: number[]): string {
   return values.length === 0 ? '-' : (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1)
 }
 
-function runMany(school: School, config: BotConfig, mode: Mode): RunRecord[] {
-  return Array.from({ length: RUNS }, (_, i) => playRun(school, 1000 + i, config, undefined, mode))
+function runMany(school: School, config: BotConfig, mode: Mode, rigor?: number): RunRecord[] {
+  return Array.from({ length: RUNS }, (_, i) => playRun(school, 1000 + i, config, undefined, mode, rigor))
 }
 
 const RIGOROUS = ['first-timer', 'careful', 'planner', 'planner-skip-all']
@@ -39,12 +40,15 @@ describe('simulation', () => {
   for (const school of SCHOOLS) {
     for (const [name, config] of Object.entries(CONFIGS)) {
       results.set(`${school.id}/${name}`, runMany(school.id, config, 'gentle'))
-      if (RIGOROUS.includes(name)) results.set(`${school.id}/${name} rigorous`, runMany(school.id, config, 'rigorous'))
+      if (RIGOROUS.includes(name)) {
+        results.set(`${school.id}/${name} rigorous`, runMany(school.id, config, 'rigorous'))
+        results.set(`${school.id}/${name} rigorous ${MAX_RIGOR}`, runMany(school.id, config, 'rigorous', MAX_RIGOR))
+      }
     }
   }
 
   it('reports school x policy outcomes and pacing', { timeout: SIM_TIMEOUT }, () => {
-    const lines = ['school/policy | win | reach floor 2 | avg turns per fight | turns n/e/b | full-health fights | top killer']
+    const lines = ['school/policy | win | reach floor 2 | avg turns per fight | turns n/e/b | full-health fights | gold left | top killer']
     for (const [key, runs] of results) {
       const fights = runs.flatMap((r) => r.fights)
       const byTier = (tier: string) => avg(fights.filter((f) => f.tier === tier && f.won).map((f) => f.turns))
@@ -52,7 +56,7 @@ describe('simulation', () => {
       runs.forEach((r) => r.defeatedBy && killers.set(r.defeatedBy, (killers.get(r.defeatedBy) ?? 0) + 1))
       const top = [...killers.entries()].sort((a, b) => b[1] - a[1])[0]
       lines.push(
-        `${key} | ${pct(runs.filter((r) => r.won).length, runs.length)} | ${pct(runs.filter((r) => r.won || r.floor > 1).length, runs.length)} | ${avg(fights.map((f) => f.turns))} | ${byTier('normal')}/${byTier('elite')}/${byTier('boss')} | ${pct(fights.filter((f) => f.fullHealth).length, fights.length)} | ${top ? `${top[0]} (${top[1]})` : '-'}`,
+        `${key} | ${pct(runs.filter((r) => r.won).length, runs.length)} | ${pct(runs.filter((r) => r.won || r.floor > 1).length, runs.length)} | ${avg(fights.map((f) => f.turns))} | ${byTier('normal')}/${byTier('elite')}/${byTier('boss')} | ${pct(fights.filter((f) => f.fullHealth).length, fights.length)} | ${avg(runs.map((r) => r.goldLeft))} | ${top ? `${top[0]} (${top[1]})` : '-'}`,
       )
     }
     console.log(lines.join('\n'))
@@ -89,16 +93,18 @@ describe('simulation', () => {
   it('rigorous mode is a real test: planning beats careful play, which beats a newcomer', { timeout: SIM_TIMEOUT }, () => {
     const all = (policy: string) => SCHOOLS.map((s) => `${s.id}/${policy} rigorous`)
     const [newcomer, steady, planned] = ['first-timer', 'careful', 'planner'].map((p) => rate(all(p), won))
-    console.log(`rigorous win rates: first-timer ${pct(newcomer * 100, 100)}, careful ${pct(steady * 100, 100)}, planner ${pct(planned * 100, 100)}`)
+    const top = (policy: string) => rate(SCHOOLS.map((s) => `${s.id}/${policy} rigorous ${MAX_RIGOR}`), won)
+    console.log(`rigorous win rates: first-timer ${pct(newcomer * 100, 100)}, careful ${pct(steady * 100, 100)}, planner ${pct(planned * 100, 100)}; at level ${MAX_RIGOR}: careful ${pct(top('careful') * 100, 100)}, planner ${pct(top('planner') * 100, 100)}`)
     expect(planned).toBeLessThan(0.95)
     expect(planned - steady).toBeGreaterThan(0.1)
     expect(steady - newcomer).toBeGreaterThan(0.3)
   })
 
-  it('card rewards are worth taking: drafting beats skipping every card for every school', { timeout: SIM_TIMEOUT }, () => {
+  // At the default Rigorous level a planner that peeks at its next draw wins about 95% with the starter deck alone, so the top level is where cards can show their worth.
+  it('card rewards are worth taking: drafting beats skipping every card for every school at the top Rigorous level', { timeout: SIM_TIMEOUT }, () => {
     for (const school of SCHOOLS) {
-      const drafted = rate([`${school.id}/planner rigorous`], won)
-      const skipped = rate([`${school.id}/planner-skip-all rigorous`], won)
+      const drafted = rate([`${school.id}/planner rigorous ${MAX_RIGOR}`], won)
+      const skipped = rate([`${school.id}/planner-skip-all rigorous ${MAX_RIGOR}`], won)
       expect(drafted, `${school.id}: drafted ${drafted} vs skipped ${skipped}`).toBeGreaterThan(skipped)
     }
   })
@@ -134,8 +140,8 @@ describe('simulation', () => {
     for (const enemy of ENEMIES) {
       const costs = policies.map(([, policy]) => {
         const losses: number[] = []
-        for (let seed = 0; seed < 12; seed++) {
-          let battle = createBattle({ enemyId: enemy.id, deck: deck(enemy.floor), resolve: 60, maxResolve: 60, relics: [], school: 'empiricist', rng: seed + 1, mode: 'gentle', known: false })
+        for (let seed = 0; seed < 24; seed++) {
+          let battle = createBattle({ enemyId: enemy.id, deck: deck(enemy.floor), resolve: 60, maxResolve: 60, relics: [], school: 'empiricist', rng: seed + 1, rigor: 0, known: false })
           while (battle.outcome === 'ongoing' && battle.turn <= MAX_TURNS) battle = policy(battle)
           losses.push(battle.outcome === 'won' ? 60 - battle.player.resolve : 80)
         }

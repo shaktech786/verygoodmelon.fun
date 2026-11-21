@@ -2,11 +2,13 @@ import {
   BattleState,
   CardDef,
   CardInstance,
+  EventId,
   EventState,
   MapNode,
   Mode,
   RelicId,
   RewardState,
+  RoundReport,
   RunState,
   School,
   ShopState,
@@ -14,36 +16,53 @@ import {
 import { CARDS, canUpgrade, getCardDef, isDoubt, usesKeyword } from '../data/cards'
 import { getSchoolDef } from '../data/schools'
 import { RELICS } from '../data/relics'
+import { REST_HEAL_PERCENT, RIGOR, RIGOROUS_FLOOR_HEAL } from '../data/pace'
 import {
+  ARCHIVE_COST,
+  ARGUE_COST,
   BOOKSELLER_PAY,
   BOOKSELLER_PRICE,
+  CAFE_HEAL,
+  CAFE_PRICE,
+  COPY_PRICE,
   EVENTS,
   FRIEND_GOLD,
   FRIEND_MAX,
+  JOURNAL_COST,
   LECTURE_COST,
+  LET_GO_HEAL,
   LIBRARY_REST,
   MIRROR_MAX_LOSS,
+  QUESTION_COST,
+  QUESTION_MAX,
+  TEACH_GOLD,
   getEventDef,
 } from '../data/events'
 import { createBattle } from './battle'
+import {
+  CARD_PRICES,
+  FIGHT_GOLD,
+  FIGHT_GOLD_SPREAD,
+  RELIC_PRICE,
+  REMOVE_BASE_PRICE,
+  REMOVE_PRICE_STEP,
+  START_GOLD,
+  TEA_FLASK_HEAL,
+  TEA_HEAL,
+  TEA_PRICE,
+  shopPrice,
+} from './economy'
 import { generateFloor } from './map'
 import { pick, roll, rollInt, seedRng, shuffle } from './rng'
 
+export const RUN_VERSION = 4
 export const START_RESOLVE = 60
-export const START_GOLD = 20
-const REST_HEAL_PERCENT: Record<Mode, number> = { gentle: 40, rigorous: 30 }
-const RIGOROUS_FLOOR_HEAL = 20
-const RECONSIDERS: Record<Mode, number> = { gentle: 1, rigorous: 0 }
-export const TEA_FLASK_HEAL = 5
+export const FLOORS = 3
+const DEFAULT_RIGOR = RIGOR.harder
 const CARD_CHOICES = 3
 const RELIC_CHOICES = 2
-const REMOVE_BASE_PRICE = 50
-const REMOVE_PRICE_STEP = 25
-const CARD_PRICES = { common: 45, uncommon: 70, rare: 110 }
-const RELIC_PRICE = 120
 const SHOP_CARDS = 4
 const SHOP_RELICS = 2
-const LIBRARY_DISCOUNT = 0.75
 
 type Rarity = 'common' | 'uncommon' | 'rare'
 
@@ -51,18 +70,23 @@ function instances(cardIds: string[], firstUid: number): CardInstance[] {
   return cardIds.map((cardId, i) => ({ uid: firstUid + i, cardId, upgraded: false }))
 }
 
-/** `known` lists the opponents beaten in earlier runs. */
-export function newRun(school: School, seed: number, mode: Mode = 'gentle', known: string[] = []): RunState {
+/**
+ * `known` lists the opponents beaten in earlier runs. In Rigorous, `rigor` is the level from 1 to 5;
+ * left out, a Rigorous run plays at level 3, the old single Rigorous setting.
+ */
+export function newRun(school: School, seed: number, mode: Mode = 'gentle', known: string[] = [], rigor?: number): RunState {
+  const level = mode === 'gentle' ? 0 : rigor ?? DEFAULT_RIGOR
   const rng = seedRng(seed)
   const floor = generateFloor(1, rng)
-  const deck = instances(getSchoolDef(school).deck, 1)
+  const deck = instances([...getSchoolDef(school).deck, ...(level >= RIGOR.doubt ? ['doubt'] : [])], 1)
   return {
-    version: 3,
+    version: RUN_VERSION,
     seed,
     rng: floor.rng,
     school,
     mode,
-    reconsiders: RECONSIDERS[mode],
+    rigor: level,
+    reconsiders: level >= RIGOR.noMercy ? 0 : 1,
     known,
     floor: 1,
     map: floor.nodes,
@@ -80,10 +104,11 @@ export function newRun(school: School, seed: number, mode: Mode = 'gentle', know
     reward: null,
     shop: null,
     event: null,
+    eventsSeen: [],
     pick: null,
     defeatedBy: null,
     beaten: [],
-    stats: { turns: 0, fights: 0, nodes: 0 },
+    stats: { turns: 0, fights: 0, nodes: 0, best: 0 },
   }
 }
 
@@ -143,13 +168,12 @@ function choiceCount(run: RunState): number {
   return CARD_CHOICES + (run.relics.includes('pocket_notebook') ? 1 : 0)
 }
 
-function makeReward(run: RunState, source: RewardState['source']): RunState {
+function makeReward(run: RunState, source: RewardState['source'], finalRound: RoundReport | null = null): RunState {
   let next = run
   let gold = 0
   if (source !== 'treasure') {
-    const base = source === 'boss' ? 50 : source === 'elite' ? 30 : 12
-    const g = rollInt(next.rng, 0, 6)
-    gold = base + g.value
+    const g = rollInt(next.rng, 0, FIGHT_GOLD_SPREAD)
+    gold = FIGHT_GOLD[source] + g.value
     next = { ...next, rng: g.rng }
   }
   let cardChoices: string[] = []
@@ -171,12 +195,13 @@ function makeReward(run: RunState, source: RewardState['source']): RunState {
     cardTaken: cardChoices.length === 0,
     relicChoices,
     relicTaken: relicChoices.length === 0,
+    finalRound,
   }
   return { ...next, gold: next.gold + gold, reward, screen: 'reward' }
 }
 
-function priced(run: RunState, price: number): number {
-  return run.relics.includes('library_card') ? Math.floor(price * LIBRARY_DISCOUNT) : price
+function priced(run: RunState, base: number): number {
+  return shopPrice(base, run.floor, run.relics)
 }
 
 function makeShop(run: RunState): RunState {
@@ -200,28 +225,44 @@ function makeShop(run: RunState): RunState {
     relics,
     removePrice: priced(next, REMOVE_BASE_PRICE + REMOVE_PRICE_STEP * next.removals),
     removed: false,
+    teaPrice: priced(next, TEA_PRICE),
+    teaTaken: false,
   }
   return { ...next, shop, screen: 'shop' }
 }
 
+function relicsLeft(run: RunState): boolean {
+  return RELICS.some((r) => !run.relics.includes(r.id))
+}
+
+const RELIC_EVENTS: EventId[] = ['mirror', 'loud_certainty']
+const CARD_OFFERS: Partial<Record<EventId, { count: number; source: RewardState['source'] }>> = {
+  lecture: { count: 2, source: 'elite' },
+  archive: { count: 3, source: 'boss' },
+  study_group: { count: 2, source: 'battle' },
+}
+
+/** An encounter you have not met yet this run, while there are any left. */
 function makeEvent(run: RunState): RunState {
-  const hasRelicsLeft = RELICS.some((r) => !run.relics.includes(r.id))
-  const options = EVENTS.filter((e) => e.id !== 'mirror' || hasRelicsLeft)
-  const chosen = pick(options, run.rng)
-  let next = { ...run, rng: chosen.rng }
+  const possible = EVENTS.filter((e) => !RELIC_EVENTS.includes(e.id) || relicsLeft(run))
+  const unseen = possible.filter((e) => !run.eventsSeen.includes(e.id))
+  const chosen = pick(unseen.length > 0 ? unseen : possible, run.rng)
+  const eventId = chosen.item.id
+  let next = { ...run, rng: chosen.rng, eventsSeen: [...run.eventsSeen, eventId] }
   let cardOffer: string[] = []
   let relicOffer: RelicId | null = null
-  if (chosen.item.id === 'lecture') {
-    const rolled = rollCards(next, 2, 'elite')
+  const offer = CARD_OFFERS[eventId]
+  if (offer) {
+    const rolled = rollCards(next, offer.count, offer.source)
     cardOffer = rolled.cards
     next = { ...next, rng: rolled.rng }
   }
-  if (chosen.item.id === 'mirror') {
+  if (RELIC_EVENTS.includes(eventId)) {
     const rolled = rollRelics(next, 1)
     relicOffer = rolled.relics[0]
     next = { ...next, rng: rolled.rng }
   }
-  const event: EventState = { eventId: chosen.item.id, cardOffer, relicOffer, result: null }
+  const event: EventState = { eventId, cardOffer, relicOffer, result: null }
   return { ...next, event, screen: 'event' }
 }
 
@@ -235,7 +276,7 @@ function startFight(run: RunState, enemyId: string): RunState {
     relics: run.relics,
     school: run.school,
     rng: seed.value,
-    mode: run.mode,
+    rigor: run.rigor,
     known: run.known.includes(enemyId),
   })
   return { ...run, rng: seed.rng, battle, screen: 'battle', stats: { ...run.stats, fights: run.stats.fights + 1 } }
@@ -277,15 +318,17 @@ function finishBattle(run: RunState, battle: BattleState): RunState {
     stats,
   }
   const type = currentNode(run)?.type
-  return makeReward(won, type === 'boss' ? 'boss' : type === 'elite' ? 'elite' : 'battle')
+  return makeReward(won, type === 'boss' ? 'boss' : type === 'elite' ? 'elite' : 'battle', battle.lastRound)
 }
 
 export function battleAction(run: RunState, action: (battle: BattleState) => BattleState): RunState {
   if (run.screen !== 'battle' || !run.battle) return run
   const battle = action(run.battle)
   if (battle === run.battle) return run
-  if (battle.outcome !== 'ongoing') return finishBattle(run, battle)
-  return { ...run, battle }
+  const landed = battle.lastRound && battle.lastRound !== run.battle.lastRound ? battle.lastRound.damage : 0
+  const tracked = landed > run.stats.best ? { ...run, stats: { ...run.stats, best: landed } } : run
+  if (battle.outcome !== 'ongoing') return finishBattle(tracked, battle)
+  return { ...tracked, battle }
 }
 
 /** Once per gentle run: go back to the start of the fight you just lost, with the Resolve you had then and a fresh shuffle. */
@@ -313,7 +356,7 @@ export function takeRelic(run: RunState, relicId: RelicId): RunState {
 }
 
 function advanceFloor(run: RunState): RunState {
-  if (run.floor === 3) return { ...run, reward: null, screen: 'victory' }
+  if (run.floor === FLOORS) return { ...run, reward: null, screen: 'victory' }
   const floor = (run.floor + 1) as 2 | 3
   const generated = generateFloor(floor, run.rng)
   return {
@@ -324,7 +367,7 @@ function advanceFloor(run: RunState): RunState {
     position: null,
     visited: [],
     reward: null,
-    resolve: run.mode === 'gentle' ? run.maxResolve : Math.min(run.maxResolve, run.resolve + RIGOROUS_FLOOR_HEAL),
+    resolve: run.rigor >= RIGOR.noMercy ? Math.min(run.maxResolve, run.resolve + RIGOROUS_FLOOR_HEAL) : run.maxResolve,
     screen: 'map',
   }
 }
@@ -336,7 +379,8 @@ export function leaveReward(run: RunState): RunState {
 }
 
 export function restAmount(run: RunState): number {
-  return Math.floor((run.maxResolve * REST_HEAL_PERCENT[run.mode]) / 100)
+  const percent = run.rigor >= RIGOR.noMercy ? REST_HEAL_PERCENT.rigorous : REST_HEAL_PERCENT.gentle
+  return Math.floor((run.maxResolve * percent) / 100)
 }
 
 export function restHeal(run: RunState): RunState {
@@ -350,6 +394,11 @@ export function startRestUpgrade(run: RunState): RunState {
   return { ...run, pick: 'upgrade' }
 }
 
+export function startRestRemoval(run: RunState): RunState {
+  if (run.screen !== 'rest' || run.deck.length <= 1) return run
+  return { ...run, pick: 'remove' }
+}
+
 export function cancelPick(run: RunState): RunState {
   return run.pick ? { ...run, pick: null } : run
 }
@@ -357,6 +406,17 @@ export function cancelPick(run: RunState): RunState {
 function withEventResult(run: RunState, result: string): RunState {
   return run.event ? { ...run, event: { ...run.event, result } } : run
 }
+
+function eventKey(run: RunState): string {
+  return run.event ? run.event.eventId : ''
+}
+
+function loseResolve(run: RunState, amount: number): RunState {
+  return { ...run, resolve: Math.max(1, run.resolve - amount) }
+}
+
+/** Upgrading at an encounter may cost Resolve; it is only paid once a card is chosen, so backing out is free. */
+const UPGRADE_COSTS: Partial<Record<EventId, number>> = { cafe: JOURNAL_COST, the_question: QUESTION_COST }
 
 export function pickCard(run: RunState, uid: number): RunState {
   const card = run.deck.find((c) => c.uid === uid)
@@ -366,9 +426,17 @@ export function pickCard(run: RunState, uid: number): RunState {
     if (!canUpgrade(card)) return run
     const upgraded = { ...run, pick: null, deck: run.deck.map((c) => (c.uid === uid ? { ...c, upgraded: true } : c)) }
     if (run.screen === 'rest') return { ...upgraded, screen: 'map' }
-    return withEventResult(upgraded, `You studied ${name}. It is now ${name}+.`)
+    const cost = run.event ? UPGRADE_COSTS[run.event.eventId] ?? 0 : 0
+    return withEventResult(loseResolve(upgraded, cost), `You worked on ${name}. It is now ${name}+.`)
+  }
+  if (run.pick === 'copy') {
+    if (run.screen !== 'event' || run.gold < COPY_PRICE) return run
+    const copied = addCard({ ...run, pick: null, gold: run.gold - COPY_PRICE }, card.cardId)
+    const deck = card.upgraded ? copied.deck.map((c) => (c.uid === copied.nextUid - 1 ? { ...c, upgraded: true } : c)) : copied.deck
+    return withEventResult({ ...copied, deck }, `A clean copy of ${name}, ready to use.`)
   }
   const deck = run.deck.filter((c) => c.uid !== uid)
+  if (run.screen === 'rest') return { ...run, deck, pick: null, screen: 'map' }
   if (run.screen === 'shop' && run.shop) {
     if (run.gold < run.shop.removePrice || run.shop.removed) return run
     return {
@@ -381,6 +449,7 @@ export function pickCard(run: RunState, uid: number): RunState {
     }
   }
   if (run.screen === 'event') {
+    if (eventKey(run) === 'study_group') return withEventResult({ ...run, deck, pick: null, gold: run.gold + TEACH_GOLD }, `You taught ${name} so well you no longer need it.`)
     if (run.gold < BOOKSELLER_PRICE) return run
     return withEventResult({ ...run, deck, pick: null, gold: run.gold - BOOKSELLER_PRICE }, `You let go of ${name}.`)
   }
@@ -399,6 +468,12 @@ export function buyRelic(run: RunState, index: number): RunState {
   if (run.screen !== 'shop' || !run.shop || !item || item.sold || run.gold < item.price) return run
   const relics = run.shop.relics.map((r, i) => (i === index ? { ...r, sold: true } : r))
   return { ...run, relics: [...run.relics, item.relicId], gold: run.gold - item.price, shop: { ...run.shop, relics } }
+}
+
+export function buyTea(run: RunState): RunState {
+  const shop = run.shop
+  if (run.screen !== 'shop' || !shop || shop.teaTaken || run.gold < shop.teaPrice || run.resolve >= run.maxResolve) return run
+  return { ...run, gold: run.gold - shop.teaPrice, resolve: Math.min(run.maxResolve, run.resolve + TEA_HEAL), shop: { ...shop, teaTaken: true } }
 }
 
 export function startShopRemoval(run: RunState): RunState {
@@ -420,6 +495,20 @@ export function eventChoiceAvailable(run: RunState, choiceId: string): boolean {
       return run.gold >= BOOKSELLER_PRICE && run.deck.length > 1
     case 'mirror.clear':
       return run.deck.some(isDoubt) && run.maxResolve > MIRROR_MAX_LOSS
+    case 'cafe.treat':
+      return run.gold >= CAFE_PRICE
+    case 'cafe.journal':
+      return run.deck.some(canUpgrade) && run.resolve > JOURNAL_COST
+    case 'archive.dig':
+      return run.resolve > ARCHIVE_COST
+    case 'archive.copy':
+      return run.gold >= COPY_PRICE
+    case 'loud_certainty.argue':
+      return run.event.relicOffer !== null && run.resolve > ARGUE_COST
+    case 'study_group.teach':
+      return run.deck.length > 1
+    case 'the_question.explain':
+      return run.deck.some(canUpgrade) && run.resolve > QUESTION_COST
     default:
       return getEventDef(run.event.eventId).choices.some((c) => c.id === choiceId)
   }
@@ -431,33 +520,48 @@ function addDoubts(run: RunState, count: number): RunState {
   return next
 }
 
+function growMaxResolve(run: RunState, amount: number): RunState {
+  return { ...run, maxResolve: run.maxResolve + amount, resolve: Math.min(run.maxResolve + amount, run.resolve + amount) }
+}
+
+function heal(run: RunState, amount: number): RunState {
+  return { ...run, resolve: Math.min(run.maxResolve, run.resolve + amount) }
+}
+
 export function chooseEvent(run: RunState, choiceId: string, cardId?: string): RunState {
   const event = run.event
   if (run.screen !== 'event' || !event || run.pick || !eventChoiceAvailable(run, choiceId)) return run
+  const offered = cardId !== undefined && event.cardOffer.includes(cardId) ? cardId : null
   switch (`${event.eventId}.${choiceId}`) {
-    case 'lecture.attend': {
-      if (!cardId || !event.cardOffer.includes(cardId)) return run
-      const paid = { ...run, resolve: Math.max(1, run.resolve - LECTURE_COST) }
-      return withEventResult(addCard(paid, cardId), `You took ${getCardDef(cardId).name}. Hard going, but worth it.`)
-    }
+    case 'lecture.attend':
+      if (!offered) return run
+      return withEventResult(addCard(loseResolve(run, LECTURE_COST), offered), `You took ${getCardDef(offered).name}. Hard going, but worth it.`)
+    case 'archive.dig':
+      if (!offered) return run
+      return withEventResult(addCard(loseResolve(run, ARCHIVE_COST), offered), `You carry ${getCardDef(offered).name} out into the light.`)
+    case 'study_group.learn':
+      if (!offered) return run
+      return withEventResult(addDoubts(addCard(run, offered), 1), `You learned ${getCardDef(offered).name}, and picked up a small Doubt about whether you understood it.`)
     case 'library.study':
+    case 'cafe.journal':
+    case 'the_question.explain':
+      return { ...run, pick: 'upgrade' }
     case 'bookseller.remove':
-      return { ...run, pick: choiceId === 'study' ? 'upgrade' : 'remove' }
+    case 'study_group.teach':
+      return { ...run, pick: 'remove' }
+    case 'archive.copy':
+      return { ...run, pick: 'copy' }
     case 'library.nap':
-      return withEventResult({ ...run, resolve: Math.min(run.maxResolve, run.resolve + LIBRARY_REST) }, 'You wake up lighter.')
+      return withEventResult(heal(run, LIBRARY_REST), 'You wake up lighter.')
     case 'bookseller.sell':
       return withEventResult(addDoubts({ ...run, gold: run.gold + BOOKSELLER_PAY }, 1), 'Gold in your pocket, and a small Doubt about the notes.')
     case 'old_friend.talk':
-      return withEventResult(
-        { ...run, maxResolve: run.maxResolve + FRIEND_MAX, resolve: Math.min(run.maxResolve + FRIEND_MAX, run.resolve + FRIEND_MAX) },
-        'It helps to say it out loud.',
-      )
+      return withEventResult(growMaxResolve(run, FRIEND_MAX), 'It helps to say it out loud.')
     case 'old_friend.loan':
       return withEventResult({ ...run, gold: run.gold + FRIEND_GOLD }, 'They wave away your thanks.')
-    case 'mirror.take': {
+    case 'mirror.take':
       if (!event.relicOffer) return run
       return withEventResult(addDoubts({ ...run, relics: [...run.relics, event.relicOffer] }, 2), 'You keep it. Two old worries come with it.')
-    }
     case 'mirror.clear': {
       const maxResolve = run.maxResolve - MIRROR_MAX_LOSS
       return withEventResult(
@@ -465,6 +569,15 @@ export function chooseEvent(run: RunState, choiceId: string, cardId?: string): R
         'The worries fade. So does a little of your strength.',
       )
     }
+    case 'cafe.treat':
+      return withEventResult(heal({ ...run, gold: run.gold - CAFE_PRICE }, CAFE_HEAL), 'Warm hands, slower breath.')
+    case 'loud_certainty.argue':
+      if (!event.relicOffer) return run
+      return withEventResult(loseResolve({ ...run, relics: [...run.relics, event.relicOffer] }, ARGUE_COST), 'He never admits it, but he lets you take it to end the conversation.')
+    case 'loud_certainty.let_go':
+      return withEventResult(heal(run, LET_GO_HEAL), 'You smile and walk on. It feels better than winning would have.')
+    case 'the_question.admit':
+      return withEventResult(growMaxResolve(run, QUESTION_MAX), '"Let\'s find out together," you say. Saying "I don\'t know" is a relief.')
     default:
       return withEventResult(run, 'You move on.')
   }
@@ -473,4 +586,46 @@ export function chooseEvent(run: RunState, choiceId: string, cardId?: string): R
 export function leaveEvent(run: RunState): RunState {
   if (run.screen !== 'event' || !run.event?.result) return run
   return { ...run, event: null, screen: 'map' }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+/** Fills what version 4 added to a battle saved by version 3; its last-round summary is dropped because it lacks the new fields. */
+function migrateBattle(battle: Record<string, unknown>): Record<string, unknown> {
+  const core = (value: unknown) => {
+    const saved = value as Record<string, unknown>
+    const enemy = saved.enemy as Record<string, unknown>
+    return {
+      ...saved,
+      exhausted: [],
+      lastingMultiplier: 0,
+      lastRound: null,
+      enemy: { ...enemy, phase: 1, gambleHit: false, misses: 0 },
+    }
+  }
+  return { ...core(battle), undo: Array.isArray(battle.undo) ? battle.undo.map(core) : [] }
+}
+
+/** Loads a saved run from any earlier version this game shipped, or returns null if it cannot be read. */
+export function migrateRun(saved: unknown, version: number): RunState | null {
+  if (!isRecord(saved)) return null
+  if (version === RUN_VERSION) return saved as unknown as RunState
+  if (version !== 3) return null
+  const stats = isRecord(saved.stats) ? saved.stats : {}
+  const shop = isRecord(saved.shop) ? { ...saved.shop, teaPrice: TEA_PRICE, teaTaken: false } : null
+  const battle = isRecord(saved.battle) ? migrateBattle(saved.battle) : null
+  const event = isRecord(saved.event) ? saved.event : null
+  const reward = isRecord(saved.reward) ? { ...saved.reward, finalRound: null } : null
+  return {
+    ...saved,
+    version: RUN_VERSION,
+    rigor: saved.mode === 'rigorous' ? DEFAULT_RIGOR : 0,
+    eventsSeen: event ? [event.eventId] : [],
+    stats: { turns: 0, fights: 0, nodes: 0, ...stats, best: 0 },
+    shop,
+    battle,
+    reward,
+  } as unknown as RunState
 }

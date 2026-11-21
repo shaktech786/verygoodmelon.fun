@@ -2,6 +2,8 @@ import { EnemyDef, EnemyTier } from '@/types/thought-pockets'
 
 export const TUTORIAL_ENEMY = 'jumping_to_conclusions'
 
+const GAMBLE = { chance: 0.25, attack: 22 }
+
 export const ENEMIES: EnemyDef[] = [
   {
     id: 'jumping_to_conclusions',
@@ -62,6 +64,12 @@ export const ENEMIES: EnemyDef[] = [
     intro: 'The sun rose yesterday. Why are you so sure it will rise tomorrow?',
     insight: 'No number of past cases proves the next one. We act on patterns anyway, and stay ready to be surprised.',
     moves: [{ attack: 8 }, { guard: 10 }, { attack: 13 }, { attack: 4, hits: 2 }],
+    phase2: {
+      rule: 'induction',
+      ruleText: 'The pattern does not hold: below half Resolve it starts a new sequence of actions. Varying your Conclusion still deals +50%.',
+      shift: 'The pattern broke. What it did before tells you nothing now: read its next action.',
+      moves: [{ attack: 5, hits: 2 }, { attack: 14 }, { guard: 8 }],
+    },
   },
 
   {
@@ -123,6 +131,12 @@ export const ENEMIES: EnemyDef[] = [
     intro: 'Take one grain from a heap. Still a heap. So when does it stop being one?',
     insight: 'Vague words still mean something. Lots of small steps can add up to a real change.',
     moves: [{ attack: 9 }, { attack: 4, hits: 3 }, { guard: 12 }, { attack: 15 }],
+    phase2: {
+      rule: 'none',
+      ruleText: 'No longer a heap: below half Resolve the cap is gone, and it attacks in many small grains.',
+      shift: 'Somewhere along the way it stopped being a heap. No cap now, but it comes at you grain by grain.',
+      moves: [{ attack: 2, hits: 4 }, { guard: 10 }, { attack: 2, hits: 5 }],
+    },
   },
 
   {
@@ -131,11 +145,12 @@ export const ENEMIES: EnemyDef[] = [
     tier: 'normal',
     floor: 3,
     health: 68,
-    rule: 'none',
-    ruleText: 'It is "due": three small actions, then one huge attack. Count along and prepare.',
+    rule: 'gambler',
+    ruleText: `It insists it is due a big win. Every round, however long since the last one, there is a 1 in ${Math.round(1 / GAMBLE.chance)} chance its action becomes Attack ${GAMBLE.attack}.`,
     intro: "I've lost three times. I'm due a win.",
     insight: 'Coins have no memory. Past results do not make the next one more likely.',
-    moves: [{ attack: 4 }, { guard: 8 }, { attack: 5 }, { attack: 26 }],
+    moves: [{ attack: 5 }, { guard: 8 }, { attack: 7 }],
+    gamble: GAMBLE,
   },
   {
     id: 'status_quo',
@@ -184,11 +199,21 @@ export const ENEMIES: EnemyDef[] = [
     intro: 'Why does any of it matter?',
     insight: 'Meaning is not found lying around. It is made, one answer at a time.',
     moves: [
-      { attack: 12, asks: 'evidence' },
-      { attack: 16, asks: 'logic' },
-      { guard: 14, asks: 'guard' },
-      { attack: 20, asks: 'evidence' },
+      { attack: 12, asks: ['evidence'] },
+      { attack: 16, asks: ['logic'] },
+      { guard: 14, asks: ['guard'] },
+      { attack: 20, asks: ['evidence'] },
     ],
+    phase2: {
+      rule: 'meaning',
+      ruleText: 'Below half Resolve it asks two things at once: include both named types and your argument deals double.',
+      shift: 'One answer is not enough any more. It wants two at once.',
+      moves: [
+        { attack: 14, asks: ['evidence', 'logic'] },
+        { guard: 12, attack: 6, asks: ['guard', 'evidence'] },
+        { attack: 20, asks: ['logic', 'guard'] },
+      ],
+    },
   },
 ]
 

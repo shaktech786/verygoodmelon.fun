@@ -33,6 +33,12 @@ export interface CardEffects {
   weightIfLowResolve?: number
   unsettlePerCard?: number
   conclusionTimes?: number
+  /** Stays in hand at the end of the turn. */
+  retain?: boolean
+  /** Leaves the deck for the rest of the fight once played. */
+  exhaust?: boolean
+  lastingMultiplier?: number
+  nextTurnFocus?: number
 }
 
 export interface CardDef extends CardEffects {
@@ -90,13 +96,26 @@ export type EnemyRule =
   | 'halo'
   | 'motivated'
   | 'meaning'
+  | 'gambler'
+
+export type Ask = 'evidence' | 'logic' | 'guard'
 
 export interface EnemyMove {
   attack?: number
   hits?: number
   guard?: number
   addDoubt?: number
-  asks?: 'evidence' | 'logic' | 'guard'
+  /** Every type named must be in your argument for it to count double. */
+  asks?: Ask[]
+}
+
+/** What a boss becomes once it falls to half Resolve. */
+export interface EnemyPhase {
+  rule: EnemyRule
+  ruleText: string
+  /** What it says as it changes. */
+  shift: string
+  moves: EnemyMove[]
 }
 
 export interface EnemyDef {
@@ -110,6 +129,9 @@ export interface EnemyDef {
   intro: string
   insight: string
   moves: EnemyMove[]
+  phase2?: EnemyPhase
+  /** Each round, this chance that its action becomes one big attack instead. */
+  gamble?: { chance: number; attack: number }
 }
 
 export interface EnemyState {
@@ -121,6 +143,11 @@ export interface EnemyState {
   unsettle: number
   moveIndex: number
   seen: string[]
+  phase: 1 | 2
+  /** Rolled at the start of each round and never shown: whether a gamble comes off this round. */
+  gambleHit: boolean
+  /** Rounds in a row without its big hit. */
+  misses: number
 }
 
 export interface PlayerState {
@@ -161,15 +188,27 @@ export interface ArgumentPreview {
   guard: number
   composure: number
   unsettle: number
+  /** What Unsettle takes before it acts, after this argument lands. */
+  unsettleTick: number
+  enemyFalls: 'argument' | 'unsettle' | null
+  /** The Conclusion has no Weight or Multiplier, so counting it twice adds nothing. */
+  conclusionEmpty: boolean
+  lastingMultiplier: number
   postpone: boolean
   growth: number
   incoming: number
   incomingAfterGuard: number
+  /** For a bias that gambles: the big attack it might make instead. */
+  risk: { total: number; afterGuard: number; chance: number } | null
 }
 
 export interface RoundReport {
   turn: number
   steps: StepView[]
+  /** Weight that came from outside the cards: leftover Guard and Doubts in hand. */
+  carriedWeight: number
+  doubtWeight: number
+  lastingMultiplier: number
   weight: number
   multiplier: number
   product: number
@@ -188,6 +227,8 @@ export interface RoundReport {
   unsettleLoss: number
   doubtsAdded: number
   growth: number
+  phaseChanged: boolean
+  gamble: 'hit' | 'miss' | null
 }
 
 export interface BattleCore {
@@ -201,6 +242,8 @@ export interface BattleCore {
   drawPile: CardInstance[]
   discardPile: CardInstance[]
   played: CardInstance[]
+  exhausted: CardInstance[]
+  lastingMultiplier: number
   firstLogicDiscountUsed: boolean
   carriedWeight: number
   carriedFocus: number
@@ -228,7 +271,17 @@ export interface MapNode {
   enemyId?: string
 }
 
-export type EventId = 'lecture' | 'library' | 'bookseller' | 'old_friend' | 'mirror'
+export type EventId =
+  | 'lecture'
+  | 'library'
+  | 'bookseller'
+  | 'old_friend'
+  | 'mirror'
+  | 'cafe'
+  | 'archive'
+  | 'loud_certainty'
+  | 'study_group'
+  | 'the_question'
 
 export interface EventState {
   eventId: EventId
@@ -237,7 +290,7 @@ export interface EventState {
   result: string | null
 }
 
-export type DeckPickPurpose = 'upgrade' | 'remove'
+export type DeckPickPurpose = 'upgrade' | 'remove' | 'copy'
 
 export interface RewardState {
   source: 'battle' | 'elite' | 'boss' | 'treasure'
@@ -246,6 +299,8 @@ export interface RewardState {
   cardTaken: boolean
   relicChoices: RelicId[]
   relicTaken: boolean
+  /** The round that won the fight, so the reward screen can replay the winning argument. */
+  finalRound: RoundReport | null
 }
 
 export interface ShopState {
@@ -253,6 +308,8 @@ export interface ShopState {
   relics: { relicId: RelicId; price: number; sold: boolean }[]
   removePrice: number
   removed: boolean
+  teaPrice: number
+  teaTaken: boolean
 }
 
 export type Screen =
@@ -269,14 +326,18 @@ export interface RunStats {
   turns: number
   fights: number
   nodes: number
+  /** The most damage one argument dealt. */
+  best: number
 }
 
 export interface RunState {
-  version: 3
+  version: 4
   seed: number
   rng: number
   school: School
   mode: Mode
+  /** 0 in Gentle; in Rigorous, the level from 1 to 5, each adding one constraint. */
+  rigor: number
   reconsiders: number
   known: string[]
   floor: 1 | 2 | 3
@@ -295,6 +356,8 @@ export interface RunState {
   reward: RewardState | null
   shop: ShopState | null
   event: EventState | null
+  /** Encounters met this run, so they do not repeat while others are left. */
+  eventsSeen: EventId[]
   pick: DeckPickPurpose | null
   defeatedBy: string | null
   beaten: string[]

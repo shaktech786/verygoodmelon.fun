@@ -14,6 +14,21 @@ const WIDTH = 520
 const ROW_HEIGHT = 92
 const TOP = 46
 
+/** Everything still ahead of you: what the next steps lead to, as far as the boss. */
+function ahead(run: RunState): Set<string> {
+  const byId = new Map(run.map.map((n) => [n.id, n]))
+  const start = run.position === null ? run.map.filter((n) => n.row === 0).map((n) => n.id) : byId.get(run.position)?.next ?? []
+  const found = new Set<string>()
+  const queue = [...start]
+  while (queue.length > 0) {
+    const id = queue.shift() as string
+    if (found.has(id)) continue
+    found.add(id)
+    queue.push(...(byId.get(id)?.next ?? []))
+  }
+  return found
+}
+
 function position(node: MapNode): { x: number; y: number } {
   const x = node.lanes === 1 ? WIDTH / 2 : 90 + (node.lane * (WIDTH - 180)) / (node.lanes - 1)
   return { x, y: TOP + node.row * ROW_HEIGHT }
@@ -26,6 +41,12 @@ export function MapScreen({ run }: { run: RunState }) {
   const boss = run.map.find((n) => n.type === 'boss') as MapNode
   const bossDef = getEnemyDef(boss.enemyId as string)
   const height = TOP * 2 + (FLOOR_ROWS - 1) * ROW_HEIGHT
+  const reachable = ahead(run)
+  const name = (node: MapNode) => (node.type === 'boss' ? `${bossDef.name} (boss)` : NODE_LABELS[node.type])
+  const leadsTo = (node: MapNode) => {
+    const next = node.next.map((id) => run.map.find((n) => n.id === id) as MapNode).map(name)
+    return next.length === 0 ? '' : `, leads to ${next.length === 1 ? next[0] : `${next.slice(0, -1).join(', ')} or ${next.at(-1)}`}`
+  }
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
@@ -60,15 +81,14 @@ export function MapScreen({ run }: { run: RunState }) {
               const available = openIds.has(node.id)
               const here = node.id === run.position
               const past = run.visited.includes(node.id) && !here
-              const label = node.type === 'boss' ? bossDef.name : NODE_LABELS[node.type]
-              const state = available ? 'you can go here' : here ? 'you are here' : past ? 'visited' : 'not reachable from here'
+              const state = available ? 'you can go here' : here ? 'you are here' : past ? 'visited' : reachable.has(node.id) ? 'further along your path' : 'not on your path'
               return (
                 <li key={node.id} className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: `${(100 * x) / WIDTH}%`, top: y }}>
                   <button
                     type="button"
                     disabled={!available}
                     onClick={() => act((r) => chooseNode(r, node.id))}
-                    aria-label={`Step ${node.row + 1}: ${label}, ${state}`}
+                    aria-label={`Step ${node.row + 1}: ${name(node)}, ${state}${past ? '' : leadsTo(node)}`}
                     data-testid={`node-${node.type}`}
                     data-available={available || undefined}
                     className={`flex h-11 w-11 items-center justify-center rounded-md border-2 sm:h-12 sm:w-12 ${
@@ -107,9 +127,9 @@ export function MapScreen({ run }: { run: RunState }) {
           <dt className="font-semibold">Hard fight</dt>
           <dd>Tougher. Win a relic and a better card.</dd>
           <dt className="font-semibold">Rest</dt>
-          <dd>Recover Resolve, or improve one card.</dd>
+          <dd>Recover Resolve, improve one card, or let one go.</dd>
           <dt className="font-semibold">Shop</dt>
-          <dd>Spend gold on cards, relics, or removing a card.</dd>
+          <dd>Spend gold on cards, relics, tea, or removing a card.</dd>
           <dt className="font-semibold">Encounter</dt>
           <dd>A choice with a cost.</dd>
           <dt className="font-semibold">Treasure</dt>

@@ -1,13 +1,14 @@
 import { MapNode, NodeType } from '@/types/thought-pockets'
 import { enemiesFor, TUTORIAL_ENEMY } from '../data/enemies'
-import { rollInt, shuffle } from './rng'
+import { pick, rollInt, shuffle } from './rng'
 
 export const FLOOR_ROWS = 5
 
+/** Two rows offer a fight, so with the opening fight no path meets more biases than a floor has. The row before the boss is for recovering. */
 const MIDDLE_ROWS: NodeType[][] = [
   ['battle', 'event', 'shop'],
   ['elite', 'battle', 'treasure'],
-  ['rest', 'battle', 'shop'],
+  ['rest', 'event', 'shop'],
 ]
 
 function nodeId(floor: number, row: number, lane: number): string {
@@ -29,17 +30,19 @@ function connect(from: number, to: number, rng: number): { links: number[][]; rn
   return { links, rng: state }
 }
 
-/** One floor: a fight to open, three rows of three choices, then the boss. Paths never cross. */
+/** One floor: a fight to open, three rows of three choices, then the boss. Paths never cross, and no bias appears twice on a floor. */
 export function generateFloor(floor: 1 | 2 | 3, rng: number): { nodes: MapNode[]; rng: number } {
   let state = rng
   const normals = shuffle(enemiesFor(floor, 'normal').map((e) => e.id), state)
   state = normals.rng
-  let normalCursor = 0
-  const nextNormal = () => normals.items[normalCursor++ % normals.items.length]
-  const elite = enemiesFor(floor, 'elite')[0].id
-  const boss = enemiesFor(floor, 'boss')[0].id
+  const queue = floor === 1 ? [TUTORIAL_ENEMY, ...normals.items] : normals.items
+  let cursor = 0
+  const nextNormal = () => queue[cursor++]
+  const elite = pick(enemiesFor(floor, 'elite'), state)
+  const boss = pick(enemiesFor(floor, 'boss'), elite.rng)
+  state = boss.rng
 
-  const rows: NodeType[][] = [floor === 1 ? ['battle'] : ['battle', 'battle']]
+  const rows: NodeType[][] = [['battle']]
   for (const types of MIDDLE_ROWS) {
     const shuffled = shuffle(types, state)
     state = shuffled.rng
@@ -51,9 +54,9 @@ export function generateFloor(floor: 1 | 2 | 3, rng: number): { nodes: MapNode[]
   rows.forEach((types, row) => {
     types.forEach((type, lane) => {
       let enemyId: string | undefined
-      if (type === 'battle') enemyId = floor === 1 && row === 0 ? TUTORIAL_ENEMY : nextNormal()
-      if (type === 'elite') enemyId = elite
-      if (type === 'boss') enemyId = boss
+      if (type === 'battle') enemyId = nextNormal()
+      if (type === 'elite') enemyId = elite.item.id
+      if (type === 'boss') enemyId = boss.item.id
       nodes.push({ id: nodeId(floor, row, lane), type, row, lane, lanes: types.length, next: [], enemyId })
     })
   })

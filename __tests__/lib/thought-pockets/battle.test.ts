@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  COMPOSURE_GUARD,
   MAX_TURNS,
   SORITES_CAP,
   canPlay,
@@ -70,21 +71,21 @@ describe('the argument', () => {
     expect(after.enemy.guard).toBe(0)
   })
 
-  it('holding back: each Focus left unspent becomes 3 Guard when the turn ends', () => {
+  it('holding back: each Focus left unspent becomes Guard when the turn ends', () => {
     const battle = battleWith({ hand: ['observation'] })
-    expect(previewArgument(battle).guard).toBe(9)
+    expect(previewArgument(battle).guard).toBe(3 * COMPOSURE_GUARD)
     const played = playCard(battle, 100)
-    expect(previewArgument(played).guard).toBe(6)
-    expect(previewArgument(played).composure).toBe(6)
-    expect(endTurn(played).lastRound?.enemyBlocked).toBe(Math.min(6, attackOf('jumping_to_conclusions', 0)))
+    expect(previewArgument(played).guard).toBe(2 * COMPOSURE_GUARD)
+    expect(previewArgument(played).composure).toBe(2 * COMPOSURE_GUARD)
+    expect(endTurn(played).lastRound?.enemyBlocked).toBe(Math.min(2 * COMPOSURE_GUARD, attackOf('jumping_to_conclusions', 0)))
   })
 
   it('your Guard absorbs the attack this round and resets on your next turn', () => {
     const battle = playCard({ ...battleWith({ hand: ['caveat'] }), focus: 1 }, 100)
-    expect(previewArgument(battle).guard).toBe(5)
+    expect(previewArgument(battle).guard).toBe(6)
     const after = endTurn(battle)
-    expect(after.player.resolve).toBe(50 - (attackOf('jumping_to_conclusions', 0) - 5))
-    expect(after.lastRound?.enemyBlocked).toBe(5)
+    expect(after.player.resolve).toBe(50 - (attackOf('jumping_to_conclusions', 0) - 6))
+    expect(after.lastRound?.enemyBlocked).toBe(6)
     expect(after.player.guard).toBe(0)
   })
 
@@ -168,13 +169,13 @@ describe('card effects do what they say', () => {
     expect(after.enemy.moveIndex).toBe(0)
   })
 
-  it('Unsettle makes the enemy lose that much Resolve at the end of every round', () => {
+  it('Unsettle makes the enemy lose that much Resolve each round, then halves', () => {
     const battle = playCard(battleWith({ hand: ['socratic_method'], school: 'rationalist' }), 100)
     expect(previewArgument(battle).unsettle).toBe(4)
     const after = endTurn(battle)
-    expect(after.enemy.unsettle).toBe(4)
+    expect(after.enemy.unsettle).toBe(2)
     expect(after.enemy.health).toBe(START - 4)
-    expect(endTurn(after).enemy.health).toBe(START - 8)
+    expect(endTurn(after).enemy.health).toBe(START - 6)
   })
 
   it('Corroboration, Induction and Deduction count the rest of the argument', () => {
@@ -305,7 +306,7 @@ describe('enemy rules are real', () => {
     const preview = previewArgument(battle)
     expect(preview.damage).toBe(SORITES_CAP)
     expect(preview.unsettle).toBe(Math.floor((24 - SORITES_CAP) / 5))
-    expect(endTurn(battle).enemy.unsettle).toBe(1)
+    expect(endTurn(battle).lastRound?.unsettleLoss).toBe(1)
   })
 
   it("Status Quo Bias keeps its Guard between rounds", () => {
@@ -355,7 +356,7 @@ describe('relics bend the rules', () => {
 
   it('Worry Stone: unspent Focus gives 3 more Guard each', () => {
     const battle = battleWith({ hand: [], relics: ['worry_stone'] })
-    expect(previewArgument(battle).guard).toBe(18)
+    expect(previewArgument(battle).guard).toBe(3 * (COMPOSURE_GUARD + 3))
   })
 
   it('Lantern: the first argument pierces', () => {
@@ -366,8 +367,8 @@ describe('relics bend the rules', () => {
 
   it('Stoic Pebble caps one enemy action at 12', () => {
     const start = battleWith({ enemyId: 'gamblers_fallacy', relics: ['stoic_pebble'] })
-    const battle = { ...start, enemy: { ...start.enemy, moveIndex: 3 } }
-    expect(incomingDamage(battle, 0).afterGuard).toBe(12)
+    const battle = { ...start, focus: 0, enemy: { ...start.enemy, gambleHit: true } }
+    expect(previewArgument(battle).risk?.afterGuard).toBe(12)
     expect(endTurn(battle).player.resolve).toBe(38)
   })
 

@@ -4,6 +4,7 @@ import {
   battleAction,
   buyCard,
   buyRelic,
+  buyTea,
   chooseEvent,
   chooseNode,
   eventChoiceAvailable,
@@ -15,6 +16,7 @@ import {
   reconsider,
   restHeal,
   skipCards,
+  startRestRemoval,
   startRestUpgrade,
   startShopRemoval,
   takeCard,
@@ -160,9 +162,12 @@ export const uiDriver: TurnPolicy = (battle) => {
 /** What a careful player can read off the screen for the argument as it stands. */
 function screenValue(state: BattleState): number {
   const p = previewArgument(state)
-  if (p.damage - p.healedBack >= state.enemy.health) return 1e6 - p.selfLoss
-  const loss = p.incomingAfterGuard + p.selfLoss
-  if (loss >= state.player.resolve) return -1e6
+  if (p.enemyFalls) return 1e6 - p.selfLoss
+  const usual = p.incomingAfterGuard + p.selfLoss
+  if (usual >= state.player.resolve) return -1e6
+  const risky = p.risk ? p.risk.afterGuard + p.selfLoss : usual
+  if (risky >= state.player.resolve) return -1e5
+  const loss = p.risk ? usual * (1 - p.risk.chance) + risky * p.risk.chance : usual
   const lasting = getEnemyDef(state.enemy.id).rule === 'status_quo' ? p.blocked : 0
   return p.damage - p.healedBack + lasting - 1.5 * loss + 2 * p.unsettle - 3 * p.growth
 }
@@ -262,7 +267,7 @@ function habit(rank: (c: Candidate, battle: BattleState) => number, aware: boole
         const candidate: Candidate = {
           order,
           damage: aware ? real.damage - real.healedBack - real.selfLoss - 3 * real.growth : seen.raw,
-          covered: aware ? real.incoming - real.incomingAfterGuard : Math.min(seen.guard, incoming),
+          covered: aware ? (real.enemyFalls ? incoming : real.incoming - real.incomingAfterGuard) : Math.min(seen.guard, incoming),
           repeats: names.length - new Set(names).size,
           conclusionType: resolveCard(conclusion).type,
         }
@@ -318,6 +323,10 @@ function cardValue(def: CardDef, run: RunState): number {
   if (def.pierce) value += 0.3
   if (def.postpone) value += 1
   if (def.conclusionTimes) value += 0.5
+  value += ((def.lastingMultiplier ?? 0) * 2.5) / cost
+  value += (def.nextTurnFocus ?? 0) * 0.9
+  if (def.retain) value += 0.15
+  if (def.exhaust) value *= 0.85
   if (def.school === run.school) value += 0.4
   if (def.addDoubt && run.school !== 'absurdist') value -= 0.4
   const copies = run.deck.filter((c) => c.cardId === def.id).length
@@ -352,6 +361,7 @@ export interface RunRecord {
   relics: string[]
   hitTurnCap: boolean
   reconsidered: boolean
+  goldLeft: number
 }
 
 function chooseNextNode(run: RunState, options: MapNode[], habits: RunHabits): MapNode {
@@ -412,27 +422,43 @@ function handleEvent(run: RunState): RunState {
     bookseller: run.deck.some(isDoubt) ? ['remove', 'leave'] : ['leave'],
     old_friend: ['talk'],
     mirror: run.school === 'absurdist' ? ['take'] : run.deck.some(isDoubt) ? ['clear', 'leave'] : ['leave'],
+    cafe: run.resolve < run.maxResolve * 0.6 ? ['treat', 'journal'] : ['journal', 'treat'],
+    archive: run.resolve > 25 ? ['dig', 'copy'] : ['copy', 'leave'],
+    loud_certainty: run.resolve > 30 ? ['argue', 'let_go'] : ['let_go'],
+    study_group: run.deck.some(isDoubt) || run.deck.length > 12 ? ['teach'] : ['learn', 'leave'],
+    the_question: run.resolve < run.maxResolve * 0.5 ? ['admit'] : ['explain', 'admit'],
   }
   const choice = prefs[event.eventId].find((id) => eventChoiceAvailable(run, id)) ?? 'leave'
-  let next = chooseEvent(run, choice, event.cardOffer[0])
+  const offer = [...event.cardOffer].sort((a, b) => cardValue(getCardDef(b), run) - cardValue(getCardDef(a), run))[0]
+  let next = chooseEvent(run, choice, offer)
   if (next.pick === 'upgrade') next = pickCard(next, (upgradeTarget(next) as CardInstance).uid)
   if (next.pick === 'remove') next = pickCard(next, (removalTarget(next) as CardInstance).uid)
+  if (next.pick === 'copy') next = pickCard(next, (copyTarget(next) as CardInstance).uid)
   if (!next.event?.result) next = chooseEvent(next, getEventChoices(next)[0])
   return leaveEvent(next)
 }
 
 function getEventChoices(run: RunState): string[] {
-  return ['leave', 'nap', 'talk', 'loan', 'sell'].filter((id) => eventChoiceAvailable(run, id))
+  return ['leave', 'nap', 'talk', 'loan', 'sell', 'let_go', 'admit'].filter((id) => eventChoiceAvailable(run, id))
+}
+
+function copyTarget(run: RunState): CardInstance | undefined {
+  const playable = run.deck.filter((c) => !isDoubt(c))
+  return [...playable].sort((a, b) => cardValue(resolveCard(b), run) - cardValue(resolveCard(a), run))[0]
 }
 
 function handleShop(run: RunState, habits: RunHabits): RunState {
   if (habits === 'naive') return leaveShop(run)
   let next = run
   if (habits === 'casual') {
+    if (next.resolve < next.maxResolve * 0.5) next = buyTea(next)
     const started = startShopRemoval(next)
     if (started.pick) next = pickCard(started, (removalTarget(started) as CardInstance).uid)
+    const best = (next.shop?.cards ?? []).map((c, i) => ({ i, value: cardValue(getCardDef(c.cardId), next) })).sort((a, b) => b.value - a.value)[0]
+    if (best && best.value >= TAKE_THRESHOLD) next = buyCard(next, best.i)
     return leaveShop(next)
   }
+  if (next.resolve < next.maxResolve * 0.6) next = buyTea(next)
   const shop = next.shop
   if (!shop) return run
   if (next.deck.some(isDoubt) || next.deck.length > 12) {
@@ -451,9 +477,9 @@ function handleShop(run: RunState, habits: RunHabits): RunState {
 }
 
 /** Plays a whole run with the engine, reconsidering a lost fight whenever the run allows it. `observe` sees the run at the start of every battle turn. */
-export function playRun(school: School, seed: number, config: BotConfig, observe?: (run: RunState) => void, mode: Mode = 'gentle'): RunRecord {
+export function playRun(school: School, seed: number, config: BotConfig, observe?: (run: RunState) => void, mode: Mode = 'gentle', rigor?: number): RunRecord {
   const habits = config.habits
-  let run = newRun(school, seed, mode)
+  let run = newRun(school, seed, mode, [], rigor)
   const fights: FightRecord[] = []
   let hitTurnCap = false
   let reconsidered = false
@@ -499,7 +525,10 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
       }
       case 'rest': {
         if (habits === 'naive' || run.resolve < run.maxResolve * (habits === 'casual' ? 0.7 : 0.6)) run = restHeal(run)
-        else {
+        else if (habits === 'careful' && run.deck.some(isDoubt)) {
+          const started = startRestRemoval(run)
+          run = pickCard(started, (removalTarget(started) as CardInstance).uid)
+        } else {
           const started = startRestUpgrade(run)
           const target = upgradeTarget(started)
           run = started.pick && target ? pickCard(started, target.uid) : restHeal(run)
@@ -524,5 +553,6 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
     relics: run.relics,
     hitTurnCap,
     reconsidered,
+    goldLeft: run.gold,
   }
 }

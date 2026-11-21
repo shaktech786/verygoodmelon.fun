@@ -12,7 +12,7 @@ import { SoundToggle } from '@/components/ui/SoundToggle'
 import { BattleScreen } from './BattleScreen'
 import { MapScreen, FLOOR_NAMES } from './MapScreen'
 import { EventScreen, RestScreen, RewardScreen, ShopScreen, quietButton } from './NodeScreens'
-import { EndScreen, MenuScreen, runInProgress } from './MenuScreens'
+import { EndScreen, MenuScreen, paceName, runInProgress } from './MenuScreens'
 import { TYPE_COLORS } from './CardFace'
 
 /** Every colour comes from the site palette in app/globals.css, so the game follows light and dark mode. */
@@ -97,13 +97,24 @@ function HowToPlay() {
         <li>
           Holding back is a choice too: each Focus you leave unspent becomes {COMPOSURE_GUARD} Guard when you end your turn.
         </li>
-        <li>The enemy shows exactly what it will do next, and the preview shows exactly what will happen. Nothing is left to chance once you choose.</li>
-        <li>End your turn: your argument lands, then the enemy acts. You can undo any card before that.</li>
-        <li>Every bias has one rule, written under its name. Working out how to beat it is the point.</li>
+        <li>
+          End your turn and the round plays out in order: your argument lands, then any <strong>Unsettle</strong> takes its toll (and halves), then the enemy acts. A
+          bias that falls before it acts does nothing. You can undo any card before you end the turn.
+        </li>
+        <li>
+          The enemy shows exactly what it will do next, and the preview shows exactly what will happen. One bias gambles: it shows its real odds, and the preview
+          shows both outcomes.
+        </li>
+        <li>Every bias has one rule, written under its name. Philosophical problems change their rule once, at half Resolve, and say how in advance.</li>
+        <li>
+          Some cards reach across turns: <strong>Keep</strong> cards stay in your hand if you do not play them, <strong>Once</strong> cards are gone for the rest of the
+          fight after you play them, and a few effects last the whole fight.
+        </li>
         <li>In Gentle pace, if an argument gets away from you, you may reconsider it once per run: back to its start, knowing what you know now.</li>
       </ol>
       <p className="mt-3">
-        Keys in a fight: <strong>1–9</strong> play a card, <strong>U</strong> undoes, <strong>E</strong> ends the turn. On touch screens, hold a card to read it.
+        Keys in a fight: <strong>1–9</strong> play a card, <strong>U</strong> undoes, <strong>E</strong> ends the turn, <strong>S</strong> skips the replay of a
+        round. On touch screens, hold a card to read all of it, and tap a replay to skip it.
       </p>
       <h3 className="mt-4 font-semibold">Words</h3>
       <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
@@ -187,7 +198,7 @@ function StatusBar({ run, onMenu, onDeck, onHelp }: { run: RunState; onMenu: () 
       <p>
         Gold <strong data-testid="gold">{run.gold}</strong>
       </p>
-      {run.mode === 'rigorous' && <p className="text-xs font-semibold uppercase tracking-wide text-[var(--tp-muted)]">Rigorous</p>}
+      {run.mode === 'rigorous' && <p className="text-xs font-semibold uppercase tracking-wide text-[var(--tp-muted)]">{paceName(run)}</p>}
       <div className="flex w-full gap-1.5 sm:ml-auto sm:w-auto sm:gap-2">
         <button type="button" className={small} onClick={onDeck} data-testid="open-deck">
           Deck {run.deck.length} · Relics {run.relics.length}
