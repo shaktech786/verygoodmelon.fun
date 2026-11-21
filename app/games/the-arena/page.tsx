@@ -14,7 +14,7 @@ const MindDebate = dynamic(() => import('@/components/games/MindDebate'), {
 export const metadata: Metadata = {
   title: 'The Arena | VeryGoodMelon.Fun',
   description:
-    'Watch any two minds debate any topic. Pick two people, choose a subject, and watch the arguments unfold.',
+    'Two minds, one question, and what each got right. Pick two people and a subject, then watch the conversation unfold.',
 }
 
 export default function TheArenaPage() {
@@ -27,7 +27,7 @@ export default function TheArenaPage() {
               The Arena
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl mx-auto">
-              Watch any two minds debate any topic
+              Two minds, one question, and what each got right
             </p>
           </div>
 
