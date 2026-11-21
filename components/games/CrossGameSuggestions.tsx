@@ -8,13 +8,15 @@ const RELATED_GAMES: Record<string, [string, string]> = {
   'timeless-minds': ['mind-debate', 'hard-choices'],
   'mind-debate': ['timeless-minds', 'hard-choices'],
   'hard-choices': ['thought-pockets', 'mind-debate'],
-  'the-unrusher': ['breathing-patterns', 'first-words'],
-  'hope-daily': ['idea-lab', 'the-unrusher'],
+  'the-unrusher': ['breathing-patterns', 'hard-talk'],
+  'hope-daily': ['idea-lab', 'worry-capsule'],
   'idea-lab': ['cascade', 'timeless-minds'],
   'thought-pockets': ['hard-choices', 'idea-lab'],
   'cascade': ['thought-pockets', 'idea-lab'],
   'breathing-patterns': ['the-unrusher', 'calm-garden'],
   'calm-garden': ['breathing-patterns', 'hope-daily'],
+  'worry-capsule': ['the-unrusher', 'hope-daily'],
+  'hard-talk': ['breathing-patterns', 'worry-capsule'],
 }
 
 interface CrossGameSuggestionsProps {

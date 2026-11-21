@@ -178,6 +178,32 @@ export const ALL_GAMES: readonly GameConfig[] = [
     tags: ['ai', 'debate', 'philosophical', 'creative'],
     order: 12,
   },
+  {
+    id: 'worry-capsule',
+    slug: 'the-slow-post', // Enigmatic: a letter to your future self
+    title: 'The Keeper',
+    description: 'Seal a worry, see how it turned out',
+    hook: 'Seal a worry away, then see if it came true',
+    cardImage: '/games/worry-capsule/card.svg',
+    category: 'Calm',
+    accentColor: 'warning',
+    isShowcase: true,
+    tags: ['calm', 'reflection', 'private', 'anxiety-relief'],
+    order: 13,
+  },
+  {
+    id: 'hard-talk',
+    slug: 'the-threshold', // Enigmatic: the moment before you step in
+    title: 'The Envoy',
+    description: 'Steady yourself before a hard conversation',
+    hook: 'Settle, find your words, walk in with one line',
+    cardImage: '/games/hard-talk/card.svg',
+    category: 'Calm',
+    accentColor: 'success',
+    isShowcase: true,
+    tags: ['calm', 'anxiety-relief', 'conversation', 'self-compassion'],
+    order: 14,
+  },
 ] as const
 
 /**

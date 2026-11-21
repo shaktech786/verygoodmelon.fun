@@ -8,18 +8,20 @@
 
 ## 🎮 Games
 
-Twelve games in three groups. The list in `lib/games/config.ts` is the source of truth.
+Fourteen games in three groups. The list in `lib/games/config.ts` is the source of truth.
 
 ### Slow down
 - **[The Patient One](https://verygoodmelon.fun/games/the-long-breath)**: A game that rewards you for not rushing
 - **[The Harmonist](https://verygoodmelon.fun/games/the-still-point)**: Breathe along with animated patterns that calm you down
-- **[The Gardener](https://verygoodmelon.fun/games/quiet-grove)**: Plant seeds of thought and watch your garden respond
+- **[The Gardener](https://verygoodmelon.fun/games/quiet-grove)**: Plant a quiet garden and see who comes to visit
+- **[The Keeper](https://verygoodmelon.fun/games/the-slow-post)**: Seal a worry away, then see if it came true
+- **[The Envoy](https://verygoodmelon.fun/games/the-threshold)**: Settle, find your words, walk in with one line
 
 ### Reflect
 - **[The Sage](https://verygoodmelon.fun/games/ancient-voices)**: Ask life questions to history's greatest thinkers
-- **[The Dilemma](https://verygoodmelon.fun/games/the-crossroads)**: Vote on impossible dilemmas and see how others chose
+- **[The Dilemma](https://verygoodmelon.fun/games/the-crossroads)**: Twelve questions with no right answer, and what your choices protect
 - **[The Final Word](https://verygoodmelon.fun/games/final-breath)**: Write what you'd say at the end and read others' words
-- **[The Awakening](https://verygoodmelon.fun/games/first-breath)**: Imagine waking up in the afterlife and speak first
+- **[The Awakening](https://verygoodmelon.fun/games/first-breath)**: Imagine the moment after your life ends, say your first words, then wake up
 - **[The Arena](https://verygoodmelon.fun/games/the-arena)**: Pick two people and a topic, then watch them argue it out
 
 ### Play
