@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { noteDatabaseUnavailable } from '@/lib/supabase/unavailable'
 import { ALL_GAMES } from '@/lib/games/config'
 
 const MAX_DURATION_SECONDS = 86_400
@@ -34,17 +35,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid event' }, { status: 400 })
   }
 
-  const supabase = await createClient()
-  const { error } = await supabase.from('game_events').insert({
-    game_id: parsed.data.gameId,
-    event: parsed.data.event,
-    duration_seconds: parsed.data.event === 'close' ? parsed.data.durationSeconds : null,
-  })
-
-  if (error) {
-    console.error('Error recording game event:', error)
-    return NextResponse.json({ error: 'Failed to record event' }, { status: 500 })
+  try {
+    const supabase = await createClient()
+    const { error } = await supabase.from('game_events').insert({
+      game_id: parsed.data.gameId,
+      event: parsed.data.event,
+      duration_seconds: parsed.data.event === 'close' ? parsed.data.durationSeconds : null,
+    })
+    if (error) noteDatabaseUnavailable('Game events', error)
+  } catch (error) {
+    noteDatabaseUnavailable('Game events', error)
   }
 
+  // A lost usage event is nothing the visitor needs to hear about
   return new NextResponse(null, { status: 204 })
 }

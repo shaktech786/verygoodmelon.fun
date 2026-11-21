@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
+import { VISITOR_RULE } from '@/lib/ai/visitor-rule'
 import { MAX_SUBMISSION_LENGTH, moderateSubmission, soundsLikeDistress } from './moderation'
 import { clientAddress, createRateLimiter } from './rateLimit'
 
@@ -122,7 +123,7 @@ export function createReflectHandler(voice: ReflectionVoice) {
     try {
       const result = await getGemini().models.generateContent({
         model: GEMINI_MODEL,
-        contents: `${voice.prompt(words)}\n\n${riskInstruction(voice)}`,
+        contents: `${voice.prompt(words)}\n\n${VISITOR_RULE}\n\n${riskInstruction(voice)}`,
         config: { temperature: 0.8, topP: 0.9, maxOutputTokens: 240, responseMimeType: 'application/json', ...MINIMAL_THINKING },
       })
       const judged = parseJudgedReply(result.text ?? '')

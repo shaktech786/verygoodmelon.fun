@@ -124,7 +124,7 @@ function Switch({
         onClick={() => onChange(!checked)}
         className={`
           relative shrink-0 w-12 h-7 rounded-full border-2 transition-colors
-          ${checked ? 'bg-accent border-accent' : 'bg-card-bg border-primary-light'}
+          ${checked ? 'bg-melon-green border-melon-green' : 'bg-card-bg border-primary-light'}
         `}
       >
         <span

@@ -248,15 +248,15 @@ test('the voice starts off, speaks only once chosen, and video can be turned off
   await voiceOff.click()
   await page.evaluate(() => { (window as unknown as { __spoken: string[] }).__spoken.length = 0 })
 
-  await page.getByRole('button', { name: 'Turn off video' }).click()
-  await expect(page.getByText('Audio Only Mode')).toBeVisible()
-  await expect(page.getByText('Turn on video to see Socrates')).toBeVisible()
+  await page.getByRole('button', { name: 'Hide portrait' }).click()
+  await expect(page.getByText('Portrait hidden')).toBeVisible()
+  await expect(page.getByText('Show the portrait to see Socrates')).toBeVisible()
   await send(page, 'Still softly')
   await expect(bubbles(page).nth(6)).toContainText('Reply 3')
   expect(await spoken(page)).toEqual([])
 
-  await page.getByRole('button', { name: 'Turn on video' }).click()
-  await expect(page.getByText('Audio Only Mode')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Show portrait' }).click()
+  await expect(page.getByText('Portrait hidden')).toHaveCount(0)
 })
 
 test('without speech input in the browser, Speak explains that typing still works', async ({ page }) => {
@@ -444,7 +444,7 @@ test('the legal disclaimer opens from the call and links back to the game', asyn
   await stubChat(page)
   await openGame(page)
 
-  const link = page.getByRole('link', { name: 'Full Legal Disclaimer' })
+  const link = page.getByRole('link', { name: 'About these conversations' })
   await expect(link).toHaveAttribute('href', '/games/ancient-voices/disclaimer')
 
   const [disclaimer] = await Promise.all([context.waitForEvent('page'), link.click()])
@@ -467,7 +467,7 @@ test.describe('on a phone', () => {
     await stubChat(page)
     await openGame(page)
 
-    for (const name of ['Directory', 'Start voice input', 'Turn on thinker voice', 'Turn off video', 'Say goodbye']) {
+    for (const name of ['Directory', 'Start voice input', 'Turn on thinker voice', 'Hide portrait', 'Say goodbye']) {
       await expect(page.getByRole('button', { name })).toBeInViewport()
     }
     // Every toolbar button names itself in visible words, not only an icon.

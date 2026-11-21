@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { openFeedback } from '@/components/FeedbackButton'
+import { siteVisitCount } from '@/lib/analytics/visits'
 
 // Phones get a 44px-tall tap target; the row stays compact on larger screens
 const FOOTER_LINK =
@@ -12,33 +13,13 @@ export function Footer() {
   const [visitCount, setVisitCount] = useState<number | null>(null)
 
   useEffect(() => {
-    const trackVisit = async () => {
-      try {
-        const hasVisited = sessionStorage.getItem('hasVisited')
-
-        if (!hasVisited) {
-          const response = await fetch('/api/site-visits', {
-            method: 'POST'
-          })
-
-          if (response.ok) {
-            const data = await response.json()
-            if (typeof data.count === 'number') setVisitCount(data.count)
-            sessionStorage.setItem('hasVisited', 'true')
-          }
-        } else {
-          const response = await fetch('/api/site-visits')
-          if (response.ok) {
-            const data = await response.json()
-            if (typeof data.count === 'number') setVisitCount(data.count)
-          }
-        }
-      } catch (error) {
-        console.error('Error tracking visit:', error)
-      }
+    let mounted = true
+    siteVisitCount().then((count) => {
+      if (mounted) setVisitCount(count)
+    })
+    return () => {
+      mounted = false
     }
-
-    trackVisit()
   }, [])
 
   return (

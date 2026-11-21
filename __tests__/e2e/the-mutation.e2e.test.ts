@@ -36,7 +36,7 @@ interface EngineState {
   multiplier: number
   rushTimer: number
   totalTime: number
-  nudges: number
+  bumps: number
   transformed: number
   activeMechanics: string[]
   entities: EngineEntity[]
@@ -100,7 +100,7 @@ async function engine(page: Page): Promise<EngineState> {
       multiplier: s.multiplier,
       rushTimer: s.rushTimer,
       totalTime: s.totalTime,
-      nudges: s.nudges,
+      bumps: s.bumps,
       transformed: s.transformed,
       activeMechanics: [...s.activeMechanics],
       entities: s.entities.map((e) => ({ ...e })),
@@ -268,9 +268,9 @@ test.describe('The Shapeshifter', () => {
     await endRush(page)
     const finale = finaleDialog(page)
     // Nobody moved, so the game is named for a gentle player, from the rules it grew and their order
-    await expect(finale.getByRole('heading', { name: /QUIET (STARS|GEMS) & (SHADOWS|TIDES|LANTERNS|GLIDES|RHYTHMS|ORBITS)$/ })).toBeFocused()
+    await expect(finale.getByRole('heading', { name: /QUIET (STARS|GEMS) & (SHADOWS|TIDES|LANTERNS|GLIDES|RHYTHMS|GENTLE PULL)$/ })).toBeFocused()
     // The tagline is drawn from this run: what was gathered, and the latest rule it grew
-    await expect(finale.getByText(/^A game for someone who let \d+ (stars?|gems?) drift their way (among the wandering shadows|as the tides came and went|by lantern light|in quick, quiet glides|in an easy rhythm|around the slow orbits)\.$/)).toBeVisible()
+    await expect(finale.getByText(/^A game for someone who let \d+ (stars?|gems?) drift their way (among the wandering shadows|as the tides came and went|by lantern light|in quick, quiet glides|in an easy rhythm|in the gentle pull)\.$/)).toBeVisible()
     await expect(finale.getByText(/(error|failed|\bAI\b)/)).toHaveCount(0)
 
     await finale.getByRole('button', { name: 'PLAY AGAIN' }).click()
@@ -412,7 +412,7 @@ test.describe('The Shapeshifter', () => {
     })
     const before = await engine(page)
     await shadowOnOrb(page)
-    await expect.poll(async () => (await engine(page)).nudges).toBe(1)
+    await expect.poll(async () => (await engine(page)).bumps).toBe(1)
     await expect.poll(async () => Math.abs((await engine(page)).px - before.px)).toBeGreaterThan(10)
     expect((await engine(page)).score).toBeGreaterThanOrEqual(before.score)
   })

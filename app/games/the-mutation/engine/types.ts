@@ -137,7 +137,8 @@ export interface GameState {
   moveDistTotal: number
   collectTotal: number
   transformed: number
-  nudges: number
+  bumps: number
+  carries: number
   clickTotal: number
   moveBias: [number, number, number, number] // L R U D
 

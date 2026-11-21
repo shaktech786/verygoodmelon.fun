@@ -153,7 +153,13 @@ Announce it. Respond ONLY with JSON:
 async function handleNaming(body: Record<string, unknown>) {
   const picture = readPicture(body)
   const transformed = count(body.transformed)
-  const nudges = count(body.nudges)
+  const bumps = count(body.bumps)
+  const carries = count(body.carries)
+  const happened = [
+    transformed > 0 && `turned ${transformed} shadows into stars`,
+    bumps > 0 && `were bumped by a shadow ${bumps} times`,
+    carries > 0 && `were carried by a tide ${carries} times`,
+  ].filter(Boolean)
 
   try {
     const prompt = `${VOICE}
@@ -161,7 +167,7 @@ async function handleNaming(body: Record<string, unknown>) {
 The player just finished their game. Name it.
 
 How it grew: ${picture.history.map(m => `${m.title || m.id} (${m.id})`).join(', ') || 'six small rules'}.
-The player ${STYLE_NOTES[picture.style]} (${picture.style}). They turned ${transformed} shadows into stars and were nudged ${nudges} times.
+The player ${STYLE_NOTES[picture.style]} (${picture.style}). ${happened.length ? `They ${happened.join(' and ')}.` : ''}
 
 Give it a name of 2 to 4 words in ALL CAPS that sounds like a gentle retro arcade cabinet, and a one-line tagline that begins "For someone who" and kindly notices how they played.
 The tagline must mention something particular to this run, such as one of its rules by name, so no two runs share a line.

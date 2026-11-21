@@ -194,7 +194,7 @@ test.describe('The Patient One', () => {
     await taskButton(page, 'Look at One Thing').click()
     await advance(page, 2000)
     expect(await ramps()).not.toContain(0)
-    await page.getByRole('button', { name: 'I need to stop' }).click()
+    await page.getByRole('button', { name: 'Leave early' }).click()
 
     await taskButton(page, 'Listen to Silence').click()
     await advance(page, 1000)
@@ -302,7 +302,7 @@ test.describe('The Patient One', () => {
     await openGame(page)
     await taskButton(page, 'Look at One Thing').click()
     await advance(page, 3000)
-    await page.getByRole('button', { name: 'I need to stop' }).click()
+    await page.getByRole('button', { name: 'Leave early' }).click()
 
     await expect(page.getByRole('heading', { name: MENU_HEADING })).toBeFocused()
     await expect(page.getByText('Today you spent time with')).toHaveCount(0)
@@ -395,7 +395,7 @@ test.describe('The Patient One', () => {
     await expect(page.getByRole('heading', { name: 'Listen to Silence' })).toBeFocused()
 
     await page.keyboard.press('Tab')
-    await expect(page.getByRole('button', { name: 'I need to stop' })).toBeFocused()
+    await expect(page.getByRole('button', { name: 'Leave early' })).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('heading', { name: MENU_HEADING })).toBeFocused()
 
@@ -437,7 +437,7 @@ test.describe('The Patient One on a phone with reduced motion', () => {
     await expect(page.locator('html')).toHaveAttribute('data-text-size', 'larger')
     await taskButton(page, 'Watch the Seeds').tap()
     await advance(page, 3000)
-    for (const target of [page.getByRole('img', { name: /seeds settled/ }), timer(page), page.getByRole('button', { name: 'I need to stop' })]) {
+    for (const target of [page.getByRole('img', { name: /seeds settled/ }), timer(page), page.getByRole('button', { name: 'Leave early' })]) {
       const box = await target.boundingBox()
       expect(box).not.toBeNull()
       expect(box!.y).toBeGreaterThanOrEqual(0)

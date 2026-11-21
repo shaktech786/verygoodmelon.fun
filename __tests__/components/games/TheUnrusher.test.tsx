@@ -50,7 +50,7 @@ describe('TheUnrusher', () => {
   it('returns to the moments when stopped', () => {
     render(<TheUnrusher />)
     fireEvent.click(screen.getByText('Watch the Seeds'))
-    fireEvent.click(screen.getByText(/I need to stop/i))
+    fireEvent.click(screen.getByText(/Leave early/i))
     expect(screen.getByText('Choose a moment to savor')).toBeInTheDocument()
   })
   it('never ends a writing moment while the player is typing, and waits for Done', () => {

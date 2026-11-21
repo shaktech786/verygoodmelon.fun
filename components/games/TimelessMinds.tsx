@@ -579,8 +579,8 @@ export default function TimelessMinds() {
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center p-8">
                 <div className="text-6xl mb-4" aria-hidden="true">&#x1F399;&#xFE0F;</div>
-                <p className="text-white/80">Audio Only Mode</p>
-                <p className="text-white/70 text-sm mt-2">Turn on video to see {thinker?.name}</p>
+                <p className="text-white/80">Portrait hidden</p>
+                <p className="text-white/70 text-sm mt-2">Show the portrait to see {thinker?.name}</p>
               </div>
             )}
           </div>
@@ -593,7 +593,7 @@ export default function TimelessMinds() {
 
           {/* Status Indicator */}
           <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex items-center gap-1.5 sm:gap-2 bg-black/60 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg backdrop-blur-sm">
-            <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isSpeaking ? 'bg-warm' : isListening ? 'bg-accent' : 'bg-success'}`} aria-hidden="true"></div>
+            <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isSpeaking ? 'bg-warm' : isListening ? 'bg-melon-green' : 'bg-success'}`} aria-hidden="true"></div>
             <span className="text-white text-[11px] sm:text-xs font-medium">{statusLabel}</span>
           </div>
         </div>
@@ -649,7 +649,7 @@ export default function TimelessMinds() {
                   <div
                     className={`px-3 py-2 rounded-lg shadow-sm ${
                       message.role === 'user'
-                        ? 'bg-accent text-white rounded-br-none'
+                        ? 'bg-chosen border border-chosen-line/40 text-foreground rounded-br-none'
                         : 'bg-card-bg border border-card-border text-foreground rounded-bl-none'
                     }`}
                   >
@@ -679,9 +679,9 @@ export default function TimelessMinds() {
           {/* Chat Input */}
           <div ref={inputRowRef} className="shrink-0 p-2 sm:p-3 border-t border-card-border bg-card-bg">
             {isListening && (
-              <div className="mb-2 p-2 bg-accent/10 border border-accent/30 rounded-lg">
+              <div className="mb-2 p-2 bg-chosen border border-chosen-line/40 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-accent rounded-full" aria-hidden="true" />
+                  <div className="w-2 h-2 bg-melon-green rounded-full" aria-hidden="true" />
                   <span className="text-xs text-foreground font-medium">Listening...</span>
                 </div>
                 {interimTranscript && (
@@ -733,7 +733,7 @@ export default function TimelessMinds() {
             target="_blank"
             className="text-white underline"
           >
-            Full Legal Disclaimer
+            About these conversations
           </a>
         </p>
       </div>
@@ -764,15 +764,15 @@ export default function TimelessMinds() {
           {/* Voice Input */}
           <button
             onClick={toggleVoiceInput}
-            className={`${toolbarButton} ${isListening ? 'bg-accent/20' : ''}`}
+            className={`${toolbarButton} ${isListening ? 'bg-melon-green/20' : ''}`}
             aria-label={isListening ? 'Stop listening' : 'Start voice input'}
             disabled={isLoading || isSpeaking}
           >
             <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
-              isListening ? 'bg-accent' : 'bg-gray-700 group-hover:bg-gray-600'
+              isListening ? 'bg-melon-green' : 'bg-gray-700 group-hover:bg-gray-600'
             }`}>
               {isListening ? (
-                <MicOff size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
+                <MicOff size={16} className="text-background sm:w-5 sm:h-5" aria-hidden="true" />
               ) : (
                 <Mic size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
               )}
@@ -803,7 +803,7 @@ export default function TimelessMinds() {
           <button
             onClick={toggleVideo}
             className={toolbarButton}
-            aria-label={videoEnabled ? 'Turn off video' : 'Turn on video'}
+            aria-label={videoEnabled ? 'Hide portrait' : 'Show portrait'}
           >
             <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
               videoEnabled ? 'bg-gray-700 group-hover:bg-gray-600' : 'bg-gray-600'
@@ -814,7 +814,7 @@ export default function TimelessMinds() {
                 <VideoOff size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
               )}
             </div>
-            <span className={toolbarLabel}>{videoEnabled ? 'Video' : 'Off'}</span>
+            <span className={toolbarLabel}>{videoEnabled ? 'Portrait' : 'Hidden'}</span>
           </button>
 
           {/* End Call */}

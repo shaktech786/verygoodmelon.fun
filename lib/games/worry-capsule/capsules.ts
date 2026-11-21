@@ -130,3 +130,22 @@ export function tally(capsules: readonly Capsule[]): Tally {
   }
   return counts
 }
+
+export interface SameDayPlace {
+  position: number
+  of: number
+}
+
+/** Tells apart capsules sealed on the same day without saying anything about what they hold. */
+export function sealedSameDay(capsules: readonly Capsule[], timeZone?: string): Map<string, SameDayPlace> {
+  const byDay = new Map<DateKey, Capsule[]>()
+  for (const capsule of [...capsules].sort((a, b) => a.sealedAt.localeCompare(b.sealedAt))) {
+    const day = localDateKey(new Date(capsule.sealedAt), timeZone)
+    byDay.set(day, [...(byDay.get(day) ?? []), capsule])
+  }
+  const places = new Map<string, SameDayPlace>()
+  for (const group of byDay.values()) {
+    group.forEach((capsule, i) => places.set(capsule.id, { position: i + 1, of: group.length }))
+  }
+  return places
+}

@@ -15,11 +15,19 @@ export const OUTCOME_RESPONSES: Record<Outcome, readonly string[]> = {
   ],
   yes: [
     'It happened. Thank you for coming back to look at it.',
-    'Some worries are about real things. This one was.',
+    'Some worries are about real things, and this one was.',
     'It happened. It is kept here now, with the others.',
     'It came true. You don’t have to make sense of it today.',
   ],
 }
+
+/** Said after any "it happened" line; it honours the carrying and assumes nothing about how it went. */
+export const CARRIED_LINES: readonly string[] = [
+  'And you carried it through the days in between. That counted.',
+  'You carried it all the way here, and you came back to look.',
+  'It was yours to carry for a while. You did carry it.',
+  'Carrying it until now took something, whatever came of it.',
+]
 
 export const NOT_YET_LINES: readonly string[] = [
   'Too soon to tell. That is an answer too.',
@@ -51,6 +59,11 @@ function hash(seed: string): number {
 /** The same capsule always says the same thing, so revisiting it feels consistent. */
 export function pickLine(lines: readonly string[], seed: string): string {
   return lines[hash(seed) % lines.length]
+}
+
+export function outcomeResponse(outcome: Outcome, seed: string): string {
+  const first = pickLine(OUTCOME_RESPONSES[outcome], seed)
+  return outcome === 'yes' ? `${first} ${pickLine(CARRIED_LINES, `${seed}:carried`)}` : first
 }
 
 function joinWithAnd(items: string[]): string {

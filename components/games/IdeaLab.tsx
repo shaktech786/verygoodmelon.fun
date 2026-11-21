@@ -430,7 +430,7 @@ export default function IdeaLab() {
   const nameSize = (compact: boolean) => (compact ? 'text-xs' : 'text-sm')
 
   const renderSlot = (concept: Concept | undefined, compact: boolean) => (
-    <div className={`${benchCell} ${compact ? 'rounded-lg' : 'rounded-xl'} border-dashed ${concept ? 'border-accent bg-accent/5' : 'border-foreground/20 bg-foreground/5'}`}>
+    <div className={`${benchCell} ${compact ? 'rounded-lg' : 'rounded-xl'} ${concept ? 'border-chosen-line bg-chosen' : 'border-dashed border-foreground/20 bg-foreground/5'}`}>
       {concept ? (
         <>
           <span className={emojiSize(compact)} aria-hidden="true">{concept.emoji}</span>
@@ -605,7 +605,7 @@ export default function IdeaLab() {
                           flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-lg border transition-colors
                           text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-card-bg
                           ${isSelected
-                            ? 'border-accent bg-accent/10 text-foreground'
+                            ? 'border-chosen-line bg-chosen text-foreground shadow-[inset_0_0_0_1px_var(--chosen-line)]'
                             : gold
                               ? 'border-warm bg-warm/20 hover:bg-warm/30'
                               : concept.isBase

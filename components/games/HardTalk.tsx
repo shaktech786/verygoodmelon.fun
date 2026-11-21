@@ -51,7 +51,7 @@ const optionClass = (selected: boolean) =>
   cn(
     'flex w-full cursor-pointer items-start gap-3 rounded-lg border-2 px-4 py-3 text-left text-foreground transition-colors duration-75',
     'hover:bg-hover-bg has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-card-bg',
-    selected ? 'border-accent bg-accent-soft' : 'border-card-border bg-card-bg',
+    selected ? 'border-chosen-line bg-chosen' : 'border-card-border bg-card-bg',
   )
 
 /** A shape, not only a colour, shows which option is chosen. */
@@ -508,6 +508,12 @@ function HardTalkGame() {
             <>
               {heading('One line to carry in')}
               {notes.ownWords && sub('In your own words.')}
+              {notes.begin && (
+                <div className="mt-5 text-left">
+                  <p className="text-sm font-medium text-foreground/75">Begin with</p>
+                  <p className="mt-1 text-lg text-foreground"><Quote>{notes.begin}</Quote></p>
+                </div>
+              )}
               <figure className="mt-6 overflow-hidden rounded-lg border-2 border-card-border bg-background text-center soft-shadow">
                 <div aria-hidden="true" className="h-2 bg-melon-green" />
                 <div aria-hidden="true" className="h-1.5 bg-success" />
@@ -515,12 +521,6 @@ function HardTalkGame() {
                   {notes.line}
                 </blockquote>
               </figure>
-              {notes.begin && (
-                <div className="mt-5 text-left">
-                  <p className="text-sm font-medium text-foreground/75">Begin with</p>
-                  <p className="mt-1 text-lg text-foreground"><Quote>{notes.begin}</Quote></p>
-                </div>
-              )}
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <button
                   ref={keepOnScreenRef}

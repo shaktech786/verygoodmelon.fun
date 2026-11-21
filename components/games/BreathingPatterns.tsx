@@ -502,7 +502,7 @@ function Chip({ pressed, onToggle, children }: { pressed: boolean; onToggle: () 
       className={cn(
         'px-3 py-1.5 rounded-full text-sm border transition-colors duration-75',
         'focus:outline-none focus:ring-2 focus:ring-accent',
-        pressed ? 'border-accent bg-accent-soft text-foreground' : 'border-card-border text-foreground/75 hover:border-accent/50',
+        pressed ? 'border-chosen-line bg-chosen text-foreground' : 'border-card-border text-foreground/75 hover:border-accent/50',
       )}
     >
       {children}
@@ -1062,7 +1062,7 @@ export default function BreathingPatterns() {
                       'px-3 py-1.5 rounded-full text-xs border transition-colors duration-75',
                       'focus:outline-none focus:ring-2 focus:ring-accent',
                       p.id === selectedPatternId
-                        ? 'border-accent bg-accent-soft text-foreground'
+                        ? 'border-chosen-line bg-chosen text-foreground'
                         : 'border-card-border text-foreground/75 hover:border-accent/50',
                     )}
                   >
@@ -1131,7 +1131,7 @@ export default function BreathingPatterns() {
               'text-left px-4 py-3 rounded-lg border transition-all duration-75',
               'focus:outline-none focus:ring-2 focus:ring-accent',
               selectedPatternId === p.id
-                ? 'border-accent bg-accent-soft'
+                ? 'border-chosen-line bg-chosen'
                 : 'border-card-border bg-card-bg hover:border-accent/40',
             )}
           >
@@ -1177,7 +1177,7 @@ export default function BreathingPatterns() {
                 'px-3 py-1.5 rounded-full text-sm border transition-colors duration-75',
                 'focus:outline-none focus:ring-2 focus:ring-accent',
                 lengthMinutes === l.minutes
-                  ? 'border-accent bg-accent-soft text-foreground'
+                  ? 'border-chosen-line bg-chosen text-foreground'
                   : 'border-card-border text-foreground/75 hover:border-accent/50',
               )}
             >

@@ -117,8 +117,8 @@ export const TALKS: Record<TalkKind, TalkContent> = {
       'I want to bring something up, because this matters to me.',
     ],
     them: {
-      named: '{who} probably didn’t set out to upset you.',
-      unnamed: 'They probably didn’t set out to upset you.',
+      named: '{who} may not see it the way you do yet.',
+      unnamed: 'They may not see it the way you do yet.',
       listen: 'Ask how it looks from their side, and really listen.',
     },
     carry: ['Talk about what happened, not who they are.', 'Say what you need, then listen.', 'Fix the problem together.'],

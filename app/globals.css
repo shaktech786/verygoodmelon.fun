@@ -30,6 +30,9 @@
   --card-border: #e8e8e8;
   --hover-bg: #f7f7f7;
   --focus-ring: var(--accent);
+  /* "Yours" and "selected": rind green, so red stays for the main action. Built from --melon-green, so every theme and contrast setting follows. */
+  --chosen: color-mix(in srgb, var(--melon-green) 12%, var(--card-bg));
+  --chosen-line: var(--melon-green);
 }
 
 /* Dark mode color palette */
@@ -196,6 +199,8 @@ html[data-theme="dark"] .text-gray-900 {
   --color-card-bg: var(--card-bg);
   --color-card-border: var(--card-border);
   --color-hover-bg: var(--hover-bg);
+  --color-chosen: var(--chosen);
+  --color-chosen-line: var(--chosen-line);
   --font-sans: var(--font-quicksand), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -792,6 +797,12 @@ html[data-contrast="extra-high"] a:not(:has(h2, h3)) {
   text-decoration: underline;
 }
 
+/* The sticky header is about 4.3rem tall; anything scrolled into view (a focused heading or control,
+   a jump link) stops just below it instead of underneath. */
+html {
+  scroll-padding-top: 5rem;
+}
+
 /* From sm up, the accessibility and sound buttons float at the bottom right. Anything scrolled into view
    (focus, a revealed result, a form brought above the keyboard) stops clear of them, never underneath. */
 @media (min-width: 640px) {
@@ -1007,6 +1018,15 @@ html[data-greyscale="true"] {
   box-shadow:
     0 0 0 3px var(--background),
     0 0 0 6px var(--focus-ring);
+}
+
+/* Headings and regions the page moves focus to (tabindex="-1") are places, not controls: a faint mark
+   is enough, and a bold box would sit over a calm scene such as a breathing guide. */
+[tabindex="-1"]:focus-visible {
+  box-shadow: none;
+  outline: 2px solid color-mix(in srgb, var(--focus-ring) 30%, transparent);
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 
 

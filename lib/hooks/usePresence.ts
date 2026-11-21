@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { siteVisitCount } from '@/lib/analytics/visits'
 
 /**
  * Fetches approximate count of active visitors (last 10 minutes).
@@ -27,10 +28,8 @@ export function usePresence() {
       }
     }
 
-    // Also record this visit
-    fetch('/api/site-visits', { method: 'POST' }).catch(() => {})
-
-    fetchPresence()
+    // The footer records this visit; waiting for it lets the visit count towards presence
+    siteVisitCount().then(fetchPresence)
 
     // Refresh every 2 minutes
     const interval = setInterval(fetchPresence, 2 * 60 * 1000)

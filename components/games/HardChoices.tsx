@@ -258,8 +258,11 @@ export default function HardChoices() {
   // On a phone the result and Next sit below the fold; bring them up rather than leave the player hunting.
   // Again once the counts arrive, since their bars push Next further down.
   useEffect(() => {
-    if (!hasVoted || !revealResult.current) return
-    resultEndRef.current?.scrollIntoView?.({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' })
+    const end = resultEndRef.current
+    if (!hasVoted || !revealResult.current || !end) return
+    // The way on matters more than the question just answered, so Next always comes into view
+    const top = window.scrollY + end.getBoundingClientRect().bottom + 16 - window.innerHeight
+    if (top > window.scrollY) window.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' })
   }, [hasVoted, displayResults, reduceMotion])
 
   const recordAnswer = (dilemmaId: string, answer: Answer | null) => {

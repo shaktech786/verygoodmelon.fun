@@ -72,7 +72,7 @@ export function Header() {
                   className={cn(
                     'font-medium transition-all text-sm pb-1 border-b-2',
                     isActive
-                      ? 'text-foreground border-accent'
+                      ? 'text-foreground border-melon-green'
                       : 'text-primary-light hover:text-foreground border-transparent hover:border-accent/30'
                   )}
                   aria-current={isActive ? 'page' : undefined}
@@ -122,7 +122,7 @@ export function Header() {
                     className={cn(
                       'font-medium transition-all text-base py-2 px-3 rounded-lg border-l-4',
                       isActive
-                        ? 'text-foreground bg-card-bg border-accent'
+                        ? 'text-foreground bg-card-bg border-melon-green'
                         : 'text-primary-light hover:text-foreground hover:bg-hover-bg border-transparent hover:border-accent/30'
                     )}
                     aria-current={isActive ? 'page' : undefined}

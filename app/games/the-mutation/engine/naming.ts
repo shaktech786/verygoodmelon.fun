@@ -13,7 +13,7 @@ const RULE_SCENE: Record<string, string> = {
   blaster: 'by lantern light',
   phase_dash: 'in quick, quiet glides',
   combo_chain: 'in an easy rhythm',
-  gravity_well: 'around the slow orbits',
+  gravity_well: 'in the gentle pull',
 }
 
 const COLLECTIBLE_WORD: Record<string, string> = { stars: 'STARS', pulse_gems: 'GEMS' }
@@ -23,7 +23,7 @@ const RULE_WORD: Record<string, string> = {
   blaster: 'LANTERNS',
   phase_dash: 'GLIDES',
   combo_chain: 'RHYTHMS',
-  gravity_well: 'ORBITS',
+  gravity_well: 'GENTLE PULL',
 }
 
 /** Used when no name comes back from the server. The third rule to arrive varies from run to run. */
@@ -59,14 +59,23 @@ export function fallbackTagline({ mechanicIds, style, collected, transformed }: 
   return `A game for someone who ${deed}${scene ? ` ${scene}` : ''}.`
 }
 
-/** The closing thought: the game changed six times without asking, and the player kept playing. */
-export function reflection({ transformed, nudges }: { transformed: number; nudges: number }): string {
-  const opening = 'Six rules arrived without asking.'
-  if (transformed > 0) {
-    return `${opening} You turned ${transformed} ${transformed === 1 ? 'shadow into a star' : 'shadows into stars'}.`
-  }
-  if (nudges > 0) {
-    return `${opening} A shadow bumped you ${nudges === 1 ? 'once' : `${nudges} times`}, nothing was lost, and you kept going.`
-  }
-  return `${opening} You met each one as it came.`
+const times = (n: number) => (n === 1 ? 'once' : `${n} times`)
+
+export interface RunEvents {
+  transformed: number
+  /** Times a shadow bumped the orb. */
+  bumps: number
+  /** Times a tide carried the orb along. */
+  carries: number
+}
+
+/** The closing thought: the game changed six times without asking, and the player kept playing. Only what happened is told. */
+export function reflection({ transformed, bumps, carries }: RunEvents): string {
+  const lines = ['Six rules arrived without asking.']
+  if (transformed > 0) lines.push(`You turned ${transformed} ${transformed === 1 ? 'shadow into a star' : 'shadows into stars'}.`)
+  if (bumps > 0) lines.push(`A shadow bumped you ${times(bumps)}, and nothing was lost.`)
+  if (carries > 0) lines.push(`A tide carried you ${times(carries)}.`)
+  if (lines.length === 1) lines.push('You met each one as it came.')
+  else if (transformed === 0) lines.push('You kept going.')
+  return lines.join(' ')
 }

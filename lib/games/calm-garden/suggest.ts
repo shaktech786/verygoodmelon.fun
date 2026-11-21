@@ -4,6 +4,7 @@
  * the server's fallback and the client's, so a suggestion never fails visibly.
  */
 
+import { VISITOR_RULE } from '@/lib/ai/visitor-rule'
 import { describeArea, describePlace, joinWords, nameOf, numberWord, withArticle } from './describe'
 import { GROUND_TOP, PLANT_TYPES, categoryOf, isPlantType, variantOf, type Plant, type PlantType, type Season } from './garden'
 
@@ -212,5 +213,7 @@ Plant types you may choose (id, then its name to use in your line): ${joinWords(
 Coordinates: x runs from 0.05 (left) to 0.95 (right); y runs from ${Y_MIN} (the back, near the horizon at ${GROUND_TOP}) to ${Y_MAX} (the front). Choose open ground near the plant your line is about, leaving room: at least 0.08 away from every plant.
 
 Reply with only JSON: {"type": "plant-type", "x": 0.5, "y": 0.7, "line": "..."}
-The line is one or two short sentences, at most 16 words, speaking to them as "you": name something they planted and why the new plant suits it. Plain, warm words. No exclamation marks. Never mention balance, composition, design, suggestions or yourself.`
+The line is one or two short sentences, at most 16 words, speaking to them as "you": name something they planted and why the new plant suits it. Plain, warm words. No exclamation marks. Never mention balance, composition, design, suggestions or yourself.
+
+${VISITOR_RULE}`
 }

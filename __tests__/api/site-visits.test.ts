@@ -51,11 +51,24 @@ describe('/api/site-visits', () => {
       expect(data.count).toBe(0)
     })
 
-    it('returns 500 on database error', async () => {
+    it('answers with no count, and no error, when the database refuses', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
       mockSelect.mockReturnValue({ count: null, error: { message: 'DB error' } })
 
       const response = await GET()
-      expect(response.status).toBe(500)
+      expect(response.status).toBe(204)
+      expect(error).not.toHaveBeenCalled()
+      error.mockRestore()
+    })
+
+    it('answers with no count when the database cannot be reached', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockSelect.mockRejectedValue(new TypeError('fetch failed'))
+
+      const response = await GET()
+      expect(response.status).toBe(204)
+      expect(error).not.toHaveBeenCalled()
+      error.mockRestore()
     })
   })
 
@@ -78,13 +91,28 @@ describe('/api/site-visits', () => {
       expect(data.count).toBe(43)
     })
 
-    it('returns 500 on insert error', async () => {
+    it('answers with no count, and no error, when the insert is refused', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
       mockFrom.mockImplementation(() => ({
         insert: () => ({ error: { message: 'Insert failed' } }),
       }))
 
       const response = await POST()
-      expect(response.status).toBe(500)
+      expect(response.status).toBe(204)
+      expect(error).not.toHaveBeenCalled()
+      error.mockRestore()
+    })
+
+    it('answers with no count when the database cannot be reached', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockFrom.mockImplementation(() => ({
+        insert: () => Promise.reject(new TypeError('fetch failed')),
+      }))
+
+      const response = await POST()
+      expect(response.status).toBe(204)
+      expect(error).not.toHaveBeenCalled()
+      error.mockRestore()
     })
   })
 })

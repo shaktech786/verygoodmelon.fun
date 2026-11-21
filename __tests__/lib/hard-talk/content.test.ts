@@ -119,17 +119,23 @@ describe('themLine', () => {
   })
 
   it('speaks the player’s own words back to them: “my manager” becomes “your manager”', () => {
-    expect(themLine('problem', 'my manager')).toBe('Your manager probably didn’t set out to upset you.')
-    expect(themLine('problem', 'My manager')).toBe('Your manager probably didn’t set out to upset you.')
+    expect(themLine('problem', 'my manager')).toBe('Your manager may not see it the way you do yet.')
+    expect(themLine('problem', 'My manager')).toBe('Your manager may not see it the way you do yet.')
     expect(themLine('sorry', 'my parents')).toBe('It hurt your parents, and those feelings get to be what they are.')
     expect(themLine('ask', 'our landlord')).toBe('For your landlord, today comes with its own pressures too.')
-    expect(themLine('problem', 'Sam')).toBe('Sam probably didn’t set out to upset you.')
-    expect(themLine('problem', 'the team')).toBe('The team probably didn’t set out to upset you.')
+    expect(themLine('problem', 'Sam')).toBe('Sam may not see it the way you do yet.')
+    expect(themLine('problem', 'the team')).toBe('The team may not see it the way you do yet.')
     expect(asSpokenToPlayer('a friend of mine')).toBe('a friend of yours')
     expect(asSpokenToPlayer('my mum and my dad')).toBe('your mum and your dad')
     // Only whole words: names that merely start with the letters are left alone
     expect(asSpokenToPlayer('Myra')).toBe('Myra')
     expect(asSpokenToPlayer('Ourania')).toBe('Ourania')
+  })
+
+  it('never guesses what the other person meant, kindly or not', () => {
+    for (const line of [TALKS.problem.them.named, TALKS.problem.them.unnamed]) {
+      expect(line).not.toMatch(/probably|didn’t mean|set out|upset/i)
+    }
   })
 
   it('falls back gracefully when no one was named', () => {

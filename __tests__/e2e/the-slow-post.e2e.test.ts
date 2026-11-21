@@ -229,6 +229,22 @@ test.describe('The Keeper', () => {
     await expect(page.getByText('Worry number a')).toHaveCount(0)
   })
 
+  test('jars sealed on the same day can be told apart by ear, still without saying what they hold', async ({ page }) => {
+    await openKeeper(page)
+    const day = (hour: number) => new Date(T0 - 7 * DAY + hour * 3_600_000).toISOString()
+    await seed(page, [
+      { ...capsule('a', -1), sealedAt: day(0) },
+      { ...capsule('b', -1), sealedAt: day(1) },
+      { ...capsule('c', -1), sealedAt: day(2) },
+    ])
+    const jars = page.getByRole('list', { name: 'Sealed capsules' }).getByRole('button')
+    await expect(jars).toHaveCount(3)
+    const names = await jars.evaluateAll((buttons) => buttons.map((b) => b.getAttribute('aria-label')))
+    expect(new Set(names).size).toBe(3)
+    expect(names).toEqual(expect.arrayContaining([expect.stringMatching(/, 1 of 3$/), expect.stringMatching(/, 2 of 3$/), expect.stringMatching(/, 3 of 3$/)]))
+    for (const name of names) expect(name).not.toMatch(/Worry number/)
+  })
+
   test('the three outcomes are marked by shape as well as colour', async ({ page }) => {
     await openKeeper(page)
     const opened = (outcome: string) => ({ at: new Date(T0 - DAY).toISOString(), outcome, note: '' })
@@ -282,6 +298,8 @@ test.describe('The Keeper', () => {
       await expect(page.getByRole('button', { name: 'Not now' })).toHaveCount(0)
 
       await page.getByRole('radio', { name: answer, exact: true }).locator('..').click()
+      // A worry that came true is met with a word for having carried it
+      if (id === 'yes') await expect(page.getByText(/carr(y|ied|ying) it/i)).toBeVisible()
       await page.getByLabel(/A line to your past self/).fill('  Dear me: it was all right.  ')
       await page.getByRole('button', { name: 'Close the capsule' }).click()
 

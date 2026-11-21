@@ -109,7 +109,7 @@ export default function ThinkerPhoneBook({
                 aria-pressed={shelf === label}
                 className={`px-4 py-1.5 min-h-[44px] rounded-full text-sm font-medium transition-colors ${
                   shelf === label
-                    ? 'bg-accent text-white'
+                    ? 'bg-melon-green text-background'
                     : 'bg-hover-bg text-foreground/80 hover:bg-card-border'
                 }`}
               >

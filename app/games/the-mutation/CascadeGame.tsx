@@ -206,7 +206,7 @@ export default function CascadeGame() {
       statValue: (hasChain ? s?.maxCombo : s?.collectTotal) ?? 0,
       statLabel: hasChain ? 'longest rhythm' : 'lights gathered',
       totalTime: s?.totalTime ?? 0,
-      closingLine: reflection({ transformed: s?.transformed ?? 0, nudges: s?.nudges ?? 0 }),
+      closingLine: reflection({ transformed: s?.transformed ?? 0, bumps: s?.bumps ?? 0, carries: s?.carries ?? 0 }),
     })
     setGameName('')
     setTagline('')
@@ -229,7 +229,8 @@ export default function CascadeGame() {
           score: finalScore,
           profile: s ? getProfileSummary(s) : null,
           transformed: s?.transformed ?? 0,
-          nudges: s?.nudges ?? 0,
+          bumps: s?.bumps ?? 0,
+          carries: s?.carries ?? 0,
         }),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       })

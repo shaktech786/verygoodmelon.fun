@@ -37,7 +37,8 @@ const naming = (body: Record<string, unknown> = {}) => ask({
   score: 420,
   profile: { playStyle: 'explorer' },
   transformed: 3,
-  nudges: 2,
+  bumps: 2,
+  carries: 0,
   ...body,
 })
 
@@ -147,6 +148,13 @@ describe('POST /api/cascade/mutate', () => {
       expect(data).toEqual({ gameName: 'WANDERING LIGHTS', tagline: 'For someone who wanted to see every corner.' })
       expect(prompt()).toContain('explorer')
       expect(prompt()).toMatch(/3 shadows/)
+    })
+
+    it('tells the model only about the things that happened in this run', async () => {
+      await naming({ bumps: 0, carries: 16 })
+
+      expect(prompt()).toMatch(/carried by a tide 16 times/)
+      expect(prompt()).not.toMatch(/bumped|nudged/)
     })
 
     it('returns nothing when the name is unkind, so the page uses its own', async () => {

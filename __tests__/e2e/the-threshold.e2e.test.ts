@@ -150,6 +150,9 @@ test.describe('The Plain Speaker', () => {
     await expect(page.locator('blockquote')).toHaveText('SECRET-WORDS I have grown into this role.')
     await expect(page.getByText('Ask clearly, then let them answer.')).toHaveCount(0)
     await expect(page.getByText('Begin with')).toBeVisible()
+    // The opener is said first, so it reads first, as on the full-screen card
+    const top = async (target: Locator) => (await target.boundingBox())!.y
+    expect(await top(page.getByText('Begin with'))).toBeLessThan(await top(page.locator('blockquote')))
     await expect(page.getByText('“Could we have ten minutes? There’s something I’d like to ask for.”')).toBeVisible()
     await expect(button(page, 'Next')).toHaveCount(0)
     await expect(page.locator('#hard-talk').getByText(/\bready\b|\bsafe\b/i)).toHaveCount(0)
@@ -309,7 +312,7 @@ test.describe('The Plain Speaker', () => {
     await throughSettling(page)
     await expect(page.getByRole('textbox')).toHaveValue('I would like a raise')
     await next(page)
-    await expectStep(page, 'Sam probably didn’t set out to upset you.')
+    await expectStep(page, 'Sam may not see it the way you do yet.')
     await next(page)
     await expect(page.getByRole('radio', { checked: true })).toHaveCount(0)
     await expect(page.getByRole('radio', { name: 'They get defensive' })).toBeVisible()

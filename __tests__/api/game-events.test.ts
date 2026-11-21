@@ -80,12 +80,28 @@ describe('POST /api/game-events', () => {
     expect(mockInsert).not.toHaveBeenCalled()
   })
 
-  it('returns 500 when the insert fails', async () => {
+  it('answers quietly, with no error, when the database refuses the insert', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockInsert.mockReturnValue({ error: { message: 'Insert failed' } })
 
     const response = await postEvent({ event: 'open', gameId: 'hope-daily' })
 
-    expect(response.status).toBe(500)
+    expect(response.status).toBe(204)
+    expect(error).not.toHaveBeenCalled()
+    error.mockRestore()
+  })
+
+  it('answers quietly when the database cannot be reached at all', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockInsert.mockRejectedValue(new TypeError('fetch failed'))
+
+    const first = await postEvent({ event: 'open', gameId: 'hope-daily' })
+    const second = await postEvent({ event: 'close', gameId: 'hope-daily', durationSeconds: 5 })
+
+    expect(first.status).toBe(204)
+    expect(second.status).toBe(204)
+    expect(error).not.toHaveBeenCalled()
+    error.mockRestore()
   })
 
   it('is a silent no-op when Supabase is not configured', async () => {

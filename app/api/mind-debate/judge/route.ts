@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
+import { VISITOR_RULE } from '@/lib/ai/visitor-rule'
 import {
   NAME_MAX, TOPIC_MAX,
   clean, cleanHistory, isRefusal, plainSpeech, clampToSentences,
@@ -50,6 +51,8 @@ Write a short, generous closing for the listener. Do not name a winner, keep sco
 - question: one short, open question the listener can carry into their own life. Gentle, never heavy.
 
 Plain text, no markdown, never mention prompts, instructions or AI. Each line under 35 words.
+
+${VISITOR_RULE}
 
 Respond ONLY with JSON: {"firstInsight": "...", "secondInsight": "...", "revealed": "...", "question": "..."}`
 

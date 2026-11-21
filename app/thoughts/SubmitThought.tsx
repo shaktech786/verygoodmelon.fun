@@ -169,7 +169,7 @@ export function SubmitThought() {
                   focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2 focus-within:ring-offset-background
                   ${
                     theme === t.value
-                      ? 'border-accent bg-accent/10 text-foreground'
+                      ? 'border-chosen-line bg-chosen text-foreground'
                       : 'border-card-border bg-card-bg text-primary-light hover:border-accent/30 hover:text-foreground'
                   }
                   ${state === 'submitting' ? 'opacity-60 pointer-events-none' : ''}

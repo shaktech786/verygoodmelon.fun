@@ -20,10 +20,11 @@ import {
   opensOnFor,
   resealCapsule,
   sealCapsule,
+  sealedSameDay,
   shelve,
   tally,
 } from '@/lib/games/worry-capsule/capsules'
-import { NOT_YET_LINES, OUTCOME_RESPONSES, RESTING_LINES, SEALED_LINES, pickLine } from '@/lib/games/worry-capsule/copy'
+import { NOT_YET_LINES, RESTING_LINES, SEALED_LINES, outcomeResponse, pickLine } from '@/lib/games/worry-capsule/copy'
 import { type DateKey, localDateKey } from '@/lib/games/worry-capsule/dates'
 import type { WorryDraft as Draft } from '@/lib/games/worry-capsule/draft'
 import { DevTimeTravel } from './worry-capsule/DevTimeTravel'
@@ -286,6 +287,7 @@ export default function WorryCapsule() {
     const shelf = shelve(capsules, nowDate)
     const counts = tally(capsules)
     const waiting = [...shelf.ready, ...shelf.resting]
+    const sameDay = sealedSameDay(waiting)
     body = (
       <div className="space-y-6">
         <div className="space-y-2">
@@ -303,7 +305,8 @@ export default function WorryCapsule() {
           <ul className="grid grid-cols-3 min-[440px]:grid-cols-4 sm:grid-cols-5" aria-label="Sealed capsules">
             {waiting.map((capsule) => {
               const ready = capsuleStatus(capsule, nowDate) === 'ready'
-              const sealedOn = sealedDay(capsule, today)
+              const place = sameDay.get(capsule.id)
+              const sealedOn = `${sealedDay(capsule, today)}${place && place.of > 1 ? `, ${place.position} of ${place.of}` : ''}`
               return (
                 <li key={capsule.id} className="border-b-4 border-melon-green/40 px-1 pt-2">
                   <button
@@ -479,7 +482,7 @@ function Composer({ draft, restored, today, snapshot, motion, focus, onChange, o
           {HORIZONS.map((horizon) => (
             <label
               key={horizon.id}
-              className="flex items-start gap-2.5 rounded-lg border border-card-border bg-background px-3 py-2.5 cursor-pointer transition-colors duration-75 hover:bg-hover-bg has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent"
+              className="flex items-start gap-2.5 rounded-lg border border-card-border bg-background px-3 py-2.5 cursor-pointer transition-colors duration-75 hover:bg-hover-bg has-[:checked]:border-chosen-line has-[:checked]:bg-chosen has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent"
             >
               <input
                 type="radio"
@@ -625,7 +628,7 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: 
               {CHOICES.map((option) => (
                 <label
                   key={option.id}
-                  className="min-w-[5.5rem] rounded-full border-2 border-card-border bg-background px-4 py-2 text-base font-medium text-foreground cursor-pointer transition-colors duration-75 hover:bg-hover-bg has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:focus-visible]:ring-offset-2"
+                  className="min-w-[5.5rem] rounded-full border-2 border-card-border bg-background px-4 py-2 text-base font-medium text-foreground cursor-pointer transition-colors duration-75 hover:bg-hover-bg has-[:checked]:border-chosen-line has-[:checked]:bg-chosen has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:focus-visible]:ring-offset-2"
                 >
                   <input
                     type="radio"
@@ -644,7 +647,7 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: 
           <div aria-live="polite">
             {outcome && (
               <p className="text-base sm:text-lg text-foreground max-w-md mx-auto">
-                {pickLine(outcome === 'not-yet' ? NOT_YET_LINES : OUTCOME_RESPONSES[outcome], capsule.id)}
+                {outcome === 'not-yet' ? pickLine(NOT_YET_LINES, capsule.id) : outcomeResponse(outcome, capsule.id)}
               </p>
             )}
           </div>
@@ -656,7 +659,7 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: 
                 {RESEAL_HORIZONS.map((horizon) => (
                   <label
                     key={horizon.id}
-                    className="flex items-start gap-2.5 rounded-lg border border-card-border bg-background px-3 py-2.5 cursor-pointer transition-colors duration-75 hover:bg-hover-bg has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent"
+                    className="flex items-start gap-2.5 rounded-lg border border-card-border bg-background px-3 py-2.5 cursor-pointer transition-colors duration-75 hover:bg-hover-bg has-[:checked]:border-chosen-line has-[:checked]:bg-chosen has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent"
                   >
                     <input
                       type="radio"
@@ -728,7 +731,7 @@ function Reread({ capsule, today, motion, focus, onBack, onLetGo }: CapsuleViewP
           Opened {formatDay(localDateKey(new Date(opening.at)), today)}: {OUTCOME_WORDS[opening.outcome].toLowerCase()}.
         </span>
       </p>
-      <p className={cn(muted, 'italic max-w-md mx-auto')}>{pickLine(OUTCOME_RESPONSES[opening.outcome], capsule.id)}</p>
+      <p className={cn(muted, 'italic max-w-md mx-auto')}>{outcomeResponse(opening.outcome, capsule.id)}</p>
       {opening.note && (
         <div className="space-y-2">
           <p className="text-sm text-foreground/75">You wrote back:</p>

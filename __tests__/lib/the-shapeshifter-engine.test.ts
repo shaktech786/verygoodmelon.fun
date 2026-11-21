@@ -36,7 +36,8 @@ describe('The Shapeshifter engine', () => {
 
     expect(s.score).toBeGreaterThanOrEqual(100)
     expect(s.px).toBeLessThan(startX - 10)
-    expect(s.nudges).toBe(1)
+    expect(s.bumps).toBe(1)
+    expect(s.carries).toBe(0)
   })
 
   it('a tide carries the orb along with it and costs nothing', () => {
@@ -50,6 +51,8 @@ describe('The Shapeshifter engine', () => {
 
     expect(s.score).toBeGreaterThanOrEqual(50)
     expect(s.px).toBeGreaterThan(startX + 10)
+    expect(s.carries).toBe(1)
+    expect(s.bumps).toBe(0)
   })
 
   it('light sent from the orb turns a shadow into a star', () => {
@@ -77,7 +80,7 @@ describe('The Shapeshifter engine', () => {
 
     expect(count(s, 'chaser')).toBe(0)
     expect(s.transformed).toBe(1)
-    expect(s.nudges).toBe(0)
+    expect(s.bumps).toBe(0)
   })
 
   it('the bloom turns every shadow and tide into light and lets no new ones in', () => {

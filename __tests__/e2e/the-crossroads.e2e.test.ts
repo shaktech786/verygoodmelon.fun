@@ -515,7 +515,9 @@ test.describe('database reachable', () => {
       await expect(page.getByText(/almost evenly split/)).toBeVisible()
       // Regression: the result and the way on are brought on screen, without the player hunting for them
       await expect(page.getByText(/^You chose /)).toBeInViewport()
-      await expect(nextButton(page)).toBeInViewport()
+      await expect(nextButton(page)).toBeInViewport({ ratio: 1 })
+      await nextButton(page).tap()
+      await expect(progress(page, 2)).toBeVisible()
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
       expect(overflow).toBeLessThanOrEqual(0)
     })

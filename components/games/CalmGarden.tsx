@@ -763,7 +763,7 @@ export default function CalmGarden() {
                 'flex flex-col items-center gap-0.5 rounded-lg px-1 pt-1.5 pb-1 text-[11px] leading-tight transition-colors duration-75',
                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                 selectedType === variant.id
-                  ? 'bg-accent-soft border border-accent text-foreground'
+                  ? 'bg-chosen border border-chosen-line text-foreground'
                   : 'border border-transparent text-foreground/80 hover:bg-hover-bg hover:text-foreground',
               )}
             >

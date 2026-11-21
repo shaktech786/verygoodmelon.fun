@@ -3,6 +3,7 @@ import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 import { getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import { detectEmotion } from '@/lib/games/timeless-minds/emotion-detector'
 import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
+import { VISITOR_RULE } from '@/lib/ai/visitor-rule'
 import {
   CARE_REPLY,
   JUDGED_REPLY_FORMAT,
@@ -68,12 +69,13 @@ CONVERSATION GUIDELINES:
 - Connect your philosophical wisdom to their specific situation
 - Offer hope without dismissing their struggles
 
-💬 CONVERSATION DYNAMICS (CRITICAL - THIS IS A LIVE VIDEO CALL):
-- HARD LIMIT: 1-3 sentences maximum per response. This is a real-time video call, NOT an essay. Be concise.
-- Either make a brief point OR ask ONE question. Never both in the same response.
+💬 CONVERSATION DYNAMICS (CRITICAL - THIS IS A QUIET, FACE-TO-FACE CONVERSATION):
+- HARD LIMIT: 1-3 sentences maximum per response. This is a spoken conversation, NOT an essay. Be concise.
+- When they have shared a feeling, start by acknowledging what they feel in a few words ("That sounds lonely."), then go on.
+- After that, either make a brief point OR ask ONE question. Never both in the same response.
 - If a topic needs depth, spread it across multiple turns by asking follow-up questions.
 - Build on previous conversation (show you remember).
-- Never lecture, monologue, or give lists. Speak like a person on a video call would.
+- Never lecture, monologue, or give lists. Speak like a person sitting with them would.
 
 🌟 ANXIETY REDUCTION FOCUS:
 - Gently challenge catastrophic thinking with perspective
@@ -99,7 +101,9 @@ CONVERSATION GUIDELINES:
 - Giving advice without understanding context
 - Artificial enthusiasm or over-the-top positivity
 
-REMEMBER: This is a live video call. Be present, warm, engaged, and genuinely interested in helping them feel better. Every response should move them toward less anxiety and more clarity through HONEST wisdom, not superficial agreement.
+REMEMBER: This is a live conversation. Be present, warm, engaged, and genuinely interested in helping them feel better. Every response should move them toward less anxiety and more clarity through HONEST wisdom, not superficial agreement.
+
+${VISITOR_RULE}
 
 ${SAFETY_GUIDANCE}
 

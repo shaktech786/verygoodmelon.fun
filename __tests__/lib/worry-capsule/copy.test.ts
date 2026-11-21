@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { NOT_YET_LINES, OUTCOME_RESPONSES, pickLine, tallyReflection, tallySummary } from '@/lib/games/worry-capsule/copy'
+import { CARRIED_LINES, NOT_YET_LINES, OUTCOME_RESPONSES, outcomeResponse, pickLine, tallyReflection, tallySummary } from '@/lib/games/worry-capsule/copy'
 
 describe('pickLine', () => {
   it('is stable for a capsule and varies across capsules', () => {
@@ -18,6 +18,41 @@ describe('pickLine', () => {
     for (const line of OUTCOME_RESPONSES.yes) {
       expect(line).not.toMatch(/brave|got through|other side|tally|counts|handled|met /i)
     }
+  })
+
+  it('never calls a worry that came true simply a real thing and leaves it there', () => {
+    expect(OUTCOME_RESPONSES.yes.join(' ')).not.toMatch(/This one was\./)
+  })
+})
+
+describe('outcomeResponse', () => {
+  it('follows every "it happened" line with a warm second line about having carried it', () => {
+    const seen = new Set<string>()
+    for (let i = 0; i < 60; i++) {
+      const response = outcomeResponse('yes', `capsule-${i}`)
+      const second = CARRIED_LINES.find((line) => response.endsWith(` ${line}`))
+      expect(second, response).toBeDefined()
+      expect(OUTCOME_RESPONSES.yes.some((first) => response === `${first} ${second}`)).toBe(true)
+      seen.add(second as string)
+    }
+    expect(seen.size).toBeGreaterThan(1)
+  })
+
+  it('acknowledges the carrying without assuming the outcome was good or bad', () => {
+    expect(CARRIED_LINES.length).toBeGreaterThanOrEqual(3)
+    for (const line of CARRIED_LINES) {
+      expect(line).toMatch(/carr/i)
+      expect(line).not.toMatch(/brave|got through|better|worse|glad|sorry|lucky|okay|fine|handled|survived/i)
+    }
+  })
+
+  it('is the same every time for one capsule', () => {
+    expect(outcomeResponse('yes', 'c1')).toBe(outcomeResponse('yes', 'c1'))
+  })
+
+  it('keeps the other answers to their single line', () => {
+    expect(outcomeResponse('no', 'c1')).toBe(pickLine(OUTCOME_RESPONSES.no, 'c1'))
+    expect(outcomeResponse('partly', 'c1')).toBe(pickLine(OUTCOME_RESPONSES.partly, 'c1'))
   })
 })
 

@@ -262,7 +262,7 @@ function WordChip({ label, pressed, onToggle }: { label: string; pressed: boolea
       className={cn(
         'px-3 py-1.5 rounded-full text-sm border transition-colors duration-75',
         'focus:outline-none focus:ring-2 focus:ring-accent',
-        pressed ? 'border-accent bg-accent-soft text-foreground' : 'border-card-border text-foreground/75 hover:border-accent/50',
+        pressed ? 'border-chosen-line bg-chosen text-foreground' : 'border-card-border text-foreground/75 hover:border-accent/50',
       )}
     >
       {label}
@@ -691,7 +691,7 @@ export default function TheUnrusher() {
                 </div>
                 {compact && (
                   <Button variant="ghost" onClick={resetTask}>
-                    I need to stop
+                    Leave early
                   </Button>
                 )}
               </div>
@@ -707,7 +707,7 @@ export default function TheUnrusher() {
                         Done
                       </Button>
                       <Button variant="ghost" onClick={resetTask}>
-                        I need to stop
+                        Leave early
                       </Button>
                     </div>
                   </>
@@ -718,7 +718,7 @@ export default function TheUnrusher() {
                     </p>
                     <div className="mt-6">
                       <Button variant="ghost" onClick={resetTask}>
-                        I need to stop
+                        Leave early
                       </Button>
                     </div>
                   </>

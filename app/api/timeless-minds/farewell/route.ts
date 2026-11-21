@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
+import { VISITOR_RULE } from '@/lib/ai/visitor-rule'
 import { getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import {
   MAX_FAREWELL_LENGTH,
@@ -38,6 +39,8 @@ Style: ${thinker.conversationStyle}
 Write your parting words to the visitor: one or two sentences, at most 40 words in total.
 Distil the single most useful thought from this conversation into something they can carry with them today, in your own voice.
 Be warm and grounded. No questions, no flattery, no lists, no quotation marks.
+
+${VISITOR_RULE}
 
 ${SAFETY_GUIDANCE}`,
         temperature: 0.7,

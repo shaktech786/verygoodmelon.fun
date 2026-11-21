@@ -8,6 +8,7 @@ import {
   openCapsule,
   resealCapsule,
   sealCapsule,
+  sealedSameDay,
   shelve,
   tally,
 } from '@/lib/games/worry-capsule/capsules'
@@ -161,5 +162,30 @@ describe('tally', () => {
     ]
     expect(tally(capsules)).toEqual({ no: 2, partly: 1, yes: 1, total: 4 })
     expect(tally([])).toEqual({ no: 0, partly: 0, yes: 0, total: 0 })
+  })
+})
+
+describe('sealedSameDay', () => {
+  it('numbers capsules sealed on the same day, in the order they were sealed', () => {
+    const morning = sealed({ id: 'm', sealedAt: '2026-11-21T09:00:00Z' })
+    const noon = sealed({ id: 'n', sealedAt: '2026-11-21T12:00:00Z' })
+    const evening = sealed({ id: 'e', sealedAt: '2026-11-21T20:00:00Z' })
+    const nextDay = sealed({ id: 'd', sealedAt: '2026-11-22T09:00:00Z' })
+
+    const order = sealedSameDay([evening, nextDay, morning, noon], TZ)
+
+    expect(order.get('m')).toEqual({ position: 1, of: 3 })
+    expect(order.get('n')).toEqual({ position: 2, of: 3 })
+    expect(order.get('e')).toEqual({ position: 3, of: 3 })
+    expect(order.get('d')).toEqual({ position: 1, of: 1 })
+  })
+
+  it("tells days apart by the player's own calendar", () => {
+    // 23:30 in London and 00:30 the next day are different days there
+    const late = sealed({ id: 'late', sealedAt: '2026-11-21T23:30:00Z' })
+    const early = sealed({ id: 'early', sealedAt: '2026-11-22T00:30:00Z' })
+    const order = sealedSameDay([late, early], TZ)
+    expect(order.get('late')).toEqual({ position: 1, of: 1 })
+    expect(order.get('early')).toEqual({ position: 1, of: 1 })
   })
 })

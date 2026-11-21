@@ -13,7 +13,7 @@ describe('The Shapeshifter naming', () => {
 
   it('takes the name from whichever rule arrived third, so the same play grows a different name in a different order', () => {
     expect(fallbackName(['arrow_keys', 'stars', 'blaster', 'chasers', 'combo_chain', 'score_rush'], 'gentle')).toBe('QUIET STARS & LANTERNS')
-    expect(fallbackName(['mouse_follow', 'pulse_gems', 'gravity_well', 'sweepers', 'phase_dash', 'score_rush'], 'collector')).toBe('GATHERING GEMS & ORBITS')
+    expect(fallbackName(['mouse_follow', 'pulse_gems', 'gravity_well', 'sweepers', 'phase_dash', 'score_rush'], 'collector')).toBe('GATHERING GEMS & GENTLE PULL')
     expect(fallbackName(['arrow_keys', 'stars', 'combo_chain', 'chasers', 'phase_dash', 'score_rush'], 'bold')).toBe('BRIGHT STARS & RHYTHMS')
   })
 
@@ -36,11 +36,38 @@ describe('The Shapeshifter naming', () => {
   })
 
   it('closes with a line about meeting change, shaped by what the player did', () => {
-    expect(reflection({ transformed: 3, nudges: 5 })).toBe('Six rules arrived without asking. You turned 3 shadows into stars.')
-    expect(reflection({ transformed: 1, nudges: 0 })).toBe('Six rules arrived without asking. You turned 1 shadow into a star.')
-    // A nudge is explained, not just counted
-    expect(reflection({ transformed: 0, nudges: 4 })).toBe('Six rules arrived without asking. A shadow bumped you 4 times, nothing was lost, and you kept going.')
-    expect(reflection({ transformed: 0, nudges: 1 })).toBe('Six rules arrived without asking. A shadow bumped you once, nothing was lost, and you kept going.')
-    expect(reflection({ transformed: 0, nudges: 0 })).toBe('Six rules arrived without asking. You met each one as it came.')
+    expect(reflection({ transformed: 3, bumps: 0, carries: 0 })).toBe('Six rules arrived without asking. You turned 3 shadows into stars.')
+    expect(reflection({ transformed: 1, bumps: 0, carries: 0 })).toBe('Six rules arrived without asking. You turned 1 shadow into a star.')
+    expect(reflection({ transformed: 0, bumps: 0, carries: 0 })).toBe('Six rules arrived without asking. You met each one as it came.')
+  })
+
+  it('explains a shadow bump only when a shadow bumped the orb', () => {
+    expect(reflection({ transformed: 0, bumps: 4, carries: 0 })).toBe('Six rules arrived without asking. A shadow bumped you 4 times, and nothing was lost. You kept going.')
+    expect(reflection({ transformed: 0, bumps: 1, carries: 0 })).toBe('Six rules arrived without asking. A shadow bumped you once, and nothing was lost. You kept going.')
+  })
+
+  it('never mentions shadows in a run where only tides carried the orb', () => {
+    const line = reflection({ transformed: 0, bumps: 0, carries: 16 })
+    expect(line).toBe('Six rules arrived without asking. A tide carried you 16 times. You kept going.')
+    expect(line).not.toMatch(/shadow/i)
+    expect(reflection({ transformed: 0, bumps: 0, carries: 1 })).toBe('Six rules arrived without asking. A tide carried you once. You kept going.')
+  })
+
+  it('never mentions tides in a run where only shadows bumped the orb', () => {
+    expect(reflection({ transformed: 0, bumps: 2, carries: 0 })).not.toMatch(/tide/i)
+  })
+
+  it('tells each thing that happened in its own words when several did', () => {
+    expect(reflection({ transformed: 2, bumps: 1, carries: 3 })).toBe(
+      'Six rules arrived without asking. You turned 2 shadows into stars. A shadow bumped you once, and nothing was lost. A tide carried you 3 times.',
+    )
+  })
+
+  it('calls the pull rule by its card name, never by another word', () => {
+    const ids = ['arrow_keys', 'stars', 'gravity_well']
+    expect(fallbackName(ids, 'gentle')).toBe('QUIET STARS & GENTLE PULL')
+    const tagline = fallbackTagline({ mechanicIds: ids, style: 'gentle', collected: 3, transformed: 0 })
+    expect(tagline).toBe('A game for someone who let 3 stars drift their way in the gentle pull.')
+    expect(`${fallbackName(ids, 'gentle')} ${tagline}`).not.toMatch(/orbit/i)
   })
 })

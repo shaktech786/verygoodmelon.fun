@@ -73,7 +73,8 @@ export function createState(w: number = GAME_W, h: number = GAME_H): GameState {
     moveDistTotal: 0,
     collectTotal: 0,
     transformed: 0,
-    nudges: 0,
+    bumps: 0,
+    carries: 0,
     clickTotal: 0,
     moveBias: [0, 0, 0, 0],
     spawnTimers: {},
@@ -428,7 +429,7 @@ function checkCollisions(s: GameState): void {
       s.driftY = e.vy * TIDE_CARRY
       if (e.hp > 0) {
         e.hp = 0
-        s.nudges++
+        s.carries++
       }
       continue
     }
@@ -477,7 +478,7 @@ function nudge(s: GameState, e: Entity): void {
   e.x -= nx * 30
   e.y -= ny * 30
   s.invTimer = NUDGE_COOLDOWN
-  s.nudges++
+  s.bumps++
   burst(s, s.px - nx * s.pSize, s.py - ny * s.pSize, 'shadow', 6)
 }
 
