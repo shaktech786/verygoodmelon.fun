@@ -3,7 +3,7 @@ import { endTurn, enemyRuleText, incomingDamage, playCard, previewArgument } fro
 import { generateFloor } from '@/lib/games/thought-pockets/engine/map'
 import { availableNodes, battleAction, chooseNode, newRun } from '@/lib/games/thought-pockets/engine/run'
 import { seedRng } from '@/lib/games/thought-pockets/engine/rng'
-import { ARROW_MIN, BURIDAN_CHARGE, BURIDAN_GUARD, ENEMIES, enemiesFor, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { ARROW_MIN, ARROW_TIRES, BURIDAN_CHARGE, BURIDAN_GUARD, ENEMIES, enemiesFor, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { getCardDef } from '@/lib/games/thought-pockets/data/cards'
 import { SCHOOLS } from '@/lib/games/thought-pockets/data/schools'
 import { BattleState, MapNode, RunState } from '@/types/thought-pockets'
@@ -47,7 +47,7 @@ describe("Zeno's Arrow: an argument too small to move it does nothing", () => {
     const preview = previewArgument(small)
     expect(preview.product).toBe(8)
     expect(preview.damage).toBe(0)
-    expect(preview.chain.at(-1)).toEqual({ kind: 'arrow', text: `Under ${ARROW_MIN.rigorous}: the arrow does not move`, short: `under ${ARROW_MIN.rigorous}`, after: 0 })
+    expect(preview.chain.at(-1)).toEqual({ kind: 'arrow', text: `Under ${ARROW_MIN.rigorous}: the arrow does not move, and it tires from turn ${Math.max(small.turn + 1, small.tiresFrom - ARROW_TIRES)}`, short: `under ${ARROW_MIN.rigorous}`, after: 0 })
     expect(preview.unsettleTick).toBe(3)
     expect(endTurn(small).enemy.health).toBe(start.enemy.health - 3)
   })
@@ -132,10 +132,12 @@ describe('the run is built so builds and recovery can happen', () => {
     }
   })
 
-  it('every opponent can be met: each is on some floor map or is the opening fight', () => {
+  it('every opponent can be met: each is on some floor map, is an opening fight, or ends a Short walk', () => {
     const met = new Set<string>()
     for (let seed = 1; seed <= 80; seed++) {
       for (const floor of [1, 2, 3] as const) generateFloor(floor, seedRng(seed)).nodes.forEach((n) => n.enemyId && met.add(n.enemyId))
+      const drawn = newRun('empiricist', seed, 'gentle', [], undefined, 'short', false)
+      drawn.map.forEach((n) => [n.enemyId, ...(n.options ?? [])].forEach((id) => id && met.add(id)))
     }
     expect([...met].sort()).toEqual(ENEMIES.map((e) => e.id).sort())
     expect(availableNodes(newRun('empiricist', 1))).toHaveLength(1)

@@ -19,7 +19,7 @@ import {
 import { endTurn, incomingDamage, undoPlay } from '@/lib/games/thought-pockets/engine/battle'
 import { generateFloor } from '@/lib/games/thought-pockets/engine/map'
 import { CARDS } from '@/lib/games/thought-pockets/data/cards'
-import { enemiesFor, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { SHORT_WALK_PROBLEMS, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { BattleState, MapNode, RunState, School } from '@/types/thought-pockets'
 
 function winFight(run: RunState): RunState {
@@ -46,7 +46,7 @@ function beatBoss(run: RunState): RunState {
 }
 
 describe('a Short walk', () => {
-  it('is one floor that ends at its philosophical problem, drawn from the floor’s two', () => {
+  it('is one floor that ends at its philosophical problem, drawn from the four that can end it', () => {
     expect(RUN_FLOORS).toEqual({ short: 1, long: 3 })
     const bosses = new Set<string>()
     for (let seed = 1; seed <= 30; seed++) {
@@ -54,7 +54,7 @@ describe('a Short walk', () => {
       expect(run.length).toBe('short')
       bosses.add(run.map.find((n) => n.type === 'boss')?.enemyId as string)
     }
-    expect([...bosses].sort()).toEqual(enemiesFor(1, 'boss').map((e) => e.id).sort())
+    expect([...bosses].sort()).toEqual([...SHORT_WALK_PROBLEMS].sort())
   })
 
   it('beating its problem finishes the walk, with nothing left to choose that the run could not use', () => {

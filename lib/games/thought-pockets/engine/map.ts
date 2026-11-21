@@ -31,20 +31,34 @@ function connect(from: number, to: number, rng: number): { links: number[][]; rn
   return { links, rng: state }
 }
 
+export interface FloorPlan {
+  /** The first floor's opening fight. */
+  opener?: string
+  /** The problems the boss can be; two of them are offered. Every floor's own by default. */
+  problems?: string[]
+}
+
 /**
  * One floor: a fight to open, three rows of three choices, then the boss. Paths never cross, and no bias appears twice on a floor.
  * A `calm` floor (Gentle pace) gathers every path at one rest before the boss, so nobody meets a problem without the chance to recover.
  */
-export function generateFloor(floor: 1 | 2 | 3, rng: number, calm = false): { nodes: MapNode[]; rng: number } {
+export function generateFloor(floor: 1 | 2 | 3, rng: number, calm = false, plan: FloorPlan = {}): { nodes: MapNode[]; rng: number } {
   let state = rng
   const normals = shuffle(enemiesFor(floor, 'normal').map((e) => e.id), state)
   state = normals.rng
-  const queue = floor === 1 ? [TUTORIAL_ENEMY, ...normals.items] : normals.items
+  const queue = floor === 1 ? [plan.opener ?? TUTORIAL_ENEMY, ...normals.items] : normals.items
   let cursor = 0
   const nextNormal = () => queue[cursor++]
   const elite = pick(enemiesFor(floor, 'elite'), state)
-  const boss = pick(enemiesFor(floor, 'boss'), elite.rng)
+  const problems = plan.problems ?? enemiesFor(floor, 'boss').map((e) => e.id)
+  const boss = pick(problems, elite.rng)
   state = boss.rng
+  let offered = problems
+  if (problems.length > 2) {
+    const other = pick(problems.filter((id) => id !== boss.item), state)
+    state = other.rng
+    offered = problems.filter((id) => id === boss.item || id === other.item)
+  }
 
   const rows: NodeType[][] = [['battle']]
   for (const types of MIDDLE_ROWS) {
@@ -66,8 +80,8 @@ export function generateFloor(floor: 1 | 2 | 3, rng: number, calm = false): { no
       let enemyId: string | undefined
       if (type === 'battle') enemyId = nextNormal()
       if (type === 'elite') enemyId = elite.item.id
-      if (type === 'boss') enemyId = boss.item.id
-      nodes.push({ id: nodeId(floor, row, lane), type, row, lane, lanes: types.length, next: [], enemyId })
+      if (type === 'boss') enemyId = boss.item
+      nodes.push({ id: nodeId(floor, row, lane), type, row, lane, lanes: types.length, next: [], enemyId, ...(type === 'boss' ? { options: offered } : {}) })
     })
   })
 

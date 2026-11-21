@@ -9,7 +9,7 @@ import { KEYWORDS, Keyword, keywordText } from '@/lib/games/thought-pockets/data
 import { conclusionLine } from '@/lib/games/thought-pockets/data/conclusion'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { COMPOSURE_GUARD } from '@/lib/games/thought-pockets/engine/battle'
-import { PROBLEM_RULE } from '@/lib/games/thought-pockets/data/enemies'
+import { PROBLEM_RULE, SLOW_GROUND_TEXT } from '@/lib/games/thought-pockets/data/enemies'
 import { RUN_FLOORS } from '@/lib/games/thought-pockets/engine/run'
 import { TIRING } from '@/lib/games/thought-pockets/data/pace'
 import { SoundToggle } from '@/components/ui/SoundToggle'
@@ -112,8 +112,9 @@ function HowToPlay({ school }: { school: School | null }) {
         </li>
         <li>Every bias has one rule, written under its name. Philosophical problems change their rule once, at half Resolve, and say how in advance.</li>
         <li>
-          {PROBLEM_RULE} At half Resolve the argument stops at the line and the problem changes. Nothing you put into an argument is wasted.
+          {PROBLEM_RULE} At half Resolve the argument stops at the line and the problem changes.
         </li>
+        <li>At Gentle pace every bias but the first fight&apos;s teaching one plays by one more rule: {SLOW_GROUND_TEXT}</li>
         <li>
           There is no turn limit, and a long argument never counts against you. From turn {TIRING.gentle} in Gentle pace ({TIRING.rigorous} in Rigorous) the
           bias starts to tire: it takes on Unsettle {TIRING.step} more each turn, so every argument comes to an end.

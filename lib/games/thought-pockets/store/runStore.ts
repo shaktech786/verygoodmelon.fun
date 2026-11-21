@@ -18,7 +18,10 @@ export const useRunStore = create<RunStore>()(
   persist(
     (set) => ({
       run: null,
-      start: (school, seed, mode, rigor, length) => set({ run: newRun(school, seed, mode, useInsightStore.getState().beaten, rigor, length) }),
+      start: (school, seed, mode, rigor, length) => {
+        const { beaten, tutorialDone } = useInsightStore.getState()
+        set({ run: newRun(school, seed, mode, beaten, rigor, length, !tutorialDone) })
+      },
       abandon: () => set({ run: null }),
       act: (action) =>
         set((state) => {

@@ -22,41 +22,67 @@ import { tutorialHint } from '@/lib/games/thought-pockets/engine/tutorial'
 import { describeCard, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { timesWord } from '@/lib/games/thought-pockets/data/conclusion'
 import { OVERFLOW, OVERFLOW_TEXT, PROBLEM_LINES, PROBLEM_RULE, TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
-import { argueLabel } from '@/lib/games/thought-pockets/data/turnText'
+import { argueLabel, releaseWords } from '@/lib/games/thought-pockets/data/turnText'
 import { TIRING } from '@/lib/games/thought-pockets/data/pace'
 import { keywordText } from '@/lib/games/thought-pockets/data/keywords'
 import { useInsightStore, useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { wakeTones } from '@/components/games/gentleCues'
 import { CardFace, TYPE_COLORS, keywordsOnCard } from './CardFace'
-import { BiasPortrait, Mood } from './Sprites'
+import { BiasPortrait, Mood, crackCount, impactLines } from './Sprites'
 import { Term } from './Term'
-import { RoundShow, RoundShowState, format, showProgress, useRoundShow } from './RoundShow'
+import { HIT_PAUSE_MS, RoundShow, RoundShowState, format, showProgress, useRoundShow } from './RoundShow'
 import { SHORT_WALK_BOSS_TEXT } from './MapScreen'
 
 const TIER_LABELS = { normal: 'Bias', elite: 'Stubborn bias', boss: 'Philosophical problem' }
 const ASK_LABELS = { evidence: 'Evidence', logic: 'Logic', guard: 'Guard' }
-const BIG_FLINCH = 20
+/** How far the portrait is knocked back by a hit, in pixels: further for a hit that takes more of its Resolve. */
+const RECOIL_PX = [0, 2, 3, 5]
+/** The bits of a problem's Shaken that burst out of it as it changes, as offsets in pixels. */
+const BURST = [
+  [-16, -10],
+  [0, -18],
+  [16, -10],
+  [20, 4],
+  [12, 16],
+  [-4, 20],
+  [-18, 12],
+  [-22, -2],
+]
+const DOCK_VAR = '--tp-dock'
 /** How many turns ahead the screen says a long fight is about to tire the bias. */
 const TIRING_NOTICE = 2
 
 export const SHOW_CSS = `
 @keyframes tp-appear { from { opacity: 0; } to { opacity: 1; } }
-@keyframes tp-lift { from { transform: translateY(0); } 50% { transform: translateY(-3px); } to { transform: translateY(0); } }
 @keyframes tp-pop { from { transform: scale(0.8); } 60% { transform: scale(1.12); } to { transform: scale(1); } }
-@keyframes tp-flinch { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-3px) rotate(-2deg); } 65% { transform: translateX(2px); } }
-@keyframes tp-flinch-big { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px) rotate(-4deg); } 55% { transform: translateX(4px) rotate(2deg); } 80% { transform: translateX(-2px); } }
 @keyframes tp-rise { from { opacity: 0; transform: translateY(6px); } 25% { opacity: 1; } to { opacity: 0; transform: translateY(-22px); } }
 @keyframes tp-deal { from { opacity: 0; transform: translateY(8px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes tp-recoil {
+  0% { transform: none; }
+  4%, 21% { transform: translate(var(--tp-recoil), -1px); }
+  38% { transform: translate(-1px, 0); }
+  55% { transform: translate(0, -2px); }
+  72% { transform: translate(0, 1px); }
+  86% { transform: translate(0, -1px); }
+  100% { transform: none; }
+}
+@keyframes tp-lines { 0%, 18% { opacity: 0; } 20%, 60% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes tp-burst { from { opacity: 1; transform: translate(0, 0); } to { opacity: 0; transform: translate(var(--tp-dx), var(--tp-dy)); } }
+@keyframes tp-sink { 0% { transform: none; } 30%, 100% { transform: translateY(3px); } }
 @media (prefers-reduced-motion: no-preference) {
   html:not([data-reduce-motion="true"]) .tp-appear { animation: tp-appear 220ms ease-out both; }
-  html:not([data-reduce-motion="true"]) .tp-lift { animation: tp-lift 300ms ease-out; }
   html:not([data-reduce-motion="true"]) .tp-pop { display: inline-block; animation: tp-pop 360ms ease-out; }
-  html:not([data-reduce-motion="true"]) .tp-flinch { animation: tp-flinch 320ms ease-out; }
-  html:not([data-reduce-motion="true"]) .tp-flinch-big { animation: tp-flinch-big 460ms ease-out; }
   html:not([data-reduce-motion="true"]) .tp-rise { animation: tp-rise 900ms ease-out both; }
   html:not([data-reduce-motion="true"]) .tp-deal { animation: tp-deal 220ms ease-out both; }
+  html:not([data-reduce-motion="true"]) .tp-recoil { animation: tp-recoil 480ms linear; }
+  html:not([data-reduce-motion="true"]) .tp-after-pause { animation-delay: ${HIT_PAUSE_MS}ms; animation-fill-mode: both; }
+  html:not([data-reduce-motion="true"]) .tp-shake-lines { animation: tp-lines 480ms steps(4, end) both; }
+  html:not([data-reduce-motion="true"]) .tp-burst { animation: tp-burst 900ms ease-out both; }
+  html:not([data-reduce-motion="true"]) .tp-sink { animation: tp-sink 1000ms ease-out both; }
 }
+html[data-reduce-motion="true"] .tp-shake-lines, html[data-reduce-motion="true"] .tp-burst { display: none; }
+@media (prefers-reduced-motion: reduce) { .tp-shake-lines, .tp-burst { display: none; } }
 `
 
 function odds(chance: number): string {
@@ -148,7 +174,7 @@ function beforeItActs(preview: ArgumentPreview): string[] {
   if (preview.enemyFalls) return []
   const lines: string[] = []
   if (preview.unsettleTick > 0) lines.push(`Before it acts, Unsettle takes ${preview.unsettleTick} of its Resolve.`)
-  if (preview.released > 0) lines.push(`It changes this round, and as it does its Shaken ${preview.released} becomes Unsettle that takes ${preview.released} at once.`)
+  if (preview.released > 0) lines.push(`It changes this round, and as it does its Shaken ${preview.released} lands: ${releaseWords(preview.released)}.`)
   return lines
 }
 
@@ -163,7 +189,8 @@ function aftermathLines(report: RoundReport, shift: string | null): string[] {
   if (report.gamble === 'miss') lines.push('Its gamble did not come off. The odds next round are exactly the same.')
   const why = report.ruleGuardNote ? ` (${report.ruleGuardNote.charAt(0).toLowerCase()}${report.ruleGuardNote.slice(1)})` : ''
   if (report.enemyGuardGained > 0) lines.push(`It raised ${report.enemyGuardGained} Guard${why}.`)
-  if (report.shaken > 0 && !report.phaseChanged) lines.push(`What it stopped shook it: Shaken +${report.shaken}. It all becomes Unsettle when it changes.`)
+  if (report.shaken > 0 && !report.phaseChanged) lines.push(`What it stopped shook it: Shaken +${report.shaken}. It all lands at once when it changes.`)
+  if (report.eased > 0) lines.push(`You lost nothing to it this round, so it calmed a little: its attacks −${report.eased}.`)
   if (report.doubtsAdded > 0) lines.push('A Doubt went into your draw pile.')
   if (report.restored > 0) lines.push(`You lost nothing this round, so you restored ${report.restored} Resolve.`)
   if (report.phaseChanged && shift) lines.push(shift)
@@ -171,7 +198,7 @@ function aftermathLines(report: RoundReport, shift: string | null): string[] {
 }
 
 function releaseLine(report: RoundReport): string {
-  return report.released > 0 ? ` As it changed, everything that shook it landed at once: Shaken ${report.released} became Unsettle and took ${report.released} Resolve.` : ''
+  return report.released > 0 ? ` As it changed, everything that shook it landed at once: Shaken ${report.released}, ${releaseWords(report.released)}.` : ''
 }
 
 function roundSummary(report: RoundReport, battle: BattleState): string {
@@ -258,7 +285,9 @@ function ShakenMeter({ battle }: { battle: BattleState }) {
           <span key={i} className={`h-2.5 w-1.5 border border-[var(--tp-good)] ${i < shaken ? 'bg-[var(--tp-good)]' : ''}`} />
         ))}
       </span>
-      <span className="text-[var(--tp-muted)]">{threshold !== null ? `becomes Unsettle when it changes at ${threshold}, taking ${shaken} at once` : 'becomes Unsettle when it changes'}</span>
+      <span className="text-[var(--tp-muted)]">
+        {threshold !== null ? `lands when it changes at ${threshold}: ${releaseWords(shaken)}` : `lands when it changes: ${releaseWords(shaken)}`}
+      </span>
     </div>
   )
 }
@@ -279,36 +308,90 @@ function TiringNote({ battle }: { battle: BattleState }) {
   )
 }
 
-function ThreatPanel({ battle: live, preview, known, show, lastOfWalk }: { battle: BattleState; preview: ArgumentPreview; known: boolean; show: RoundShowState; lastOfWalk: boolean }) {
-  const battle = shownBattle(live, show)
+/**
+ * What the opponent panel shows while a round replays: the bias as it stood before the round, until the replay reaches
+ * the moment each thing changed. Its Guard breaks when the argument lands; its new Guard, Unsettle and attacks show
+ * once it has acted; its intent stays the one it is carrying out until then (until it changes, for a problem that does).
+ */
+interface PanelView {
+  /** Whose numbers the chips show. */
+  stats: BattleState
+  /** Whose intent and forecast the panel reads out. */
+  intent: BattleState
+  preview: ArgumentPreview
+  guard: number
+}
+
+function panelView(live: BattleState, preview: ArgumentPreview, before: BattleState | null, show: RoundShowState): PanelView {
+  const report = live.lastRound
+  const shown = shownBattle(live, show)
+  if (!before || !report || show.done) return { stats: shown, intent: live, preview, guard: shown.enemy.guard }
+  const { reached } = showProgress(show)
+  const acted = reached('act')
+  const intentHeld = !reached(report.phaseChanged ? 'shift' : 'act')
+  const broken = reached('adjust') || reached('land') ? report.blocked : 0
+  return {
+    stats: acted ? shown : { ...shown, enemy: { ...shown.enemy, unsettle: before.enemy.unsettle, strength: before.enemy.strength, misses: before.enemy.misses } },
+    intent: intentHeld ? before : live,
+    preview: intentHeld ? previewArgument(before) : preview,
+    guard: acted ? shown.enemy.guard : before.enemy.guard - broken,
+  }
+}
+
+/** The battle as it stood just before the round now replaying; null when there is none to show, as after a reload. */
+function useBeforeRound(battle: BattleState, roundKey: string | null): BattleState | null {
+  const [track, setTrack] = useState<{ key: string | null; latest: BattleState; before: BattleState | null }>({ key: roundKey, latest: battle, before: null })
+  if (track.key !== roundKey) setTrack({ key: roundKey, latest: battle, before: track.latest })
+  else if (track.latest !== battle) setTrack({ ...track, latest: battle })
+  return track.key === roundKey ? track.before : track.latest
+}
+
+function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: BattleState; view: PanelView; known: boolean; show: RoundShowState; lastOfWalk: boolean }) {
+  const battle = view.stats
   const def = getEnemyDef(battle.enemy.id)
-  const move = currentMove(live)
-  const warning = lethal(live, preview)
-  const { landing } = showProgress(show)
+  const move = currentMove(view.intent)
+  const warning = lethal(view.intent, view.preview)
+  const { landing, now } = showProgress(show)
   const [more, setMore] = useState(false)
-  const hit = landing && battle.lastRound ? battle.lastRound.damage : 0
-  const health = shownHealth(battle, show)
+  const report = live.lastRound
+  const hit = landing && report ? report.damage : 0
+  const health = shownHealth(live, show)
+  const impact = impactLines(hit, battle.enemy.maxHealth)
+  const bursting = now === 'shift' && report !== null && report.released > 0
   const gamble = def.gamble
   const threshold = phaseThreshold(battle)
-  const first = beforeItActs(preview)
+  const first = beforeItActs(view.preview)
   return (
     <section aria-label="Opponent" className="grid gap-2 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-2.5 sm:grid-cols-[1fr_15rem] sm:gap-3 sm:p-4">
       <div className="flex gap-3">
-        <div className="relative shrink-0">
-          <BiasPortrait
-            enemyId={def.id}
-            tier={def.tier}
-            mood={moodOf(battle, show, hit)}
-            className={`h-14 w-14 sm:h-24 sm:w-24 ${hit > 0 ? (hit >= BIG_FLINCH ? 'tp-flinch-big' : 'tp-flinch') : ''}`}
-          />
+        <div className="relative shrink-0" data-testid="portrait">
+          <div className={hit > 0 ? 'tp-recoil' : bursting ? 'tp-sink' : ''} style={{ '--tp-recoil': `${RECOIL_PX[impact]}px` } as React.CSSProperties}>
+            <BiasPortrait
+              enemyId={def.id}
+              tier={def.tier}
+              mood={moodOf(battle, show, hit)}
+              cracks={crackCount(health, battle.enemy.maxHealth)}
+              impact={impact}
+              className="h-14 w-14 sm:h-24 sm:w-24"
+            />
+          </div>
           {hit > 0 && (
             <span
-              className="tp-rise pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded-sm bg-[var(--tp-ink)] px-1 font-serif text-lg font-bold text-[var(--tp-accent)]"
+              className="tp-rise tp-after-pause pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded-sm bg-[var(--tp-ink)] px-1 font-serif text-lg font-bold text-[var(--tp-accent)]"
               aria-hidden="true"
             >
               −{hit}
             </span>
           )}
+          {bursting &&
+            BURST.map(([dx, dy]) => (
+              <span
+                key={`${dx}-${dy}`}
+                className="tp-burst pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-1.5 bg-[var(--tp-good)]"
+                style={{ '--tp-dx': `${dx}px`, '--tp-dy': `${dy}px` } as React.CSSProperties}
+                aria-hidden="true"
+              />
+            ))}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[0.68rem] uppercase tracking-wider text-[var(--tp-muted)]">
@@ -344,7 +427,7 @@ function ThreatPanel({ battle: live, preview, known, show, lastOfWalk }: { battl
           >
             {more ? 'Less' : 'More'}
           </button>
-          <TiringNote battle={live} />
+          <TiringNote battle={view.intent} />
           {gamble && battle.enemy.misses >= 2 && (
             <p className="mt-0.5 text-xs leading-snug text-[var(--tp-muted)]" data-testid="gamble-streak">
               It has missed {battle.enemy.misses} rounds in a row and says it is due. The odds are still {odds(gamble.chance)}.
@@ -360,10 +443,10 @@ function ThreatPanel({ battle: live, preview, known, show, lastOfWalk }: { battl
           <Bar value={health} max={battle.enemy.maxHealth} color="var(--tp-enemy-bar)" label={`${def.name} Resolve`} />
         </div>
         <ShakenMeter battle={battle} />
-        <div className="flex flex-wrap gap-1.5">
-          {battle.enemy.guard > 0 && (
+        <div className="flex flex-wrap gap-1.5 sm:min-h-6">
+          {view.guard > 0 && (
             <Chip tone="guard">
-              <span data-testid="enemy-guard">Guard {battle.enemy.guard}</span>
+              <span data-testid="enemy-guard">Guard {view.guard}</span>
             </Chip>
           )}
           {battle.enemy.unsettle > 0 && <Chip tone="good">Unsettled {battle.enemy.unsettle}</Chip>}
@@ -380,14 +463,16 @@ function ThreatPanel({ battle: live, preview, known, show, lastOfWalk }: { battl
         data-testid="intent"
       >
         <p className="text-[0.68rem] uppercase tracking-wider text-[var(--tp-muted)]">Next, it will</p>
-        <p className="font-serif text-base font-semibold text-[var(--tp-text)] sm:text-lg">{intentText(move, live).join(' · ')}</p>
+        <p className="font-serif text-base font-semibold text-[var(--tp-text)] sm:text-lg" data-testid="intent-move">
+          {intentText(move, view.intent).join(' · ')}
+        </p>
         {first.map((line) => (
           <p key={line} className="w-full text-sm text-[var(--tp-text)]" data-testid="before-it-acts">
             {line}
           </p>
         ))}
         <p className="w-full text-sm text-[var(--tp-text)]" data-testid="incoming">
-          {incomingLine(preview)}
+          {incomingLine(view.preview)}
         </p>
         {warning && (
           <p className="mt-1 text-sm font-semibold text-[var(--tp-warn)]" data-testid="lethal-warning">
@@ -502,7 +587,11 @@ function Equation({ preview }: { preview: ArgumentPreview }) {
       {preview.growth > 0 && <Chip tone="warn">Its attacks +{preview.growth}</Chip>}
       {preview.unsettleTick > 0 && <Chip tone="good">Then Unsettle takes {preview.unsettleTick}</Chip>}
       {preview.shaken > 0 && <Chip tone="good">Shaken +{preview.shaken}</Chip>}
-      {preview.released > 0 && <Chip tone="good">It changes: Shaken {preview.released} becomes Unsettle at once</Chip>}
+      {preview.released > 0 && (
+        <Chip tone="good">
+          It changes: Shaken {preview.released}, {releaseWords(preview.released)}
+        </Chip>
+      )}
       {preview.guard > 0 && (
         <Chip tone="guard">
           Your Guard {preview.guard}
@@ -534,8 +623,39 @@ function useAnnouncement(battle: BattleState, preview: ArgumentPreview): string 
   return said.text
 }
 
-/** Where keyboard focus goes after a play or a round: the card now at that place, or End turn when the hand is empty. */
-function useRefocus(hand: BattleState['hand']) {
+/**
+ * On a phone the hand and End turn are pinned to the bottom of the screen. Their measured height becomes the page's
+ * bottom scroll padding, so whatever keyboard focus or the browser scrolls to above them is placed clear of them;
+ * the pinned cards cancel it with an equal negative margin, since they are always in view already.
+ */
+function useDockClearance() {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const dock = ref.current
+    if (!dock) return
+    const root = document.documentElement
+    const fit = () => {
+      const pinned = getComputedStyle(dock).position === 'sticky'
+      root.style.setProperty(DOCK_VAR, pinned ? `${dock.offsetHeight}px` : '0px')
+      root.style.scrollPaddingBottom = pinned ? `var(${DOCK_VAR})` : ''
+    }
+    const observer = new ResizeObserver(fit)
+    observer.observe(dock)
+    fit()
+    return () => {
+      observer.disconnect()
+      root.style.removeProperty(DOCK_VAR)
+      root.style.scrollPaddingBottom = ''
+    }
+  }, [])
+  return ref
+}
+
+/**
+ * Where keyboard focus goes after a play or a round: the card now at that place, or End turn when the hand is empty.
+ * While a round replays the page is not scrolled to it, so the bias stays in view; it is brought into view once the replay ends.
+ */
+function useRefocus(hand: BattleState['hand'], replaying: boolean) {
   const handRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLButtonElement>(null)
   const refocus = useRef<number | null>(null)
@@ -545,8 +665,13 @@ function useRefocus(hand: BattleState['hand']) {
     refocus.current = null
     const cards = handRef.current?.querySelectorAll<HTMLButtonElement>(':scope > button') ?? []
     const target = cards.length > 0 ? cards[Math.min(index, cards.length - 1)] : endRef.current
-    target?.focus()
-  }, [hand])
+    target?.focus({ preventScroll: replaying })
+  }, [hand, replaying])
+  useEffect(() => {
+    if (replaying) return
+    const active = document.activeElement
+    if (active instanceof HTMLElement && handRef.current?.contains(active)) active.scrollIntoView({ block: 'nearest' })
+  }, [replaying])
   return { handRef, endRef, refocus }
 }
 
@@ -556,13 +681,16 @@ export function BattleScreen({ run }: { run: RunState }) {
   const reduced = useReducedMotion()
   const [inspected, setInspected] = useState<number | null>(null)
   const battle = run.battle as BattleState
-  const { handRef, endRef, refocus } = useRefocus(battle.hand)
   const preview = previewArgument(battle)
   const hint = !tutorialDone && battle.enemy.id === TUTORIAL_ENEMY ? tutorialHint(battle) : null
   const report = battle.lastRound
-  const show = useRoundShow(report ? `${run.stats.fights}-${report.turn}` : null, report, reduced)
+  const roundKey = report ? `${run.stats.fights}-${report.turn}` : null
+  const show = useRoundShow(roundKey, report, reduced)
+  const { handRef, endRef, refocus } = useRefocus(battle.hand, !show.done)
+  const view = panelView(battle, preview, useBeforeRound(battle, roundKey), show)
   const announcement = useAnnouncement(battle, preview)
   const skipShow = show.skip
+  const dockRef = useDockClearance()
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -606,19 +734,19 @@ export function BattleScreen({ run }: { run: RunState }) {
   return (
     <div className="flex flex-col gap-2 sm:gap-3">
       <style>{SHOW_CSS}</style>
-      <ThreatPanel battle={battle} preview={preview} known={run.known.includes(battle.enemy.id)} show={show} lastOfWalk={holdsNothingBack(run, battle.enemy.id)} />
+      <ThreatPanel battle={battle} view={view} known={run.known.includes(battle.enemy.id)} show={show} lastOfWalk={holdsNothingBack(run, battle.enemy.id)} />
       <ArgumentPanel battle={battle} preview={preview} show={show} reduced={reduced} />
 
-      {hint && (
-        <p role="status" className="rounded-md border border-[var(--tp-accent)] bg-[var(--tp-ink-2)] px-3 py-1.5 text-sm text-[var(--tp-text)]" data-testid="hint">
-          {hint}
-        </p>
-      )}
-
       <div
-        className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-1.5 border-t border-[var(--tp-line)] bg-[var(--tp-ink)] px-4 pt-2 sm:static sm:mx-0 sm:gap-3 sm:border-0 sm:bg-transparent sm:px-0 sm:pt-0"
+        ref={dockRef}
+        className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-1.5 border-t border-[var(--tp-line)] bg-[var(--tp-ink)] px-4 pt-2 sm:static sm:mx-0 sm:gap-3 sm:border-0 sm:bg-transparent sm:px-0 sm:pt-0 [&_*]:[scroll-margin-bottom:calc(-1*var(--tp-dock,0px))]"
         data-testid="hand-dock"
       >
+        {hint && (
+          <p role="status" className="rounded-md border border-[var(--tp-accent)] bg-[var(--tp-ink-2)] px-3 py-1.5 text-sm text-[var(--tp-text)]" data-testid="hint">
+            {hint}
+          </p>
+        )}
         <section aria-label="Your hand" className={show.done ? undefined : 'max-sm:hidden'}>
           <h2 className="sr-only">Your hand</h2>
           <div ref={handRef} className="grid grid-cols-3 justify-items-stretch gap-1.5 sm:flex sm:flex-wrap sm:justify-center sm:gap-2" data-testid="hand">
@@ -664,7 +792,7 @@ export function BattleScreen({ run }: { run: RunState }) {
 
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 bg-[var(--tp-ink)] pb-2 pr-16 sm:sticky sm:bottom-0 sm:z-10 sm:rounded-lg sm:border sm:border-[var(--tp-line)] sm:py-3 sm:pl-4 sm:pr-4">
           <p className="w-full text-xs leading-snug text-[var(--tp-text)] sm:hidden" data-testid="intent-compact">
-            {compactIntent(battle, preview)}
+            {compactIntent(view.intent, view.preview)}
           </p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-[var(--tp-text)]" data-testid="focus">
             <Term word="Focus" />

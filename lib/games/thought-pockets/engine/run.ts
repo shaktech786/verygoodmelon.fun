@@ -18,7 +18,7 @@ import { CARDS, canUpgrade, getCardDef, isDoubt, usesKeyword } from '../data/car
 import { getSchoolDef } from '../data/schools'
 import { RELICS } from '../data/relics'
 import { REST_HEAL_PERCENT, RIGOR, RIGOROUS_FLOOR_HEAL, TIRING } from '../data/pace'
-import { enemiesFor } from '../data/enemies'
+import { OPENERS, SHORT_WALK_PROBLEMS, TUTORIAL_ENEMY, enemiesFor } from '../data/enemies'
 import { fitsLabel } from '../data/synergy'
 import {
   ARCHIVE_COST,
@@ -58,7 +58,7 @@ import {
 import { generateFloor } from './map'
 import { pick, roll, rollInt, seedRng, shuffle } from './rng'
 
-export const RUN_VERSION = 8
+export const RUN_VERSION = 9
 export const START_RESOLVE = 60
 export const RUN_FLOORS: Record<RunLength, number> = { short: 1, long: 3 }
 /** Below this share of your Resolve, the map warns before any fight. */
@@ -78,12 +78,21 @@ function instances(cardIds: string[], firstUid: number): CardInstance[] {
 
 /**
  * `known` lists the opponents beaten in earlier runs. In Rigorous, `rigor` is the level from 1 to MAX_RIGOR;
- * left out, a Rigorous run plays at level 3, the old single Rigorous setting.
+ * left out, a Rigorous run plays at level 3, the old single Rigorous setting. A `teach`ing run opens with the
+ * fight the first-fight hints are written for; otherwise the seed draws the opening fight.
  */
-export function newRun(school: School, seed: number, mode: Mode = 'gentle', known: string[] = [], rigor?: number, length: RunLength = 'long'): RunState {
+export function newRun(
+  school: School,
+  seed: number,
+  mode: Mode = 'gentle',
+  known: string[] = [],
+  rigor?: number,
+  length: RunLength = 'long',
+  teach = true,
+): RunState {
   const level = mode === 'gentle' ? 0 : rigor ?? DEFAULT_RIGOR
-  const rng = seedRng(seed)
-  const floor = generateFloor(1, rng, mode === 'gentle')
+  const opener = teach ? { item: TUTORIAL_ENEMY, rng: seedRng(seed) } : pick([...OPENERS], seedRng(seed))
+  const floor = generateFloor(1, opener.rng, mode === 'gentle', { opener: opener.item, problems: length === 'short' ? SHORT_WALK_PROBLEMS : undefined })
   const deck = instances([...getSchoolDef(school).deck, ...(level >= RIGOR.doubt ? ['doubt'] : [])], 1)
   return {
     version: RUN_VERSION,
@@ -199,12 +208,51 @@ function rollCards(run: RunState, count: number, source: RewardState['source'] |
   return { cards, rng: state }
 }
 
+/** Every place still ahead of you on this floor: where your next steps lead, as far as the boss. */
+export function nodesAhead(run: RunState): MapNode[] {
+  const byId = new Map(run.map.map((n) => [n.id, n]))
+  const start = run.position === null ? run.map.filter((n) => n.row === 0).map((n) => n.id) : (byId.get(run.position)?.next ?? [])
+  const found = new Set<string>()
+  const queue = [...start]
+  while (queue.length > 0) {
+    const id = queue.shift() as string
+    if (found.has(id)) continue
+    found.add(id)
+    queue.push(...(byId.get(id)?.next ?? []))
+  }
+  return run.map.filter((n) => found.has(n.id))
+}
+
+/** Where a place stands from where you are: still ahead, already behind you, or on another path. */
+export function standing(run: RunState, nodeId: string): 'ahead' | 'behind' | 'elsewhere' {
+  if (nodesAhead(run).some((n) => n.id === nodeId)) return 'ahead'
+  const row = run.map.find((n) => n.id === run.position)?.row ?? -1
+  return (run.map.find((n) => n.id === nodeId)?.row ?? Infinity) <= row ? 'behind' : 'elsewhere'
+}
+
+/** Whether a relic can still do anything on what is left of this walk: a later floor, or the places still ahead on this one. */
+export function relicMatters(run: RunState, relicId: RelicId): boolean {
+  if (!isLastFloor(run)) return true
+  const ahead = nodesAhead(run)
+  const fightBeforeTheEnd = ahead.some((n) => n.type === 'battle' || n.type === 'elite')
+  switch (relicId) {
+    case 'library_card':
+      return ahead.some((n) => n.type === 'shop')
+    case 'tea_flask':
+    case 'pocket_notebook':
+      return fightBeforeTheEnd
+    default:
+      return ahead.some((n) => n.type === 'battle' || n.type === 'elite' || n.type === 'boss')
+  }
+}
+
 /**
  * Rule-bending relics come only from philosophical problems: a problem offers one familiar relic and
  * `RULE_BENDING_CHOICES` that bend a rule. Every other relic offer comes from the familiar ones.
+ * Nothing is offered that could no longer do anything on this walk.
  */
 function rollRelics(run: RunState, count: number, ruleBending = 0): { relics: RelicId[]; rng: number } {
-  const unowned = RELICS.filter((r) => !run.relics.includes(r.id))
+  const unowned = RELICS.filter((r) => !run.relics.includes(r.id) && relicMatters(run, r.id))
   const bending = shuffle(unowned.filter((r) => r.ruleBending).map((r) => r.id), run.rng)
   const plain = shuffle(unowned.filter((r) => !r.ruleBending).map((r) => r.id), bending.rng)
   const bent = bending.items.slice(0, ruleBending)
@@ -297,7 +345,7 @@ function makeShop(run: RunState): RunState {
 }
 
 function relicsLeft(run: RunState): boolean {
-  return RELICS.some((r) => !r.ruleBending && !run.relics.includes(r.id))
+  return RELICS.some((r) => !r.ruleBending && !run.relics.includes(r.id) && relicMatters(run, r.id))
 }
 
 const RELIC_EVENTS: EventId[] = ['mirror', 'loud_certainty']
@@ -355,7 +403,7 @@ function startFight(run: RunState, enemyId: string): RunState {
 
 /** The two philosophical problems that wait at the end of this floor; you choose one when you reach them. */
 export function bossOptions(run: RunState): string[] {
-  return enemiesFor(run.floor, 'boss').map((e) => e.id)
+  return run.map.find((n) => n.type === 'boss')?.options ?? []
 }
 
 /** Steps to a node; at the boss, `enemyId` picks which of the floor's two problems to face (the map's suggestion otherwise). */
@@ -779,6 +827,28 @@ function fromVersion7(saved: Saved): Saved {
   return { ...saved, battle, defeatRound: null, bestArgument: null, reward: isRecord(saved.reward) ? { ...saved.reward, finalRound: null } : null }
 }
 
+function withEased(report: unknown): unknown {
+  return isRecord(report) ? { ...report, eased: 0 } : report
+}
+
+/** Version 9 lists the problems each boss offers on the map, and round summaries say how much a bias calmed. */
+function fromVersion8(saved: Saved): Saved {
+  const floor = typeof saved.floor === 'number' ? saved.floor : 1
+  const map = Array.isArray(saved.map)
+    ? saved.map.map((node: Saved) => (node.type === 'boss' ? { ...node, options: enemiesFor(floor, 'boss').map((e) => e.id) } : node))
+    : saved.map
+  const battle = isRecord(saved.battle) ? eachCore(saved.battle, (core) => ({ ...core, lastRound: withEased(core.lastRound) })) : null
+  const best = isRecord(saved.bestArgument) ? { ...saved.bestArgument, round: withEased(saved.bestArgument.round) } : null
+  return {
+    ...saved,
+    map,
+    battle,
+    defeatRound: withEased(saved.defeatRound) ?? null,
+    bestArgument: best,
+    reward: isRecord(saved.reward) ? { ...saved.reward, finalRound: withEased(saved.reward.finalRound) ?? null } : null,
+  }
+}
+
 /** Loads a saved run from any earlier version this game shipped, or returns null if it cannot be read. */
 export function migrateRun(saved: unknown, version: number): RunState | null {
   if (!isRecord(saved)) return null
@@ -788,5 +858,6 @@ export function migrateRun(saved: unknown, version: number): RunState | null {
   const v5 = version <= 4 ? fromVersion4(v4) : v4
   const v6 = version <= 5 ? fromVersion5(v5) : v5
   const v7 = version <= 6 ? fromVersion6(v6) : v6
-  return { ...fromVersion7(v7), version: RUN_VERSION } as unknown as RunState
+  const v8 = version <= 7 ? fromVersion7(v7) : v7
+  return { ...fromVersion8(v8), version: RUN_VERSION } as unknown as RunState
 }

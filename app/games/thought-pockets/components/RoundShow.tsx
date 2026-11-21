@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RoundReport } from '@/types/thought-pockets'
 import { playTones } from '@/components/games/gentleCues'
+import { releaseWords } from '@/lib/games/thought-pockets/data/turnText'
 import { TYPE_COLORS } from './CardFace'
 
 const STEP_MS = 260
@@ -13,6 +14,8 @@ const MULT_STEPS_SHOWN = 4
 const TOTAL_MS = 520
 const ADJUST_MS = 480
 const LAND_MS = 480
+/** The hit-pause: on a landing hit the bias recoils and holds still this long before the number appears. */
+export const HIT_PAUSE_MS = 100
 const BIG_HIT = 20
 const HUGE_HIT = 40
 const BIG_EXTRA_MS = 200
@@ -93,7 +96,7 @@ function soundFor(beat: Beat, index: number, report: RoundReport) {
   if (beat === 'total' && report.product > 0) playTones([{ hz: multHz(report.multiplier), toHz: multHz(report.multiplier) * 1.2, seconds: 0.4 }], LOUDNESS)
   if (beat === 'land' && report.damage > 0) {
     const weight = report.damage >= HUGE_HIT ? 1.6 : report.damage >= BIG_HIT ? 1.3 : 1
-    playTones([{ hz: 196, toHz: 131, seconds: 0.45 }], LOUDNESS * weight)
+    playTones([{ hz: 196, toHz: 131, at: HIT_PAUSE_MS / 1000, seconds: 0.45 }], LOUDNESS * weight)
   }
   if (beat === 'shift') {
     playTones([{ hz: 262, toHz: 220, seconds: 0.6 }], LOUDNESS)
@@ -174,13 +177,18 @@ interface RoundShowProps {
   /** What happened on the bias's side, already worded. */
   aftermath: string[]
   title: string
+  /** What to say when the round had no argument. */
+  noArgument?: string
   testId?: string
 }
 
 const tallyBox = 'inline-flex items-baseline gap-1 rounded-sm border-2 px-1.5 py-0.5'
 
-/** One round, told in order. With reduced motion the same beats appear in place, without movement. */
-export function RoundShow({ report, show, reduced, aftermath, title, testId = 'last-round' }: RoundShowProps) {
+/**
+ * One round, told in order. Every line is laid out from the start and only revealed as its beat comes,
+ * so the replay never grows and nothing below it moves. With reduced motion the same beats appear in place, without movement.
+ */
+export function RoundShow({ report, show, reduced, aftermath, title, noArgument = 'You made no argument.', testId = 'last-round' }: RoundShowProps) {
   const { reached, lit, now, landing } = showProgress(show)
   const before = report.carriedWeight + report.doubtWeight
   const running = report.steps.map((_, i) => before + report.steps.slice(0, i + 1).reduce((sum, s) => sum + s.weight, 0))
@@ -190,6 +198,7 @@ export function RoundShow({ report, show, reduced, aftermath, title, testId = 'l
   const multShown = reached('mult') ? report.multiplier : mults[0]
   const big = report.damage >= HUGE_HIT ? 'text-3xl' : report.damage >= BIG_HIT ? 'text-2xl' : 'text-xl'
   const appear = reduced ? '' : 'tp-appear'
+  const reveal = (beat: Beat) => (reached(beat) ? appear : 'invisible')
   const pop = (beat: Beat) => (now === beat && !reduced ? 'tp-pop' : '')
   const stepIndex = lit === Infinity ? -1 : lit - 1
   return (
@@ -199,7 +208,7 @@ export function RoundShow({ report, show, reduced, aftermath, title, testId = 'l
       data-show={show.done ? 'done' : 'playing'}
       onClick={show.done ? undefined : show.skip}
     >
-      <div className="flex items-baseline justify-between gap-2">
+      <div className="flex min-h-5 items-baseline justify-between gap-2">
         <p className="text-[0.68rem] uppercase tracking-wider text-[var(--tp-muted)]">{title}</p>
         {!show.done && (
           <button
@@ -213,7 +222,9 @@ export function RoundShow({ report, show, reduced, aftermath, title, testId = 'l
         )}
       </div>
       {report.steps.length === 0 ? (
-        <p className="mt-1">You made no argument.</p>
+        <p className="mt-1" data-testid="no-argument">
+          {noArgument}
+        </p>
       ) : (
         <>
           <ol className="mt-1 flex flex-wrap gap-1.5">
@@ -240,7 +251,7 @@ export function RoundShow({ report, show, reduced, aftermath, title, testId = 'l
                   {step.multiplier > 0 && <span> +{format(step.multiplier / times)} Mult</span>}
                   {step.guard > 0 && <span> {step.guard} Guard</span>}
                   {step.unsettle > 0 && <span> Unsettle {step.unsettle}</span>}
-                  {on && times > 1 && (
+                  {times > 1 && (
                     <strong className={`ml-1 rounded-sm bg-[var(--tp-accent)] px-1 text-[var(--tp-on-accent)] ${current && !reduced ? 'tp-pop' : ''}`} data-testid="conclusion-count">
                       Conclusion ×{times} → {step.weight > 0 ? `${step.weight} Weight` : `${format(step.multiplier)} Mult`}
                     </strong>
@@ -264,19 +275,17 @@ export function RoundShow({ report, show, reduced, aftermath, title, testId = 'l
               </strong>
             </span>
             {report.modifiers.length > 0 && reached('mult') && <span className="text-xs">({report.modifiers.join('; ')})</span>}
-            {reached('total') && (
-              <>
-                {' '}={' '}
-                <span className={`${tallyBox} border-[var(--tp-accent)] ${appear}`}>
-                  <strong className="text-lg">
-                    <Counting from={0} to={report.product} ms={beatLength('total', 0, report)} running={now === 'total'} />
-                  </strong>
-                </span>
-              </>
-            )}
+            <span className={reveal('total')} data-testid="tally-total">
+              {' '}={' '}
+              <span className={`${tallyBox} border-[var(--tp-accent)]`}>
+                <strong className="text-lg">
+                  <Counting from={0} to={report.product} ms={beatLength('total', 0, report)} running={now === 'total'} />
+                </strong>
+              </span>
+            </span>
           </p>
-          {reached('adjust') && report.chain.length > 0 && (
-            <ol className={`mt-1 space-y-0.5 ${appear}`} aria-label="Then, in order" data-testid="show-chain">
+          {report.chain.length > 0 && (
+            <ol className={`mt-1 space-y-0.5 ${reveal('adjust')}`} aria-label="Then, in order" data-testid="show-chain">
               {report.chain.map((step) => (
                 <li key={step.kind}>
                   → {step.text}
@@ -288,26 +297,25 @@ export function RoundShow({ report, show, reduced, aftermath, title, testId = 'l
               ))}
             </ol>
           )}
-          {reached('land') && (
-            <p className={`mt-1 ${appear}`}>
-              <strong className={`${big} font-serif text-[var(--tp-accent)] ${landing && !reduced ? 'tp-pop' : ''}`}>{report.damage} damage</strong>
-              {report.healedBack > 0 && <> (it recovered {report.healedBack})</>}
-              {report.selfLoss > 0 && <>; you lost {report.selfLoss} to Backfire</>}
-              {report.growth > 0 && <>; repeating yourself made its attacks +{report.growth}</>}
-            </p>
-          )}
+          <p className={`mt-1 ${reveal('land')}`}>
+            <strong className={`${big} font-serif text-[var(--tp-accent)] ${landing && !reduced ? 'tp-pop tp-after-pause' : ''}`}>{report.damage} damage</strong>
+            {report.healedBack > 0 && <> (it recovered {report.healedBack})</>}
+            {report.selfLoss > 0 && <>; you lost {report.selfLoss} to Backfire</>}
+            {report.growth > 0 && <>; repeating yourself made its attacks +{report.growth}</>}
+          </p>
         </>
       )}
-      {reached('unsettle') && report.unsettleLoss > 0 && <p className={`mt-1 ${appear}`}>Unsettled, it lost {report.unsettleLoss} before it could act.</p>}
-      {reached('act') &&
-        aftermath.map((line) => (
-          <p key={line} className={`mt-1 ${appear}`}>
-            {line}
-          </p>
-        ))}
-      {reached('shift') && report.released > 0 && (
-        <p className={`mt-1 font-semibold ${appear}`} data-testid="release">
-          <strong className={`inline-block rounded-sm border-2 border-[var(--tp-good)] px-1.5 text-[var(--tp-good)] ${pop('shift')}`}>Shaken {report.released} → Unsettle −{report.released}</strong>{' '}
+      {report.unsettleLoss > 0 && <p className={`mt-1 ${reveal('unsettle')}`}>Unsettled, it lost {report.unsettleLoss} before it could act.</p>}
+      {aftermath.map((line) => (
+        <p key={line} className={`mt-1 ${reveal('act')}`}>
+          {line}
+        </p>
+      ))}
+      {report.released > 0 && (
+        <p className={`mt-1 font-semibold ${reveal('shift')}`} data-testid="release">
+          <strong className={`inline-block rounded-sm border-2 border-[var(--tp-good)] px-1.5 text-[var(--tp-good)] ${pop('shift')}`}>
+            Shaken {report.released}: {releaseWords(report.released)}
+          </strong>{' '}
           As it changed, everything that shook it landed at once.
         </p>
       )}

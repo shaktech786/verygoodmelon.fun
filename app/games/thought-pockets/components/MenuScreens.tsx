@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { Mode, RunLength, RunState, School } from '@/types/thought-pockets'
-import { SCHOOLS } from '@/lib/games/thought-pockets/data/schools'
-import { ENEMIES, enemiesFor, getEnemyDef, ruleTextAt } from '@/lib/games/thought-pockets/data/enemies'
+import { SCHOOLS, schoolDifficulty } from '@/lib/games/thought-pockets/data/schools'
+import { ENEMIES, SHORT_WALK_PROBLEMS, getEnemyDef, ruleTextAt } from '@/lib/games/thought-pockets/data/enemies'
 import { getCardDef } from '@/lib/games/thought-pockets/data/cards'
 import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
 import { defeatLine } from '@/lib/games/thought-pockets/data/defeat'
@@ -19,12 +19,12 @@ import { FLOOR_NAMES } from './MapScreen'
 import { WalkArgument } from './WalkArgument'
 
 const GENTLE_TEXT = `Recommended. A rest waits before every philosophical problem, rests heal ${REST_HEAL_PERCENT.gentle}%, you recover fully between floors, and once per run you may reconsider a lost argument with at least half your Resolve.`
-const FIRST_PROBLEMS = enemiesFor(1, 'boss').map((e) => e.name).join(' or ')
+const SHORT_PROBLEMS = SHORT_WALK_PROBLEMS.map((id) => getEnemyDef(id).name)
 const LENGTHS: { id: RunLength; name: string; text: string }[] = [
   {
     id: 'short',
     name: 'Short walk',
-    text: `${FLOOR_NAMES[1]} only: ${FLOOR_ROWS} steps, ending at ${FIRST_PROBLEMS}, your choice, which holds nothing back since nothing comes after it. One sitting.`,
+    text: `${FLOOR_NAMES[1]} only: ${FLOOR_ROWS} steps, ending at your choice of two problems drawn from ${SHORT_PROBLEMS.slice(0, -1).join(', ')} and ${SHORT_PROBLEMS.at(-1)}. Nothing comes after it, so it holds nothing back. One sitting.`,
   },
   {
     id: 'long',
@@ -268,8 +268,8 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
                   <span className="font-serif text-lg font-semibold">{school.name}</span>
                   <span className="text-xs font-semibold uppercase tracking-wide text-[var(--tp-paper-muted)]" data-testid="school-difficulty">
                     {i === 0 && mode === 'gentle' ? 'Start here · ' : ''}
-                    {mode === 'rigorous' ? 'Rigorous: ' : ''}
-                    {school.difficulty[mode]}
+                    {mode === 'rigorous' ? `Rigorous ${level}: ` : ''}
+                    {schoolDifficulty(school, mode, level)}
                     {finishedWith.includes(school.id) && ' · finished'}
                   </span>
                 </span>
@@ -342,8 +342,7 @@ export function EndScreen({ run, onMenu }: { run: RunState; onMenu: () => void }
   const foe = run.defeatedBy ? getEnemyDef(run.defeatedBy) : null
   const canReconsider = !won && run.reconsiders > 0 && foe !== null
   const nextLevel = opensNextLevel(run) && run.rigor < MAX_RIGOR ? run.rigor + 1 : null
-  const bossId = run.map.find((n) => n.type === 'boss')?.enemyId
-  const problem = bossId ? getEnemyDef(bossId).name : FIRST_PROBLEMS
+  const problem = getEnemyDef(run.map.find((n) => n.type === 'boss')?.enemyId as string).name
   const again = (length: RunLength, level: number) => {
     const school = run.school
     abandon()

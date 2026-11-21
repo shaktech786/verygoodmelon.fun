@@ -34,6 +34,44 @@ export const EMBLEMS: Record<string, string[]> = {
     '.kk.....kk......',
     '................',
   ],
+  // A thought going round and round its loop, with the worry at its centre.
+  rumination: [
+    '................',
+    '.....kkkkk......',
+    '...kkbbbbbkk....',
+    '..kbbkkkkkbbk...',
+    '.kbbk.....kbbk..',
+    '.kbk.......kbk..',
+    'kbbk...y...kbbk.',
+    'kbk...yyy...kbk.',
+    'kbk...yyy...kbk.',
+    'kbbk...y...kbbk.',
+    '.kbk.......kbk..',
+    '.kbbk.....kbbkk.',
+    '..kbbkkkkkbbkbbk',
+    '...kkbbbbbkkbbk.',
+    '.....kkkkk..kk..',
+    '................',
+  ],
+  // A molehill, and the mountain it is imagined to be looming over it.
+  catastrophizing: [
+    '................',
+    '.......k........',
+    '......kwk.......',
+    '.....kwwwk......',
+    '....kbbbbbk.....',
+    '...kbbbbbbbk....',
+    '..kbbbbbbbbbk...',
+    '.kbbbbbbbbbbbk..',
+    'kbbbbbbbbbbbbbk.',
+    '................',
+    '................',
+    '................',
+    '.......kk.......',
+    '......kggk......',
+    'kkkkkkkkkkkkkkkk',
+    '................',
+  ],
   // A coin still sinking: what is spent is already gone.
   sunk_cost: [
     '................',
@@ -387,6 +425,49 @@ const FRAME: Record<EnemyTier, { outer: string; inner: string }> = {
  */
 export type Mood = 'idle' | 'shaken' | 'gives'
 
+/** Cracks across the emblem, one more for each quarter of its Resolve lost: pixel lines in emblem coordinates, drawn only through its ink. */
+const CRACKS: [number, number][][] = [
+  [
+    [11, 3],
+    [10, 4],
+    [10, 5],
+    [9, 6],
+    [9, 7],
+    [8, 8],
+  ],
+  [
+    [2, 9],
+    [3, 9],
+    [4, 8],
+    [5, 8],
+    [6, 9],
+    [7, 9],
+  ],
+  [
+    [8, 13],
+    [8, 12],
+    [7, 11],
+    [8, 10],
+    [9, 9],
+    [10, 10],
+    [11, 10],
+  ],
+]
+
+/** How many cracks show: one for each quarter of its Resolve it has lost, at most three. */
+export function crackCount(health: number, maxHealth: number): number {
+  return Math.min(CRACKS.length, Math.floor((4 * (maxHealth - health)) / maxHealth))
+}
+
+/** How hard a hit lands on the portrait: the share of its whole Resolve one round took, as 0 to 3 lines of shake to each side. */
+export function impactLines(damage: number, maxHealth: number): number {
+  if (damage <= 0) return 0
+  const share = damage / maxHealth
+  return share < 0.1 ? 1 : share < 0.25 ? 2 : 3
+}
+
+const SHAKE_ROWS = [9, 5, 13]
+
 const SINK = 2
 const SIGH = [
   [15, 1],
@@ -404,10 +485,22 @@ function Pixels({ rows, x, y, opacity }: { rows: string[]; x: number; y: number;
   )
 }
 
+interface PortraitProps {
+  enemyId: string
+  tier: EnemyTier
+  className?: string
+  mood?: Mood
+  /** Cracks for the Resolve it has lost, from crackCount. */
+  cracks?: number
+  /** Shake lines either side while a hit lands, from impactLines. */
+  impact?: number
+}
+
 /** The emblem in a pixel frame: a plain frame for a bias, red corners for a stubborn one, a melon rind for a problem. */
-export function BiasPortrait({ enemyId, tier, className, mood = 'idle' }: { enemyId: string; tier: EnemyTier; className?: string; mood?: Mood }) {
+export function BiasPortrait({ enemyId, tier, className, mood = 'idle', cracks = 0, impact = 0 }: PortraitProps) {
   const frame = FRAME[tier]
   const rows = EMBLEMS[enemyId] ?? []
+  const sunk = mood === 'gives' ? SINK : 0
   return (
     <svg viewBox="0 0 22 22" className={className ?? 'h-16 w-16'} shapeRendering="crispEdges" aria-hidden="true" focusable="false" data-mood={mood}>
       <rect x="0" y="0" width="22" height="22" fill="var(--tp-paper)" />
@@ -437,6 +530,24 @@ export function BiasPortrait({ enemyId, tier, className, mood = 'idle' }: { enem
             ))}
           </g>
         </>
+      )}
+      {cracks > 0 && (
+        <g transform={`translate(3 ${3 + sunk})`} data-testid="cracks" data-cracks={cracks}>
+          {CRACKS.slice(0, cracks)
+            .flat()
+            .filter(([x, y]) => y < rows.length - sunk && (rows[y]?.[x] ?? '.') !== '.')
+            .map(([x, y]) => (
+              <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="var(--tp-paper)" />
+            ))}
+        </g>
+      )}
+      {impact > 0 && (
+        <g className="tp-shake-lines" data-impact={impact}>
+          {SHAKE_ROWS.slice(0, impact).flatMap((y) => [
+            <rect key={`l${y}`} x="0" y={y} width="1" height="3" fill="var(--tp-text)" />,
+            <rect key={`r${y}`} x="21" y={y} width="1" height="3" fill="var(--tp-text)" />,
+          ])}
+        </g>
       )}
     </svg>
   )

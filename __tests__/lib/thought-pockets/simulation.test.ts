@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createBattle } from '@/lib/games/thought-pockets/engine/battle'
-import { ENEMIES } from '@/lib/games/thought-pockets/data/enemies'
-import { SCHOOLS } from '@/lib/games/thought-pockets/data/schools'
+import { ENEMIES, OPENERS, SHORT_WALK_GUESTS, SHORT_WALK_PROBLEMS } from '@/lib/games/thought-pockets/data/enemies'
+import { DIFFICULTY_BANDS, SCHOOLS, schoolDifficulty } from '@/lib/games/thought-pockets/data/schools'
 import { CARDS } from '@/lib/games/thought-pockets/data/cards'
 import { RELICS } from '@/lib/games/thought-pockets/data/relics'
 import { MAX_RIGOR } from '@/lib/games/thought-pockets/data/pace'
@@ -13,15 +13,24 @@ const RUNS = Number(process.env.TP_SIM_RUNS ?? 100)
 const SIM_TIMEOUT = 600_000
 const LONGEST_FIGHT = 25
 
+// The planners stand for players past the first-fight hints, so their walks open with a fight the seed draws.
 const CONFIGS: Record<string, BotConfig> = {
   naive: { turn: leftToRight, draft: 'first', habits: 'naive' },
   newcomer: { turn: newcomer, draft: 'first', habits: 'newcomer' },
   'first-timer': { turn: firstTimer, draft: 'first', habits: 'casual' },
   careful: { turn: careful, draft: 'first', habits: 'casual' },
   'old-ui-driver': { turn: uiDriver, draft: 'first', habits: 'casual' },
-  planner: { turn: planning, draft: 'archetype', habits: 'careful' },
-  'planner-skip-all': { turn: planning, draft: 'skip', habits: 'careful' },
+  planner: { turn: planning, draft: 'archetype', habits: 'careful', teach: false },
+  'planner-skip-all': { turn: planning, draft: 'skip', habits: 'careful', teach: false },
 }
+/** The reviewers' blowout: an Empiricist who plans every turn and holds Bookends from the start. */
+const BOOKENDS_EXPERT: BotConfig = { ...CONFIGS.planner, startRelics: ['bookends'] }
+/** A newcomer past the first fight's hints, on a Short walk that opens with a drawn fight. */
+const DRAWN_NEWCOMER: BotConfig = { ...CONFIGS.newcomer, teach: false }
+/** Gentle should still resist an expert: a planning deck takes at least this many turns over the Long walk. */
+const EXPERT_LONG_WALK_TURNS = 27
+/** Labels are checked at every Rigorous level with this many runs per school and policy. */
+const LEVEL_RUNS = Math.max(20, Math.round(RUNS / 2))
 
 function pct(n: number, d: number): string {
   return d === 0 ? '-' : `${Math.round((100 * n) / d)}%`
@@ -37,8 +46,8 @@ function median(values: number[]): number {
   return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
-function runMany(school: School, config: BotConfig, mode: Mode, rigor?: number, length: RunLength = 'long'): RunRecord[] {
-  return Array.from({ length: RUNS }, (_, i) => playRun(school, 1000 + i, config, undefined, mode, rigor, length))
+function runMany(school: School, config: BotConfig, mode: Mode, rigor?: number, length: RunLength = 'long', count = RUNS): RunRecord[] {
+  return Array.from({ length: count }, (_, i) => playRun(school, 1000 + i, config, undefined, mode, rigor, length))
 }
 
 const RIGOROUS = ['naive', 'first-timer', 'careful', 'planner', 'planner-skip-all']
@@ -48,6 +57,8 @@ const SHORT_WALK_TURNS = 25
 const DIFFICULTY_ORDER: Difficulty[] = ['Easy', 'Medium', 'Hard']
 /** The top of the ladder before levels 6 and 7 were added, kept in the report for comparison. */
 const OLD_TOP = 5
+/** How far a measured win rate may sit outside its label's band before the label is called wrong. */
+const BAND_SLACK = 0.05
 
 /** The card a deck added most often beyond its starting cards; ties go to the rarer card. */
 function signatureCard(deck: string[], starting: string[]): string | null {
@@ -75,7 +86,12 @@ describe('simulation', () => {
         if (name === 'planner') results.set(`${school.id}/${name} rigorous ${OLD_TOP}`, runMany(school.id, config, 'rigorous', OLD_TOP))
       }
     }
+    results.set(`${school.id}/newcomer drawn short`, runMany(school.id, DRAWN_NEWCOMER, 'gentle', undefined, 'short'))
+    for (let level = 1; level <= MAX_RIGOR; level++) {
+      for (const name of ['careful', 'planner']) results.set(`${school.id}/${name} level ${level}`, runMany(school.id, CONFIGS[name], 'rigorous', level, 'long', LEVEL_RUNS))
+    }
   }
+  results.set('empiricist/planner bookends', runMany('empiricist', BOOKENDS_EXPERT, 'gentle'))
 
   it('reports school x policy outcomes and pacing', { timeout: SIM_TIMEOUT }, () => {
     const lines = ['school/policy | win | reach floor 2 | avg turns per fight | median turns per fight | median run turns | turns n/e/b | median boss turns | full-health fights | gold left | top killer']
@@ -183,22 +199,69 @@ describe('simulation', () => {
     }
   })
 
-  it('each school states its difficulty per pace, and the labels follow the win rates', { timeout: SIM_TIMEOUT }, () => {
-    const measures: Record<Mode, (school: School) => number> = {
-      gentle: (school) => rate([`${school}/newcomer`, `${school}/first-timer`], won),
-      rigorous: (school) => rate([`${school}/careful rigorous`, `${school}/planner rigorous ${MAX_RIGOR}`], won),
-    }
-    for (const mode of ['gentle', 'rigorous'] as Mode[]) {
-      const rows = SCHOOLS.map((s) => ({ id: s.id, label: s.difficulty[mode], win: measures[mode](s.id) }))
-      console.log(`${mode} difficulty: ${rows.map((r) => `${r.id} ${r.label} ${pct(r.win * 100, 100)}`).join(', ')}`)
-      for (const easier of rows) {
-        for (const harder of rows) {
-          if (DIFFICULTY_ORDER.indexOf(easier.label) < DIFFICULTY_ORDER.indexOf(harder.label)) {
-            expect(easier.win, `${mode}: ${easier.id} (${easier.label}) vs ${harder.id} (${harder.label})`).toBeGreaterThan(harder.win)
-          }
+  it('in Gentle each school states its difficulty, and the labels follow the win rates', { timeout: SIM_TIMEOUT }, () => {
+    const rows = SCHOOLS.map((s) => ({ id: s.id, label: schoolDifficulty(s, 'gentle', 0), win: rate([`${s.id}/newcomer`, `${s.id}/first-timer`], won) }))
+    console.log(`gentle difficulty: ${rows.map((r) => `${r.id} ${r.label} ${pct(r.win * 100, 100)}`).join(', ')}`)
+    for (const easier of rows) {
+      for (const harder of rows) {
+        if (DIFFICULTY_ORDER.indexOf(easier.label) < DIFFICULTY_ORDER.indexOf(harder.label)) {
+          expect(easier.win, `gentle: ${easier.id} (${easier.label}) vs ${harder.id} (${harder.label})`).toBeGreaterThan(harder.win)
         }
       }
     }
+  })
+
+  // A careful player and a planner, pooled: Easy is a walk they usually finish, Hard one they usually do not.
+  it('at every Rigorous level each school is labelled by how often careful and planning players finish it', { timeout: SIM_TIMEOUT }, () => {
+    const lines: string[] = []
+    for (let level = 1; level <= MAX_RIGOR; level++) {
+      const rows = SCHOOLS.map((s) => ({ s, win: rate([`${s.id}/careful level ${level}`, `${s.id}/planner level ${level}`], won) }))
+      lines.push(`level ${level}: ${rows.map(({ s, win }) => `${s.id} ${schoolDifficulty(s, 'rigorous', level)} ${pct(win * 100, 100)}`).join(', ')}`)
+      for (const { s, win } of rows) {
+        const label = schoolDifficulty(s, 'rigorous', level)
+        const band = DIFFICULTY_BANDS[label]
+        expect(win, `${s.id} at Rigorous ${level} is labelled ${label}`).toBeGreaterThanOrEqual(band.min - BAND_SLACK)
+        expect(win, `${s.id} at Rigorous ${level} is labelled ${label}`).toBeLessThan(band.max + BAND_SLACK)
+      }
+    }
+    console.log(lines.join('\n'))
+    expect(new Set(SCHOOLS.map((s) => schoolDifficulty(s, 'rigorous', 3))).size + new Set(SCHOOLS.map((s) => schoolDifficulty(s, 'rigorous', MAX_RIGOR))).size).toBeGreaterThan(2)
+  })
+
+  it(`Gentle resists an expert: a planning deck needs at least ${EXPERT_LONG_WALK_TURNS} turns for the Long walk, even an Empiricist holding Bookends`, { timeout: SIM_TIMEOUT }, () => {
+    const turns = (key: string) => median((results.get(key) ?? []).map((r) => r.turns))
+    console.log(`planner Gentle Long walk median turns: ${SCHOOLS.map((s) => `${s.id} ${turns(`${s.id}/planner`)}`).join(', ')}; Empiricist with Bookends ${turns('empiricist/planner bookends')}`)
+    for (const school of SCHOOLS) expect(turns(`${school.id}/planner`), school.id).toBeGreaterThanOrEqual(EXPERT_LONG_WALK_TURNS)
+    expect(turns('empiricist/planner bookends')).toBeGreaterThanOrEqual(EXPERT_LONG_WALK_TURNS)
+    expect(rate(['empiricist/planner bookends'], won)).toBeGreaterThanOrEqual(0.95)
+  })
+
+  it('newcomers still finish Gentle walks: a first-timer wins at least 80% of Long walks and a newcomer at least 78%, for every school', { timeout: SIM_TIMEOUT }, () => {
+    for (const school of SCHOOLS) {
+      expect(rate([`${school.id}/first-timer`], won), `${school.id} first-timer`).toBeGreaterThanOrEqual(0.8)
+      expect(rate([`${school.id}/newcomer`], won), `${school.id} newcomer`).toBeGreaterThanOrEqual(0.78)
+    }
+  })
+
+  it('walks vary: every opening fight and every problem that can end a Short walk is met, and a newcomer finishes each', { timeout: SIM_TIMEOUT }, () => {
+    const runs = SCHOOLS.flatMap((s) => [...(results.get(`${s.id}/newcomer drawn short`) ?? []), ...(results.get(`${s.id}/newcomer short`) ?? [])])
+    const fights = runs.flatMap((r) => r.fights)
+    const openers = new Set(runs.map((r) => r.fights[0]?.enemyId))
+    expect([...openers].sort()).toEqual([...OPENERS].sort())
+    const lines: string[] = []
+    for (const id of SHORT_WALK_PROBLEMS) {
+      const met = fights.filter((f) => f.enemyId === id)
+      lines.push(`${id}: met ${met.length}, won ${pct(met.filter((f) => f.won).length, met.length)}, median turns ${median(met.filter((f) => f.won).map((f) => f.turns))}`)
+      expect(met.length, id).toBeGreaterThan(0)
+      expect(met.filter((f) => f.won).length / met.length, id).toBeGreaterThanOrEqual(id in SHORT_WALK_GUESTS ? 0.9 : 0.85)
+    }
+    console.log(lines.join('\n'))
+    for (const school of SCHOOLS) expect(rate([`${school.id}/newcomer drawn short`], won), school.id).toBeGreaterThanOrEqual(0.9)
+  })
+
+  it('no relic is ever offered once it can no longer do anything on the walk', { timeout: SIM_TIMEOUT }, () => {
+    const all = [...results.values()].flat()
+    expect(all.flatMap((r) => r.deadOffers)).toEqual([])
   })
 
   // At the default Rigorous level a planner that peeks at its next draw wins about 95% with the starter deck alone, so the top level is where cards can show their worth.

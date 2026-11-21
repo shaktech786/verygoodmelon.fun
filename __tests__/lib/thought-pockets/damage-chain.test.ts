@@ -19,7 +19,7 @@ describe('damage is shown in the order the engine applies it', () => {
     const afterGuard = raw - 3
     const grains = overflowUnsettle(afterGuard - SORITES_CAP)
     expect(preview.chain.map((s) => s.after)).toEqual([afterGuard, SORITES_CAP, 10])
-    expect(preview.chain[1].text).toBe(`Capped at ${SORITES_CAP}: the rest shakes it, Shaken +${grains}`)
+    expect(preview.chain[1].text).toBe(`Capped at ${SORITES_CAP}: the extra ${afterGuard - SORITES_CAP} shakes it: Shaken +${grains}`)
     expect(preview.damage).toBe(10)
     const spill = overflowUnsettle(SORITES_CAP - 10, grains)
     expect(preview.shaken).toBe(grains + spill)

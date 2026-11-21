@@ -7,6 +7,7 @@ import {
   CardInstance,
   CardType,
   DamageStep,
+  EnemyDef,
   EnemyMove,
   EnemyRule,
   RelicId,
@@ -18,18 +19,27 @@ import { isDoubt, resolveCard } from '../data/cards'
 import { CONCLUSION_TIMES, EMPIRICIST_EVIDENCE_TIMES, FOOTNOTES_TIMES, timesWord } from '../data/conclusion'
 import {
   ARROW_MIN,
+  ARROW_RIGOROUS_TIRING,
+  ARROW_TIRES,
   BURIDAN_CHARGE,
   BURIDAN_GUARD,
+  CATASTROPHE,
   DISMISS_CARDS,
   INDUCTION_BONUS,
   MEANING_ANSWER,
   MOTIVATED_CARDS,
+  RUMINATION_STEP,
+  SHORT_WALK_GUESTS,
+  SLOW_GROUND_TEXT,
   STOP_LINES,
   SORITES_CAP,
   STATUS_QUO_MAX_GUARD,
   TUTORIAL_ENEMY,
   getEnemyDef,
+  givesGroundSlowly,
   overflowUnsettle,
+  overflowWords,
+  releaseLeftover,
   ruleTextAt,
 } from '../data/enemies'
 import { RIGOR, RIGOROUS_ATTACK, RIGOROUS_HEALTH, SHORT_WALK_BOSS, TIRING } from '../data/pace'
@@ -108,7 +118,8 @@ function hasRule(core: BattleCore, rule: EnemyRule): boolean {
 export function enemyRuleText(core: BattleCore): string {
   const def = getEnemyDef(core.enemy.id)
   const main = inSecondPhase(core) && def.phase2 ? def.phase2.ruleText : ruleTextAt(def, core.rigor)
-  return core.enemy.secondRule && def.secondRule ? `${main} ${def.secondRule.ruleText}` : main
+  const rules = core.enemy.secondRule && def.secondRule ? `${main} ${def.secondRule.ruleText}` : main
+  return givesGroundSlowly(def, core.rigor) ? `${rules} ${SLOW_GROUND_TEXT}` : rules
 }
 
 /** Where a philosophical problem changes; until it has, no round can take it lower. */
@@ -116,10 +127,11 @@ export function phaseThreshold(core: BattleCore): number | null {
   return getEnemyDef(core.enemy.id).phase2 && core.enemy.phase === 1 ? Math.floor(core.enemy.maxHealth / 2) : null
 }
 
-/** Where a philosophical problem stops this round: the next of its stop lines below where it stands. */
+/** Where this round stops: the next of a philosophical problem's stop lines below where it stands, or half for a bias that gives ground slowly. */
 export function stopLine(core: BattleCore): number | null {
-  if (!getEnemyDef(core.enemy.id).phase2) return null
-  const lines = STOP_LINES.map((share) => Math.floor(core.enemy.maxHealth * share)).filter((line) => line < core.enemy.health)
+  const def = getEnemyDef(core.enemy.id)
+  const shares = def.phase2 ? STOP_LINES : givesGroundSlowly(def, core.rigor) ? [0.5] : []
+  const lines = shares.map((share) => Math.floor(core.enemy.maxHealth * share)).filter((line) => line < core.enemy.health)
   return lines.length > 0 ? Math.max(...lines) : null
 }
 
@@ -205,7 +217,8 @@ function startTurn(core: BattleCore): BattleCore {
     played: [],
     player: { ...core.player, guard: 0 },
   }
-  next = { ...next, enemy: { ...next.enemy, unsettle: next.enemy.unsettle + tiringUnsettle(next) } }
+  const ruminating = hasRule(next, 'ruminates') ? RUMINATION_STEP : 0
+  next = { ...next, enemy: { ...next.enemy, unsettle: next.enemy.unsettle + tiringUnsettle(next) + ruminating } }
   const gamble = getEnemyDef(core.enemy.id).gamble
   if (gamble) {
     const r = roll(next.rng)
@@ -224,15 +237,22 @@ function teachingOrder(cards: CardInstance[]): CardInstance[] {
   return [...front, ...cards.filter((c) => !front.includes(c))]
 }
 
+/** What the pace and the walk add to its attacks, before its own rule changes them. */
+function baseStrength(def: EnemyDef, rigor: number, lastOfShortWalk: boolean): number {
+  return (
+    (rigor >= RIGOR.harder ? RIGOROUS_ATTACK : 0) +
+    (rigor >= RIGOR.bossesHarder && def.tier !== 'normal' ? RIGOROUS_ATTACK : 0) +
+    (lastOfShortWalk ? SHORT_WALK_BOSS.attack + (SHORT_WALK_GUESTS[def.id]?.attack ?? 0) : 0)
+  )
+}
+
 export function createBattle(setup: BattleSetup): BattleState {
   const def = getEnemyDef(setup.enemyId)
   const shuffled = shuffle(setup.deck, setup.rng)
   if (setup.enemyId === TUTORIAL_ENEMY) shuffled.items = teachingOrder(shuffled.items)
-  const health = Math.round(def.health * (setup.rigor >= RIGOR.tougher ? RIGOROUS_HEALTH : 1) * (setup.lastOfShortWalk ? SHORT_WALK_BOSS.health : 1))
-  const strength =
-    (setup.rigor >= RIGOR.harder ? RIGOROUS_ATTACK : 0) +
-    (setup.rigor >= RIGOR.bossesHarder && def.tier !== 'normal' ? RIGOROUS_ATTACK : 0) +
-    (setup.lastOfShortWalk ? SHORT_WALK_BOSS.attack : 0)
+  const guest = setup.lastOfShortWalk ? SHORT_WALK_GUESTS[def.id] : undefined
+  const health = Math.round((guest?.health ?? def.health) * (setup.rigor >= RIGOR.tougher ? RIGOROUS_HEALTH : 1) * (setup.lastOfShortWalk ? SHORT_WALK_BOSS.health : 1))
+  const strength = baseStrength(def, setup.rigor, Boolean(setup.lastOfShortWalk)) + (def.rule === 'catastrophe' ? CATASTROPHE.start : 0)
   const core: BattleCore = {
     enemy: {
       id: def.id,
@@ -269,7 +289,7 @@ export function createBattle(setup: BattleSetup): BattleState {
     carriedFocus: 0,
     lastConclusionType: null,
     piercedOnce: false,
-    tiresFrom: setup.rigor === 0 ? TIRING.gentle : TIRING.rigorous,
+    tiresFrom: setup.rigor === 0 ? TIRING.gentle : def.rule === 'arrow' ? ARROW_RIGOROUS_TIRING : TIRING.rigorous,
     nextUid: setup.deck.reduce((max, c) => Math.max(max, c.uid), 0) + 1,
     rng: shuffled.rng,
     outcome: 'ongoing',
@@ -332,7 +352,7 @@ function conclusionIndex(core: BattleCore): number {
   return hasRule(core, 'anchoring') ? 0 : core.played.length - 1
 }
 
-/** With Bookends, the card at the other end of an argument of two or more cards is a Conclusion too. */
+/** With Bookends, the card at the other end of an argument of two or more cards is a Conclusion too, counting the plain number of times. */
 function bookendIndex(core: BattleCore): number {
   if (!has(core, 'bookends') || core.played.length < 2) return -1
   return conclusionIndex(core) === 0 ? core.played.length - 1 : 0
@@ -456,10 +476,13 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
     let times = 1
     if (isConclusion) {
       const label = i === conclusion ? 'Conclusion' : 'Bookend Conclusion'
-      let count = def.conclusionTimes ?? conclusionTimes(core.school, def.type)
-      if (has(core, 'footnotes') && defs.length >= FOOTNOTES_CARDS) count = Math.max(count, FOOTNOTES_TIMES)
-      count += conclusionBonus
-      if (i === conclusion) conclusionCount = count
+      let count = CONCLUSION_TIMES
+      if (i === conclusion) {
+        count = def.conclusionTimes ?? conclusionTimes(core.school, def.type)
+        if (has(core, 'footnotes') && defs.length >= FOOTNOTES_CARDS) count = Math.max(count, FOOTNOTES_TIMES)
+        count += conclusionBonus
+        conclusionCount = count
+      }
       if (weight === 0 && multiplier === 0) {
         if (i === conclusion) conclusionEmpty = true
         notes.push(`${label}: nothing to count ${timesWord(count)}`)
@@ -510,24 +533,29 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   const arrowMin = core.rigor === 0 ? ARROW_MIN.gentle : ARROW_MIN.rigorous
   if (hasRule(core, 'arrow') && value > 0 && value < arrowMin) {
     value = 0
-    chain.push({ kind: 'arrow', text: `Under ${arrowMin}: the arrow does not move`, short: `under ${arrowMin}`, after: value })
+    chain.push({ kind: 'arrow', text: `Under ${arrowMin}: the arrow does not move, and it tires from turn ${arrowTiring(core)}`, short: `under ${arrowMin}`, after: value })
   }
   let grains = 0
   if (hasRule(core, 'sorites') && value > SORITES_CAP) {
-    grains = overflowUnsettle(value - SORITES_CAP)
+    const extra = value - SORITES_CAP
+    grains = overflowUnsettle(extra)
     value = SORITES_CAP
-    chain.push({ kind: 'cap', text: `Capped at ${SORITES_CAP}${grains > 0 ? `: the rest shakes it, Shaken +${grains}` : ''}`, short: `cap ${SORITES_CAP}`, after: value })
+    chain.push({ kind: 'cap', text: `Capped at ${SORITES_CAP}: the extra ${extra} ${overflowWords(extra, grains)}`, short: `cap ${SORITES_CAP}`, after: value })
   }
   const line = stopLine(core)
   const room = line !== null ? core.enemy.health - line : null
   let spill = 0
   if (line !== null && room !== null && value > room) {
     const extra = value - room
-    spill = overflowUnsettle(extra, grains)
     value = room
-    const shakes = `Your extra ${extra} shakes it${spill > 0 ? `: Shaken +${spill}` : ''}`
-    if (line === phaseThreshold(core)) chain.push({ kind: 'half', text: `It stops at ${line} and changes. ${shakes}`, short: 'stops at half', after: value })
-    else chain.push({ kind: 'line', text: `It stops at ${line}, three quarters of its Resolve. ${shakes}`, short: 'stops at 3/4', after: value })
+    if (!getEnemyDef(core.enemy.id).phase2) {
+      chain.push({ kind: 'half', text: `It gives ground slowly: it stops at ${line}, half its Resolve. Your extra ${extra} is lost`, short: 'stops at half', after: value })
+    } else {
+      spill = overflowUnsettle(extra, grains)
+      const shakes = `Your extra ${extra} ${overflowWords(extra, spill)}`
+      if (line === phaseThreshold(core)) chain.push({ kind: 'half', text: `It stops at ${line} and changes. ${shakes}`, short: 'stops at half', after: value })
+      else chain.push({ kind: 'line', text: `It stops at ${line}, three quarters of its Resolve. ${shakes}`, short: 'stops at 3/4', after: value })
+    }
   }
   const damage = value
   const explained = (hasRule(core, 'motivated') && defs.length < MOTIVATED_CARDS) || (hasRule(core, 'dismisses') && defs.length < DISMISS_CARDS)
@@ -612,6 +640,11 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   }
 }
 
+/** The turn Zeno's Arrow starts to tire once it has stopped this argument: sooner, but never before your next turn. */
+function arrowTiring(core: BattleCore): number {
+  return Math.max(core.turn + 1, core.tiresFrom - ARROW_TIRES)
+}
+
 function addDoubtsToDrawPile(core: BattleCore, count: number): BattleCore {
   let next = core
   for (let i = 0; i < count; i++) {
@@ -665,6 +698,7 @@ export function endTurn(battle: BattleState): BattleState {
     phaseChanged: false,
     gamble: null,
     restored: 0,
+    eased: 0,
     shaken: preview.shaken,
     released: 0,
     ruleGuard: preview.ruleGuard,
@@ -677,7 +711,7 @@ export function endTurn(battle: BattleState): BattleState {
     guard: core.enemy.guard - preview.blocked,
     health: Math.max(0, core.enemy.health - preview.damage + preview.healedBack) - preview.unsettleTick,
     strength: core.enemy.strength + preview.growth,
-    unsettle: preview.enemyFalls === 'argument' || core.unsettleLasts || has(core, 'still_water') ? unsettle : Math.floor(unsettle / 2),
+    unsettle: preview.enemyFalls === 'argument' || core.unsettleLasts || has(core, 'still_water') || hasRule(core, 'ruminates') ? unsettle : Math.floor(unsettle / 2),
     shaken: core.enemy.shaken + preview.shaken,
     seen: [...new Set([...core.enemy.seen, ...playedDefs.filter((d) => d.type === 'evidence').map((d) => d.id)])],
   }
@@ -696,6 +730,7 @@ export function endTurn(battle: BattleState): BattleState {
     lastConclusionType: conclusion >= 0 ? playedDefs[conclusion].type : null,
     piercedOnce: core.piercedOnce || preview.weight > 0,
     evidencePlayed: core.evidencePlayed + playedDefs.filter((d) => d.type === 'evidence').length,
+    tiresFrom: preview.chain.some((step) => step.kind === 'arrow') ? arrowTiring(core) : core.tiresFrom,
   }
 
   const won = (state: BattleCore): BattleState => ({
@@ -739,6 +774,12 @@ export function endTurn(battle: BattleState): BattleState {
     }
   }
 
+  if (hasRule(core, 'catastrophe') && report.playerLoss === 0) {
+    const strength = Math.max(baseStrength(def, core.rigor, false), next.enemy.strength - CATASTROPHE.ease)
+    report.eased = next.enemy.strength - strength
+    next = { ...next, enemy: { ...next.enemy, strength } }
+  }
+
   if (next.lastingRestore > 0 && report.playerLoss + report.selfLoss === 0) {
     const resolve = Math.min(next.player.maxResolve, next.player.resolve + next.lastingRestore)
     report.restored = resolve - next.player.resolve
@@ -750,7 +791,7 @@ export function endTurn(battle: BattleState): BattleState {
   if (def.phase2 && next.enemy.phase === 1 && next.enemy.health * 2 <= next.enemy.maxHealth) {
     report.released = next.enemy.shaken
     const { shaken } = next.enemy
-    next = { ...next, enemy: { ...next.enemy, phase: 2, moveIndex: 0, health: Math.max(0, next.enemy.health - shaken), unsettle: next.enemy.unsettle + Math.floor(shaken / 2), shaken: 0 } }
+    next = { ...next, enemy: { ...next.enemy, phase: 2, moveIndex: 0, health: Math.max(0, next.enemy.health - shaken), unsettle: next.enemy.unsettle + releaseLeftover(shaken), shaken: 0 } }
     report.phaseChanged = true
   }
 

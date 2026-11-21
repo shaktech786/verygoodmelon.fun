@@ -6,6 +6,7 @@ import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
 import { getEventDef } from '@/lib/games/thought-pockets/data/events'
 import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { fitsLabel } from '@/lib/games/thought-pockets/data/synergy'
+import { finalRoundWords } from '@/lib/games/thought-pockets/data/turnText'
 import {
   RUN_FLOORS,
   buyCard,
@@ -117,10 +118,11 @@ function FinalArgument({ run }: { run: RunState }) {
   const show = useRoundShow(report ? `final-${run.stats.fights}` : null, report, reduced)
   if (!report || !enemyId) return null
   const foe = getEnemyDef(enemyId)
+  const words = finalRoundWords(report)
   return (
     <div className="mt-2 rounded-md border border-[var(--tp-line)] p-2.5" data-testid="final-argument">
       <style>{SHOW_CSS}</style>
-      <RoundShow report={report} show={show} reduced={reduced} aftermath={[`${foe.name} has no answer left.`]} title="Your winning argument" />
+      <RoundShow report={report} show={show} reduced={reduced} aftermath={[`${foe.name} has no answer left.`]} title={words.title} noArgument={words.noArgument} />
     </div>
   )
 }

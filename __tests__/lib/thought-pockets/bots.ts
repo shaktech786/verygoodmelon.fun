@@ -14,6 +14,7 @@ import {
   newRun,
   pickCard,
   reconsider,
+  relicMatters,
   restHeal,
   skipCards,
   startRestRemoval,
@@ -24,7 +25,7 @@ import {
 } from '@/lib/games/thought-pockets/engine/run'
 import { canUpgrade, getCardDef, isDoubt, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
-import { BattleState, CardDef, CardInstance, CardType, MapNode, Mode, RunLength, RunState, School } from '@/types/thought-pockets'
+import { BattleState, CardDef, CardInstance, CardType, MapNode, Mode, RelicId, RunLength, RunState, School } from '@/types/thought-pockets'
 
 export type TurnPolicy = (battle: BattleState) => BattleState
 
@@ -380,6 +381,10 @@ export interface BotConfig {
   turn: TurnPolicy
   draft: DraftStyle
   habits: RunHabits
+  /** Relics the run starts with, to measure what one relic does to a build. */
+  startRelics?: RelicId[]
+  /** A player past the first-fight hints meets an opening fight drawn by the seed. */
+  teach?: boolean
 }
 
 export interface FightRecord {
@@ -410,6 +415,8 @@ export interface RunRecord {
   turns: number
   /** Resolve left when the run ended. */
   resolveLeft: number
+  /** Relics offered at a moment when they could no longer do anything on this walk. */
+  deadOffers: RelicId[]
 }
 
 function chooseNextNode(run: RunState, options: MapNode[], habits: RunHabits): MapNode {
@@ -541,9 +548,12 @@ export function playRun(
   length: RunLength = 'long',
 ): RunRecord {
   const habits = config.habits
-  let run = newRun(school, seed, mode, [], rigor, length)
+  const fresh = newRun(school, seed, mode, [], rigor, length, config.teach ?? true)
+  let run = config.startRelics ? { ...fresh, relics: config.startRelics } : fresh
   const fights: FightRecord[] = []
   const offered: string[] = []
+  const deadOffers: RelicId[] = []
+  const noteRelics = (state: RunState, relics: RelicId[]) => deadOffers.push(...relics.filter((id) => !relicMatters(state, id)))
   let reconsidered = false
   for (let guard = 0; guard < 500; guard++) {
     if (run.screen === 'defeat' && run.reconsiders > 0) {
@@ -582,6 +592,7 @@ export function playRun(
       case 'reward': {
         const reward = run.reward
         offered.push(...(reward?.cardChoices ?? []))
+        noteRelics(run, reward?.relicChoices ?? [])
         if (reward && !reward.relicTaken) run = takeRelic(run, reward.relicChoices[0])
         run = leaveReward(draft(run, config.draft))
         break
@@ -601,10 +612,12 @@ export function playRun(
       }
       case 'shop':
         offered.push(...(run.shop?.cards.map((c) => c.cardId) ?? []))
+        noteRelics(run, run.shop?.relics.map((r) => r.relicId) ?? [])
         run = handleShop(run, habits)
         break
       case 'event':
         offered.push(...(run.event?.cardOffer ?? []))
+        noteRelics(run, run.event?.relicOffer ? [run.event.relicOffer] : [])
         run = handleEvent(run)
         break
     }
@@ -623,5 +636,6 @@ export function playRun(
     offered,
     turns: fights.reduce((sum, f) => sum + f.turns, 0),
     resolveLeft: run.resolve,
+    deadOffers,
   }
 }

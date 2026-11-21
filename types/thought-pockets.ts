@@ -10,8 +10,8 @@ export type Difficulty = 'Easy' | 'Medium' | 'Hard'
 export interface SchoolDef {
   id: School
   name: string
-  /** How hard the school is at each pace, checked against the simulation. */
-  difficulty: Record<Mode, Difficulty>
+  /** How hard the school is in Gentle and at each Rigorous level (index 0 is level 1), checked against the simulation. */
+  difficulty: { gentle: Difficulty; rigorous: Difficulty[] }
   tagline: string
   passive: string
   deck: string[]
@@ -132,6 +132,8 @@ export type EnemyRule =
   | 'newcomb'
   | 'newcomb_caution'
   | 'dismisses'
+  | 'ruminates'
+  | 'catastrophe'
 
 export type Ask = 'evidence' | 'logic' | 'guard'
 
@@ -304,6 +306,8 @@ export interface RoundReport {
   gamble: 'hit' | 'miss' | null
   /** Resolve restored at the end of the round by a lasting effect. */
   restored: number
+  /** How much a bias that eases when nothing bad happens calmed after this round. */
+  eased: number
   shaken: number
   released: number
   ruleGuard: number
@@ -356,6 +360,8 @@ export interface MapNode {
   lanes: number
   next: string[]
   enemyId?: string
+  /** At the boss: the problems you choose between when you reach it. */
+  options?: string[]
 }
 
 export type EventId =
@@ -418,7 +424,7 @@ export interface RunStats {
 }
 
 export interface RunState {
-  version: 8
+  version: 9
   seed: number
   rng: number
   school: School

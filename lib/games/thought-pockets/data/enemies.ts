@@ -2,6 +2,8 @@ import { EnemyDef, EnemyTier } from '@/types/thought-pockets'
 import { RIGOR } from './pace'
 
 export const TUTORIAL_ENEMY = 'jumping_to_conclusions'
+/** The fights a walk can open with. The first walk always opens with the teaching one; after that the seed draws one. */
+export const OPENERS = [TUTORIAL_ENEMY, 'rumination', 'catastrophizing'] as const
 
 const GAMBLE = { chance: 0.25, attack: 22 }
 /** The damage answering The Meaning of Life's question adds. Flat, so a small honest answer gains as much as a huge one. */
@@ -10,12 +12,12 @@ export const MEANING_ANSWER = 10
 export const INDUCTION_BONUS = 1.5
 export const SORITES_CAP = 20
 /**
- * Damage a rule stops (Sorites' cap, a problem's stop lines) is not lost: every `rate` of it banks 1 Shaken,
- * at most `max` in one round, and the moment the problem changes it all becomes Unsettle that takes its toll
- * at once, so a huge argument pays off without skipping the problem's second half.
+ * Damage a rule stops (Sorites' cap, a problem's stop lines) shakes it: every `rate` of it banks 1 Shaken,
+ * at most `max` in one round (the rest is lost), and the moment the problem changes it all takes its toll at once (half of it
+ * staying as Unsettle), so a huge argument pays off without skipping the problem's second half.
  */
 export const OVERFLOW = { rate: 2, max: 5 } as const
-export const OVERFLOW_TEXT = `Anything past it shakes it: 1 Shaken for every ${OVERFLOW.rate} (at most ${OVERFLOW.max} a round). When it changes, all its Shaken becomes Unsettle and takes its toll at once, then halves as Unsettle does.`
+export const OVERFLOW_TEXT = `Anything past it shakes it: 1 Shaken for every ${OVERFLOW.rate} (at most ${OVERFLOW.max} a round). When it changes, all its Shaken takes that much Resolve at once, and half of it stays as Unsettle for the next turn.`
 /** No single round takes a philosophical problem past the next of these shares of its Resolve, so even a huge deck needs three rounds. Half is where it changes. */
 export const STOP_LINES = [0.75, 0.5] as const
 export const PROBLEM_LINES = 'A philosophical problem gives ground slowly: no single round takes it past three quarters of its Resolve, or past half, where it changes.'
@@ -33,9 +35,26 @@ export const CONFIRMATION_GROWTH = 1
 /** Arguments with fewer cards than this are explained away by Motivated Reasoning; the Backfire Effect's milder second rule only waves off a single card. */
 export const MOTIVATED_CARDS = 3
 export const DISMISS_CARDS = 2
+/** How much Unsettle Rumination adds to itself at the start of each of your turns. */
+export const RUMINATION_STEP = 1
+/** Catastrophizing starts with its attacks this much stronger, and eases by `ease` after each round you lose nothing to it. */
+export const CATASTROPHE = { start: 3, ease: 1 } as const
+/** Each argument Zeno's Arrow stops brings its tiring this many turns sooner. */
+export const ARROW_TIRES = 2
+/** In Rigorous, where most arguments cannot move Zeno's Arrow, it starts to tire from this turn instead of the usual one. */
+export const ARROW_RIGOROUS_TIRING = 10
+/**
+ * Problems from later floors that can also end a Short walk, at a first-floor strength:
+ * their Resolve, and what is added to their attacks (before the Short walk's own bonus).
+ */
+export const SHORT_WALK_GUESTS: Record<string, { health: number; attack: number }> = {
+  buridans_ass: { health: 64, attack: 0 },
+  newcomb: { health: 70, attack: -2 },
+}
 
-function arrowRule(min: number): string {
-  return `Motionless at every instant: an argument that would deal less than ${min} damage deals none. Unsettle still works.`
+function arrowRule(min: number, tiresFrom?: number): string {
+  const tiring = tiresFrom ? `It tires from turn ${tiresFrom}, and each argument it stops brings that ${ARROW_TIRES} turns sooner.` : `Each argument it stops brings its tiring ${ARROW_TIRES} turns sooner.`
+  return `Motionless at every instant: an argument that would deal less than ${min} damage deals none. Unsettle still works. ${tiring}`
 }
 
 function percentMore(factor: number): string {
@@ -54,6 +73,30 @@ export const ENEMIES: EnemyDef[] = [
     intro: 'Obviously. Next question.',
     insight: 'A quick answer feels like knowledge. Slowing down is how you check.',
     moves: [{ attack: 6 }, { guard: 4 }, { attack: 8 }],
+  },
+  {
+    id: 'rumination',
+    name: 'Rumination',
+    tier: 'normal',
+    floor: 1,
+    health: 28,
+    rule: 'ruminates',
+    ruleText: `It goes over the same thought again and again: at the start of each of your turns it Unsettles itself ${RUMINATION_STEP} more, and its Unsettle never halves.`,
+    intro: 'But what if I go over it just one more time?',
+    insight: 'Going over a worry again does not solve it; it only wears you out. Let it wear itself out instead.',
+    moves: [{ attack: 4 }, { attack: 3, hits: 2 }, { guard: 4 }],
+  },
+  {
+    id: 'catastrophizing',
+    name: 'Catastrophizing',
+    tier: 'normal',
+    floor: 1,
+    health: 26,
+    rule: 'catastrophe',
+    ruleText: `It imagines the worst: its attacks start ${CATASTROPHE.start} stronger, and after each round you lose no Resolve to it, they ease by ${CATASTROPHE.ease}, down to normal.`,
+    intro: 'This is going to be a disaster. I can feel it.',
+    insight: 'The worst case is rarely the likely one. Each time it does not happen, the fear loosens a little.',
+    moves: [{ attack: 3 }, { guard: 4 }, { attack: 5 }],
   },
   {
     id: 'sunk_cost',
@@ -120,7 +163,7 @@ export const ENEMIES: EnemyDef[] = [
     floor: 1,
     health: 64,
     rule: 'arrow',
-    ruleText: arrowRule(ARROW_MIN.rigorous),
+    ruleText: arrowRule(ARROW_MIN.rigorous, ARROW_RIGOROUS_TIRING),
     gentleRuleText: arrowRule(ARROW_MIN.gentle),
     intro: 'At every instant the arrow is exactly where it is. So when does it ever move?',
     insight: 'Moment by moment, nothing seems to change. Gather yourself for one real step, and you find you were moving all along.',
@@ -333,16 +376,42 @@ export function ruleTextAt(def: EnemyDef, rigor: number): string {
 /** Every rule a bias plays by at this pace, its second rule included from the Rigorous level that adds it. */
 export function fullRuleText(def: EnemyDef, rigor: number): string {
   const main = ruleTextAt(def, rigor)
-  return rigor >= RIGOR.secondRule && def.secondRule ? `${main} ${def.secondRule.ruleText}` : main
+  const rules = rigor >= RIGOR.secondRule && def.secondRule ? `${main} ${def.secondRule.ruleText}` : main
+  return givesGroundSlowly(def, rigor) ? `${rules} ${SLOW_GROUND_TEXT}` : rules
 }
 
-/** How much of the damage a rule stopped becomes Unsettle, when `already` has been made this round. */
+/** How much Shaken the damage a rule stopped banks, when `already` has been banked this round. */
 export function overflowUnsettle(stopped: number, already = 0): number {
   return Math.max(0, Math.min(OVERFLOW.max - already, Math.floor(stopped / OVERFLOW.rate)))
 }
 
+const OPENING: readonly string[] = OPENERS
+
+/** The biases and problems a floor draws from; the opening fights are drawn separately. */
 export function enemiesFor(floor: number, tier: EnemyTier): EnemyDef[] {
-  return ENEMIES.filter(
-    (enemy) => enemy.floor === floor && enemy.tier === tier && enemy.id !== TUTORIAL_ENEMY,
-  )
+  return ENEMIES.filter((enemy) => enemy.floor === floor && enemy.tier === tier && !OPENING.includes(enemy.id))
+}
+
+/**
+ * At Gentle pace a bias gives ground slowly: no round takes it past half its Resolve, so a strong deck still
+ * needs two rounds. A newcomer's arguments rarely reach that far in one round, and the teaching fight is exempt.
+ */
+export function givesGroundSlowly(def: EnemyDef, rigor: number): boolean {
+  return rigor === 0 && def.tier !== 'boss' && def.id !== TUTORIAL_ENEMY
+}
+
+export const SLOW_GROUND_TEXT = 'It gives ground slowly: no single round takes it past half its Resolve.'
+
+/** The problems that can end a Short walk: the first floor's own, and the guests. */
+export const SHORT_WALK_PROBLEMS = [...enemiesFor(1, 'boss').map((e) => e.id), ...Object.keys(SHORT_WALK_GUESTS)]
+
+/** What is left of the damage a rule stopped: "shakes it: Shaken +3", or why it is lost. */
+export function overflowWords(extra: number, banked: number): string {
+  if (banked > 0) return `shakes it: Shaken +${banked}`
+  return extra < OVERFLOW.rate ? `is lost (1 Shaken for every ${OVERFLOW.rate})` : `is lost (at most ${OVERFLOW.max} Shaken a round)`
+}
+
+/** When a problem changes, its Shaken takes that much Resolve at once and adds half as much Unsettle for the turns after. */
+export function releaseLeftover(shaken: number): number {
+  return Math.floor(shaken / 2)
 }

@@ -106,7 +106,7 @@ describe('damage a rule stops is never lost, at one stated rate', () => {
 
   it('the rate is stated where each rule is stated, from the same constants', () => {
     expect(OVERFLOW_TEXT).toBe(
-      `Anything past it shakes it: 1 Shaken for every ${OVERFLOW.rate} (at most ${OVERFLOW.max} a round). When it changes, all its Shaken becomes Unsettle and takes its toll at once, then halves as Unsettle does.`,
+      `Anything past it shakes it: 1 Shaken for every ${OVERFLOW.rate} (at most ${OVERFLOW.max} a round). When it changes, all its Shaken takes that much Resolve at once, and half of it stays as Unsettle for the next turn.`,
     )
     expect(getEnemyDef('sorites').ruleText).toContain(OVERFLOW_TEXT)
     for (const text of [getEnemyDef('sorites').ruleText, OVERFLOW_TEXT]) {

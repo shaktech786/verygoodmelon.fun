@@ -14,7 +14,7 @@ import {
   WORRY_STONE_GUARD,
 } from '../engine/battle'
 import { LIBRARY_DISCOUNT, TEA_FLASK_HEAL } from '../engine/economy'
-import { FOOTNOTES_TIMES, timesWord } from './conclusion'
+import { CONCLUSION_TIMES, FOOTNOTES_TIMES, timesWord } from './conclusion'
 
 export const RELICS: RelicDef[] = [
   { id: 'ockhams_razor', name: "Ockham's Razor", text: `An argument of exactly 2 cards gets +${OCKHAM_MULTIPLIER} Multiplier.`, flavor: 'Do not multiply things without need.' },
@@ -40,7 +40,7 @@ export const RELICS: RelicDef[] = [
   {
     id: 'bookends',
     name: 'Bookends',
-    text: `In an argument of 2 or more cards, the card at the other end from your Conclusion is a Conclusion too. You draw ${BOOKENDS_DRAW} fewer card each turn.`,
+    text: `In an argument of 2 or more cards, the card at the other end from your Conclusion is a Conclusion too, counting ${timesWord(CONCLUSION_TIMES)} whatever your school or relics. You draw ${BOOKENDS_DRAW} fewer card each turn.`,
     flavor: 'Begin where you mean to finish.',
     ruleBending: true,
   },

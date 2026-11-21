@@ -2,9 +2,9 @@
 
 import { useRef } from 'react'
 import { EnemyDef, MapNode, RunState } from '@/types/thought-pockets'
-import { availableNodes, bossOptions, chooseNode, fightWarning, holdsNothingBack, recoveryOptions, restAmount } from '@/lib/games/thought-pockets/engine/run'
+import { availableNodes, bossOptions, chooseNode, fightWarning, holdsNothingBack, nodesAhead, recoveryOptions, restAmount, standing } from '@/lib/games/thought-pockets/engine/run'
 import { fullRuleText, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
-import { recoveryLine } from '@/lib/games/thought-pockets/data/mapText'
+import { STANDING_WORDS, recoveryLine } from '@/lib/games/thought-pockets/data/mapText'
 import { SHORT_WALK_BOSS } from '@/lib/games/thought-pockets/data/pace'
 import { FLOOR_ROWS } from '@/lib/games/thought-pockets/engine/map'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
@@ -28,21 +28,6 @@ function isFight(node: MapNode): boolean {
 /** Every bias you could meet before the boss, in map order, so a route can be chosen by who waits on it. */
 function fightsOnFloor(run: RunState): MapNode[] {
   return run.map.filter(isFight).sort((a, b) => a.row - b.row || a.lane - b.lane)
-}
-
-/** Everything still ahead of you: what the next steps lead to, as far as the boss. */
-function ahead(run: RunState): Set<string> {
-  const byId = new Map(run.map.map((n) => [n.id, n]))
-  const start = run.position === null ? run.map.filter((n) => n.row === 0).map((n) => n.id) : byId.get(run.position)?.next ?? []
-  const found = new Set<string>()
-  const queue = [...start]
-  while (queue.length > 0) {
-    const id = queue.shift() as string
-    if (found.has(id)) continue
-    found.add(id)
-    queue.push(...(byId.get(id)?.next ?? []))
-  }
-  return found
 }
 
 function position(node: MapNode): { x: number; y: number } {
@@ -84,7 +69,7 @@ export function MapScreen({ run }: { run: RunState }) {
   const problems = bossOptions(run).map(getEnemyDef)
   const bossOpen = openIds.has(boss.id)
   const height = TOP * 2 + (FLOOR_ROWS - 1) * ROW_HEIGHT
-  const reachable = ahead(run)
+  const reachable = new Set(nodesAhead(run).map((n) => n.id))
   const bossName = problems.map((p) => p.name).join(' or ')
   const name = (node: MapNode) =>
     node.type === 'boss' ? `${bossName} (boss)` : isFight(node) && node.enemyId ? `${NODE_LABELS[node.type]}: ${getEnemyDef(node.enemyId).name}` : NODE_LABELS[node.type]
@@ -151,7 +136,8 @@ export function MapScreen({ run }: { run: RunState }) {
               const available = openIds.has(node.id)
               const here = node.id === run.position
               const past = run.visited.includes(node.id) && !here
-              const state = available ? 'you can go here' : here ? 'you are here' : past ? 'visited' : reachable.has(node.id) ? 'further along your path' : 'not on your path'
+              const where = standing(run, node.id)
+              const state = available ? 'you can go here' : here ? 'you are here' : past ? 'visited' : where === 'ahead' ? 'further along your path' : where === 'behind' ? 'behind you' : 'not on your path'
               const portrait = (isFight(node) || (node.type === 'boss' && (here || past))) && node.enemyId
               return (
                 <li key={node.id} className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: `${(100 * x) / WIDTH}%`, top: y }}>
@@ -238,6 +224,7 @@ export function MapScreen({ run }: { run: RunState }) {
           <ul className="mt-1.5 space-y-2" data-testid="floor-biases">
             {fightsOnFloor(run).map((node) => {
               const foe = getEnemyDef(node.enemyId as string)
+              const where = standing(run, node.id)
               return (
                 <li key={node.id} className="flex gap-2">
                   <BiasPortrait enemyId={foe.id} tier={foe.tier} className={`h-9 w-9 shrink-0 ${reachable.has(node.id) ? '' : 'opacity-50'}`} />
@@ -246,7 +233,12 @@ export function MapScreen({ run }: { run: RunState }) {
                       Step {node.row + 1}, {NODE_LABELS[node.type].toLowerCase()}: {foe.name}.
                     </span>{' '}
                     {fullRuleText(foe, run.rigor)}
-                    {!reachable.has(node.id) && <span className="text-[var(--tp-muted)]"> Not on your path.</span>}
+                    {where !== 'ahead' && (
+                      <span className="text-[var(--tp-muted)]" data-testid="bias-standing">
+                        {' '}
+                        {STANDING_WORDS[where]}
+                      </span>
+                    )}
                   </p>
                 </li>
               )
