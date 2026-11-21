@@ -2,7 +2,7 @@
  * SoundToggle
  *
  * A small, unobtrusive floating button for toggling ambient soundscapes
- * on game pages. Positioned bottom-right.
+ * on game pages, stacked above the accessibility button so neither covers the other.
  *
  * - Fades in 2 seconds after mount so it does not distract from game entry.
  * - Displays a CSS-only volume wave animation when playing.
@@ -71,20 +71,20 @@ export function SoundToggle({ gameId }: SoundToggleProps) {
 
       <button
         onClick={sound.toggle}
-        aria-label={sound.isPlaying ? 'Mute ambient sound' : 'Toggle ambient sound'}
+        aria-label="Ambient sound"
         aria-pressed={sound.isPlaying}
-        title={sound.isPlaying ? 'Mute ambient sound' : 'Toggle ambient sound'}
+        title={sound.isPlaying ? 'Turn ambient sound off' : 'Turn ambient sound on'}
         className={`
-          fixed bottom-6 right-6 z-50
+          fixed bottom-[5.25rem] right-7 sm:bottom-[5.75rem] sm:right-8 z-50
           w-10 h-10
           flex items-center justify-center
           rounded-full
           bg-card-bg/90 backdrop-blur-sm
           border border-card-border
           shadow-lg
-          text-foreground/70 hover:text-foreground
+          text-foreground hover:text-accent
           transition-all duration-300
-          focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2
           ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}
         `}
       >
@@ -97,11 +97,6 @@ export function SoundToggle({ gameId }: SoundToggleProps) {
         ) : (
           <VolumeX size={18} aria-hidden="true" />
         )}
-
-        {/* Screen-reader only text */}
-        <span className="sr-only">
-          {sound.isPlaying ? 'Sound is playing' : 'Sound is off'}
-        </span>
       </button>
     </>
   )
