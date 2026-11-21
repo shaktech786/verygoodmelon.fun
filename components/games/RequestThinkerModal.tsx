@@ -122,7 +122,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
           </div>
           <button
             onClick={onClose}
-            className="text-foreground/50 hover:text-foreground transition-colors"
+            className="text-foreground/70 hover:text-foreground transition-colors"
             aria-label="Close request form"
           >
             <X size={24} />
@@ -189,7 +189,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
               className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
               required
             />
-            <p className="text-xs text-foreground/50 mt-1">
+            <p className="text-xs text-foreground/70 mt-1">
               Only historical figures who have passed away (no living people)
             </p>
           </div>
@@ -304,19 +304,18 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
 
           <div className="bg-foreground/5 border border-foreground/10 rounded-lg p-3 mb-3">
             <p className="text-xs text-foreground/70 mb-2">
-              <strong>⚠️ Important Disclaimer:</strong>
+              <strong>Important:</strong>
             </p>
-            <p className="text-xs text-foreground/60 leading-relaxed">
-              These are AI-generated simulations based on historical research, NOT real conversations with deceased individuals.
-              This experience is for entertainment, reflection, and personal growth only. All responses are interpretations
-              and should not be considered factual representations of what these individuals would actually say.
-              Always verify important information independently.
+            <p className="text-xs text-foreground/70 leading-relaxed">
+              Imagined conversations, not real quotes from the person. Every reply is invented by a computer program,
+              inspired by historical research, for reflection and personal growth only. Replies are interpretations,
+              not what these individuals actually said or would say. Always verify important information independently.
             </p>
           </div>
 
-          <p className="text-xs text-foreground/50 text-center mb-3">
-            By submitting, you agree that: (1) You understand this is AI entertainment/education only,
-            (2) You will not misrepresent AI responses as real communications.
+          <p className="text-xs text-foreground/70 text-center mb-3">
+            By submitting, you agree that: (1) You understand these conversations are imagined, for reflection and learning only,
+            (2) You will not present invented replies as real words from the person.
             Requirements: Must be deceased, positive influence, not billionaires/politicians/criminals.
           </p>
 

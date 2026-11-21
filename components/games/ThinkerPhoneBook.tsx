@@ -118,7 +118,7 @@ export default function ThinkerPhoneBook({
         {/* Thinkers List */}
         <div className="flex-1 overflow-y-auto p-6">
           {filteredThinkers.length === 0 ? (
-            <div className="text-center py-12 text-foreground/50">
+            <div className="text-center py-12 text-foreground/70">
               <Book size={48} className="mx-auto mb-3 opacity-50" />
               <p>No thinkers found matching your search.</p>
             </div>
@@ -142,7 +142,7 @@ export default function ThinkerPhoneBook({
                   <h3 className="text-center font-semibold text-foreground mb-1 group-hover:text-accent transition-colors">
                     {thinker.name}
                   </h3>
-                  <p className="text-center text-xs text-foreground/60 mb-3">{thinker.field}</p>
+                  <p className="text-center text-xs text-foreground/70 mb-3">{thinker.field}</p>
 
                   {/* Details */}
                   <div className="space-y-1.5 text-xs text-foreground/70 mb-3">
@@ -157,7 +157,7 @@ export default function ThinkerPhoneBook({
                   </div>
 
                   {/* Opening Line Preview */}
-                  <p className="text-xs text-foreground/60 italic line-clamp-2 mb-3">
+                  <p className="text-xs text-foreground/70 italic line-clamp-2 mb-3">
                     &quot;{thinker.openingLine}&quot;
                   </p>
 
@@ -181,7 +181,7 @@ export default function ThinkerPhoneBook({
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 bg-hover-bg border-t border-card-border px-6 py-4 text-center text-xs text-foreground/60">
+        <div className="shrink-0 bg-hover-bg border-t border-card-border px-6 py-4 text-center text-xs text-foreground/70">
           <p>
             {filteredThinkers.length} {filteredThinkers.length === 1 ? 'thinker' : 'thinkers'} available
             {searchQuery && ` matching "${searchQuery}"`}

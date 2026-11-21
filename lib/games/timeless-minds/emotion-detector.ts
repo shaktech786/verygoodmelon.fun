@@ -23,6 +23,11 @@ export async function detectEmotion(
 
   const lowerMessage = message.toLowerCase()
 
+  // A reply pointing someone to real help must never wear a cheerful face.
+  if (/(988|116 123|crisis|emergency services|helpline|samaritans)/i.test(lowerMessage)) {
+    return { emotion: 'concerned', confidence: 0.9 }
+  }
+
   // Excited keywords
   if (/(amazing|wonderful|fantastic|brilliant|excellent|exciting)/i.test(lowerMessage)) {
     return { emotion: 'excited', confidence: 0.8 }

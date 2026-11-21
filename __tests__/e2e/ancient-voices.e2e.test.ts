@@ -5,8 +5,10 @@ import { test, expect, type Page, type Route } from '@playwright/test'
  *
  * The first thinker is random, so each test calls Socrates from the phone book first.
  * Replies come from a stub, and browser speech is replaced with a recorder so nothing
- * is spoken aloud and nothing paid is reached.
+ * is spoken aloud and nothing paid is reached. The voice starts off: no sound until the player asks.
  */
+
+const IMAGINED = 'Imagined conversations, not real quotes from the person.'
 
 const SOCRATES_OPENING = 'I know that I know nothing. What shall we explore together?'
 const PLATO_OPENING = 'We can easily forgive a child who is afraid of the dark; the real tragedy is adults who fear the light. What truth do you seek?'
@@ -105,8 +107,8 @@ test('a first-time player picks a suggested topic and has a multi-turn conversat
     ],
   })
 
-  // With the voice on, replies are spoken.
-  await expect.poll(() => spoken(page)).toContain('Reply 2: let us think about "And how do I practise it?".')
+  // Nothing is read aloud until the player turns the voice on.
+  expect(await spoken(page)).toEqual([])
 })
 
 test('the player can type the next message while a reply is still being spoken', async ({ page }) => {
@@ -117,6 +119,7 @@ test('the player can type the next message while a reply is still being spoken',
   })
   await stubChat(page)
   await openGame(page)
+  await page.getByRole('button', { name: 'Turn on thinker voice' }).click()
 
   await send(page, 'Hello')
   await expect(bubbles(page).nth(2)).toContainText('Reply 1')
@@ -205,31 +208,37 @@ test('when a reply cannot be fetched, the thinker asks again calmly and the next
   await expect(input(page)).toBeEnabled()
 })
 
-test('voice and video can be turned off, and a muted thinker stays silent', async ({ page }) => {
+test('the voice starts off, speaks only once chosen, and video can be turned off', async ({ page }) => {
   await setUpBrowser(page)
   await stubChat(page)
   await openGame(page)
 
-  await page.getByRole('button', { name: 'Mute thinker voice' }).click()
-  await expect(page.getByRole('button', { name: 'Unmute thinker voice' })).toContainText('Voice Off')
-  await page.evaluate(() => { (window as unknown as { __spoken: string[] }).__spoken.length = 0 })
+  const voiceOn = page.getByRole('button', { name: 'Turn on thinker voice' })
+  await expect(voiceOn).toHaveAttribute('aria-pressed', 'false')
+  await expect(voiceOn).toContainText('Voice off')
 
-  // Muted with the portrait still showing: the reply used to be read aloud anyway.
   await send(page, 'Speak softly')
   await expect(bubbles(page).nth(2)).toContainText('Reply 1')
+  expect(await spoken(page)).toEqual([])
+
+  await voiceOn.click()
+  const voiceOff = page.getByRole('button', { name: 'Turn off thinker voice' })
+  await expect(voiceOff).toHaveAttribute('aria-pressed', 'true')
+  await send(page, 'Out loud')
+  await expect.poll(() => spoken(page)).toContain('Reply 2: let us think about "Out loud".')
+
+  await voiceOff.click()
+  await page.evaluate(() => { (window as unknown as { __spoken: string[] }).__spoken.length = 0 })
 
   await page.getByRole('button', { name: 'Turn off video' }).click()
   await expect(page.getByText('Audio Only Mode')).toBeVisible()
   await expect(page.getByText('Turn on video to see Socrates')).toBeVisible()
   await send(page, 'Still softly')
-  await expect(bubbles(page).nth(4)).toContainText('Reply 2')
+  await expect(bubbles(page).nth(6)).toContainText('Reply 3')
   expect(await spoken(page)).toEqual([])
 
   await page.getByRole('button', { name: 'Turn on video' }).click()
   await expect(page.getByText('Audio Only Mode')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Unmute thinker voice' }).click()
-  await send(page, 'Now aloud')
-  await expect.poll(() => spoken(page)).toContain('Reply 3: let us think about "Now aloud".')
 })
 
 test('without speech input in the browser, Speak explains that typing still works', async ({ page }) => {
@@ -247,40 +256,94 @@ test('without speech input in the browser, Speak explains that typing still work
   await expect(page.getByText('Speaking is not available here')).toHaveCount(0)
 })
 
-test('ending a call asks first, can be cancelled with Escape, and then brings a different thinker', async ({ page }) => {
+async function stubFarewell(page: Page, reply: { status?: number; farewell?: string } = {}) {
+  const requests: Array<{ thinkerId: string; conversationHistory: Array<{ role: string; content: string }> }> = []
+  await page.route('**/api/timeless-minds/farewell', async route => {
+    requests.push(route.request().postDataJSON())
+    await route.fulfill({ status: reply.status ?? 200, json: reply.status ? { error: 'unavailable' } : { farewell: reply.farewell ?? 'Carry your question gently; it is already half an answer.' } })
+  })
+  return requests
+}
+
+async function sayGoodbye(page: Page) {
+  await page.getByRole('button', { name: 'Say goodbye' }).click()
+  await page.getByRole('dialog', { name: 'Say goodbye to Socrates?' }).getByRole('button', { name: 'Say goodbye' }).click()
+}
+
+test('saying goodbye asks first, can be cancelled with Escape, and ends with parting words', async ({ page }) => {
   await setUpBrowser(page)
   await stubChat(page)
+  const farewells = await stubFarewell(page)
   await openGame(page)
   await send(page, 'Goodbye soon')
   await expect(bubbles(page).nth(2)).toContainText('Reply 1')
 
-  await page.getByRole('button', { name: 'End call' }).click()
-  const dialog = page.getByRole('dialog', { name: 'End this conversation?' })
-  await expect(dialog.getByRole('button', { name: 'Continue Call' })).toBeFocused()
+  await page.getByRole('button', { name: 'Say goodbye' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Say goodbye to Socrates?' })
+  await expect(dialog.getByRole('button', { name: 'Keep talking' })).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await expect(bubbles(page)).toHaveCount(3)
 
-  await page.getByRole('button', { name: 'End call' }).click()
-  await dialog.getByRole('button', { name: 'End & Meet Another' }).click()
+  await sayGoodbye(page)
+  const parting = page.getByRole('dialog', { name: 'Parting words from Socrates' })
+  await expect(parting).toContainText('Carry your question gently; it is already half an answer.')
+  await expect(parting).toContainText(IMAGINED)
+  await expect(parting.getByRole('heading', { name: 'Parting words from Socrates' })).toBeFocused()
+  // Keyboard focus stays inside the parting words.
+  await page.keyboard.press('Tab')
+  await expect(parting.getByRole('button', { name: 'Meet someone new' })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(parting.getByRole('button', { name: 'Choose who is next' })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(parting.getByRole('button', { name: 'Meet someone new' })).toBeFocused()
+  expect(farewells[0].thinkerId).toBe('socrates')
+  expect(farewells[0].conversationHistory).toContainEqual({ role: 'user', content: 'Goodbye soon' })
 
+  await parting.getByRole('button', { name: 'Meet someone new' }).click()
+  await expect(parting).toHaveCount(0)
   await expect(bubbles(page)).toHaveCount(1)
   await expect(bubbles(page)).not.toHaveText([SOCRATES_OPENING])
   await expect(input(page)).toBeFocused()
 })
 
+test('parting words still arrive when they cannot be fetched, and the directory can choose who is next', async ({ page }) => {
+  await setUpBrowser(page)
+  await stubChat(page)
+  await stubFarewell(page, { status: 500 })
+  await openGame(page)
+
+  await sayGoodbye(page)
+  const parting = page.getByRole('dialog', { name: 'Parting words from Socrates' })
+  await expect(parting).toContainText('Take this with you: Know thyself.')
+  await expect(parting).not.toContainText(/error|unavailable|AI/)
+
+  await parting.getByRole('button', { name: 'Choose who is next' }).click()
+  await expect(page.getByRole('dialog', { name: 'The Phone Book' })).toBeVisible()
+})
+
 test('meeting another thinker never brings the same one straight back', async ({ page }) => {
   await setUpBrowser(page)
   await stubChat(page)
+  await stubFarewell(page)
   await openGame(page)
 
   // Every random pick lands on the first thinker, who is the one on the call.
   await page.evaluate(() => { Math.random = () => 0 })
-  await page.getByRole('button', { name: 'End call' }).click()
-  await page.getByRole('dialog', { name: 'End this conversation?' }).getByRole('button', { name: 'End & Meet Another' }).click()
+  await sayGoodbye(page)
+  await page.getByRole('dialog', { name: 'Parting words from Socrates' }).getByRole('button', { name: 'Meet someone new' }).click()
 
   await expect(bubbles(page)).toHaveText([PLATO_OPENING])
   await expect(page.getByText('Plato', { exact: true }).first()).toBeVisible()
+})
+
+test('the call says plainly that the conversation is imagined, without naming the technology', async ({ page }) => {
+  await setUpBrowser(page)
+  await stubChat(page)
+  await openGame(page)
+
+  await expect(page.getByText(IMAGINED).first()).toBeVisible()
+  expect(await page.locator('main').innerText()).not.toMatch(/\bAI\b|simulation/)
 })
 
 test.describe('requesting a thinker', () => {
@@ -315,6 +378,8 @@ test.describe('requesting a thinker', () => {
 
     const form = await fillRequest(page, 'Elon Musk')
     await expect(form.getByText('Only deceased historical figures are allowed.', { exact: false })).toBeVisible()
+    await expect(form).toContainText(IMAGINED)
+    expect(await form.innerText()).not.toMatch(/\bAI\b/)
   })
 
   test('a saved request says thank you without promising extras', async ({ page }) => {
@@ -338,10 +403,12 @@ test('the legal disclaimer opens from the call and links back to the game', asyn
 
   const [disclaimer] = await Promise.all([context.waitForEvent('page'), link.click()])
   await expect(disclaimer.getByRole('heading', { name: 'Legal Disclaimer', level: 1 })).toBeVisible()
-  await expect(disclaimer.getByRole('link', { name: 'Back to Timeless Minds' })).toHaveAttribute('href', '/games/ancient-voices')
-  await expect(disclaimer.getByRole('link', { name: 'Return to Timeless Minds' })).toHaveAttribute('href', '/games/ancient-voices')
+  await expect(disclaimer.getByRole('heading', { name: 'Imagined conversations, not real quotes' })).toBeVisible()
+  expect(await disclaimer.locator('main').innerText()).not.toMatch(/\bAI\b/)
+  await expect(disclaimer.getByRole('link', { name: 'Back to The Sage' })).toHaveAttribute('href', '/games/ancient-voices')
+  await expect(disclaimer.getByRole('link', { name: 'Return to The Sage' })).toHaveAttribute('href', '/games/ancient-voices')
 
-  await disclaimer.getByRole('link', { name: 'Return to Timeless Minds' }).click()
+  await disclaimer.getByRole('link', { name: 'Return to The Sage' }).click()
   await expect(disclaimer).toHaveURL(/\/games\/ancient-voices$/)
   await expect(disclaimer.getByRole('textbox', { name: 'Message input' })).toBeVisible()
 })
@@ -354,9 +421,11 @@ test.describe('on a phone', () => {
     await stubChat(page)
     await openGame(page)
 
-    for (const name of ['Open phone book', 'Request thinker', 'Start voice input', 'Mute thinker voice', 'Turn off video', 'End call']) {
+    for (const name of ['Open phone book', 'Request thinker', 'Start voice input', 'Turn on thinker voice', 'Turn off video', 'Say goodbye']) {
       await expect(page.getByRole('button', { name })).toBeInViewport()
     }
+    // Under 16px, phones zoom the page when the field is focused.
+    expect(await input(page).evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16)
 
     await page.getByRole('button', { name: 'How do I let go?' }).or(page.getByRole('button', { name: 'What is virtue?' })).click()
     await input(page).press('Enter')

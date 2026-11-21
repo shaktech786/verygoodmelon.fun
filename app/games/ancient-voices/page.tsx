@@ -4,25 +4,25 @@ import Link from 'next/link'
 import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 
 const TimelessMinds = dynamic(() => import('@/components/games/TimelessMinds'), {
-  loading: () => <div className="min-h-[400px] flex items-center justify-center text-primary-light/50">Loading...</div>,
+  loading: () => <div className="min-h-[400px] flex items-center justify-center text-foreground/70">Loading...</div>,
 })
 
 export const metadata: Metadata = {
-  title: 'Timeless Minds | VeryGoodMelon.Fun',
-  description: 'Have a meaningful video conversation with a great mind from history. Each conversation is unique, supportive, and growth-oriented.'
+  title: 'The Sage | VeryGoodMelon.Fun',
+  description: 'Imagined conversations with great minds from history, for reflection and calm. Not real quotes from the person.'
 }
 
-export default function TimelessMindsPage() {
+export default function TheSagePage() {
   return (
     <GamePageWrapper gameId="timeless-minds">
       <div className="container mx-auto px-4 py-3 sm:py-4">
         <div className="animate-fade">
           <div className="text-center mb-3 sm:mb-4">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-1 sm:mb-2 text-foreground">
-              Timeless Minds
+              The Sage
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl mx-auto">
-              Connect with a great thinker from history
+              Talk through what is on your mind with a great thinker from history
             </p>
           </div>
 

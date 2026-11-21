@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Legal Disclaimer - Timeless Minds',
-  description: 'Important legal information about the Timeless Minds AI experience',
+  title: 'Legal Disclaimer - The Sage | VeryGoodMelon.Fun',
+  description: 'What The Sage is and is not: imagined conversations, not real quotes from the person.',
 }
 
 export default function DisclaimerPage() {
@@ -15,35 +15,35 @@ export default function DisclaimerPage() {
         className="inline-flex items-center gap-2 text-accent hover:underline mb-6"
       >
         <ArrowLeft size={16} />
-        Back to Timeless Minds
+        Back to The Sage
       </Link>
 
       <h1 className="text-4xl font-semibold mb-4">Legal Disclaimer</h1>
-      <p className="text-foreground/70 mb-8">Last Updated: November 5, 2024</p>
+      <p className="text-foreground/70 mb-8">Last Updated: November 21, 2026</p>
 
       <div className="prose prose-slate max-w-none space-y-6">
-        <section className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-          <h2 className="text-xl font-semibold mb-2 text-foreground">⚠️ Important Notice</h2>
+        <section className="bg-warm/15 border-l-4 border-warm p-4 mb-6">
+          <h2 className="text-xl font-semibold mb-2 text-foreground">Imagined conversations, not real quotes</h2>
           <p className="text-foreground/80">
-            Timeless Minds is an <strong>AI-powered simulation</strong> created solely for entertainment,
-            education, and personal growth purposes. These are <strong>NOT real conversations</strong> with
-            deceased individuals.
+            The Sage offers <strong>imagined conversations</strong> for reflection, learning and personal growth.
+            Every reply is invented by a computer program, inspired by the person&apos;s life and writing.
+            These are <strong>not real quotes</strong> and not real conversations with anyone, living or dead.
           </p>
         </section>
 
         <section>
           <h2 className="text-2xl font-semibold mb-3">1. Nature of the Experience</h2>
           <p>
-            Timeless Minds uses artificial intelligence (AI) to generate conversations based on:
+            Replies in The Sage are written by a computer program, drawing on:
           </p>
           <ul className="list-disc pl-6 space-y-2 text-foreground/80">
             <li>Historical records and biographical information</li>
             <li>Published writings, speeches, and documented beliefs</li>
             <li>Research into speaking styles and philosophical frameworks</li>
-            <li>AI interpretation and creative generation</li>
+            <li>Imaginative interpretation, which can be wrong</li>
           </ul>
           <p className="mt-3">
-            <strong>These conversations are simulations, not communications with actual deceased persons.</strong>
+            <strong>These conversations are imagined. They are not communications with, or quotations of, the real people.</strong>
           </p>
         </section>
 
@@ -63,10 +63,10 @@ export default function DisclaimerPage() {
         <section>
           <h2 className="text-2xl font-semibold mb-3">3. Intended Use</h2>
           <p>
-            Timeless Minds is intended exclusively for:
+            The Sage is intended exclusively for:
           </p>
           <ul className="list-disc pl-6 space-y-2 text-foreground/80">
-            <li><strong>Entertainment:</strong> Creative and engaging AI interactions</li>
+            <li><strong>Entertainment:</strong> Creative, thoughtful conversation</li>
             <li><strong>Education:</strong> Learning about historical perspectives and philosophies</li>
             <li><strong>Personal Growth:</strong> Reflection, inspiration, and reducing anxiety</li>
             <li><strong>Philosophical Exploration:</strong> Engaging with different worldviews</li>
@@ -86,13 +86,13 @@ export default function DisclaimerPage() {
           <h2 className="text-2xl font-semibold mb-3">4. Accuracy and Reliability</h2>
           <p>
             <strong>No Guarantee of Accuracy:</strong> While we strive for historical and philosophical
-            accuracy in our research, AI-generated responses:
+            accuracy in our research, the invented replies:
           </p>
           <ul className="list-disc pl-6 space-y-2 text-foreground/80">
             <li>May contain errors, inaccuracies, or anachronisms</li>
             <li>Are interpretations, not verified statements</li>
             <li>Should not be relied upon as factual or authoritative</li>
-            <li>May reflect AI limitations and biases</li>
+            <li>May reflect the limits and biases of the software that writes them</li>
           </ul>
           <p className="mt-3 font-semibold">
             Always verify important information through credible, independent sources.
@@ -101,10 +101,10 @@ export default function DisclaimerPage() {
 
         <section>
           <h2 className="text-2xl font-semibold mb-3">5. User Responsibilities</h2>
-          <p>By using Timeless Minds, you agree to:</p>
+          <p>By using The Sage, you agree to:</p>
           <ul className="list-disc pl-6 space-y-2 text-foreground/80">
             <li>Use the service for lawful, positive purposes only</li>
-            <li>Not misrepresent AI responses as real communications from deceased individuals</li>
+            <li>Not present invented replies as real words or communications from the people depicted</li>
             <li>Not use responses for academic citation, research, or authoritative claims</li>
             <li>Exercise critical thinking and independent judgment</li>
             <li>Not share or publish conversations in a misleading manner</li>
@@ -121,7 +121,7 @@ export default function DisclaimerPage() {
             <li><strong>Positive Influence:</strong> Requests must be for individuals with positive contributions</li>
             <li><strong>Donations:</strong> All fees go directly to charity (Direct Relief) and are non-refundable</li>
             <li><strong>No Guarantee:</strong> We reserve the right to decline any request</li>
-            <li><strong>Research-Based:</strong> We conduct research but results are still AI simulations</li>
+            <li><strong>Research-Based:</strong> We conduct research, but the conversations remain imagined</li>
           </ul>
         </section>
 
@@ -132,8 +132,8 @@ export default function DisclaimerPage() {
           </p>
           <ul className="list-disc pl-6 space-y-2 text-foreground/80">
             <li>VeryGoodMelon.Fun provides this service &quot;as is&quot; without warranties</li>
-            <li>We are not liable for decisions made based on AI-generated conversations</li>
-            <li>We are not responsible for emotional distress, offense, or harm from AI responses</li>
+            <li>We are not liable for decisions made based on these imagined conversations</li>
+            <li>We are not responsible for emotional distress, offense, or harm from invented replies</li>
             <li>Users assume all risks associated with using this entertainment service</li>
           </ul>
         </section>
@@ -146,8 +146,8 @@ export default function DisclaimerPage() {
           <ul className="list-disc pl-6 space-y-2 text-foreground/80">
             <li>We focus on deceased individuals to avoid personality rights issues</li>
             <li>Historical figures and their documented words are in the public domain or used for educational purposes</li>
-            <li>AI-generated content is for personal use only</li>
-            <li>Do not commercialize or redistribute AI conversations</li>
+            <li>Conversation content is for personal use only</li>
+            <li>Do not commercialize or redistribute these conversations</li>
           </ul>
         </section>
 
@@ -159,7 +159,7 @@ export default function DisclaimerPage() {
           <ul className="list-disc pl-6 space-y-2 text-foreground/80">
             <li>Conversations may be stored temporarily for service functionality</li>
             <li>We do not sell or share personal conversation data</li>
-            <li>AI providers may process data according to their privacy policies</li>
+            <li>Messages are processed by third-party text services, under their privacy policies, to write replies</li>
             <li>Do not share sensitive personal information in conversations</li>
           </ul>
         </section>
@@ -181,21 +181,21 @@ export default function DisclaimerPage() {
           <h2 className="text-xl font-semibold mb-2">Contact</h2>
           <p className="text-foreground/80">
             Questions about this disclaimer? Contact us at{' '}
-            <a href="mailto:hello@verygoodmelon.fun" className="text-accent hover:underline">
+            <a href="mailto:hello@verygoodmelon.fun" className="text-foreground font-medium underline">
               hello@verygoodmelon.fun
             </a>
           </p>
         </section>
 
         <section className="text-center pt-6 border-t">
-          <p className="text-sm text-foreground/60">
-            By using Timeless Minds, you acknowledge that you have read, understood, and agree to this disclaimer.
+          <p className="text-sm text-foreground/70">
+            By using The Sage, you acknowledge that you have read, understood, and agree to this disclaimer.
           </p>
           <Link
             href="/games/ancient-voices"
             className="inline-block mt-4 px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
           >
-            Return to Timeless Minds
+            Return to The Sage
           </Link>
         </section>
       </div>

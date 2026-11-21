@@ -117,10 +117,17 @@ describe('TimelessMinds', () => {
     })
   })
 
-  it('shows disclaimer text', async () => {
+  it('says plainly that the conversation is imagined, without naming the technology', async () => {
     render(<TimelessMinds />)
     await waitFor(() => {
-      expect(screen.getByText(/AI simulation/i)).toBeInTheDocument()
+      expect(screen.getByText(/Imagined conversations, not real quotes from the person/)).toBeInTheDocument()
     })
+    expect(screen.queryByText(/\bAI\b/)).not.toBeInTheDocument()
+  })
+
+  it('starts with the voice off until the player chooses it', async () => {
+    render(<TimelessMinds />)
+    const voice = await screen.findByRole('button', { name: 'Turn on thinker voice' })
+    expect(voice).toHaveAttribute('aria-pressed', 'false')
   })
 })

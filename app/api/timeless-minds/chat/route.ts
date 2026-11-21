@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 import { getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import { detectEmotion } from '@/lib/games/timeless-minds/emotion-detector'
+import { MAX_MESSAGE_LENGTH, SAFETY_GUIDANCE, sanitizeHistory } from '@/lib/games/timeless-minds/conversation'
 
 export async function POST(request: NextRequest) {
   try {
     const { thinkerId, message, conversationHistory } = await request.json()
 
-    if (!thinkerId || !message) {
+    if (typeof thinkerId !== 'string' || typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -83,13 +84,15 @@ CONVERSATION GUIDELINES:
 - Giving advice without understanding context
 - Artificial enthusiasm or over-the-top positivity
 
-REMEMBER: This is a live video call. Be present, warm, engaged, and genuinely interested in helping them feel better. Every response should move them toward less anxiety and more clarity through HONEST wisdom, not superficial agreement.`
+REMEMBER: This is a live video call. Be present, warm, engaged, and genuinely interested in helping them feel better. Every response should move them toward less anxiety and more clarity through HONEST wisdom, not superficial agreement.
+
+${SAFETY_GUIDANCE}`
 
     // Format conversation history for Gemini
-    const history = conversationHistory?.map((msg: { role: string; content: string }) => ({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }]
-    })) || []
+    const history = sanitizeHistory(conversationHistory).map(turn => ({
+      role: turn.role === 'user' ? 'user' : 'model',
+      parts: [{ text: turn.content }]
+    }))
 
     const chat = getGemini().chats.create({
       model: GEMINI_MODEL,
@@ -119,20 +122,8 @@ REMEMBER: This is a live video call. Be present, warm, engaged, and genuinely in
   } catch (error) {
     console.error('Timeless Minds chat error:', error)
 
-    // Provide more specific error messages
-    let errorMessage = 'Failed to generate response'
-    if (error instanceof Error) {
-      if (error.message.includes('API key')) {
-        errorMessage = 'API configuration error'
-      } else if (error.message.includes('quota') || error.message.includes('limit')) {
-        errorMessage = 'Service temporarily unavailable'
-      } else if (error.message.includes('404') || error.message.includes('not found')) {
-        errorMessage = 'AI model unavailable'
-      }
-    }
-
     return NextResponse.json(
-      { error: errorMessage },
+      { error: 'Reply unavailable' },
       { status: 500 }
     )
   }
