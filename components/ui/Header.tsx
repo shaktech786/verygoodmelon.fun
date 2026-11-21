@@ -4,8 +4,9 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { Menu, Settings, X } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { openAccessibilitySettings } from '@/components/accessibility/AccessibilityControls'
 
 export function Header() {
   const pathname = usePathname()
@@ -124,6 +125,17 @@ export function Header() {
               >
                 GitHub
               </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  openAccessibilitySettings()
+                }}
+                className="sm:hidden flex items-center gap-2 font-medium text-base text-primary-light hover:text-foreground transition-all py-2 px-3 rounded-lg border-l-4 border-transparent hover:bg-hover-bg hover:border-accent/30 text-left"
+              >
+                <Settings size={18} aria-hidden="true" />
+                Accessibility settings
+              </button>
             </div>
           </div>
         )}

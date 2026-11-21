@@ -20,9 +20,9 @@ export function AccessibilityButton({
     <button
       onClick={onClick}
       className="
-        fixed bottom-6 right-6 z-50
-        w-12 h-12 sm:w-14 sm:h-14
-        flex items-center justify-center
+        hidden sm:flex fixed bottom-6 right-6 z-50
+        w-14 h-14
+        items-center justify-center
         bg-card-bg
         border-2 border-card-border
         rounded-full
