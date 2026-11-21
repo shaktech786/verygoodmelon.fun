@@ -520,7 +520,16 @@ test.describe('The Shapeshifter', () => {
       await endWave(page)
       const card = page.getByRole('dialog', { name: /^Rule 1 of 6/ })
       await expect(card.getByText('Drag your finger to guide the orb.')).toBeVisible()
-      await card.getByRole('button', { name: 'TAP TO CONTINUE' }).tap()
+      // A thumb still guiding the orb lands on the card: only the button moves on.
+      const goOn = card.getByRole('button', { name: 'TAP TO CONTINUE' })
+      await expect(goOn).toBeVisible()
+      await card.getByText('Drag your finger to guide the orb.').tap()
+      const cardBox = await card.boundingBox()
+      if (!cardBox) throw new Error('card missing')
+      await page.touchscreen.tap(cardBox.x + cardBox.width / 2, cardBox.y + 20)
+      await page.waitForTimeout(300)
+      await expect(card).toBeVisible()
+      await goOn.tap()
       await expect(card).toBeHidden()
 
       expect(requests[0].options).toEqual(['mouse_follow'])

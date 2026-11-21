@@ -291,6 +291,23 @@ test.describe('Hydration', () => {
       expect(problems).toEqual([])
     })
   }
+
+  test('the homepage loads, then reloads with today\'s line remembered, without hydration or console errors', async ({ page }) => {
+    const problems: string[] = []
+    page.on('console', (msg) => {
+      if (msg.type() === 'error' || /hydrat|script tag/i.test(msg.text())) problems.push(msg.text().slice(0, 300))
+    })
+    page.on('pageerror', (error) => problems.push(error.message.slice(0, 300)))
+    await page.route(/\/api\/(game-events|site-visits)/, (route) => route.fulfill({ json: {} }))
+    await page.route('**/api/daily-wisdom', (route) => route.fulfill({ json: { wisdom: 'Rest is part of the work.' } }))
+
+    await page.goto('/')
+    await expect(page.getByText('Rest is part of the work.')).toBeVisible()
+    await page.reload()
+    await expect(page.getByText('Rest is part of the work.')).toBeVisible()
+    await page.waitForLoadState('networkidle')
+    expect(problems).toEqual([])
+  })
 })
 
 test.describe('Finding your way', () => {
@@ -344,5 +361,26 @@ test.describe('Finding your way', () => {
 
     await page.goto('/games')
     expect(await readGroups()).toEqual(expected)
+  })
+})
+
+test.describe('Thoughts', () => {
+  test("today's fresh thought can be read in full, not just its first lines", async ({ page }) => {
+    const opening = 'A seed does not hurry, and still it becomes a tree. '.repeat(4).trim()
+    const ending = 'Whatever you are growing, it has made its work of you already.'
+    await page.route('**/api/thoughts/fresh', (route) =>
+      route.fulfill({ json: { thought: { title: 'The slow seed', theme: 'patience', body: `${opening}\n\n${ending}` } } })
+    )
+    await page.goto('/thoughts')
+    const card = page.getByRole('article', { name: 'Fresh thought' })
+    await expect(card).toContainText('The slow seed')
+    await expect(card).not.toContainText(ending)
+
+    const more = card.getByRole('button', { name: 'Read the whole thought' })
+    await expect(more).toHaveAttribute('aria-expanded', 'false')
+    await more.click()
+    await expect(card).toContainText(opening)
+    await expect(card).toContainText(ending)
+    await expect(card.getByRole('button', { name: 'Show less' })).toHaveAttribute('aria-expanded', 'true')
   })
 })

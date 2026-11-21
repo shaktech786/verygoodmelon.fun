@@ -214,3 +214,12 @@ const KNOWN_BY_SORTED_KEY = new Map<string, Combination>(
 export function findKnownCombination(first: string, second: string): Combination | undefined {
   return KNOWN_BY_SORTED_KEY.get(comboKey(first, second))
 }
+
+const KNOWN_BY_NAME = new Map<string, Combination>(
+  Object.values(KNOWN_COMBINATIONS).map(combination => [combination.name.toLowerCase(), combination])
+)
+
+/** The hand-written result with this name, so an open-ended mix that lands on it is the same concept. */
+export function findKnownResult(name: string): Combination | undefined {
+  return KNOWN_BY_NAME.get(name.trim().toLowerCase())
+}

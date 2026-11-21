@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Sparkles, Trash2, RotateCcw, FlaskConical } from 'lucide-react'
 import { BASE_CONCEPTS, type Concept } from '@/lib/games/idea-lab/concepts'
-import { WORK_TITLES, goldsFor, isGolden } from '@/lib/games/idea-lab/golds'
+import { WORK_TITLES, goldsFor, isGolden, type GoldenIdea } from '@/lib/games/idea-lab/golds'
 import {
   DEFAULT_PROGRESS, afterCombination, beginNextWork, parseCombinations, parseDiscoveries, parseProgress, type LabProgress,
 } from '@/lib/games/idea-lab/progress'
@@ -22,14 +22,16 @@ interface CombinationResult {
   riddle?: string
 }
 
-type FocusTarget = 'first-concept' | 'letter' | 'shelf'
+type FocusTarget = 'concepts' | 'letter' | 'shelf'
 
 const STORAGE_KEY = 'ideaLab_discoveries'
 const COMBINATIONS_KEY = 'ideaLab_combinations'
 const PROGRESS_KEY = 'ideaLab_progress'
 const NEW_HIGHLIGHT_MS = 2000
 const RESET_BUTTON_ID = 'idea-lab-reset'
-const HINT_ANNOUNCEMENTS = ['', 'A plainer clue has surfaced on the shelf.', 'The shelf now names the ingredients.']
+// From this width the bench and riddles sit in their own column beside the concepts.
+const WIDE_QUERY = '(min-width: 1024px)'
+const CLUE_LABELS = ['Riddle:', 'Plainer:', 'Ingredients:']
 
 const getComboKey = (c1: Concept, c2: Concept) => [c1.id, c2.id].sort().join('+')
 
@@ -47,6 +49,27 @@ function announcementFor(result: CombinationResult, goldCount: number, goldTotal
   return result.description ? `${lead} ${result.description}` : lead
 }
 
+function clueAnnouncement(gold: GoldenIdea, level: number): string {
+  return level >= 2 ? `A riddle now names its ingredients: ${gold.riddles[2]}` : `A riddle has grown plainer: ${gold.riddles[1]}`
+}
+
+/** The concept straight above or below, by where the wrapped chips actually sit on screen. */
+function verticalNeighbour(buttons: (HTMLElement | undefined)[], from: number, direction: 1 | -1): number | null {
+  const origin = buttons[from]?.getBoundingClientRect()
+  if (!origin) return null
+  const centre = origin.left + origin.width / 2
+  let best: { index: number; gap: number; offset: number } | null = null
+  for (const [index, button] of buttons.entries()) {
+    const rect = button?.getBoundingClientRect()
+    if (!rect) continue
+    const gap = direction === 1 ? rect.top - origin.bottom : origin.top - rect.bottom
+    if (gap < -origin.height / 2) continue
+    const offset = Math.abs(rect.left + rect.width / 2 - centre)
+    if (!best || gap < best.gap - 1 || (Math.abs(gap - best.gap) <= 1 && offset < best.offset)) best = { index, gap, offset }
+  }
+  return best?.index ?? null
+}
+
 export default function IdeaLab() {
   const [discoveries, setDiscoveries] = useState<Concept[]>([])
   const [combinations, setCombinations] = useState<Record<string, string>>({})
@@ -60,10 +83,13 @@ export default function IdeaLab() {
   const [showIntro, setShowIntro] = useState(true)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [stickyTop, setStickyTop] = useState(64)
+  const [wide, setWide] = useState(false)
+  const [freshClue, setFreshClue] = useState<number | null>(null)
+  const [activeConceptId, setActiveConceptId] = useState(BASE_CONCEPTS[0].id)
   const reducedMotion = useReducedMotion()
   const cancelResetRef = useRef<HTMLButtonElement>(null)
   const confirmResetRef = useRef<HTMLButtonElement>(null)
-  const firstConceptRef = useRef<HTMLButtonElement>(null)
+  const conceptRefs = useRef(new Map<string, HTMLButtonElement>())
   const letterHeadingRef = useRef<HTMLHeadingElement>(null)
   const shelfHeadingRef = useRef<HTMLHeadingElement>(null)
   const pendingFocus = useRef<FocusTarget | null>(null)
@@ -77,6 +103,8 @@ export default function IdeaLab() {
     goldsFor(work).every(gold => discoveries.some(c => c.name.toLowerCase() === gold.name.toLowerCase()))
   const completedWorks = [0, 1].filter(work => work <= progress.work && workComplete(work))
   const canBeginNextWork = progress.work === 0 && workComplete(0)
+  // Tab lands on one concept only; the arrow keys move between them.
+  const activeId = concepts.some(c => c.id === activeConceptId) ? activeConceptId : concepts[0].id
 
   useEffect(() => {
     const savedDiscoveries = parseDiscoveries(localStorage.getItem(STORAGE_KEY))
@@ -97,6 +125,14 @@ export default function IdeaLab() {
   }, [])
 
   useEffect(() => {
+    const query = window.matchMedia(WIDE_QUERY)
+    const update = () => setWide(query.matches)
+    queueMicrotask(update)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+
+  useEffect(() => {
     if (!newConceptId) return
     const timer = setTimeout(() => setNewConceptId(null), NEW_HIGHLIGHT_MS)
     return () => clearTimeout(timer)
@@ -109,11 +145,13 @@ export default function IdeaLab() {
   useEffect(() => {
     const target = pendingFocus.current
     if (!target) return
-    const element = { 'first-concept': firstConceptRef, letter: letterHeadingRef, shelf: shelfHeadingRef }[target].current
+    const element = target === 'concepts'
+      ? conceptRefs.current.get(activeId)
+      : { letter: letterHeadingRef, shelf: shelfHeadingRef }[target].current
     if (!element) return
     pendingFocus.current = null
     element.focus({ preventScroll: true })
-    element.scrollIntoView({ block: target === 'first-concept' ? 'nearest' : 'start', behavior: reducedMotion ? 'auto' : 'smooth' })
+    element.scrollIntoView({ block: target === 'concepts' ? 'nearest' : 'start', behavior: reducedMotion ? 'auto' : 'smooth' })
   })
 
   const updateProgress = (next: LabProgress) => {
@@ -129,11 +167,13 @@ export default function IdeaLab() {
 
   /** Every settled combination counts as a try toward the next clue; a new gold resets the count. */
   const settle = (result: CombinationResult, allDiscoveries: Concept[]) => {
-    const next = afterCombination(progress, Boolean(result.riddle))
-    const hint = next.hintLevel > progress.hintLevel ? HINT_ANNOUNCEMENTS[next.hintLevel] : ''
-    const foundNow = goldFoundIn(allDiscoveries).filter(Boolean).length
+    const solved = goldFoundIn(allDiscoveries).map(Boolean)
+    const { progress: next, clued } = afterCombination(progress, Boolean(result.riddle), solved)
+    const hint = clued === null ? '' : clueAnnouncement(golds[clued], next.hints[clued])
+    const foundNow = solved.filter(Boolean).length
     const completes = Boolean(result.riddle) && foundNow === golds.length
     updateProgress(next)
+    setFreshClue(clued)
     setLastResult(result)
     setAnnouncement([
       announcementFor(result, foundNow, golds.length),
@@ -147,6 +187,7 @@ export default function IdeaLab() {
   }
 
   const handleSelectConcept = (concept: Concept) => {
+    setActiveConceptId(concept.id)
     if (isCombining) return
 
     // A finished pair stays on show with its result; the next pick starts a new pair.
@@ -210,7 +251,7 @@ export default function IdeaLab() {
 
       if (existingConcept) {
         rememberCombination(concept1, concept2, existingConcept.id)
-        settle({ name: existingConcept.name, emoji: existingConcept.emoji, description, status: 'known' }, discoveries)
+        settle({ name: existingConcept.name, emoji: existingConcept.emoji, description: existingConcept.description ?? description, status: 'known' }, discoveries)
         return
       }
 
@@ -247,6 +288,7 @@ export default function IdeaLab() {
     setLetterWork(null)
     setLastResult(null)
     setSelectedConcepts([])
+    setFreshClue(null)
     setAnnouncement('The Second Work begins. Seven new riddles are on the shelf.')
     pendingFocus.current = 'shelf'
   }
@@ -258,7 +300,35 @@ export default function IdeaLab() {
 
   const closeLetter = () => {
     setLetterWork(null)
-    pendingFocus.current = 'first-concept'
+    pendingFocus.current = 'concepts'
+  }
+
+  const skipToRiddles = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    const heading = shelfHeadingRef.current
+    heading?.focus({ preventScroll: true })
+    heading?.scrollIntoView({ block: 'start', behavior: reducedMotion ? 'auto' : 'smooth' })
+  }
+
+  const moveConceptFocus = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const index = concepts.findIndex(c => c.id === activeId)
+    const last = concepts.length - 1
+    const buttons = concepts.map(c => conceptRefs.current.get(c.id))
+    const moves: Record<string, () => number | null> = {
+      ArrowRight: () => Math.min(index + 1, last),
+      ArrowLeft: () => Math.max(index - 1, 0),
+      Home: () => 0,
+      End: () => last,
+      ArrowDown: () => verticalNeighbour(buttons, index, 1),
+      ArrowUp: () => verticalNeighbour(buttons, index, -1),
+    }
+    const move = moves[event.key]
+    if (!move) return
+    event.preventDefault()
+    const next = move()
+    if (next === null) return
+    setActiveConceptId(concepts[next].id)
+    buttons[next]?.focus()
   }
 
   const closeResetConfirm = () => {
@@ -273,6 +343,7 @@ export default function IdeaLab() {
     setDiscoveries([])
     setCombinations({})
     setProgress(DEFAULT_PROGRESS)
+    setFreshClue(null)
     setSelectedConcepts([])
     setLastResult(null)
     setLetterWork(null)
@@ -301,7 +372,7 @@ export default function IdeaLab() {
 
   const beginExploring = () => {
     setShowIntro(false)
-    pendingFocus.current = 'first-concept'
+    pendingFocus.current = 'concepts'
   }
 
   if (showIntro) {
@@ -327,6 +398,10 @@ export default function IdeaLab() {
   const resultIsGold = Boolean(lastResult?.riddle)
   const goldCount = goldFound.filter(Boolean).length
   const hasBench = selectedConcepts.length > 0 || lastResult !== null || isCombining
+  const unsolved = golds.map((_, index) => index).filter(index => !goldFound[index])
+  // The riddle that last grew plainer, or else the oldest one still hidden.
+  const currentRiddle = [...unsolved].reverse().find(index => (progress.hints[index] ?? 0) > 0) ?? unsolved[0]
+  const currentLevel = currentRiddle === undefined ? 0 : progress.hints[currentRiddle] ?? 0
 
   const resultTone = isCombining
     ? 'border-warm bg-warm/10'
@@ -346,12 +421,16 @@ export default function IdeaLab() {
           ? 'Already yours'
           : null
 
+  const benchCell = 'flex-1 min-w-0 overflow-hidden py-1 border-2 flex flex-col items-center justify-center transition-colors'
+  const emojiSize = (compact: boolean) => (compact ? 'text-base leading-tight' : 'text-3xl mb-1')
+  const nameSize = (compact: boolean) => (compact ? 'text-xs' : 'text-sm')
+
   const renderSlot = (concept: Concept | undefined, compact: boolean) => (
-    <div className={`${compact ? 'flex-1 min-w-0 rounded-lg overflow-hidden' : 'w-32 min-h-32 rounded-xl'} py-1 border-2 border-dashed flex flex-col items-center justify-center transition-colors ${concept ? 'border-accent bg-accent/5' : 'border-foreground/20 bg-foreground/5'}`}>
+    <div className={`${benchCell} ${compact ? 'rounded-lg' : 'rounded-xl'} border-dashed ${concept ? 'border-accent bg-accent/5' : 'border-foreground/20 bg-foreground/5'}`}>
       {concept ? (
         <>
-          <span className={compact ? 'text-base leading-tight' : 'text-4xl mb-1'} aria-hidden="true">{concept.emoji}</span>
-          <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-center px-1 break-words max-w-full`}>{concept.name}</span>
+          <span className={emojiSize(compact)} aria-hidden="true">{concept.emoji}</span>
+          <span className={`${nameSize(compact)} font-medium text-center px-1 break-words max-w-full`}>{concept.name}</span>
         </>
       ) : (
         <span className="text-foreground/70 text-sm">Select</span>
@@ -360,16 +439,16 @@ export default function IdeaLab() {
   )
 
   const renderResult = (compact: boolean) => (
-    <div className={`${compact ? 'flex-1 min-w-0 rounded-lg overflow-hidden' : 'w-32 min-h-32 rounded-xl'} py-1 border-2 flex flex-col items-center justify-center transition-colors ${resultTone}`}>
+    <div className={`${benchCell} ${compact ? 'rounded-lg' : 'rounded-xl'} ${resultTone}`}>
       {isCombining ? (
         <>
-          <FlaskConical className={`text-foreground/70 ${reducedMotion ? '' : 'animate-pulse'}`} size={compact ? 16 : 32} aria-hidden="true" />
+          <FlaskConical className={`text-foreground/70 ${reducedMotion ? '' : 'animate-pulse'}`} size={compact ? 16 : 28} aria-hidden="true" />
           <span className="text-xs text-foreground/70 mt-1">Combining...</span>
         </>
       ) : lastResult ? (
         <>
-          <span className={compact ? 'text-base leading-tight' : 'text-4xl mb-1'} aria-hidden="true">{lastResult.emoji}</span>
-          <span className={`${compact ? 'text-xs' : 'text-sm'} font-semibold text-center px-1 break-words max-w-full`}>{lastResult.name}</span>
+          <span className={emojiSize(compact)} aria-hidden="true">{lastResult.emoji}</span>
+          <span className={`${nameSize(compact)} font-semibold text-center px-1 break-words max-w-full`}>{lastResult.name}</span>
           {resultTag && (
             <span className={`text-[11px] sm:text-xs font-semibold mt-0.5 text-center ${lastResult.status === 'known' ? 'font-normal text-foreground/75' : 'text-foreground'}`}>
               {resultTag}
@@ -382,11 +461,14 @@ export default function IdeaLab() {
     </div>
   )
 
-  const goldNote = resultIsGold && lastResult?.riddle && (
-    <p className="mt-2 text-sm text-foreground">
-      <span className="font-medium">One of the seven golds, {goldCount} of {golds.length} found.</span>{' '}
-      <span className="text-foreground/80">It answers: <span className="italic">{lastResult.riddle}</span></span>
-    </p>
+  const renderEquation = (compact: boolean) => (
+    <div className={`flex items-stretch ${compact ? 'gap-1.5 h-14' : 'gap-2 h-24'}`} aria-hidden="true">
+      {renderSlot(selectedConcepts[0], compact)}
+      <span className="self-center text-foreground/60">+</span>
+      {renderSlot(selectedConcepts[1], compact)}
+      <span className="self-center text-foreground/60">=</span>
+      {renderResult(compact)}
+    </div>
   )
 
   const clearButton = hasBench && !isCombining && (
@@ -441,108 +523,145 @@ export default function IdeaLab() {
 
           <div role="status" aria-live="polite" className="sr-only">{announcement}</div>
 
-          {/* The bench. On a phone it lives at the top of the concept grid and stays in view while scrolling. */}
-          <div className="hidden sm:block bg-card-bg border border-card-border rounded-xl p-8 mb-6 min-h-[200px]" aria-hidden="true">
-            <div className="flex items-center justify-center gap-6 mb-5">
-              {renderSlot(selectedConcepts[0], false)}
-              <div className="text-3xl text-foreground/40 font-light">+</div>
-              {renderSlot(selectedConcepts[1], false)}
-              <div className="text-3xl text-foreground/40 font-light">=</div>
-              {renderResult(false)}
-            </div>
-            <div className="text-center max-w-md mx-auto">
-              {lastResult?.description && !isCombining && (
-                <p className="text-foreground/85 text-base leading-relaxed">&ldquo;{lastResult.description}&rdquo;</p>
-              )}
-              {goldNote}
-              {!hasBench && <p className="text-foreground/75 text-sm">Choose two concepts below to combine them</p>}
-            </div>
-          </div>
-          {clearButton && <div className="hidden sm:flex justify-center -mt-4 mb-6">{clearButton}</div>}
-
-          <div className="bg-card-bg border border-card-border rounded-xl">
-            <div
-              className="sm:hidden sticky z-10 bg-card-bg border-b border-card-border rounded-t-xl px-3 pt-3 pb-2"
-              style={{ top: stickyTop }}
-              data-testid="phone-bench"
-            >
-              <div className="flex items-stretch gap-1.5 h-14" aria-hidden="true">
-                {renderSlot(selectedConcepts[0], true)}
-                <span className="self-center text-foreground/60">+</span>
-                {renderSlot(selectedConcepts[1], true)}
-                <span className="self-center text-foreground/60">=</span>
-                {renderResult(true)}
+          <div
+            className="lg:grid lg:grid-cols-[minmax(0,1fr)_23rem] lg:gap-6 lg:items-start"
+            style={{ '--bench-top': `${stickyTop + 16}px`, '--bench-room': `calc(100vh - ${stickyTop + 32}px)` } as React.CSSProperties}
+          >
+            <div className="bg-card-bg border border-card-border rounded-xl">
+              {/* Below the wide layout the bench and the current riddle sit at the top of the concepts and stay in view while scrolling. */}
+              <div
+                className="lg:hidden sticky z-10 bg-card-bg border-b border-card-border rounded-t-xl px-3 pt-3 pb-2"
+                style={{ top: stickyTop }}
+                data-testid="phone-bench"
+              >
+                {renderEquation(true)}
+                {/* A fixed height, so a result never pushes the chip the player just tapped out from under their finger. */}
+                <div className="flex items-center gap-2 h-[3.75rem] mt-1">
+                  <p className="flex-1 min-w-0 text-[13px] leading-snug text-foreground/85 line-clamp-3" aria-hidden="true">
+                    {isCombining
+                      ? ''
+                      : resultIsGold && lastResult?.riddle
+                        ? <>Gold, {goldCount} of {golds.length}. It answers: <span className="italic">{lastResult.riddle}</span></>
+                        : lastResult?.description
+                          ? <>&ldquo;{lastResult.description}&rdquo;</>
+                          : !hasBench && 'Choose two concepts to combine them.'}
+                  </p>
+                  {clearButton}
+                </div>
+                {currentRiddle !== undefined && (
+                  <p className="h-12 mt-1 pt-1.5 border-t border-card-border text-[13px] leading-snug text-foreground/85 line-clamp-2" aria-hidden="true">
+                    <span className="font-medium">{CLUE_LABELS[currentLevel]}</span>{' '}
+                    <span className={currentLevel === 0 ? 'italic' : ''}>{golds[currentRiddle].riddles[currentLevel]}</span>
+                  </p>
+                )}
               </div>
-              {/* A fixed height, so a result never pushes the chip the player just tapped out from under their finger. */}
-              <div className="flex items-center gap-2 h-[3.75rem] mt-1">
-                <p className="flex-1 min-w-0 text-[13px] leading-snug text-foreground/85 line-clamp-3" aria-hidden="true">
-                  {isCombining
-                    ? ''
-                    : resultIsGold && lastResult?.riddle
-                      ? <>Gold, {goldCount} of {golds.length}. It answers: <span className="italic">{lastResult.riddle}</span></>
-                      : lastResult?.description
-                        ? <>&ldquo;{lastResult.description}&rdquo;</>
-                        : !hasBench && 'Choose two concepts to combine them.'}
+
+              <div className="p-4 sm:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                  <h2 id="idea-lab-concepts" className="font-medium text-foreground/80">Your Concepts</h2>
+                  <a
+                    href="#great-work-title"
+                    onClick={skipToRiddles}
+                    className="sr-only focus:not-sr-only focus:px-3 focus:py-2 rounded-lg text-sm font-medium text-foreground underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Skip to the riddles
+                  </a>
+                  <span className="text-sm text-foreground/70">
+                    {concepts.length} total
+                  </span>
+                </div>
+                <p id="idea-lab-concepts-help" className="sr-only">
+                  Arrow keys move between concepts. Enter or Space picks one; pick two to combine them.
                 </p>
-                {clearButton}
+
+                <div
+                  role="toolbar"
+                  aria-labelledby="idea-lab-concepts"
+                  aria-describedby="idea-lab-concepts-help"
+                  onKeyDown={moveConceptFocus}
+                  className="flex flex-wrap gap-2 sm:gap-3"
+                >
+                  {concepts.map(concept => {
+                    const isSelected = selectedConcepts.some(c => c.id === concept.id)
+                    const gold = !concept.isBase && isGolden(concept.name, progress.work)
+
+                    return (
+                      <button
+                        key={concept.id}
+                        ref={element => {
+                          if (!element) return
+                          conceptRefs.current.set(concept.id, element)
+                          return () => { conceptRefs.current.delete(concept.id) }
+                        }}
+                        type="button"
+                        tabIndex={concept.id === activeId ? 0 : -1}
+                        onClick={() => handleSelectConcept(concept)}
+                        aria-disabled={isCombining}
+                        className={`
+                          flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-lg border transition-colors
+                          text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-card-bg
+                          ${isSelected
+                            ? 'border-accent bg-accent/10 text-foreground'
+                            : gold
+                              ? 'border-warm bg-warm/20 hover:bg-warm/30'
+                              : concept.isBase
+                                ? 'border-foreground/10 bg-foreground/5 hover:border-accent/50 hover:bg-accent/5'
+                                : 'border-melon-green/30 bg-melon-green/5 hover:border-melon-green/60 hover:bg-melon-green/10'
+                          }
+                          ${concept.id === newConceptId ? 'ring-2 ring-melon-green ring-offset-2 ring-offset-background' : ''}
+                          ${isCombining ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                        `}
+                        aria-label={concept.name}
+                        aria-pressed={isSelected}
+                      >
+                        <span aria-hidden="true">{concept.emoji}</span>
+                        <span>{concept.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
 
-            <div className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-medium text-foreground/80">Your Concepts</h2>
-                <span className="text-sm text-foreground/70">
-                  {concepts.length} total
-                </span>
+            {/* In the wide layout this column keeps the bench and the riddles beside whatever concept the player is looking at. */}
+            <div className="mt-6 lg:mt-0 lg:sticky lg:top-[var(--bench-top)] lg:max-h-[var(--bench-room)] lg:flex lg:flex-col">
+              <div className="hidden lg:block shrink-0 bg-card-bg border border-card-border rounded-xl p-4 mb-4">
+                {renderEquation(false)}
+                <div className="mt-3 text-center" aria-hidden="true">
+                  {lastResult?.description && !isCombining && (
+                    <p className="text-foreground/85 text-sm leading-relaxed">&ldquo;{lastResult.description}&rdquo;</p>
+                  )}
+                  {resultIsGold && lastResult?.riddle && (
+                    <p className="mt-2 text-sm text-foreground">
+                      <span className="font-medium">One of the seven golds, {goldCount} of {golds.length} found.</span>{' '}
+                      <span className="text-foreground/80">It answers: <span className="italic">{lastResult.riddle}</span></span>
+                    </p>
+                  )}
+                  {!hasBench && <p className="text-foreground/75 text-sm">Choose two concepts to combine them.</p>}
+                </div>
+                {clearButton && <div className="flex justify-center mt-2">{clearButton}</div>}
               </div>
 
-              <div className="flex flex-wrap gap-2 sm:gap-3">
-                {concepts.map((concept, index) => {
-                  const isSelected = selectedConcepts.some(c => c.id === concept.id)
-                  const gold = !concept.isBase && isGolden(concept.name, progress.work)
-
-                  return (
-                    <button
-                      key={concept.id}
-                      ref={index === 0 ? firstConceptRef : undefined}
-                      onClick={() => handleSelectConcept(concept)}
-                      aria-disabled={isCombining}
-                      className={`
-                        flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-lg border transition-colors
-                        text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-card-bg
-                        ${isSelected
-                          ? 'border-accent bg-accent/10 text-foreground'
-                          : gold
-                            ? 'border-warm bg-warm/20 hover:bg-warm/30'
-                            : concept.isBase
-                              ? 'border-foreground/10 bg-foreground/5 hover:border-accent/50 hover:bg-accent/5'
-                              : 'border-melon-green/30 bg-melon-green/5 hover:border-melon-green/60 hover:bg-melon-green/10'
-                        }
-                        ${concept.id === newConceptId ? 'ring-2 ring-melon-green ring-offset-2 ring-offset-background' : ''}
-                        ${isCombining ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                      `}
-                      aria-label={concept.name}
-                      aria-pressed={isSelected}
-                    >
-                      <span aria-hidden="true">{concept.emoji}</span>
-                      <span>{concept.name}</span>
-                    </button>
-                  )
-                })}
+              <div
+                className="lg:min-h-0 lg:overflow-y-auto rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                role={wide ? 'region' : undefined}
+                aria-label={wide ? 'Riddles' : undefined}
+                tabIndex={wide ? 0 : undefined}
+              >
+                <GoldShelf
+                  ref={shelfHeadingRef}
+                  work={progress.work}
+                  hints={progress.hints}
+                  freshClue={freshClue}
+                  found={goldFound}
+                  completedWorks={completedWorks}
+                  canBeginNextWork={canBeginNextWork}
+                  onReadLetter={openLetter}
+                  onBeginNextWork={beginSecondWork}
+                />
               </div>
             </div>
           </div>
-
-          <GoldShelf
-            ref={shelfHeadingRef}
-            work={progress.work}
-            hintLevel={progress.hintLevel}
-            found={goldFound}
-            completedWorks={completedWorks}
-            canBeginNextWork={canBeginNextWork}
-            onReadLetter={openLetter}
-            onBeginNextWork={beginSecondWork}
-          />
 
           <div className="mt-8 text-center">
             <Link

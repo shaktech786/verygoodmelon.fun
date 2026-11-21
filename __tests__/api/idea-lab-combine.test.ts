@@ -217,4 +217,13 @@ describe('POST /api/idea-lab/combine', () => {
     expect(data.description).not.toContain('\n')
     expect(data.description.length).toBeLessThanOrEqual(160)
   })
+
+  it('gives an open-ended mix that lands on a hand-written result its own emoji and words', async () => {
+    modelReply({ name: 'legacy', emoji: '🏛️', description: 'Art that outlives the hand that made it.' })
+
+    const { status, data } = await combine('Art', 'Karma')
+
+    expect(status).toBe(200)
+    expect(data).toEqual({ name: 'Legacy', emoji: '📜', description: 'What remains after we are gone.' })
+  })
 })

@@ -33,24 +33,36 @@ export type AccessibilityPreset = 'calm' | 'focus' | 'sensory-friendly'
 
 export interface AccessibilityPresetConfig {
   name: string
-  description: string
-  settings: Partial<AccessibilitySettings>
+  /** Every comfort setting a preset covers, so choosing one never keeps another preset's leftovers. Theme and text size stay as they are. */
+  settings: Pick<AccessibilitySettings, 'reduceMotion' | 'muted' | 'volume' | 'contrast' | 'greyscale'>
 }
 
 export const ACCESSIBILITY_PRESETS: Record<AccessibilityPreset, AccessibilityPresetConfig> = {
   calm: {
     name: 'Calm',
-    description: 'Still motion and softer sound',
-    settings: { reduceMotion: true, muted: false, volume: 30 },
+    settings: { reduceMotion: true, muted: false, volume: 30, contrast: 'normal', greyscale: false },
   },
   focus: {
     name: 'Focus',
-    description: 'No sound and higher contrast',
-    settings: { muted: true, contrast: 'high' },
+    settings: { reduceMotion: false, muted: true, volume: DEFAULT_ACCESSIBILITY_SETTINGS.volume, contrast: 'high', greyscale: false },
   },
   'sensory-friendly': {
     name: 'Sensory-friendly',
-    description: 'No motion, no sound and no colour',
-    settings: { reduceMotion: true, muted: true, greyscale: true },
+    settings: { reduceMotion: true, muted: true, volume: DEFAULT_ACCESSIBILITY_SETTINGS.volume, contrast: 'normal', greyscale: true },
   },
+}
+
+const CONTRAST_NAMES: Record<ContrastMode, string | null> = { normal: null, high: 'high contrast', 'extra-high': 'highest contrast' }
+
+/** What choosing a preset turns on, in the words the settings panel uses. */
+export function presetSummary(settings: AccessibilityPresetConfig['settings']): string {
+  const turnedOn = [
+    settings.reduceMotion && 'reduce motion',
+    CONTRAST_NAMES[settings.contrast],
+    settings.muted && 'mute',
+    settings.greyscale && 'greyscale',
+  ].filter((item): item is string => Boolean(item))
+  const list = turnedOn.length > 1 ? `${turnedOn.slice(0, -1).join(', ')} and ${turnedOn[turnedOn.length - 1]}` : turnedOn[0] ?? ''
+  const sound = !settings.muted && settings.volume !== DEFAULT_ACCESSIBILITY_SETTINGS.volume ? `, with sound at ${settings.volume}%` : ''
+  return `Turns on ${list}${sound}`
 }

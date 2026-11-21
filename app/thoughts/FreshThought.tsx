@@ -18,10 +18,12 @@ const THEME_LABELS: Record<string, string> = {
   perspective: 'Perspective',
 }
 
-function truncate(text: string, maxLength: number): string {
-  const firstParagraph = text.split('\n\n')[0]
-  if (firstParagraph.length <= maxLength) return firstParagraph
-  return firstParagraph.slice(0, maxLength).replace(/\s+\S*$/, '') + '...'
+const PREVIEW_LENGTH = 160
+
+function preview(text: string): string {
+  const firstParagraph = text.split('\n\n')[0].trim()
+  if (firstParagraph.length <= PREVIEW_LENGTH) return firstParagraph
+  return firstParagraph.slice(0, PREVIEW_LENGTH).replace(/\s+\S*$/, '') + '…'
 }
 
 interface FreshThoughtProps {
@@ -34,6 +36,7 @@ interface FreshThoughtProps {
  */
 export function FreshThought({ mounted }: FreshThoughtProps) {
   const [fresh, setFresh] = useState<FreshThoughtData | null>(null)
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -59,6 +62,10 @@ export function FreshThought({ mounted }: FreshThoughtProps) {
 
   if (!fresh) return null
 
+  const paragraphs = fresh.body.split('\n\n').map(paragraph => paragraph.trim()).filter(Boolean)
+  const short = preview(fresh.body)
+  const hasMore = short !== fresh.body.trim()
+
   return (
     <article
       className={`
@@ -82,10 +89,25 @@ export function FreshThought({ mounted }: FreshThoughtProps) {
           {fresh.title}
         </h2>
 
-        {/* Preview */}
-        <p className="text-foreground/70 text-sm leading-relaxed">
-          {truncate(fresh.body, 160)}
-        </p>
+        <div id="fresh-thought-body" className="space-y-3">
+          {open
+            ? paragraphs.map((paragraph, index) => (
+                <p key={index} className="text-foreground/80 text-sm leading-relaxed">{paragraph}</p>
+              ))
+            : <p className="text-foreground/75 text-sm leading-relaxed">{short}</p>}
+        </div>
+
+        {hasMore && (
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            aria-controls="fresh-thought-body"
+            className="mt-2 min-h-[44px] px-1 text-sm font-medium text-foreground underline underline-offset-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            {open ? 'Show less' : 'Read the whole thought'}
+          </button>
+        )}
       </div>
     </article>
   )

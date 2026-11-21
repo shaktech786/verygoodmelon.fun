@@ -167,4 +167,23 @@ describe('useAccessibility', () => {
     expect(result.current.settings.reduceMotion).toBe(true)
     expect(result.current.settings.muted).toBe(true)
   })
+
+  it('lets each preset replace the last one instead of keeping its leftovers', async () => {
+    const { useAccessibility } = await loadModule()
+    const { result } = renderHook(() => useAccessibility())
+
+    act(() => result.current.applyPreset('calm'))
+    act(() => result.current.applyPreset('focus'))
+
+    expect(result.current.settings).toMatchObject({ reduceMotion: false, volume: 70, muted: true, contrast: 'high', greyscale: false })
+  })
+})
+
+describe('preset summaries', () => {
+  it('name everything a preset turns on, and nothing it does not', async () => {
+    const { ACCESSIBILITY_PRESETS, presetSummary } = await import('@/types/accessibility')
+    expect(presetSummary(ACCESSIBILITY_PRESETS.calm.settings)).toBe('Turns on reduce motion, with sound at 30%')
+    expect(presetSummary(ACCESSIBILITY_PRESETS.focus.settings)).toBe('Turns on high contrast and mute')
+    expect(presetSummary(ACCESSIBILITY_PRESETS['sensory-friendly'].settings)).toBe('Turns on reduce motion, mute and greyscale')
+  })
 })

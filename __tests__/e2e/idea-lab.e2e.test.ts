@@ -161,7 +161,7 @@ test('after a result, the next pick starts a fresh pair and Clear empties the be
 
   await page.getByRole('button', { name: 'Clear' }).click()
   await expect(concept(page, 'Love')).toHaveAttribute('aria-pressed', 'false')
-  await expect(page.getByText('Choose two concepts below to combine them')).toBeVisible()
+  await expect(page.getByText('Choose two concepts to combine them.').filter({ visible: true })).toBeVisible()
 })
 
 test('when a pair cannot be combined right now, nothing is saved and it can be tried again', async ({ page }) => {
@@ -255,13 +255,72 @@ test('can be played with the keyboard alone', async ({ page }) => {
 
   await concept(page, 'Chaos').focus()
   await page.keyboard.press('Enter')
-  await page.keyboard.press('Tab')
+  await page.keyboard.press('ArrowRight')
   await expect(concept(page, 'Order')).toBeFocused()
   await page.keyboard.press('Space')
 
   await expect(announcement(page)).toContainText('New discovery: Balance.')
   // Regression: locking the chips while combining used to drop focus to the page
   await expect(concept(page, 'Order')).toBeFocused()
+})
+
+test('the concepts are a single Tab stop moved through with the arrow keys, with a way past them to the riddles', async ({ page }) => {
+  await mockCombine(page)
+  await page.goto('/games/idea-lab')
+  await page.getByRole('button', { name: 'Begin Exploring' }).focus()
+  await page.keyboard.press('Enter')
+  const toolbar = page.getByRole('toolbar', { name: 'Your Concepts' })
+  await expect(concept(page, 'Love')).toBeFocused()
+  await expect(toolbar.locator('button[tabindex="0"]')).toHaveCount(1)
+
+  await page.keyboard.press('ArrowRight')
+  await expect(concept(page, 'Fear')).toBeFocused()
+  await page.keyboard.press('ArrowLeft')
+  await expect(concept(page, 'Love')).toBeFocused()
+  await page.keyboard.press('End')
+  await expect(concept(page, 'Other')).toBeFocused()
+  await page.keyboard.press('Home')
+  await expect(concept(page, 'Love')).toBeFocused()
+
+  await page.keyboard.press('ArrowDown')
+  const below = page.locator(':focus')
+  await expect(below).not.toHaveAccessibleName('Love')
+  const [loveBox, belowBox] = [await concept(page, 'Love').boundingBox(), await below.boundingBox()]
+  expect(belowBox?.y ?? 0).toBeGreaterThan((loveBox?.y ?? 0) + (loveBox?.height ?? 0) - 1)
+  await page.keyboard.press('ArrowUp')
+  await expect(concept(page, 'Love')).toBeFocused()
+
+  // One Tab leaves the concepts; Shift+Tab comes back to the same one.
+  await page.keyboard.press('End')
+  await page.keyboard.press('Tab')
+  expect(await page.evaluate(() => Boolean(document.activeElement?.closest('[role="toolbar"]')))).toBe(false)
+  await page.keyboard.press('Shift+Tab')
+  await expect(concept(page, 'Other')).toBeFocused()
+
+  await page.keyboard.press('Shift+Tab')
+  const skip = page.getByRole('link', { name: 'Skip to the riddles' })
+  await expect(skip).toBeFocused()
+  await expect(skip).toBeVisible()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('heading', { name: 'The seven golds' })).toBeFocused()
+})
+
+test('a finished Work is a few Tabs from the concepts, not one per concept', async ({ page }) => {
+  await mockCombine(page)
+  const found = ['Courage', 'Grief', 'Healing', 'Anxiety', 'Patience', 'Acceptance', 'Empathy', 'Understanding',
+    'Compassion', 'Mortality', 'Legacy', 'Meaning', 'Vulnerability', 'Trust', 'Intimacy', 'Wisdom', 'Virtue']
+  await seed(page, { ideaLab_discoveries: asDiscoveries(found) })
+  await page.goto('/games/idea-lab')
+  await concept(page, 'Love').focus()
+
+  const begin = page.getByRole('button', { name: 'Begin the Second Work' })
+  let presses = 0
+  while (presses < 10 && !(await begin.evaluate(el => el === document.activeElement))) {
+    await page.keyboard.press('Tab')
+    presses++
+  }
+  await expect(begin).toBeFocused()
+  expect(presses).toBeLessThanOrEqual(4)
 })
 
 test('damaged saved data does not stop the lab from opening', async ({ page }) => {
@@ -314,36 +373,63 @@ test('a gold is celebrated with the riddle it answers, and the shelf keeps the r
 
   await combine(page, 'Hope', 'Fear')
   await expect(announcement(page)).toHaveText('Gold: Courage, one of the seven. 1 of 7 found. Acting despite fear because something matters more.')
-  await expect(page.getByText('It answers:', { exact: false }).first()).toBeVisible()
+  await expect(page.getByText('It answers:', { exact: false }).filter({ visible: true })).toBeVisible()
   await expect(golds).toContainText('1 of 7 found')
   await expect(golds).toContainText('Acting despite fear because something matters more.')
   await expect(golds.getByText('Not yet found. Riddle:', { exact: false })).toHaveCount(6)
 })
 
-test('riddles grow plainer after a few tries, then name the ingredients, and stay that way', async ({ page }) => {
+test('riddles grow plainer one at a time, oldest first, and never take a clue back', async ({ page }) => {
   await mockCombine(page)
   await startLab(page)
   const golds = shelf(page)
+  const plainer = golds.getByText('Plainer:', { exact: true })
+  const ingredients = golds.getByText('Ingredients:', { exact: true })
   const bases = ['Love', 'Time', 'Death', 'Knowledge', 'Power', 'Freedom', 'Truth', 'Beauty', 'Justice', 'Chaos', 'Order', 'Nature', 'Self']
 
   for (let i = 0; i < 4; i++) await combine(page, bases[i], bases[i + 1])
   await expect(counter(page)).toHaveText('4 discoveries')
-  await expect(golds.getByText('Plainer:', { exact: true })).toHaveCount(0)
+  await expect(plainer).toHaveCount(0)
 
   await combine(page, bases[4], bases[5])
-  await expect(announcement(page)).toContainText('A plainer clue has surfaced on the shelf.')
-  await expect(golds.getByText('Plainer:', { exact: true })).toHaveCount(7)
-  await expect(golds).toContainText('Let what scares you hold hands with what you wish for.')
+  await expect(announcement(page)).toContainText('A riddle has grown plainer: Let love meet its ending, then let the dawn sit beside it.')
+  await expect(plainer).toHaveCount(1)
+  await expect(golds.getByRole('listitem').filter({ hasText: 'New clue' })).toContainText('A broken heart', { ignoreCase: true })
 
-  for (let i = 5; i < 11; i++) await combine(page, bases[i], bases[i + 1])
-  await combine(page, 'Self', 'Love')
-  await expect(announcement(page)).toContainText('The shelf now names the ingredients.')
-  await expect(golds).toContainText('Ingredients: Fear with Hope.')
+  for (let i = 5; i < 10; i++) await combine(page, bases[i], bases[i + 1])
+  await expect(announcement(page)).toContainText('A riddle now names its ingredients: Grief (Love and Death) with Hope.')
+  await expect(ingredients).toHaveCount(1)
+  await expect(plainer).toHaveCount(1)
 
-  // Finding a gold resets the count but never takes a clue back.
+  // Finding a gold restarts the count; the next clue goes to the next riddle still hidden.
   await combine(page, 'Hope', 'Fear')
+  await expect(announcement(page)).toContainText('Gold: Courage')
+  for (const [a, b] of [['Order', 'Nature'], ['Nature', 'Self'], ['Self', 'Love'], ['Death', 'Truth']]) await combine(page, a, b)
+  await expect(plainer).toHaveCount(1)
+  await combine(page, 'Justice', 'Love')
+  await expect(announcement(page)).toContainText('A riddle has grown plainer: Stretch a fear across the hours')
+  await expect(plainer).toHaveCount(2)
+  await expect(ingredients).toHaveCount(1)
+
   await page.reload()
-  await expect(shelf(page).getByText('Ingredients:', { exact: true })).toHaveCount(6)
+  await expect(shelf(page).getByText('Plainer:', { exact: true })).toHaveCount(2)
+  await expect(shelf(page).getByText('Ingredients:', { exact: true })).toHaveCount(1)
+})
+
+test('a save from when one clue level covered every riddle keeps the clues it had shown', async ({ page }) => {
+  await mockCombine(page)
+  await seed(page, {
+    ideaLab_discoveries: asDiscoveries(['Courage']),
+    ideaLab_progress: { work: 0, triesSinceGold: 9, hintLevel: 1 },
+  })
+  await page.goto('/games/idea-lab')
+  await expect(shelf(page).getByText('Plainer:', { exact: true })).toHaveCount(6)
+  await expect(shelf(page).getByText('Ingredients:', { exact: true })).toHaveCount(0)
+
+  await combine(page, 'Love', 'Fear')
+  await expect(announcement(page)).toHaveText(/^New discovery: Devotion\./)
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ideaLab_progress') ?? 'null'))
+  expect(saved).toEqual({ work: 0, triesSinceClue: 1, hints: [1, 1, 1, 1, 1, 1, 1] })
 })
 
 test('the seventh gold ends the Work with a letter that takes focus, then the Second Work begins', async ({ page }) => {
@@ -368,7 +454,8 @@ test('the seventh gold ends the Work with a letter that takes focus, then the Se
 
   await scene.getByRole('button', { name: 'Keep wandering' }).click()
   await expect(scene).toHaveCount(0)
-  await expect(concept(page, 'Love')).toBeFocused()
+  // Back to the concept the player last picked.
+  await expect(concept(page, 'Courage')).toBeFocused()
 
   await shelf(page).getByRole('button', { name: 'Read the letter from the Great Work' }).click()
   await expect(letter(page).getByRole('heading', { name: 'The Great Work' })).toBeFocused()
@@ -436,6 +523,27 @@ test('has no accessibility violations in light or dark, including the letter', a
 
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: 'reduce' })
+
+  test('the bench keeps the current riddle in view, and a new clue shows there', async ({ page }) => {
+    await mockCombine(page)
+    await seed(page, {
+      ideaLab_discoveries: asDiscoveries(['Jealousy', 'Grief', 'Devotion', 'Vulnerability', 'Trust', 'Empathy', 'Mortality',
+        'Anxiety', 'Vertigo', 'Denial', 'Legacy', 'Wisdom', 'Patience', 'Entropy', 'History', 'Renewal', 'Spring']),
+      ideaLab_progress: { work: 0, triesSinceClue: 4, hints: [0, 0, 0, 0, 0, 0, 0] },
+    })
+    await page.goto('/games/idea-lab')
+    const bench = page.getByTestId('phone-bench')
+    await expect(bench).toContainText('What a broken heart grows when it keeps a window facing the sunrise.')
+
+    const spring = concept(page, 'Spring')
+    const top = await spring.evaluate(el => el.getBoundingClientRect().top + window.scrollY)
+    await page.evaluate(y => window.scrollTo({ top: y - 600, behavior: 'instant' }), top)
+    await concept(page, 'Renewal').tap()
+    await spring.tap()
+    await expect(announcement(page)).toContainText('A riddle has grown plainer')
+    await expect(bench).toBeInViewport()
+    await expect(bench).toContainText('Plainer: Let love meet its ending, then let the dawn sit beside it.')
+  })
 
   test('the lab fits without sideways scrolling and concepts are easy to tap', async ({ page }) => {
     await mockCombine(page)

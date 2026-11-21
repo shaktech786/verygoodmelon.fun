@@ -87,7 +87,8 @@ export default function MutationScreen({
   return (
     <div
       className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center px-5 py-6 bg-card-bg/95"
-      onClick={handleContinue}
+      // A thumb still guiding the orb can land anywhere on the card, so on touch only the button moves on
+      onClick={isTouch ? undefined : handleContinue}
       role="dialog"
       aria-live="polite"
       aria-label={
@@ -134,6 +135,10 @@ export default function MutationScreen({
             {ready && (
               <button
                 type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  handleContinue()
+                }}
                 className={`text-[11px] sm:text-xs tracking-[0.15em] px-5 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${retroFont}`}
               >
                 {isTouch ? 'TAP TO CONTINUE' : 'PRESS ENTER'}

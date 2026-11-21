@@ -7,6 +7,7 @@ import { useModalDialog } from '@/components/accessibility/useModalDialog'
 import {
   ACCESSIBILITY_PRESETS,
   type AccessibilityPreset,
+  presetSummary,
   type ContrastMode,
   type TextSize,
   type ThemeMode,
@@ -280,6 +281,9 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
             <h3 id="a11y-presets" className={SECTION_HEADING}>
               Quick presets
             </h3>
+            <p className="text-xs text-primary-light mb-2">
+              A preset sets motion, sound, contrast and colour together. Theme and text size stay as you chose.
+            </p>
             <div className="space-y-2">
               {(Object.keys(ACCESSIBILITY_PRESETS) as AccessibilityPreset[]).map((key) => {
                 const preset = ACCESSIBILITY_PRESETS[key]
@@ -294,7 +298,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
                     className={QUIET_BUTTON}
                   >
                     <span className="block font-medium">{preset.name}</span>
-                    <span className="block text-xs text-primary-light mt-0.5">{preset.description}</span>
+                    <span className="block text-xs text-primary-light mt-0.5">{presetSummary(preset.settings)}</span>
                   </button>
                 )
               })}

@@ -86,6 +86,7 @@ export default function HopeDaily() {
   // Only the newest guess may speak: a slow reply for an earlier guess is dropped.
   const commentaryRequestRef = useRef(0)
   const endingHeadingRef = useRef<HTMLHeadingElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const finishedThisVisitRef = useRef(false)
   const inputId = useId()
   const hintId = useId()
@@ -188,6 +189,7 @@ export default function HopeDaily() {
   const ladderDone = unfolded >= ladder.length
   const knownMap = new Map(progress.known)
   const isPlaying = progress.status === 'playing'
+  const allKnown = progress.known.length >= wordLength
 
   const finish = (status: Exclude<Status, 'playing'>, reveal: Reveal | null) => {
     finishedThisVisitRef.current = true
@@ -209,7 +211,12 @@ export default function HopeDaily() {
   const placeLetters = (letters: KnownLetter[]) => {
     const known = addKnown(progress.known, letters)
     setProgress(previous => ({ ...previous, known }))
-    if (known.length === wordLength) finish('shown', null)
+    if (known.length < wordLength) return
+    // Every letter is out, but saying the word is still the player's moment, so it waits in the box.
+    const spelled = new Map(known)
+    setDraft(Array.from({ length: wordLength }, (_, position) => spelled.get(position) ?? '').join(''))
+    setMessage(previous => `${previous} Every letter is showing. Press Try it to finish.`.trim())
+    inputRef.current?.focus()
   }
 
   const speakAbout = async (guess: string, guessNumber: number) => {
@@ -393,7 +400,8 @@ export default function HopeDaily() {
                   {part.flatMap(piece => piece.text.split(/\s+/).filter(Boolean).map(token => token.length)).map((size, wordIndex) => (
                     <span
                       key={wordIndex}
-                      className="mr-[0.3em] inline-block h-[0.8em] rounded-sm bg-foreground/10 align-middle"
+                      data-testid="folded-word"
+                      className="mr-[0.3em] inline-block h-[0.8em] rounded-sm bg-foreground/10 [html[data-contrast=high]_&]:bg-foreground/30 [html[data-contrast=extra-high]_&]:bg-foreground/45 align-middle"
                       style={{ width: `${Math.min(size, 12) * 0.5}em` }}
                     />
                   ))}
@@ -413,14 +421,16 @@ export default function HopeDaily() {
             </p>
           )}
           <div className="mt-5 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={readOn}
-              disabled={busy}
-              className="rounded-lg border border-foreground/25 bg-foreground/5 px-4 py-2 min-h-[44px] text-sm font-medium text-foreground hover:bg-foreground/10 transition-colors disabled:opacity-60"
-            >
-              {ladderDone ? 'Show a letter' : 'Read on'}
-            </button>
+            {!(ladderDone && allKnown) && (
+              <button
+                type="button"
+                onClick={readOn}
+                disabled={busy}
+                className="rounded-lg border border-foreground/25 bg-foreground/5 px-4 py-2 min-h-[44px] text-sm font-medium text-foreground hover:bg-foreground/10 transition-colors disabled:opacity-60"
+              >
+                {ladderDone ? 'Show a letter' : 'Read on'}
+              </button>
+            )}
 
             {ladderDone && !confirmingTell && (
               <button
@@ -466,6 +476,7 @@ export default function HopeDaily() {
             </label>
             <div className="mt-1.5 flex gap-2">
               <input
+                ref={inputRef}
                 id={inputId}
                 value={draft}
                 onChange={event => {
@@ -493,10 +504,10 @@ export default function HopeDaily() {
             </p>
           </form>
 
-          <p className="mt-3 min-h-[1.5rem] text-sm sm:text-base font-medium text-foreground" role="status" aria-live="polite">
+          <p className="mt-3 text-sm sm:text-base font-medium text-foreground" role="status" aria-live="polite">
             {message}
           </p>
-          <p className="min-h-[1.25rem] text-sm italic text-foreground/70" aria-live="polite">
+          <p className="text-sm italic text-foreground/70" aria-live="polite">
             {commentary}
           </p>
 

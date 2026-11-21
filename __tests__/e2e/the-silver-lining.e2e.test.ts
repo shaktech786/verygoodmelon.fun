@@ -125,7 +125,7 @@ test('a wrong guess is summed up in the words the page uses, and the story unfol
   await expect(status(page)).toHaveText('You tried SOLID already.')
 })
 
-test('reading on unfolds the story, then the clue, then letters, until the word arrives by itself', async ({ page }) => {
+test('reading on unfolds the story, then the clue, then letters, and the player says the last word themselves', async ({ page }) => {
   const seen = await pinDailyWord(page)
   await openGame(page)
 
@@ -144,10 +144,17 @@ test('reading on unfolds the story, then the clue, then letters, until the word 
   }
   await page.getByRole('button', { name: 'Show a letter' }).click()
 
+  // The last letter does not end the game for them: the word waits in the box to be tried.
+  await expect(status(page)).toHaveText('Letter 5 is R. Every letter is showing. Press Try it to finish.')
+  await expect(input(page)).toHaveValue('SOLAR')
+  await expect(input(page)).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Show a letter' })).toHaveCount(0)
+  await input(page).press('Enter')
+
   await expect(page.getByRole('heading', { name: 'SOLAR' })).toBeFocused()
-  await expect(ending(page)).toContainText('Here is today’s word')
+  await expect(ending(page)).toContainText('You found it')
   await expectFinished(page)
-  expect(seen.guesses).toEqual([])
+  expect(seen.guesses).toEqual(['SOLAR'])
 })
 
 test('once the story is all unfolded, a wrong guess also brings a letter', async ({ page }) => {
@@ -423,6 +430,33 @@ async function axeViolations(page: Page) {
   })
 }
 
+test('the folded parts of the story stay visible under the highest contrast in dark', async ({ page }) => {
+  await page.addInitScript(() =>
+    localStorage.setItem('verygoodmelon:accessibility:settings', JSON.stringify({ theme: 'dark', contrast: 'extra-high' }))
+  )
+  await pinDailyWord(page)
+  await openGame(page)
+  const contrast = await page.getByTestId('folded-word').first().evaluate(bar => {
+    // Paint the card, then the bar over it, and read back what the eye gets.
+    const ctx = document.createElement('canvas').getContext('2d')!
+    const paint = (...colours: string[]) => {
+      for (const colour of colours) {
+        ctx.fillStyle = colour
+        ctx.fillRect(0, 0, 1, 1)
+      }
+      return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3)
+    }
+    const luminance = (rgb: number[]) => {
+      const [r, g, b] = rgb.map(c => (c / 255 <= 0.03928 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4))
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+    const card = getComputedStyle(bar.closest('article')!).backgroundColor
+    const [a, b] = [luminance(paint(card)), luminance(paint(card, getComputedStyle(bar).backgroundColor))]
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+  })
+  expect(contrast).toBeGreaterThanOrEqual(3)
+})
+
 for (const colorScheme of ['light', 'dark'] as const) {
   test(`playing and the ending have no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
     await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
@@ -441,6 +475,14 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+  test('nothing blank is left reserved under the guess box before anything has been said', async ({ page }) => {
+    await pinDailyWord(page)
+    await openGame(page)
+    const hint = await page.getByText('5 letters. No limit on guesses.').boundingBox()
+    const back = await page.getByRole('link', { name: /Back Home/ }).boundingBox()
+    expect((back?.y ?? 0) - ((hint?.y ?? 0) + (hint?.height ?? 0))).toBeLessThanOrEqual(48)
+  })
 
   test('the instructions, the story and the guess box are all on the first screen', async ({ page }) => {
     await pinDailyWord(page)

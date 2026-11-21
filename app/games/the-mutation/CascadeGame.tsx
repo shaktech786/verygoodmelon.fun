@@ -8,6 +8,7 @@ import { MECHANIC_CATEGORIES, DEFAULT_PARAMS, GAME_W, GAME_H } from './engine/ty
 import { getProfileSummary } from './engine/engine'
 import { fallbackName, fallbackTagline, reflection } from './engine/naming'
 import { planRun, planOrder, type PlanStep } from './engine/plan'
+import { fallbackRule } from './engine/rules'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import GameCanvas from './components/GameCanvas'
 import TitleScreen from './components/TitleScreen'
@@ -28,75 +29,6 @@ const LAST_PLAN_KEY = 'shapeshifter_lastPlan'
 // A phone gets a tall field so the game fills the screen instead of a third of it
 const PORTRAIT_W = 480
 const PORTRAIT_H = 720
-
-const FALLBACK_MUTATIONS: Record<string, Omit<MutationResult, 'params'>> = {
-  arrow_keys: {
-    mechanicId: 'arrow_keys',
-    title: 'IT CAN MOVE',
-    description: 'Your orb learned to wander.',
-    flavorText: 'It had been sitting still for a long time.',
-  },
-  mouse_follow: {
-    mechanicId: 'mouse_follow',
-    title: 'IT FOLLOWS YOU',
-    description: 'Your orb drifts wherever you point.',
-    flavorText: 'It seems to like your company.',
-  },
-  stars: {
-    mechanicId: 'stars',
-    title: 'STARS ARRIVE',
-    description: 'Small stars appear. Gather them as you go.',
-    flavorText: 'The dark is being generous today.',
-  },
-  pulse_gems: {
-    mechanicId: 'pulse_gems',
-    title: 'BREATHING GEMS',
-    description: 'Gems glow softly and dim again.',
-    flavorText: 'They shine at their own pace.',
-  },
-  chasers: {
-    mechanicId: 'chasers',
-    title: 'SHY SHADOWS',
-    description: 'Little shadows wander through on their own slow paths.',
-    flavorText: 'They are only passing by.',
-  },
-  sweepers: {
-    mechanicId: 'sweepers',
-    title: 'TIDES',
-    description: 'Slow tides of light sweep across and carry you along.',
-    flavorText: 'Sometimes it is easier to float.',
-  },
-  blaster: {
-    mechanicId: 'blaster',
-    title: 'A LANTERN',
-    description: 'Your orb can send out light. It gathers stars, and turns shadows into stars.',
-    flavorText: 'Shadows were only stars that had not been seen yet.',
-  },
-  phase_dash: {
-    mechanicId: 'phase_dash',
-    title: 'GLIDE',
-    description: 'Your orb can glide. Glide through a shadow and it becomes a star.',
-    flavorText: 'Lighter than it looks.',
-  },
-  combo_chain: {
-    mechanicId: 'combo_chain',
-    title: 'RHYTHM',
-    description: 'Gathering in a steady rhythm makes your glow grow.',
-    flavorText: 'No rush. Just a rhythm.',
-  },
-  gravity_well: {
-    mechanicId: 'gravity_well',
-    title: 'GENTLE PULL',
-    description: 'Lights near you drift closer on their own.',
-    flavorText: 'Good things find their way to you.',
-  },
-  score_rush: {
-    mechanicId: 'score_rush',
-    title: 'THE BLOOM',
-    description: 'Every shadow turns to light, and the stars come thick and bright.',
-    flavorText: 'Everything you met along the way, glowing at once.',
-  },
-}
 
 function isTextEntry(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest('input, textarea, select, [contenteditable="true"]') !== null
@@ -120,8 +52,8 @@ function textOr(value: unknown, fallback: string): string {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback
 }
 
-function toMutation(mechanicId: string, data: Record<string, unknown>): MutationResult {
-  const fallback = FALLBACK_MUTATIONS[mechanicId]
+function toMutation(mechanicId: string, data: Record<string, unknown>, active: readonly string[]): MutationResult {
+  const fallback = fallbackRule(mechanicId, active)
   return {
     mechanicId,
     params: { ...DEFAULT_PARAMS[mechanicId] },
@@ -184,6 +116,7 @@ export default function CascadeGame() {
   ): Promise<MutationResult> => {
     const { category, options } = planRef.current[wave]
     const s = gameStateRef.current
+    const active = mechanics.map(m => m.id)
 
     try {
       const res = await fetch(MUTATE_URL, {
@@ -194,7 +127,7 @@ export default function CascadeGame() {
           category,
           options,
           profile: s ? getProfileSummary(s) : null,
-          activeMechanics: mechanics.map(m => m.id),
+          activeMechanics: active,
           mutations,
         }),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -202,10 +135,10 @@ export default function CascadeGame() {
       if (!res.ok) throw new Error(`mutate ${res.status}`)
       const data = await res.json()
       if (!options.includes(data.mechanicId)) throw new Error('unknown mechanic')
-      return toMutation(data.mechanicId, data)
+      return toMutation(data.mechanicId, data, active)
     } catch {
       // The run already leans toward one rule per step, so the game varies even with no reply
-      return toMutation(options[0], {})
+      return toMutation(options[0], {}, active)
     }
   }, [])
 

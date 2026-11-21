@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { BASE_CONCEPTS, findKnownCombination, type Concept } from '@/lib/games/idea-lab/concepts'
 import { WORKS, isGolden, composeLetter } from '@/lib/games/idea-lab/golds'
 import {
-  DEFAULT_PROGRESS, HINT_AFTER_TRIES, afterCombination, beginNextWork, parseProgress, parseDiscoveries, parseCombinations,
+  DEFAULT_PROGRESS, HINT_AFTER_TRIES, afterCombination, beginNextWork, parseProgress, parseDiscoveries, parseCombinations, type LabProgress,
 } from '@/lib/games/idea-lab/progress'
 
 const BASE_NAMES = BASE_CONCEPTS.map(concept => concept.name)
@@ -135,28 +135,70 @@ describe('The Alchemist letter', () => {
 })
 
 describe('The Alchemist progress', () => {
+  const NONE_SOLVED = [false, false, false, false, false, false, false]
+  const fresh = (hints = [0, 0, 0, 0, 0, 0, 0]) => ({ work: 0, triesSinceClue: 0, hints })
+  const tryWithoutGold = (progress: LabProgress, times: number, solved = NONE_SOLVED) => {
+    let next = progress
+    for (let i = 0; i < times; i++) next = afterCombination(next, false, solved).progress
+    return next
+  }
+
   it('starts a new or damaged save at the first Work with no clues shown', () => {
     expect(parseProgress(null)).toEqual(DEFAULT_PROGRESS)
     expect(parseProgress('{not json')).toEqual(DEFAULT_PROGRESS)
-    expect(parseProgress('{"work": 9, "triesSinceGold": -3, "hintLevel": "x"}')).toEqual(DEFAULT_PROGRESS)
-    expect(parseProgress('{"work": 1, "triesSinceGold": 4, "hintLevel": 1}')).toEqual({ work: 1, triesSinceGold: 4, hintLevel: 1 })
+    expect(parseProgress('{"work": 9, "triesSinceClue": -3, "hints": "x"}')).toEqual(DEFAULT_PROGRESS)
+    expect(parseProgress('{"work": 0, "triesSinceClue": 1, "hints": [0, 3, 0, 0, 0, 0, 0]}')).toEqual(DEFAULT_PROGRESS)
+    expect(parseProgress('{"work": 0, "triesSinceClue": 1, "hints": [0, 1]}')).toEqual(DEFAULT_PROGRESS)
+    expect(parseProgress(JSON.stringify({ work: 1, triesSinceClue: 4, hints: [2, 1, 0, 0, 0, 0, 0] })))
+      .toEqual({ work: 1, triesSinceClue: 4, hints: [2, 1, 0, 0, 0, 0, 0] })
   })
 
-  it('offers a plainer clue after a few tries without gold, then the ingredients, and never takes a clue back', () => {
-    let progress = DEFAULT_PROGRESS
-    for (let i = 0; i < HINT_AFTER_TRIES[0] - 1; i++) progress = afterCombination(progress, false)
-    expect(progress.hintLevel).toBe(0)
-    progress = afterCombination(progress, false)
-    expect(progress.hintLevel).toBe(1)
-    while (progress.triesSinceGold < HINT_AFTER_TRIES[1]) progress = afterCombination(progress, false)
-    expect(progress.hintLevel).toBe(2)
+  it('keeps every clue an earlier save had already shown, now held per riddle', () => {
+    expect(parseProgress('{"work": 1, "triesSinceGold": 14, "hintLevel": 2}')).toEqual({ work: 1, triesSinceClue: 0, hints: [2, 2, 2, 2, 2, 2, 2] })
+    expect(parseProgress('{"work": 0, "triesSinceGold": 3, "hintLevel": 0}')).toEqual(DEFAULT_PROGRESS)
+    expect(parseProgress('{"work": 0, "triesSinceGold": 3, "hintLevel": 7}')).toEqual(DEFAULT_PROGRESS)
+  })
 
-    progress = afterCombination(progress, true)
-    expect(progress).toMatchObject({ triesSinceGold: 0, hintLevel: 2 })
+  it('makes one riddle plainer after a few tries without gold, and leaves the others alone', () => {
+    const before = tryWithoutGold(DEFAULT_PROGRESS, HINT_AFTER_TRIES - 1)
+    expect(before.hints).toEqual([0, 0, 0, 0, 0, 0, 0])
+
+    const { progress, clued } = afterCombination(before, false, NONE_SOLVED)
+    expect(clued).toBe(0)
+    expect(progress.hints).toEqual([1, 0, 0, 0, 0, 0, 0])
+    expect(progress.triesSinceClue).toBe(0)
+  })
+
+  it('takes the oldest unsolved riddle to its ingredients before starting on the next', () => {
+    const solved = [true, false, false, false, false, false, false]
+    let progress = tryWithoutGold(DEFAULT_PROGRESS, HINT_AFTER_TRIES, solved)
+    expect(progress.hints).toEqual([0, 1, 0, 0, 0, 0, 0])
+    progress = tryWithoutGold(progress, HINT_AFTER_TRIES, solved)
+    expect(progress.hints).toEqual([0, 2, 0, 0, 0, 0, 0])
+    progress = tryWithoutGold(progress, HINT_AFTER_TRIES, solved)
+    expect(progress.hints).toEqual([0, 2, 1, 0, 0, 0, 0])
+  })
+
+  it('never reveals every riddle at once, however long the player wanders', () => {
+    const progress = tryWithoutGold(DEFAULT_PROGRESS, HINT_AFTER_TRIES * 3)
+    expect(progress.hints.filter(level => level > 0)).toHaveLength(2)
+  })
+
+  it('a gold restarts the count but never takes a clue back', () => {
+    const { progress, clued } = afterCombination({ work: 0, triesSinceClue: HINT_AFTER_TRIES - 1, hints: [2, 1, 0, 0, 0, 0, 0] }, true, NONE_SOLVED)
+    expect(clued).toBeNull()
+    expect(progress).toEqual({ work: 0, triesSinceClue: 0, hints: [2, 1, 0, 0, 0, 0, 0] })
+  })
+
+  it('has nothing left to offer once every unsolved riddle names its ingredients', () => {
+    const allShown = fresh([2, 2, 2, 2, 2, 2, 2])
+    const { progress, clued } = afterCombination({ ...allShown, triesSinceClue: HINT_AFTER_TRIES - 1 }, false, NONE_SOLVED)
+    expect(clued).toBeNull()
+    expect(progress.hints).toEqual(allShown.hints)
   })
 
   it('a new Work starts its riddles fresh', () => {
-    expect(beginNextWork({ work: 0, triesSinceGold: 7, hintLevel: 2 })).toEqual({ work: 1, triesSinceGold: 0, hintLevel: 0 })
+    expect(beginNextWork({ work: 0, triesSinceClue: 3, hints: [2, 2, 1, 0, 0, 0, 0] })).toEqual({ work: 1, triesSinceClue: 0, hints: [0, 0, 0, 0, 0, 0, 0] })
   })
 
   it('keeps loading discoveries saved by earlier versions of the lab and drops anything damaged', () => {

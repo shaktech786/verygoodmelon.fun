@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
-import { findKnownCombination } from '@/lib/games/idea-lab/concepts'
+import { findKnownCombination, findKnownResult } from '@/lib/games/idea-lab/concepts'
 
 // Concepts are short names; anything longer is not from the game and would only cost model tokens.
 const MAX_CONCEPT_LENGTH = 60
@@ -81,6 +81,9 @@ Respond with only this JSON:
     if (!isConceptName(name) || name.split(/\s+/).length > MAX_NAME_WORDS || repeatsInput) {
       throw new Error('Combination has no usable concept name')
     }
+
+    const written = findKnownResult(name)
+    if (written) return NextResponse.json(written)
 
     return NextResponse.json({
       name,

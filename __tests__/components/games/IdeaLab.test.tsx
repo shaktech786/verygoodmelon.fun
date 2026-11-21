@@ -65,7 +65,7 @@ describe('IdeaLab', () => {
     expect(screen.getByRole('heading', { name: 'The seven golds' })).toBeInTheDocument()
   })
 
-  it('surfaces a plainer clue after a few tries without gold, and says so', async () => {
+  it('makes one riddle plainer after a few tries without gold, and reads it out', async () => {
     begin()
     const pairs: Array<[string, string]> = [['Love', 'Fear'], ['Time', 'Death'], ['Power', 'Truth'], ['Beauty', 'Chaos'], ['Order', 'Self']]
     expect(screen.queryByText('Plainer:')).not.toBeInTheDocument()
@@ -75,7 +75,8 @@ describe('IdeaLab', () => {
       fireEvent.click(concept(b))
       await waitFor(() => expect(status()).toHaveTextContent(`New discovery: Thing ${'abcde'[i]}.`))
     }
-    expect(status()).toHaveTextContent('A plainer clue has surfaced on the shelf.')
-    expect(screen.getAllByText('Plainer:')).toHaveLength(7)
+    expect(status()).toHaveTextContent('A riddle has grown plainer: Let love meet its ending, then let the dawn sit beside it.')
+    expect(screen.getAllByText('Let love meet its ending, then let the dawn sit beside it.', { exact: false }).length).toBeGreaterThan(0)
+    expect(screen.queryAllByText('Plainer:').length).toBeLessThan(7)
   })
 })
