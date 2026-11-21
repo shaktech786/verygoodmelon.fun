@@ -1,76 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
+import {
+  MAX_GUESS_LENGTH,
+  fallbackCommentary,
+  parseTiles,
+  tidyCommentary,
+  type ScoredTile,
+} from '@/lib/games/hope-daily/commentary'
 
-function getOpenAI() {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    throw new Error('OPENAI_API_KEY environment variable is not configured')
-  }
-  return new OpenAI({ apiKey })
+const SYSTEM_INSTRUCTION = `You write one short line of gentle commentary for a calm daily word puzzle about hopeful progress in the world (health, energy, nature, rights, peace, technology).
+The player has just typed a guess. Comment on the guessed word itself: what it means, a small surprising or hopeful association, or light wordplay.
+
+Rules:
+- One sentence, at most 14 words. Plain text, no hashtags, at most one emoji.
+- Warm, curious, quietly witty. Never sarcastic, never pushy, never "great job" filler.
+- You do not know the answer. Never hint at it and never say "close", "almost" or "wrong".
+- If the guess is not a real word (random letters), smile at it kindly in a few words.
+- Never mention puzzles being hard, scores, speed, or how many tries are left.
+- Vary your wording; avoid leaning on the words "quiet" and "quietly".
+- Never mention being a program, a model or AI.`
+
+function describeTiles(tiles: ScoredTile[]): string {
+  if (tiles.length === 0) return ''
+  const placed = tiles.filter(tile => tile.state === 'correct').length
+  const present = tiles.filter(tile => tile.state === 'present').length
+  return ` (${placed} letters in the right place, ${present} in the word elsewhere)`
 }
 
-const FALLBACK_COMMENTARY = 'Nice try! Keep going!'
-const FALLBACK_WIN_COMMENTARY = "You found today's word!"
-
 export async function POST(request: NextRequest) {
-  let isWin = false
+  const body = await request.json().catch(() => null)
+  const rawGuess: unknown = body?.guess
+
+  if (typeof rawGuess !== 'string' || !/^[A-Za-z]+$/.test(rawGuess) || rawGuess.length > MAX_GUESS_LENGTH) {
+    return NextResponse.json({ error: 'Invalid guess' }, { status: 400 })
+  }
+
+  const guess = rawGuess.toUpperCase()
+  const isCorrect = body?.isCorrect === true
+  const tiles = parseTiles(body?.letterStates, guess)
+  const guessNumber = Number.isInteger(body?.guessNumber) && body.guessNumber > 0 ? body.guessNumber : undefined
+  const fallback = fallbackCommentary(guess, tiles, isCorrect, guessNumber)
 
   try {
-    const { guess, isCorrect } = await request.json()
-    isWin = isCorrect === true
+    const prompt = isCorrect
+      ? `The player just found today's word: "${guess}". Celebrate softly by saying something hopeful about what "${guess}" stands for.`
+      : `The player guessed "${guess}"${describeTiles(tiles)}.`
 
-    if (!guess || typeof guess !== 'string') {
-      return NextResponse.json({ error: 'Invalid guess' }, { status: 400 })
-    }
-
-    // Build context for AI
-    let context = ''
-    if (isCorrect) {
-      context = `The user correctly guessed "${guess}"! Make a celebratory comment that relates to what the word "${guess}" represents!`
-    } else {
-      // Make commentary about the word itself
-      context = `The user guessed "${guess}" in a word puzzle about global progress and positive change. Make a witty, fun comment about the word "${guess}" itself - what it means, what it represents, or something clever about it. Don't focus on whether it's right or wrong, just be playful about the word they chose!`
-    }
-
-    const systemPrompt = `You are a fun, playful commentator for a word guessing game called "Hope Daily" about global progress and positive change.
-Your job is to make witty, relevant comments about the WORDS themselves, not about game mechanics.
-
-Guidelines:
-- Keep it VERY short (max 10-15 words)
-- Comment on what the WORD means, represents, or is associated with
-- Be light, playful, and clever
-- Use emojis sparingly (max 1-2)
-- Make puns, wordplay, or cultural references when appropriate
-- Keep the tone positive and uplifting (matching the game's theme of hope and progress)
-- Be creative and varied - don't repeat yourself
-- DON'T say things like "close", "almost", "warm" unless it's a pun about the word itself
-
-Examples for different guesses:
-- User guesses "PEACE": "Inner peace or world peace? Why not both! ☮️"
-- User guesses "WATER": "The universal solvent! H2O know it's important 💧"
-- User guesses "SOLAR": "Bright idea! The sun is our biggest power source ☀️"
-- User guesses "TREES": "Nature's air purifiers and carbon storage! 🌳"
-- User guesses "QWERT": "Looks like someone keyboard-smashed! 😅"
-- User guesses "HELPS": "Love the positive energy! We all need helpers 🤝"
-- User guesses "UNITY": "Together we're stronger! That's the spirit ✊"
-- Correct guess "CURES": "Healing the world, one cure at a time! 🎉"`
-
-    const completion = await getOpenAI().chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: context }
-      ],
-      temperature: 0.9,
-      max_tokens: 30
+    const result = await getGemini().models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        temperature: 0.9,
+        maxOutputTokens: 60,
+        ...MINIMAL_THINKING,
+      },
     })
 
-    const commentary = completion.choices[0].message.content?.trim() || (isWin ? FALLBACK_WIN_COMMENTARY : FALLBACK_COMMENTARY)
-
-    return NextResponse.json({ commentary })
-
+    const commentary = tidyCommentary(result.text ?? '')
+    return NextResponse.json({ commentary: commentary || fallback })
   } catch (error) {
     console.error('Commentary generation error:', error)
-    return NextResponse.json({ commentary: isWin ? FALLBACK_WIN_COMMENTARY : FALLBACK_COMMENTARY })
+    return NextResponse.json({ commentary: fallback })
   }
 }

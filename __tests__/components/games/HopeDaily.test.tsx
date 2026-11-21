@@ -135,7 +135,7 @@ describe('HopeDaily', () => {
     await waitFor(() => {
       expect(screen.getByText('Growth')).toBeInTheDocument()
       expect(screen.getByText('Hope')).toBeInTheDocument()
-      expect(screen.getByText('Absent')).toBeInTheDocument()
+      expect(screen.getByText('Resting')).toBeInTheDocument()
     })
   })
 })

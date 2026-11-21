@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useLayoutEffect, useCallback } from 'react'
-import { Lightbulb } from 'lucide-react'
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
+import { Lightbulb, Share2 } from 'lucide-react'
 
 type LetterState = 'correct' | 'present' | 'absent' | 'empty'
 
@@ -36,6 +36,29 @@ const MAX_HINTS = 3
 const STORAGE_KEY = 'hope-daily-state'
 const GUESS_ERROR = 'That guess did not go through. Give it another try in a moment.'
 const HINT_ERROR = 'No hint just now. Try again in a moment.'
+const SHARE_LINK = 'verygoodmelon.fun/games/the-silver-lining'
+
+// Filled tiles: dark green and warm amber differ in lightness as well as hue,
+// so they stay apart for colour-blind players; letters already carry their state in words.
+const TILE_COLOURS: Record<LetterState, string> = {
+  correct: 'bg-melon-green border-melon-green text-background',
+  present: 'bg-warm border-warm text-[#1a1a1a]',
+  absent: 'bg-foreground/10 border-transparent text-foreground/70',
+  empty: 'border-foreground/20',
+}
+
+// Used-up keys step back and are struck through, so they read as spent without relying on colour.
+const ABSENT_KEY = 'bg-transparent border-foreground/10 text-foreground/60 line-through'
+
+const REFLECTIONS: Record<string, string> = {
+  Energy: 'Every light powered by sun or wind is a small vote for tomorrow.',
+  Nature: 'Forests come back when enough people decide they should.',
+  Health: 'Behind numbers like these are families who got more time together.',
+  Rights: 'Changes like this were once called impossible by sensible people.',
+  Peace: 'Peace is mostly patient, unglamorous work, and people keep doing it.',
+  Tech: 'Tools made by curious people keep turning into help for strangers.',
+}
+const DEFAULT_REFLECTION = 'Good news travels slower than bad news. You just helped it along.'
 
 // The word changes at midnight UTC on the server, so the saved game is keyed the same way.
 const todayKey = () => new Date().toISOString().slice(0, 10)
@@ -85,17 +108,19 @@ export default function HopeDaily() {
   const [gameState, setGameState] = useState<'playing' | 'won' | 'lost'>('playing')
   const [message, setMessage] = useState<string>('')
   const [shake, setShake] = useState(false)
-  const [revealed, setRevealed] = useState(false)
   const [keyboardStates, setKeyboardStates] = useState<Map<string, LetterState>>(new Map())
   const [revealedData, setRevealedData] = useState<RevealedWord | null>(null)
   const [commentary, setCommentary] = useState<string>('')
-  const [showCommentary, setShowCommentary] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isFetchingCommentary, setIsFetchingCommentary] = useState(false)
   const [hintsUsed, setHintsUsed] = useState(0)
   const [currentHint, setCurrentHint] = useState<string>('')
   const [revealedLetters, setRevealedLetters] = useState<Map<number, string>>(new Map())
   const [isFetchingHint, setIsFetchingHint] = useState(false)
+  const [shareNote, setShareNote] = useState('')
+  // Only the newest guess may speak: a slow reply for an earlier row is dropped.
+  const commentaryRequestRef = useRef(0)
+  const endingHeadingRef = useRef<HTMLHeadingElement>(null)
+  const finishedThisVisitRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -131,9 +156,8 @@ export default function HopeDaily() {
               state.guesses.forEach(guess => mergeKeyStates(savedKeyStates, guess))
               setKeyboardStates(savedKeyStates)
 
-              if (state.gameState !== 'playing' && state.revealedData) {
+              if (state.gameState !== 'playing' && isRevealedWord(state.revealedData)) {
                 setRevealedData(state.revealedData)
-                setRevealed(true)
               }
             } else {
               localStorage.removeItem(STORAGE_KEY)
@@ -172,12 +196,32 @@ export default function HopeDaily() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   }, [metadata, guesses, gameState, revealedData, hintsUsed, currentHint, revealedLetters])
 
-  // Update keyboard states based on guesses
+  // A finished day whose word never arrived (offline at the end) asks once more on the next visit.
+  useEffect(() => {
+    if (!metadata || gameState !== 'lost' || revealedData) return
+    let cancelled = false
+    fetch('/api/hope-daily', { method: 'PUT' })
+      .then(response => (response.ok ? response.json() : null))
+      .then((data: unknown) => {
+        if (!cancelled && isRevealedWord(data)) setRevealedData(data)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [metadata, gameState, revealedData])
+
+  // Focus follows the player into the ending, because the keys they were using are gone.
+  useEffect(() => {
+    if (gameState !== 'playing' && finishedThisVisitRef.current) {
+      endingHeadingRef.current?.focus()
+    }
+  }, [gameState])
+
   const updateKeyboardStates = useCallback((letterStates: LetterTile[]) => {
     setKeyboardStates(prev => mergeKeyStates(new Map(prev), letterStates))
   }, [])
 
-  // Fetch hint from API
   const fetchHint = useCallback(async () => {
     if (isFetchingHint || hintsUsed >= MAX_HINTS || gameState !== 'playing') return
 
@@ -225,39 +269,30 @@ export default function HopeDaily() {
     }
   }, [isFetchingHint, hintsUsed, gameState, revealedLetters, guesses])
 
-  const showCommentaryBubble = useCallback(async (
+  const requestCommentary = useCallback(async (
     guess: string,
     letterStates: LetterTile[],
-    isCorrect: boolean
+    isCorrect: boolean,
+    guessNumber: number
   ) => {
-    if (isFetchingCommentary) return
-
-    setIsFetchingCommentary(true)
-    setShowCommentary(false)
+    const request = ++commentaryRequestRef.current
+    setCommentary('')
     try {
       const response = await fetch('/api/hope-daily/commentary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          guess,
-          letterStates,
-          isCorrect
-        })
+        body: JSON.stringify({ guess, letterStates, isCorrect, guessNumber })
       })
 
       const data = response.ok ? await response.json() : null
-      if (data?.commentary) {
+      if (request === commentaryRequestRef.current && typeof data?.commentary === 'string') {
         setCommentary(data.commentary)
-        setShowCommentary(true)
       }
     } catch (error) {
       console.error('Failed to fetch commentary:', error)
-    } finally {
-      setIsFetchingCommentary(false)
     }
-  }, [isFetchingCommentary])
+  }, [])
 
-  // Submit guess to server
   const submitGuess = useCallback(async () => {
     if (!currentGuess || !metadata || isSubmitting) return
 
@@ -288,7 +323,6 @@ export default function HopeDaily() {
         return
       }
 
-      // Process response
       const letterStates: LetterTile[] = data.letterStates.map((state: { letter: string; state: LetterState }) => ({
         letter: state.letter,
         state: state.state
@@ -297,42 +331,23 @@ export default function HopeDaily() {
       updateKeyboardStates(letterStates)
 
       const newGuesses = [...guesses, letterStates]
-      const guessWord = currentGuess // Save before clearing
+      const guessWord = currentGuess
       setGuesses(newGuesses)
       setCurrentGuess('')
       setMessage('')
 
-      // Check win
       if (data.isCorrect) {
+        finishedThisVisitRef.current = true
         setGameState('won')
-        setRevealedData({ word: data.word, fact: data.fact, category: data.category })
-        setTimeout(() => setRevealed(true), 1500)
-
-        const encouragements = [
-          'Amazing!',
-          'Brilliant!',
-          'Fantastic!',
-          'Excellent!',
-          'Perfect!'
-        ]
-        setMessage(encouragements[Math.floor(Math.random() * encouragements.length)])
-
-        // Show victory commentary
-        showCommentaryBubble(guessWord, letterStates, true)
+        if (isRevealedWord(data)) setRevealedData({ word: data.word, fact: data.fact, category: data.category })
+        requestCommentary(guessWord, letterStates, true, newGuesses.length)
       } else if (newGuesses.length >= MAX_GUESSES) {
+        finishedThisVisitRef.current = true
+        commentaryRequestRef.current++
+        setCommentary('')
         setGameState('lost')
-        setShowCommentary(false)
-        setMessage('That was the last guess.')
-        const revealData: unknown = await fetch('/api/hope-daily', { method: 'PUT' })
-          .then(revealResponse => (revealResponse.ok ? revealResponse.json() : null))
-          .catch(() => null)
-        if (isRevealedWord(revealData)) {
-          setRevealedData(revealData)
-          setMessage(`The word was ${revealData.word}`)
-          setTimeout(() => setRevealed(true), 1500)
-        }
       } else {
-        showCommentaryBubble(guessWord, letterStates, false)
+        requestCommentary(guessWord, letterStates, false, newGuesses.length)
       }
     } catch (error) {
       console.error('Failed to submit guess:', error)
@@ -340,13 +355,11 @@ export default function HopeDaily() {
     } finally {
       setIsSubmitting(false)
     }
-  }, [currentGuess, metadata, guesses, showCommentaryBubble, updateKeyboardStates, isSubmitting])
+  }, [currentGuess, metadata, guesses, requestCommentary, updateKeyboardStates, isSubmitting])
 
-  // Handle key press
   const handleKeyPress = useCallback((key: string, hasModifier = false) => {
     if (gameState !== 'playing' || !metadata) return
 
-    // Don't allow typing if modifier keys are pressed
     if (hasModifier && /^[A-Za-z]$/.test(key)) return
 
     if (key === 'Backspace' || key === 'BACK') {
@@ -364,21 +377,29 @@ export default function HopeDaily() {
 
   const handleStartOver = () => {
     localStorage.removeItem(STORAGE_KEY)
+    commentaryRequestRef.current++
 
-    // Reset all game state
     setGuesses([])
     setCurrentGuess('')
     setGameState('playing')
     setMessage('')
     setShake(false)
-    setRevealed(false)
     setKeyboardStates(new Map())
     setRevealedData(null)
     setCommentary('')
-    setShowCommentary(false)
     setHintsUsed(0)
     setCurrentHint('')
     setRevealedLetters(new Map())
+  }
+
+  const passItOn = async () => {
+    if (!revealedData) return
+    try {
+      await navigator.clipboard.writeText(`${revealedData.fact} (Found in The Optimist, ${SHARE_LINK})`)
+      setShareNote('Copied. Thank you for passing it on.')
+    } catch {
+      setShareNote('Copying is not available here, but the fact is yours to tell.')
+    }
   }
 
   // A layout effect re-subscribes during the commit, so a key pressed as soon as a
@@ -426,54 +447,55 @@ export default function HopeDaily() {
     )
   }
 
-  // Render empty tiles for remaining guesses
-  const remainingGuesses = MAX_GUESSES - guesses.length - (currentGuess ? 1 : 0)
+  const isPlaying = gameState === 'playing'
+  const wordLength = metadata.wordLength
+
+  // A finished board keeps only the rows that were played.
+  const remainingGuesses = isPlaying ? MAX_GUESSES - guesses.length - (currentGuess ? 1 : 0) : 0
   const emptyRows = Array.from({ length: remainingGuesses }, () =>
-    Array.from({ length: metadata.wordLength }, () => ({ letter: '', state: 'empty' as LetterState }))
+    Array.from({ length: wordLength }, () => ({ letter: '', state: 'empty' as LetterState }))
   )
 
-  // Current guess tiles
-  const currentGuessTiles: LetterTile[] = Array.from({ length: metadata.wordLength }, (_, i) => ({
+  const currentGuessTiles: LetterTile[] = Array.from({ length: wordLength }, (_, i) => ({
     letter: currentGuess[i] || '',
     state: 'empty' as LetterState
   }))
 
   const allRows = [
     ...guesses,
-    ...(gameState === 'playing' && currentGuess ? [currentGuessTiles] : []),
+    ...(isPlaying && currentGuess ? [currentGuessTiles] : []),
     ...emptyRows
   ]
 
+  const tileText = wordLength > 10 ? 'text-sm sm:text-lg' : wordLength > 7 ? 'text-base sm:text-xl' : 'text-lg sm:text-2xl'
+
   return (
-    <div className="max-w-2xl mx-auto px-2 sm:px-0">
-      <p className="mb-2 text-center text-xs sm:text-sm text-foreground/70">
-        Today&apos;s theme: <span className="font-medium text-foreground">{metadata.category}</span> · {metadata.wordLength} letters
+    <div className="max-w-2xl mx-auto">
+      <p className="mb-3 text-center text-sm text-foreground/70">
+        Today&apos;s theme: <span className="font-medium text-foreground">{metadata.category}</span> · {wordLength} letters
       </p>
 
-      {/* Game Board */}
       <div
-        className="mb-2 sm:mb-3 flex flex-col gap-1 sm:gap-1.5"
-        role="application"
-        aria-label="Hope Daily Word Game"
+        className="mx-auto mb-3 flex flex-col gap-1 sm:gap-1.5"
+        style={{ maxWidth: `${wordLength * 3.4}rem` }}
+        role="grid"
+        aria-label="Today's guesses"
       >
         {allRows.map((row, rowIndex) => (
           <div
             key={rowIndex}
-            className={`flex gap-1 sm:gap-1 justify-center ${
-              shake && rowIndex === guesses.length ? 'animate-shake' : ''
-            }`}
+            role="row"
+            className={`grid gap-1 sm:gap-1.5 ${shake && rowIndex === guesses.length ? 'animate-shake' : ''}`}
+            style={{ gridTemplateColumns: `repeat(${wordLength}, minmax(0, 1fr))` }}
           >
             {row.map((tile, colIndex) => (
               <div
                 key={colIndex}
                 className={`
-                  w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 border-2 rounded flex items-center justify-center
-                  text-base sm:text-lg md:text-xl font-bold transition-all duration-300
-                  ${tile.state === 'correct' ? 'bg-[#74c69d] border-[#74c69d] text-white' : ''}
-                  ${tile.state === 'present' ? 'bg-[#f59e0b] border-[#f59e0b] text-white' : ''}
-                  ${tile.state === 'absent' ? 'bg-foreground/60 border-transparent text-background' : ''}
-                  ${tile.state === 'empty' ? 'border-foreground/20' : ''}
-                  ${tile.letter && tile.state === 'empty' ? 'border-foreground/40 scale-105' : ''}
+                  aspect-square border-2 rounded-md flex items-center justify-center
+                  font-bold transition-colors duration-300 ${tileText}
+                  ${TILE_COLOURS[tile.state]}
+                  ${tile.letter && tile.state === 'empty' ? 'border-foreground/50' : ''}
                 `}
                 role="gridcell"
                 aria-label={
@@ -489,219 +511,174 @@ export default function HopeDaily() {
         ))}
       </div>
 
-      {/* Message */}
       {message && (
-        <div
-          className="text-center mb-2 text-base sm:text-lg font-medium animate-fade"
-          role="status"
-          aria-live="polite"
-        >
+        <p className="text-center mb-2 text-base font-medium animate-fade" role="status" aria-live="polite">
           {message}
-        </div>
+        </p>
       )}
 
-      {showCommentary && commentary && (
-        <div
-          className="flex justify-center mb-2 animate-fade"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="relative max-w-sm">
-            <div className="bg-gradient-to-r from-accent/10 to-success/10 border-2 border-accent/30 rounded-2xl px-3 py-2 shadow-lg backdrop-blur-sm">
-              <p className="text-xs sm:text-sm text-foreground font-medium text-center">
+      {isPlaying && (
+        <>
+          <div className="min-h-[2.75rem] mb-2 flex justify-center items-center" role="status" aria-live="polite">
+            {commentary && (
+              <p className="max-w-sm px-4 py-2 rounded-2xl bg-card-bg border border-card-border text-sm text-foreground text-center animate-fade">
                 {commentary}
               </p>
-            </div>
-            {/* Speech bubble tail */}
-            <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-accent/30"></div>
+            )}
           </div>
-        </div>
-      )}
 
-      {/* Hint Section */}
-      {gameState === 'playing' && (
-        <div className="mb-3 flex flex-col items-center gap-2">
-          {/* Hint Button */}
-          <button
-            onClick={fetchHint}
-            disabled={hintsUsed >= MAX_HINTS || isFetchingHint}
-            className={`
-              flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
-              transition-all duration-200
-              ${hintsUsed >= MAX_HINTS
-                ? 'bg-foreground/5 text-foreground/30 cursor-not-allowed'
-                : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-200 border border-amber-500/30'
-              }
-            `}
-            aria-label={`Get hint (${MAX_HINTS - hintsUsed} remaining)`}
-          >
-            <Lightbulb size={16} className={isFetchingHint ? 'animate-pulse' : ''} />
-            {isFetchingHint ? 'One moment...' : `Hint (${MAX_HINTS - hintsUsed} left)`}
-          </button>
-
-          {/* Current Hint Display */}
-          {currentHint && (
-            <div className="max-w-sm text-center animate-fade" role="status" aria-live="polite">
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-2">
-                <p className="text-sm text-amber-700 dark:text-amber-300">
-                  💡 {currentHint}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Revealed Letters Display */}
-          {revealedLetters.size > 0 && (
-            <div className="flex flex-wrap justify-center gap-1 text-xs text-foreground/70">
-              <span>Revealed:</span>
-              {Array.from(revealedLetters.entries()).sort(([a], [b]) => a - b).map(([pos, letter]) => (
-                <span key={pos} className="font-mono bg-amber-500/20 px-1.5 py-0.5 rounded">
-                  letter {pos + 1} is {letter}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Visual Keyboard */}
-      <div className="mb-2 sm:mb-3 space-y-0.5 sm:space-y-1">
-        {KEYBOARD_ROWS.map((row, rowIndex) => (
-          <div key={rowIndex} className="flex justify-center gap-0.5 sm:gap-1">
-            {row.map((key) => {
-              const keyState = keyboardStates.get(key)
-              const isSpecialKey = key === 'ENTER' || key === 'BACK'
-
-              return (
-                <button
-                  key={key}
-                  onClick={() => handleKeyPress(key === 'BACK' ? 'Backspace' : key === 'ENTER' ? 'Enter' : key)}
-                  disabled={gameState !== 'playing'}
-                  className={`
-                    ${isSpecialKey ? 'px-2 sm:px-3 text-[10px] sm:text-xs' : 'w-7 sm:w-8 md:w-9'}
-                    h-10 sm:h-10 md:h-12 rounded font-bold text-[10px] sm:text-xs md:text-sm
-                    transition-all duration-200
-                    ${keyState === 'correct' ? 'bg-[#74c69d] text-white border-[#74c69d]' : ''}
-                    ${keyState === 'present' ? 'bg-[#f59e0b] text-white border-[#f59e0b]' : ''}
-                    ${keyState === 'absent' ? 'bg-foreground/60 text-background border-transparent' : ''}
-                    ${!keyState ? 'bg-foreground/10 hover:bg-foreground/20 border-foreground/20' : ''}
-                    border-2
-                    disabled:opacity-50 disabled:cursor-not-allowed
-                    active:scale-95
-                  `}
-                  aria-label={key === 'BACK' ? 'Backspace' : key}
-                  data-letter-key
-                >
-                  {key === 'BACK' ? '⌫' : key}
-                </button>
-              )
-            })}
-          </div>
-        ))}
-      </div>
-
-      {/* Color Legend and Start Over */}
-      <div className="mb-2 sm:mb-3 px-2">
-        <div className="flex flex-wrap justify-center gap-2 sm:gap-3 text-[10px] sm:text-xs mb-2">
-          <div className="flex items-center gap-1 sm:gap-1.5">
-            <div className="w-4 h-4 sm:w-5 sm:h-5 bg-[#74c69d] rounded border-2 border-[#74c69d]"></div>
-            <span className="whitespace-nowrap"><strong className="font-semibold">Growth</strong>: right spot</span>
-          </div>
-          <div className="flex items-center gap-1 sm:gap-1.5">
-            <div className="w-4 h-4 sm:w-5 sm:h-5 bg-[#f59e0b] rounded border-2 border-[#f59e0b]"></div>
-            <span className="whitespace-nowrap"><strong className="font-semibold">Hope</strong>: wrong spot</span>
-          </div>
-          <div className="flex items-center gap-1 sm:gap-1.5">
-            <div className="w-4 h-4 sm:w-5 sm:h-5 bg-foreground/60 rounded"></div>
-            <span className="whitespace-nowrap"><strong className="font-semibold">Absent</strong>: not in the word</span>
-          </div>
-        </div>
-
-        {/* Once today's word is revealed, replaying it would only repeat the answer. */}
-        {guesses.length > 0 && gameState === 'playing' && (
-          <div className="flex justify-center">
+          <div className="mb-3 flex flex-col items-center gap-2">
             <button
-              onClick={handleStartOver}
-              className="px-4 py-1.5 text-xs sm:text-sm bg-foreground/10 hover:bg-foreground/20 text-foreground rounded-lg transition-colors border border-foreground/20"
-              aria-label="Start over"
+              onClick={fetchHint}
+              disabled={hintsUsed >= MAX_HINTS || isFetchingHint}
+              className={`
+                flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-lg text-sm font-medium
+                transition-colors duration-200
+                ${hintsUsed >= MAX_HINTS
+                  ? 'bg-foreground/5 text-foreground/60 cursor-not-allowed'
+                  : 'bg-warm/25 hover:bg-warm/40 text-foreground border border-warm/60'
+                }
+              `}
+              aria-label={`Get hint (${MAX_HINTS - hintsUsed} remaining)`}
             >
-              Start Over
+              <Lightbulb size={16} aria-hidden="true" />
+              {isFetchingHint ? 'One moment...' : `Hint (${MAX_HINTS - hintsUsed} left)`}
             </button>
-          </div>
-        )}
-      </div>
 
-      {/* Educational Fact - Revealed after winning */}
-      {revealed && revealedData && gameState === 'won' && (
-        <div
-          className="mt-4 p-5 bg-gradient-to-br from-[#74c69d]/15 to-[#74c69d]/5 border-2 border-[#74c69d] rounded-xl animate-fade relative overflow-hidden"
-          role="region"
-          aria-label="Educational fact"
+            {currentHint && (
+              <p className="max-w-sm text-center text-sm text-foreground bg-warm/15 border border-warm/40 rounded-lg px-4 py-2 animate-fade" role="status" aria-live="polite">
+                {currentHint}
+              </p>
+            )}
+
+            {revealedLetters.size > 0 && (
+              <div className="flex flex-wrap justify-center gap-1 text-xs text-foreground/70">
+                <span>Revealed:</span>
+                {Array.from(revealedLetters.entries()).sort(([a], [b]) => a - b).map(([pos, letter]) => (
+                  <span key={pos} className="font-mono bg-warm/25 text-foreground px-1.5 py-0.5 rounded">
+                    letter {pos + 1} is {letter}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mb-3 space-y-1.5" aria-label="Letter keys" role="group">
+            {KEYBOARD_ROWS.map((row, rowIndex) => (
+              <div key={rowIndex} className="flex justify-center gap-1 sm:gap-1.5">
+                {row.map((key) => {
+                  const keyState = keyboardStates.get(key)
+                  const isSpecialKey = key === 'ENTER' || key === 'BACK'
+
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => handleKeyPress(key === 'BACK' ? 'Backspace' : key === 'ENTER' ? 'Enter' : key)}
+                      className={`
+                        ${isSpecialKey ? 'flex-[1.5] max-w-[4.5rem] text-xs' : 'flex-1 max-w-[2.75rem] text-sm sm:text-base'}
+                        h-12 sm:h-14 rounded-md font-bold border-2 transition-colors duration-200
+                        ${keyState === 'absent' ? ABSENT_KEY : keyState ? TILE_COLOURS[keyState] : 'bg-foreground/10 hover:bg-foreground/20 border-foreground/15 text-foreground'}
+                      `}
+                      aria-label={key === 'BACK' ? 'Backspace' : key}
+                      data-letter-key
+                    >
+                      {key === 'BACK' ? '⌫' : key}
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+
+          <div className="mb-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-foreground/80">
+            <span className="flex items-center gap-1.5">
+              <span className={`w-4 h-4 rounded border-2 ${TILE_COLOURS.correct}`} aria-hidden="true" />
+              <span><strong className="font-semibold">Growth</strong>: right spot</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className={`w-4 h-4 rounded border-2 ${TILE_COLOURS.present}`} aria-hidden="true" />
+              <span><strong className="font-semibold">Hope</strong>: in the word, other spot</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className={`w-4 h-4 rounded border-2 ${TILE_COLOURS.absent}`} aria-hidden="true" />
+              <span><strong className="font-semibold">Resting</strong>: not in the word</span>
+            </span>
+          </div>
+
+          {guesses.length === 0 && !currentGuess ? (
+            <p className="text-center text-sm text-foreground/70">
+              Guess today&apos;s {wordLength}-letter word in {MAX_GUESSES} tries; any letters count. Type or tap, then press Enter.
+            </p>
+          ) : (
+            <div className="flex justify-center">
+              <button
+                onClick={handleStartOver}
+                className="px-4 py-2 text-sm bg-foreground/10 hover:bg-foreground/20 text-foreground rounded-lg transition-colors border border-foreground/20"
+                aria-label="Start over"
+              >
+                Start Over
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {!isPlaying && (
+        <section
+          className={`mt-4 p-5 sm:p-7 rounded-2xl border-2 animate-fade ${
+            gameState === 'won' ? 'border-melon-green bg-melon-green/5' : 'border-card-border bg-card-bg'
+          }`}
+          aria-labelledby="optimist-ending-title"
         >
-          {/* Subtle celebration sparkles */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-2 right-4 w-2 h-2 bg-[#74c69d]/60 rounded-full animate-ping" style={{ animationDelay: '0ms' }} />
-            <div className="absolute top-6 right-12 w-1.5 h-1.5 bg-[#74c69d]/40 rounded-full animate-ping" style={{ animationDelay: '200ms' }} />
-            <div className="absolute bottom-4 left-8 w-1 h-1 bg-[#74c69d]/50 rounded-full animate-ping" style={{ animationDelay: '400ms' }} />
-          </div>
+          <h2
+            id="optimist-ending-title"
+            ref={endingHeadingRef}
+            tabIndex={-1}
+            className="text-sm font-semibold uppercase tracking-wide text-foreground/70 focus-visible:shadow-none!"
+          >
+            {gameState === 'won' ? 'You found it' : "Today's word"}
+          </h2>
 
-          <div className="relative">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg" aria-hidden="true">🌱</span>
-              <div className="text-xs font-semibold text-melon-green uppercase tracking-wide">
-                {revealedData.category}
+          {revealedData ? (
+            <div role="region" aria-label="Educational fact">
+              <p className="mt-2 text-3xl sm:text-4xl font-semibold tracking-wider text-foreground">
+                {revealedData.word}
+              </p>
+              {gameState === 'won' && commentary && (
+                <p className="mt-1 text-sm text-foreground/70 italic">{commentary}</p>
+              )}
+              <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-melon-green">
+                {revealedData.category} · good news
+              </p>
+              <p className="mt-1 text-base sm:text-lg leading-relaxed text-foreground">
+                {revealedData.fact}
+              </p>
+              <p className="mt-4 text-sm text-foreground/70">
+                {gameState === 'lost' && 'Not every word gives itself up, and the good news is true either way. '}
+                {REFLECTIONS[revealedData.category] ?? DEFAULT_REFLECTION}
+              </p>
+
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={passItOn}
+                  className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-melon-green text-background hover:opacity-90 transition-opacity"
+                >
+                  <Share2 size={16} aria-hidden="true" />
+                  Pass the good news on
+                </button>
+                <p className="text-sm text-foreground/70" role="status" aria-live="polite">{shareNote}</p>
               </div>
             </div>
-            <p className="text-sm sm:text-base leading-relaxed text-foreground">
-              {revealedData.fact}
+          ) : (
+            <p className="mt-2 text-foreground/70" role="status" aria-live="polite">
+              The word is on its way.
             </p>
-            <p className="mt-3 text-xs text-melon-green/80 italic">
-              The world is getting better, one fact at a time.
-            </p>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Loss state - show fact too (but still encouraging) */}
-      {revealed && revealedData && gameState === 'lost' && (
-        <div
-          className="mt-4 p-5 bg-gradient-to-br from-foreground/5 to-foreground/3 border-2 border-foreground/20 rounded-xl animate-fade"
-          role="region"
-          aria-label="Educational fact"
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg" aria-hidden="true">💭</span>
-            <div className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">
-              {revealedData.category}
-            </div>
-          </div>
-          <p className="mb-2 text-sm sm:text-base text-foreground">
-            The word was <strong className="font-semibold tracking-wide">{revealedData.word}</strong>.
+          <p className="mt-5 pt-4 border-t border-card-border text-sm text-foreground/70">
+            That is today&apos;s puzzle, complete. A new word and a new piece of good news arrive tomorrow.
           </p>
-          <p className="text-sm sm:text-base leading-relaxed text-foreground">
-            {revealedData.fact}
-          </p>
-          <p className="mt-3 text-xs text-foreground/50 italic">
-            Not all puzzles need to be solved. Learning is the real win.
-          </p>
-        </div>
-      )}
-
-      {/* Instructions */}
-      {guesses.length === 0 && !currentGuess && (
-        <div className="mt-3 text-center text-xs sm:text-sm text-foreground/70 space-y-1">
-          <p>Guess the {metadata.wordLength}-letter word about global progress in {MAX_GUESSES} tries.</p>
-          <p className="text-[10px] sm:text-xs">
-            Type or tap letters, then press Enter.
-          </p>
-        </div>
-      )}
-
-      {/* Game state info */}
-      {gameState !== 'playing' && (
-        <div className="mt-3 text-center text-xs sm:text-sm text-foreground/70">
-          <p>Come back tomorrow for a new word!</p>
-        </div>
+        </section>
       )}
 
       <style jsx>{`
