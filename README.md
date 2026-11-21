@@ -8,29 +8,30 @@
 
 ## 🎮 Games
 
-Fourteen games in three groups. The list in `lib/games/config.ts` is the source of truth.
+14 games in three groups. The list in `lib/games/config.ts` is the source of truth.
 
 ### Slow down
-- **[The Patient One](https://verygoodmelon.fun/games/the-long-breath)**: A game that rewards you for not rushing
-- **[The Harmonist](https://verygoodmelon.fun/games/the-still-point)**: Breathe along with animated patterns that calm you down
-- **[The Gardener](https://verygoodmelon.fun/games/quiet-grove)**: Plant a quiet garden and see who comes to visit
+- **[The Patient One](https://verygoodmelon.fun/games/the-long-breath)**: Seeds that settle only while you stay still, and a minute for one small thing
+- **[The Harmonist](https://verygoodmelon.fun/games/the-still-point)**: Follow a shape, sound a chord, and leave with the pattern your breaths made
+- **[The Gardener](https://verygoodmelon.fun/games/quiet-grove)**: Tend a garden that answers what you plant and grows while you're away
 - **[The Keeper](https://verygoodmelon.fun/games/the-slow-post)**: Seal a worry away, then see if it came true
-- **[The Envoy](https://verygoodmelon.fun/games/the-threshold)**: Settle, find your words, walk in with one line
+- **[The Plain Speaker](https://verygoodmelon.fun/games/the-threshold)**: Settle, find your words, walk in with one line
 
 ### Reflect
 - **[The Sage](https://verygoodmelon.fun/games/ancient-voices)**: Ask life questions to history's greatest thinkers
-- **[The Dilemma](https://verygoodmelon.fun/games/the-crossroads)**: Twelve questions with no right answer, and what your choices protect
-- **[The Final Word](https://verygoodmelon.fun/games/final-breath)**: Write what you'd say at the end and read others' words
-- **[The Awakening](https://verygoodmelon.fun/games/first-breath)**: Imagine the moment after your life ends, say your first words, then wake up
-- **[The Arena](https://verygoodmelon.fun/games/the-arena)**: Pick two people and a topic, then watch them argue it out
+- **[The Dilemma](https://verygoodmelon.fun/games/the-crossroads)**: Twelve everyday choices, and a gentle reading of what they protect
+- **[The Final Word](https://verygoodmelon.fun/games/final-breath)**: Write what you'd say at the very end, by candlelight, then see why it doesn't have to wait
+- **[The Awakening](https://verygoodmelon.fun/games/first-breath)**: Imagine the moment after, say your first words, and wake at dawn with one small thing for tomorrow
+- **[The Arena](https://verygoodmelon.fun/games/the-arena)**: Pick two minds and a question, hear them think it through, and see what each got right
 
 ### Play
-- **[The Optimist](https://verygoodmelon.fun/games/the-silver-lining)**: Guess the word, discover something good about the world
-- **[The Alchemist](https://verygoodmelon.fun/games/idea-lab)**: Mix two ideas and find the seven golds
-- **[The Philosopher](https://verygoodmelon.fun/games/thought-pockets)**: A deckbuilder where you build arguments against cognitive biases
+- **[The Optimist](https://verygoodmelon.fun/games/the-silver-lining)**: Read today's good news as it unfolds and find its missing word
+- **[The Alchemist](https://verygoodmelon.fun/games/idea-lab)**: Solve seven riddles by mixing ideas, and get a letter at the end
+- **[The Philosopher](https://verygoodmelon.fun/games/thought-pockets)**: Out-think cognitive biases, one argument at a time
 - **[The Shapeshifter](https://verygoodmelon.fun/games/the-mutation)**: Play a game that keeps changing its mind, and can't be lost
 
 ---
+
 
 ## ✨ Features
 

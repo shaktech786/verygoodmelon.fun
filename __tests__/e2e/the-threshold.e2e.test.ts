@@ -3,7 +3,7 @@ import path from 'node:path'
 import { test, expect, type Locator, type Page } from '@playwright/test'
 
 /**
- * The Envoy (/games/the-threshold): a player-paced minute before a hard conversation.
+ * The Plain Speaker (/games/the-threshold): a player-paced minute before a hard conversation.
  * Everything typed stays in localStorage under one key and is never sent anywhere.
  */
 
@@ -96,7 +96,7 @@ async function axeViolations(page: Page) {
   })
 }
 
-test.describe('The Envoy', () => {
+test.describe('The Plain Speaker', () => {
   test('a full run for asking for something: settles, clarifies and ends with one line, words staying local', async ({ page }) => {
     const errors = collectPageErrors(page)
     const outgoing = collectOutgoing(page)

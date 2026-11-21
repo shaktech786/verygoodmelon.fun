@@ -134,7 +134,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             <Term>Private writing.</Term> What you write in The Keeper (your sealed worries and how
-            they turned out) and in The Envoy (your notes before a conversation) is kept only in
+            they turned out) and in The Plain Speaker (your notes before a conversation) is kept only in
             this browser and never sent to us. &ldquo;Save a copy&rdquo; in The Keeper creates a
             file on your own device.
           </li>

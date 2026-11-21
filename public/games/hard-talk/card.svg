@@ -16,11 +16,11 @@
   <rect x="128" y="160" width="768" height="160" fill="#ffffff" rx="16"/>
   <text x="512" y="260"
     font-family="system-ui, -apple-system, sans-serif"
-    font-size="60"
+    font-size="56"
     font-weight="800"
     fill="#1a1a1a"
     text-anchor="middle"
-    letter-spacing="-2">THE ENVOY</text>
+    letter-spacing="-2">THE PLAIN SPEAKER</text>
 
   <!-- Floor -->
   <rect x="160" y="1240" width="704" height="16" fill="#1a4d2e" opacity="0.35"/>
@@ -42,7 +42,7 @@
   <rect x="528" y="608" width="32" height="648" fill="#1a4d2e"/>
   <rect x="800" y="608" width="32" height="648" fill="#1a4d2e"/>
 
-  <!-- The envoy: a watermelon slice holding a folded note -->
+  <!-- The plain speaker: a watermelon slice holding a folded note -->
   <g transform="translate(330, 1000)">
     <!-- Legs -->
     <rect x="-44" y="120" width="20" height="120" fill="#1a1a1a"/>
