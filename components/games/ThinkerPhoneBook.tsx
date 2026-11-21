@@ -5,6 +5,14 @@ import { Book, Search, X, Phone, Calendar, Globe2 } from 'lucide-react'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
 import { Button } from '@/components/ui/Button'
 
+/** A few broad shelves; a thinker whose field spans two appears on both. */
+const SHELVES: ReadonlyArray<{ label: string; fields: RegExp }> = [
+  { label: 'Philosophy & spirit', fields: /Philosophy|Spirituality|Humanitarian/ },
+  { label: 'Science & invention', fields: /Science|Physics|Chemistry|Mathematics|Astronomy|Invention|Technology/ },
+  { label: 'Arts & writing', fields: /(?:Art|Literature|Music|Diarist|Writing)/ },
+  { label: 'Justice & leadership', fields: /Activism|Civil Rights|Leadership|Justice|Law|Diplomacy|Politics/ },
+]
+
 interface ThinkerPhoneBookProps {
   isOpen: boolean
   onClose: () => void
@@ -19,7 +27,7 @@ export default function ThinkerPhoneBook({
   onSelectThinker
 }: ThinkerPhoneBookProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [shelf, setShelf] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isOpen) return
@@ -39,13 +47,9 @@ export default function ThinkerPhoneBook({
       thinker.field.toLowerCase().includes(searchQuery.toLowerCase()) ||
       thinker.culture.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesCategory = selectedCategory === 'all' || thinker.field === selectedCategory
-
-    return matchesSearch && matchesCategory
+    const shelfFields = SHELVES.find(s => s.label === shelf)?.fields
+    return matchesSearch && (!shelfFields || shelfFields.test(thinker.field))
   })
-
-  // Get unique categories
-  const categories = ['all', ...Array.from(new Set(thinkers.map(t => t.field))).sort()]
 
   const handleCall = (thinkerId: string) => {
     onSelectThinker(thinkerId)
@@ -58,23 +62,23 @@ export default function ThinkerPhoneBook({
         <div
           role="dialog"
           aria-modal="true"
-          aria-labelledby="phone-book-title"
+          aria-labelledby="directory-title"
           className="bg-background rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col animate-fade overflow-hidden my-8"
         >
         {/* Header */}
-        <div className="shrink-0 bg-gradient-to-r from-accent to-accent/80 text-white p-6">
+        <div className="shrink-0 bg-card-bg text-foreground border-b border-card-border p-4 sm:p-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <Book size={32} className="text-white" aria-hidden="true" />
+              <Book size={28} className="text-melon-green" aria-hidden="true" />
               <div>
-                <h2 id="phone-book-title" className="text-2xl font-semibold">The Phone Book</h2>
-                <p className="text-white/90 text-sm">Select who you&apos;d like to speak with</p>
+                <h2 id="directory-title" className="text-2xl font-semibold">Directory</h2>
+                <p className="text-foreground/70 text-sm">Choose who you&apos;d like to talk with</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-white/80 hover:text-white transition-colors"
-              aria-label="Close phone book"
+              className="p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-foreground/70 hover:text-foreground transition-colors"
+              aria-label="Close directory"
             >
               <X size={24} aria-hidden="true" />
             </button>
@@ -82,7 +86,7 @@ export default function ThinkerPhoneBook({
 
           {/* Search Bar */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground/40" size={20} aria-hidden="true" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground/60" size={20} aria-hidden="true" />
             <input
               type="search"
               aria-label="Search thinkers"
@@ -90,7 +94,7 @@ export default function ThinkerPhoneBook({
               placeholder="Search by name, field, or culture..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-lg border-none focus:outline-none focus:ring-2 focus:ring-white/30 text-foreground"
+              className="w-full pl-10 pr-4 py-3 rounded-lg bg-background text-foreground border border-card-border placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>
         </div>
@@ -98,18 +102,18 @@ export default function ThinkerPhoneBook({
         {/* Category Filter */}
         <div className="shrink-0 bg-card-bg border-b border-card-border px-6 py-3 overflow-x-auto">
           <div className="flex gap-2 min-w-max">
-            {categories.map(category => (
+            {[null, ...SHELVES.map(s => s.label)].map(label => (
               <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                aria-pressed={selectedCategory === category}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  selectedCategory === category
+                key={label ?? 'all'}
+                onClick={() => setShelf(label)}
+                aria-pressed={shelf === label}
+                className={`px-4 py-1.5 min-h-[44px] rounded-full text-sm font-medium transition-colors ${
+                  shelf === label
                     ? 'bg-accent text-white'
-                    : 'bg-hover-bg text-foreground/70 hover:bg-card-border'
+                    : 'bg-hover-bg text-foreground/80 hover:bg-card-border'
                 }`}
               >
-                {category === 'all' ? 'All' : category}
+                {label ?? 'All'}
               </button>
             ))}
           </div>
@@ -119,7 +123,7 @@ export default function ThinkerPhoneBook({
         <div className="flex-1 overflow-y-auto p-6">
           {filteredThinkers.length === 0 ? (
             <div className="text-center py-12 text-foreground/70">
-              <Book size={48} className="mx-auto mb-3 opacity-50" />
+              <Book size={48} className="mx-auto mb-3 opacity-50" aria-hidden="true" />
               <p>No thinkers found matching your search.</p>
             </div>
           ) : (
@@ -135,7 +139,7 @@ export default function ThinkerPhoneBook({
                     src={`/games/timeless-minds/avatars/${thinker.id}.png`}
                     alt=""
                     loading="lazy"
-                    className="w-20 h-20 mx-auto mb-3 rounded-full object-cover bg-gradient-to-br from-accent/20 to-success/20"
+                    className="w-20 h-20 mx-auto mb-3 rounded-full object-cover object-[center_20%] bg-gradient-to-br from-accent/20 to-success/20"
                   />
 
                   {/* Name & Title */}
@@ -147,19 +151,16 @@ export default function ThinkerPhoneBook({
                   {/* Details */}
                   <div className="space-y-1.5 text-xs text-foreground/70 mb-3">
                     <div className="flex items-center gap-2">
-                      <Calendar size={12} className="text-foreground/40 flex-shrink-0" />
+                      <Calendar size={12} className="text-foreground/60 flex-shrink-0" aria-hidden="true" />
                       <span>{thinker.era}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Globe2 size={12} className="text-foreground/40 flex-shrink-0" />
+                      <Globe2 size={12} className="text-foreground/60 flex-shrink-0" aria-hidden="true" />
                       <span>{thinker.culture}</span>
                     </div>
                   </div>
 
-                  {/* Opening Line Preview */}
-                  <p className="text-xs text-foreground/70 italic line-clamp-2 mb-3">
-                    &quot;{thinker.openingLine}&quot;
-                  </p>
+                  <p className="text-xs text-foreground/70 line-clamp-2 mb-3">{thinker.openingLine}</p>
 
                   {/* Call Button */}
                   <Button

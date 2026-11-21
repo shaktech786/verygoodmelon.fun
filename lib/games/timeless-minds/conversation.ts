@@ -1,4 +1,5 @@
 import type { Thinker } from './thinkers'
+import { plainText } from './plain-text'
 
 /** Longest message a player can send; the input enforces the same limit. */
 export const MAX_MESSAGE_LENGTH = 1000
@@ -35,6 +36,50 @@ export function tidyLine(text: string, maxLength: number): string {
   if (line.length <= maxLength) return line
   const cut = line.slice(0, maxLength - 1)
   return `${cut.slice(0, cut.lastIndexOf(' ') > 0 ? cut.lastIndexOf(' ') : cut.length)}…`
+}
+
+/** Said, word for word, whenever a visitor's words plainly say they may be in danger. */
+export const CARE_REPLY =
+  'I am really glad you told me. You matter, and you deserve someone who can be with you properly right now; the support lines on this page are there at any hour. I am still here if you want to keep talking.'
+
+// Phrase matching misses danger said sideways, so every reply also carries the model's own judgement.
+export const JUDGED_REPLY_FORMAT = `REPLY FORMAT (always):
+- Sadness, grief, stress, loneliness, regret, fear of death and questions about mortality are ordinary subjects for these conversations and are never risk by themselves.
+- Before replying, judge whether the visitor's latest words suggest they may be at risk of harming themselves or no longer wanting to live, including indirect signs such as feeling everyone would be fine or better off without them, that nobody would notice if they were gone, being tired of everything, wanting it all to be over, or not wanting to wake up.
+- Write the reply as plain spoken words: no markdown, asterisks, headings or lists.
+- Return only JSON, with no other text: {"risk": true or false, "reply": "what you say"}`
+
+export interface JudgedReply {
+  risk: boolean
+  reply: string
+}
+
+function jsonStringFragment(fragment: string): string {
+  try {
+    return JSON.parse(`"${fragment.replace(/\\+$/, '')}"`)
+  } catch {
+    return fragment
+  }
+}
+
+/** Reads the model's {risk, reply}; a reply cut off mid-JSON still yields its words, never raw JSON. */
+export function readJudgedReply(text: string): JudgedReply {
+  const trimmed = text.trim().replace(/^```(?:json)?\s*|\s*```$/g, '').trim()
+  try {
+    const parsed: unknown = JSON.parse(trimmed)
+    if (parsed && typeof parsed === 'object') {
+      const { risk, reply } = parsed as Record<string, unknown>
+      return { risk: risk === true, reply: typeof reply === 'string' ? plainText(reply) : '' }
+    }
+  } catch {}
+  if (trimmed.startsWith('{')) {
+    const reply = trimmed.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)/)
+    return {
+      risk: /"risk"\s*:\s*true/.test(trimmed),
+      reply: reply ? plainText(jsonStringFragment(reply[1])) : '',
+    }
+  }
+  return { risk: false, reply: plainText(trimmed) }
 }
 
 export const SAFETY_GUIDANCE = `SAFETY (overrides everything above):

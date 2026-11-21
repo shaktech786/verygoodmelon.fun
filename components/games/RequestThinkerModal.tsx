@@ -1,10 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X, Heart, Loader2, CheckCircle2 } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Button, buttonClassName } from '@/components/ui/Button'
 
 const REQUEST_UNAVAILABLE = 'Your request could not be sent just now. Your words are still here, so you can try again a little later.'
+const EMPTY_FORM = {
+  requesterName: '',
+  requesterEmail: '',
+  requestedName: '',
+  requestedEra: '',
+  requestedField: '',
+  reasonForRequest: '',
+  personalConnection: ''
+}
 
 interface RequestThinkerModalProps {
   isOpen: boolean
@@ -12,27 +21,32 @@ interface RequestThinkerModalProps {
 }
 
 export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerModalProps) {
-  const [formData, setFormData] = useState({
-    requesterName: '',
-    requesterEmail: '',
-    requestedName: '',
-    requestedEra: '',
-    requestedField: '',
-    reasonForRequest: '',
-    personalConnection: ''
-  })
+  const [formData, setFormData] = useState(EMPTY_FORM)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState('')
+  const doneButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (isSuccess) doneButtonRef.current?.focus()
+  }, [isSuccess])
+
+  const close = () => {
+    if (isSuccess) {
+      setIsSuccess(false)
+      setFormData(EMPTY_FORM)
+    }
+    onClose()
+  }
 
   useEffect(() => {
     if (!isOpen) return
     const closeOnEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') close()
     }
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [isOpen, onClose])
+  })
 
   if (!isOpen) return null
 
@@ -59,19 +73,6 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
       }
 
       setIsSuccess(true)
-      setTimeout(() => {
-        onClose()
-        setIsSuccess(false)
-        setFormData({
-          requesterName: '',
-          requesterEmail: '',
-          requestedName: '',
-          requestedEra: '',
-          requestedField: '',
-          reasonForRequest: '',
-          personalConnection: ''
-        })
-      }, 3000)
     } catch (err) {
       setError(REQUEST_UNAVAILABLE)
       console.error(err)
@@ -88,15 +89,20 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
     return (
       <div className="fixed inset-0 bg-black/50 z-[100] overflow-y-auto">
         <div className="min-h-screen px-4 py-8 flex items-center justify-center">
-          <div className="bg-card-bg rounded-xl p-8 max-w-md w-full shadow-2xl animate-fade">
-          <div className="text-center">
-            <CheckCircle2 className="w-16 h-16 text-success mx-auto mb-4" />
-            <h3 className="text-2xl font-semibold mb-3 text-foreground">Request Submitted!</h3>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="request-saved-title"
+            className="bg-card-bg rounded-xl p-8 max-w-md w-full shadow-2xl animate-fade text-center"
+          >
+            <CheckCircle2 className="w-16 h-16 text-success mx-auto mb-4" aria-hidden="true" />
+            <h3 id="request-saved-title" className="text-2xl font-semibold mb-3 text-foreground">Request saved</h3>
             <p className="text-foreground/70">
-              Thank you for your request. We&apos;ll research your suggested thinker
-              and work on bringing them to life.
+              Thank you. The creator reads every suggestion, though not every thinker can be added.
             </p>
-          </div>
+            <button ref={doneButtonRef} onClick={close} className={buttonClassName('primary', 'md', 'mt-6 w-full')}>
+              Back to the conversation
+            </button>
           </div>
         </div>
       </div>
@@ -122,23 +128,23 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
           </div>
           <button
             onClick={onClose}
-            className="text-foreground/70 hover:text-foreground transition-colors"
+            className="p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-foreground/70 hover:text-foreground transition-colors"
             aria-label="Close request form"
           >
-            <X size={24} />
+            <X size={24} aria-hidden="true" />
           </button>
         </div>
 
         {/* Info Box */}
         <div className="bg-success/10 border border-success/20 rounded-lg p-4 mb-6">
           <div className="flex gap-3">
-            <Heart className="text-success flex-shrink-0 mt-0.5" size={20} />
+            <Heart className="text-success flex-shrink-0 mt-0.5" size={20} aria-hidden="true" />
             <div className="text-sm text-foreground/80">
               <p className="font-medium mb-1">How it works:</p>
               <ul className="space-y-1 list-disc list-inside">
                 <li>Request any positive historical figure who is <strong>no longer living</strong></li>
                 <li>Speak with minds you can no longer reach in real life</li>
-                <li>We research their speaking style, beliefs, and wisdom</li>
+                <li>The creator reads every suggestion; not every one can be added</li>
               </ul>
             </div>
           </div>
@@ -149,30 +155,35 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="requesterName" className="block text-sm font-medium text-foreground/70 mb-1">
-                Your Name
+                Your name (optional)
               </label>
               <input
                 id="requesterName"
                 type="text"
                 value={formData.requesterName}
                 onChange={(e) => handleChange('requesterName', e.target.value)}
+                autoComplete="name"
                 className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
-                required
               />
             </div>
 
             <div>
               <label htmlFor="requesterEmail" className="block text-sm font-medium text-foreground/70 mb-1">
-                Your Email
+                Your email *
               </label>
               <input
                 id="requesterEmail"
                 type="email"
                 value={formData.requesterEmail}
                 onChange={(e) => handleChange('requesterEmail', e.target.value)}
+                autoComplete="email"
+                aria-describedby="requesterEmail-hint"
                 className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                 required
               />
+              <p id="requesterEmail-hint" className="text-xs text-foreground/70 mt-1">
+                Used only to write back to you about this request.
+              </p>
             </div>
           </div>
 
@@ -290,12 +301,12 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="animate-spin" size={18} />
+                  <Loader2 className="animate-spin motion-reduce:animate-none" size={18} aria-hidden="true" />
                   Submitting...
                 </>
               ) : (
                 <>
-                  <Heart size={18} />
+                  <Heart size={18} aria-hidden="true" />
                   Submit Request
                 </>
               )}

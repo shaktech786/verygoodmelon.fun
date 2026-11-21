@@ -2,7 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 import { getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import { detectEmotion } from '@/lib/games/timeless-minds/emotion-detector'
-import { MAX_MESSAGE_LENGTH, SAFETY_GUIDANCE, sanitizeHistory } from '@/lib/games/timeless-minds/conversation'
+import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
+import {
+  CARE_REPLY,
+  JUDGED_REPLY_FORMAT,
+  MAX_MESSAGE_LENGTH,
+  SAFETY_GUIDANCE,
+  readJudgedReply,
+  sanitizeHistory,
+} from '@/lib/games/timeless-minds/conversation'
+
+const careResponse = (response: string) => NextResponse.json({ response, emotion: 'concerned', care: true })
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +32,8 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       )
     }
+
+    if (soundsLikeDistress(message)) return careResponse(CARE_REPLY)
 
     // Build the enhanced system prompt for therapeutic conversations
     const systemPrompt = `You are ${thinker.name}, the ${thinker.field} thinker from ${thinker.era} (${thinker.culture} culture).
@@ -86,7 +98,9 @@ CONVERSATION GUIDELINES:
 
 REMEMBER: This is a live video call. Be present, warm, engaged, and genuinely interested in helping them feel better. Every response should move them toward less anxiety and more clarity through HONEST wisdom, not superficial agreement.
 
-${SAFETY_GUIDANCE}`
+${SAFETY_GUIDANCE}
+
+${JUDGED_REPLY_FORMAT}`
 
     // Format conversation history for Gemini
     const history = sanitizeHistory(conversationHistory).map(turn => ({
@@ -102,15 +116,17 @@ ${SAFETY_GUIDANCE}`
         temperature: 0.8,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 256,
+        maxOutputTokens: 400,
+        responseMimeType: 'application/json',
         ...MINIMAL_THINKING,
       },
     })
 
     const result = await chat.sendMessage({ message })
-    const response = result.text ?? ''
+    const { risk, reply: response } = readJudgedReply(result.text ?? '')
+    if (risk) return careResponse(response || CARE_REPLY)
+    if (!response) throw new Error('Empty reply')
 
-    // Detect emotion from the response for avatar expression
     const emotionResult = await detectEmotion(response)
 
     return NextResponse.json({

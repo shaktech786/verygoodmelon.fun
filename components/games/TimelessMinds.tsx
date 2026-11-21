@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { getRandomThinker, thinkers as allThinkers, getThinkerById } from '@/lib/games/timeless-minds/thinkers'
+import { pickRandomThinker, thinkers as allThinkers, getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
 import { Hand, Send, Loader2, Mic, MicOff, VideoIcon, VideoOff, Volume2, VolumeX, Book, Plus } from 'lucide-react'
 import ThinkerPhoneBook from './ThinkerPhoneBook'
@@ -15,7 +15,11 @@ import { getActiveProvider, getProviderMeta } from '@/lib/games/timeless-minds/a
 import { resolveAvatarId } from '@/lib/games/timeless-minds/avatar-providers/resolve-avatar-id'
 import { loadCustomFaceIds } from '@/lib/games/timeless-minds/simli-faces'
 import AvatarRenderer from './avatars/AvatarRenderer'
+import TimelessMindsCarePanel from './TimelessMindsCarePanel'
+import { useCareMode } from './CareMode'
 import { MAX_MESSAGE_LENGTH, farewellFallback } from '@/lib/games/timeless-minds/conversation'
+import { plainText } from '@/lib/games/timeless-minds/plain-text'
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -26,11 +30,8 @@ interface Message {
 const REPLY_TROUBLE = 'Forgive me, my thoughts drifted for a moment. Could you say that again?'
 const VOICE_INPUT_UNAVAILABLE = 'Speaking is not available here, so please type your message instead.'
 const IMAGINED_NOTE = 'Imagined conversations, not real quotes from the person.'
-
-function pickAnotherThinker(current: Thinker): Thinker {
-  const others = allThinkers.filter(t => t.id !== current.id)
-  return others[Math.floor(Math.random() * others.length)]
-}
+const CARE_FAREWELL = 'Thank you for staying with me. Please let one of the people below hear you too; you deserve that kind of company.'
+const KEYBOARD_SETTLE_MS = 1000
 
 // Tab and Shift+Tab cycle within an open dialog instead of wandering to the page behind it.
 function keepTabInside(e: React.KeyboardEvent<HTMLElement>) {
@@ -52,8 +53,10 @@ function openingMessage(thinker: Thinker): Message {
   return { role: 'assistant', content: thinker.openingLine, emotion: 'happy' }
 }
 
-// Topic suggestions based on thinker's domain
-function getTopicSuggestions(thinker: Thinker): string[] {
+const GENTLE_TOPICS = ['What helps you on a hard day?', 'Tell me about something you love.', 'How do you rest?']
+
+function getTopicSuggestions(thinker: Thinker, care: boolean): string[] {
+  if (care) return GENTLE_TOPICS
   const domain = thinker.name.toLowerCase()
 
   if (domain.includes('socrates') || domain.includes('plato') || domain.includes('aristotle')) {
@@ -92,15 +95,19 @@ export default function TimelessMinds() {
   const farewellHeadingRef = useRef<HTMLHeadingElement>(null)
   const [showPhoneBook, setShowPhoneBook] = useState(false)
   const [showRequestModal, setShowRequestModal] = useState(false)
-  const [hasPhoneBookAccess] = useState(true)
+  const [requestsAvailable, setRequestsAvailable] = useState(false)
+  const { care, enterCareMode } = useCareMode()
+  const reducedMotion = useReducedMotion()
   const [showTopicSuggestions, setShowTopicSuggestions] = useState(true)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRowRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const endCallCancelRef = useRef<HTMLButtonElement>(null)
   // Bumped whenever a new conversation starts, so a reply still in flight for the
   // previous thinker is dropped instead of landing in the new conversation.
   const conversationRef = useRef(0)
+  // The box is disabled while a reply is on its way, so focus returns once it is usable again, never on page load.
+  const returnFocusAfterReply = useRef(false)
 
   // Avatar & audio state
   const [videoEnabled, setVideoEnabled] = useState(true)
@@ -226,9 +233,16 @@ export default function TimelessMinds() {
     }
   }, [activeProvider])
 
+  useEffect(() => {
+    fetch('/api/timeless-minds/request-thinker')
+      .then(response => response.json())
+      .then((data: { available?: unknown }) => setRequestsAvailable(data?.available === true))
+      .catch(() => setRequestsAvailable(false))
+  }, [])
+
   // Initialize with random thinker
   useEffect(() => {
-    const selectedThinker = getRandomThinker()
+    const selectedThinker = pickRandomThinker()
     setThinker(selectedThinker)
     setMessages([openingMessage(selectedThinker)])
   }, [])
@@ -249,7 +263,7 @@ export default function TimelessMinds() {
     }
   }, [])
 
-  // Auto-scroll messages
+  // The support panel shrinks the message area, so the latest reply is brought back into view when it appears too.
   useEffect(() => {
     if (messagesContainerRef.current) {
       const container = messagesContainerRef.current
@@ -257,19 +271,28 @@ export default function TimelessMinds() {
         if (typeof container.scrollTo === 'function') {
           container.scrollTo({
             top: container.scrollHeight,
-            behavior: 'smooth'
+            behavior: reducedMotion ? 'auto' : 'smooth'
           })
         }
       })
     }
-  }, [messages])
+  }, [messages, care, reducedMotion])
 
-  // Refocus input after loading
   useEffect(() => {
-    if (!isLoading && inputRef.current) {
-      inputRef.current.focus()
-    }
+    if (isLoading || !returnFocusAfterReply.current) return
+    returnFocusAfterReply.current = false
+    inputRef.current?.focus()
   }, [isLoading])
+
+  // An opening phone keyboard shrinks the conversation; keep its newest words in view.
+  const hasThinker = thinker !== null
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => container.scrollTo({ top: container.scrollHeight }))
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [hasThinker])
 
   const sendMessage = async (messageText?: string) => {
     const textToSend = messageText || inputMessage
@@ -286,10 +309,7 @@ export default function TimelessMinds() {
     setInterimTranscript('')
     setVoiceInputNote('')
     setIsLoading(true)
-
-    setTimeout(() => {
-      inputRef.current?.focus()
-    }, 0)
+    returnFocusAfterReply.current = true
 
     try {
       const response = await fetch('/api/timeless-minds/chat', {
@@ -315,13 +335,14 @@ export default function TimelessMinds() {
         return
       }
 
+      if (data.care === true) enterCareMode()
       const emotion = (data.emotion as AvatarEmotion) || 'neutral'
       setMessages(prev => [...prev, { role: 'assistant', content: reply, emotion }])
       setCurrentEmotion(emotion)
 
       // Not awaited: the player can keep typing while the thinker speaks.
       if (audioEnabled) {
-        speakWithAvatar(reply, thinker.id, emotion).catch(console.error)
+        speakWithAvatar(plainText(reply), thinker.id, emotion).catch(console.error)
       }
     } catch (error) {
       console.error('Failed to send message:', error)
@@ -330,7 +351,6 @@ export default function TimelessMinds() {
     } finally {
       if (conversation === conversationRef.current) {
         setIsLoading(false)
-        inputRef.current?.focus()
       }
     }
   }
@@ -373,6 +393,10 @@ export default function TimelessMinds() {
     setIsSpeaking(false)
     setIsListening(false)
     setIsLoading(false)
+    if (care) {
+      setFarewell({ thinker: leaving, text: CARE_FAREWELL })
+      return
+    }
     setFarewell({ thinker: leaving, text: '' })
 
     let text = farewellFallback(leaving)
@@ -397,8 +421,21 @@ export default function TimelessMinds() {
     const leaving = farewell?.thinker ?? thinker
     setFarewell(null)
     if (!leaving) return
-    startConversation(pickAnotherThinker(leaving))
+    startConversation(pickRandomThinker({ exclude: leaving, care }))
     if (openDirectory) setShowPhoneBook(true)
+  }
+
+  const stayInConversation = () => {
+    setFarewell(null)
+    inputRef.current?.focus()
+  }
+
+  const keepInputInView = () => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+    const reveal = () => inputRowRef.current?.scrollIntoView({ block: 'end' })
+    viewport.addEventListener('resize', reveal, { once: true })
+    setTimeout(() => viewport.removeEventListener('resize', reveal), KEYBOARD_SETTLE_MS)
   }
 
   const handleSelectThinker = (thinkerId: string) => {
@@ -416,7 +453,10 @@ export default function TimelessMinds() {
   }
 
   const handleFarewellKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
-    if (e.key === 'Escape' && farewell?.text) leaveFarewell(false)
+    if (e.key === 'Escape' && farewell?.text) {
+      if (care) stayInConversation()
+      else leaveFarewell(false)
+    }
     keepTabInside(e)
   }
 
@@ -494,12 +534,16 @@ export default function TimelessMinds() {
     )
   }
 
+  const statusLabel = isSpeaking ? 'Speaking' : isLoading ? 'Thinking' : isListening ? 'Listening' : 'Ready'
+  const toolbarButton = 'flex flex-col items-center gap-0.5 sm:gap-1 px-1 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group'
+  const toolbarLabel = 'text-white text-[11px] sm:text-xs whitespace-nowrap'
+
   return (
-    <div className="max-w-7xl mx-auto h-[calc(100vh-12rem)] sm:h-[calc(100vh-10rem)] flex flex-col bg-black rounded-xl overflow-hidden shadow-2xl sticky top-24 sm:top-20">
+    <div className="max-w-7xl mx-auto h-[calc(100dvh-12rem)] min-h-[36rem] sm:h-[calc(100dvh-10rem)] flex flex-col bg-black rounded-xl overflow-hidden shadow-2xl">
       {/* Main Video Area */}
       <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3 min-h-0">
         {/* Video Window */}
-        <div className="h-36 sm:h-auto sm:flex-[2] shrink-0 relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden sm:min-h-[200px] lg:min-h-0">
+        <div className={`${care ? 'h-20' : 'h-32'} sm:h-auto sm:flex-[2] shrink-0 relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden sm:min-h-[200px] lg:min-h-0`}>
           <div className="absolute inset-0">
             {videoEnabled ? (
               <div className="absolute inset-0">
@@ -526,44 +570,42 @@ export default function TimelessMinds() {
 
           {/* Participant Name Tag */}
           <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 bg-black/80 px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg backdrop-blur-sm">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <div>
-                <div className="text-white font-semibold text-xs sm:text-sm">{thinker.name}</div>
-                <div className="text-white/70 text-[10px] sm:text-xs">{thinker.era}</div>
-              </div>
-            </div>
+            <div className="text-white font-semibold text-xs sm:text-sm">{thinker.name}</div>
+            <div className="text-white/70 text-[10px] sm:text-xs">{thinker.era}</div>
           </div>
 
           {/* Status Indicator */}
-          <div className="absolute top-2 left-2 sm:top-4 sm:left-4 flex items-center gap-1.5 sm:gap-2 bg-black/60 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg backdrop-blur-sm">
-            <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isSpeaking ? 'bg-warm' : 'bg-success'}`} aria-hidden="true"></div>
-            <span className="text-white text-[11px] sm:text-xs font-medium">
-              {isSpeaking ? 'Speaking' : isLoading ? 'Thinking' : 'Listening'}
-            </span>
+          <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex items-center gap-1.5 sm:gap-2 bg-black/60 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg backdrop-blur-sm">
+            <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isSpeaking ? 'bg-warm' : isListening ? 'bg-accent' : 'bg-success'}`} aria-hidden="true"></div>
+            <span className="text-white text-[11px] sm:text-xs font-medium">{statusLabel}</span>
           </div>
         </div>
 
         {/* Chat Sidebar */}
-        <div className="w-full lg:flex-1 lg:max-w-md bg-card-bg rounded-lg flex flex-col shadow-xl min-h-[300px] lg:min-h-0">
+        <div className="flex-1 min-h-0 w-full lg:flex-1 lg:max-w-md bg-card-bg rounded-lg flex flex-col shadow-xl">
           {/* Chat Header */}
-          <div className="px-3 py-2 sm:p-4 border-b border-card-border">
+          <div className="shrink-0 px-3 py-2 sm:p-4 border-b border-card-border">
             <h2 className="font-semibold text-foreground text-sm sm:text-base">Talking with {thinker.name}</h2>
             <p className="text-xs text-foreground/70">{thinker.field} · {thinker.era}</p>
           </div>
 
-          {/* Messages Area */}
+          {/* Replies are announced once each, when they arrive whole. */}
           <div
             ref={messagesContainerRef}
-            className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3 bg-hover-bg scroll-smooth"
+            role="log"
+            aria-live="polite"
+            aria-label="Conversation"
+            tabIndex={0}
+            className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3 bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
             style={{ scrollbarGutter: 'stable' }}
           >
             {messages.length === 1 && showTopicSuggestions && (
-              <div className="mb-3 p-3 bg-accent/5 border border-accent/20 rounded-lg animate-in fade-in duration-500">
+              <div className="mb-3 p-3 bg-accent/5 border border-accent/20 rounded-lg">
                 <p className="text-xs text-foreground/70 mb-2">Try asking about:</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {getTopicSuggestions(thinker).map((topic, i) => (
+                  {getTopicSuggestions(thinker, care).map(topic => (
                     <button
-                      key={i}
+                      key={topic}
                       onClick={() => {
                         setInputMessage(topic)
                         setShowTopicSuggestions(false)
@@ -581,9 +623,9 @@ export default function TimelessMinds() {
             {messages.map((message, index) => (
               <div
                 key={index}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`max-w-[85%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
+                <div className="max-w-[85%]">
                   <div className="text-xs text-foreground/70 mb-1 px-1">
                     {message.role === 'user' ? 'You' : thinker.name}
                   </div>
@@ -594,34 +636,36 @@ export default function TimelessMinds() {
                         : 'bg-card-bg border border-card-border text-foreground rounded-bl-none'
                     }`}
                   >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                      {message.role === 'assistant' ? plainText(message.content) : message.content}
+                    </p>
                   </div>
                 </div>
               </div>
             ))}
 
             {isLoading && (
-              <div className="flex justify-start animate-in fade-in duration-200">
+              <div className="flex justify-start" aria-hidden="true">
                 <div className="bg-card-bg border border-card-border px-3 py-2 rounded-lg shadow-sm">
                   <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce motion-reduce:animate-none" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce motion-reduce:animate-none" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce motion-reduce:animate-none" style={{ animationDelay: '300ms' }}></div>
                   </div>
                 </div>
               </div>
             )}
-
-            <div ref={messagesEndRef} />
           </div>
 
+          {care && <TimelessMindsCarePanel className="shrink-0 px-3 py-2 border-x-0 border-b-0" />}
+
           {/* Chat Input */}
-          <div className="p-2 sm:p-3 border-t border-card-border bg-card-bg">
+          <div ref={inputRowRef} className="shrink-0 p-2 sm:p-3 border-t border-card-border bg-card-bg">
             {isListening && (
-              <div className="mb-2 p-2 bg-accent/10 border border-accent/30 rounded-lg animate-pulse">
+              <div className="mb-2 p-2 bg-accent/10 border border-accent/30 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                  <span className="text-xs text-accent font-medium">Listening...</span>
+                  <div className="w-2 h-2 bg-accent rounded-full" aria-hidden="true" />
+                  <span className="text-xs text-foreground font-medium">Listening...</span>
                 </div>
                 {interimTranscript && (
                   <p className="text-xs text-foreground/70 mt-1 italic">&quot;{interimTranscript}&quot;</p>
@@ -642,12 +686,12 @@ export default function TimelessMinds() {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyPress}
+                onFocus={keepInputInView}
                 placeholder={isListening ? 'Listening...' : 'Type a message...'}
                 maxLength={MAX_MESSAGE_LENGTH}
-                className="flex-1 min-w-0 px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg text-base sm:text-sm transition-colors"
+                className="flex-1 min-w-0 px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg text-base sm:text-sm transition-colors placeholder:text-foreground/60"
                 disabled={isLoading || isListening}
                 aria-label="Message input"
-                autoFocus
               />
               <Button
                 onClick={() => sendMessage()}
@@ -656,7 +700,7 @@ export default function TimelessMinds() {
                 className="px-3 py-2 sm:px-4 min-w-[44px]"
                 aria-label="Send message"
               >
-                <Send size={14} className="sm:w-4 sm:h-4" />
+                <Send size={14} className="sm:w-4 sm:h-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -664,7 +708,7 @@ export default function TimelessMinds() {
       </div>
 
       {/* Disclaimer */}
-      <div className="bg-black/80 px-2 sm:px-4 py-1.5 sm:py-2 text-center text-[11px] sm:text-xs text-white/80 border-t border-gray-800/50">
+      <div className="shrink-0 bg-black/80 px-2 sm:px-4 py-1.5 sm:py-2 text-center text-[11px] sm:text-xs text-white/80 border-t border-gray-800/50">
         <p>
           {IMAGINED_NOTE} Inspired by their life and writing, for reflection only.{' '}
           <a
@@ -678,32 +722,24 @@ export default function TimelessMinds() {
       </div>
 
       {/* Bottom Toolbar */}
-      <div className="bg-gray-900 border-t border-gray-800 py-2 pl-1 pr-16 sm:p-4 flex items-center justify-between">
+      <div className="shrink-0 bg-gray-900 border-t border-gray-800 py-2 pl-1 pr-14 sm:p-4 flex items-center justify-between">
         {/* Left Side */}
         <div className="flex items-center gap-0.5 sm:gap-2">
-          {hasPhoneBookAccess && (
-            <button
-              onClick={() => setShowPhoneBook(true)}
-              className="flex flex-col items-center gap-0.5 sm:gap-1 px-1.5 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
-              aria-label="Open phone book"
-            >
-              <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-success/20 group-hover:bg-success/30">
-                <Book size={16} className="text-success sm:w-5 sm:h-5" />
+          <button onClick={() => setShowPhoneBook(true)} className={toolbarButton}>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-success/20 group-hover:bg-success/30">
+              <Book size={16} className="text-success sm:w-5 sm:h-5" aria-hidden="true" />
+            </div>
+            <span className={toolbarLabel}>Directory</span>
+          </button>
+
+          {requestsAvailable && (
+            <button onClick={() => setShowRequestModal(true)} className={toolbarButton}>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-accent/20 group-hover:bg-accent/30">
+                <Plus size={16} className="text-accent sm:w-5 sm:h-5" aria-hidden="true" />
               </div>
-              <span className="hidden sm:inline text-white text-xs whitespace-nowrap">Directory</span>
+              <span className={toolbarLabel}>Request</span>
             </button>
           )}
-
-          <button
-            onClick={() => setShowRequestModal(true)}
-            className="flex flex-col items-center gap-0.5 sm:gap-1 px-1.5 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
-            aria-label="Request thinker"
-          >
-            <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-accent/20 group-hover:bg-accent/30">
-              <Plus size={16} className="text-accent sm:w-5 sm:h-5" />
-            </div>
-            <span className="hidden sm:inline text-white text-xs whitespace-nowrap">Request</span>
-          </button>
         </div>
 
         {/* Center Controls */}
@@ -711,9 +747,7 @@ export default function TimelessMinds() {
           {/* Voice Input */}
           <button
             onClick={toggleVoiceInput}
-            className={`flex flex-col items-center gap-0.5 sm:gap-1 px-1.5 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group ${
-              isListening ? 'bg-red-500/20' : ''
-            }`}
+            className={`${toolbarButton} ${isListening ? 'bg-accent/20' : ''}`}
             aria-label={isListening ? 'Stop listening' : 'Start voice input'}
             disabled={isLoading || isSpeaking}
           >
@@ -721,20 +755,18 @@ export default function TimelessMinds() {
               isListening ? 'bg-accent' : 'bg-gray-700 group-hover:bg-gray-600'
             }`}>
               {isListening ? (
-                <MicOff size={16} className="text-white sm:w-5 sm:h-5" />
+                <MicOff size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
               ) : (
-                <Mic size={16} className="text-white sm:w-5 sm:h-5" />
+                <Mic size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
               )}
             </div>
-            <span className="text-white text-[11px] sm:text-xs whitespace-nowrap">
-              {isListening ? 'Stop' : 'Speak'}
-            </span>
+            <span className={toolbarLabel}>{isListening ? 'Stop' : 'Speak'}</span>
           </button>
 
           {/* Audio Toggle */}
           <button
             onClick={toggleAudio}
-            className="flex flex-col items-center gap-0.5 sm:gap-1 px-1.5 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
+            className={toolbarButton}
             aria-label={audioEnabled ? 'Turn off thinker voice' : 'Turn on thinker voice'}
             aria-pressed={audioEnabled}
           >
@@ -747,41 +779,33 @@ export default function TimelessMinds() {
                 <VolumeX size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
               )}
             </div>
-            <span className="text-white text-[11px] sm:text-xs whitespace-nowrap">
-              {audioEnabled ? 'Voice on' : 'Voice off'}
-            </span>
+            <span className={toolbarLabel}>{audioEnabled ? 'Voice on' : 'Voice off'}</span>
           </button>
 
           {/* Video Toggle */}
           <button
             onClick={toggleVideo}
-            className="flex flex-col items-center gap-0.5 sm:gap-1 px-1.5 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
+            className={toolbarButton}
             aria-label={videoEnabled ? 'Turn off video' : 'Turn on video'}
           >
             <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg ${
               videoEnabled ? 'bg-gray-700 group-hover:bg-gray-600' : 'bg-gray-600'
             }`}>
               {videoEnabled ? (
-                <VideoIcon size={16} className="text-white sm:w-5 sm:h-5" />
+                <VideoIcon size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
               ) : (
-                <VideoOff size={16} className="text-white sm:w-5 sm:h-5" />
+                <VideoOff size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
               )}
             </div>
-            <span className="text-white text-[11px] sm:text-xs whitespace-nowrap">
-              {videoEnabled ? 'Video' : 'Off'}
-            </span>
+            <span className={toolbarLabel}>{videoEnabled ? 'Video' : 'Off'}</span>
           </button>
 
           {/* End Call */}
-          <button
-            onClick={handleEndCall}
-            className="flex flex-col items-center gap-0.5 sm:gap-1 px-1.5 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-800 transition-colors group"
-            aria-label="Say goodbye"
-          >
+          <button onClick={handleEndCall} className={toolbarButton} aria-label="Say goodbye">
             <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-warm/30 group-hover:bg-warm/40">
               <Hand size={16} className="text-white sm:w-5 sm:h-5" aria-hidden="true" />
             </div>
-            <span className="text-white text-[11px] sm:text-xs">Goodbye</span>
+            <span className={toolbarLabel}>Goodbye</span>
           </button>
         </div>
 
@@ -802,19 +826,21 @@ export default function TimelessMinds() {
               Say goodbye to {thinker.name}?
             </h3>
             <p className="text-sm sm:text-base text-foreground/70 mb-4 leading-relaxed">
-              {thinker.name} will leave you with a parting thought from your conversation. Then you can meet someone new.
+              {care
+                ? `${thinker.name} will say a few parting words. Then you can choose who to talk with next, or stay a while longer.`
+                : `${thinker.name} will leave you with a parting thought from your conversation. Then you can meet someone new.`}
             </p>
             <div className="flex gap-2 sm:gap-3">
               <button
                 ref={endCallCancelRef}
                 onClick={cancelEndCall}
-                className="flex-1 px-3 py-1.5 sm:px-4 sm:py-2 border border-foreground/20 rounded-lg hover:bg-foreground/5 transition-colors text-sm sm:text-base"
+                className="flex-1 px-3 py-1.5 sm:px-4 sm:py-2 min-h-[44px] border border-foreground/20 text-foreground rounded-lg hover:bg-foreground/5 transition-colors text-sm sm:text-base"
               >
                 Keep talking
               </button>
               <button
                 onClick={confirmEndCall}
-                className="flex-1 px-3 py-2 sm:px-4 bg-melon-green text-background rounded-lg hover:opacity-90 transition-opacity text-sm sm:text-base"
+                className="flex-1 px-3 py-2 sm:px-4 min-h-[44px] bg-melon-green text-background rounded-lg hover:opacity-90 transition-opacity text-sm sm:text-base"
               >
                 Say goodbye
               </button>
@@ -824,13 +850,13 @@ export default function TimelessMinds() {
       )}
 
       {farewell && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4 overflow-y-auto">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="farewell-title"
             onKeyDown={handleFarewellKeyDown}
-            className="bg-card-bg rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl animate-fade border border-card-border"
+            className="bg-card-bg rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl animate-fade border border-card-border my-8"
           >
             <h3
               id="farewell-title"
@@ -848,14 +874,24 @@ export default function TimelessMinds() {
               )}
             </div>
             <p className="mt-4 text-xs text-foreground/70">{IMAGINED_NOTE}</p>
+            {care && <TimelessMindsCarePanel className="mt-4 rounded-lg p-3" />}
             <div className="mt-5 flex flex-col sm:flex-row gap-2 sm:gap-3">
-              <button
-                onClick={() => leaveFarewell(false)}
-                disabled={!farewell.text}
-                className="flex-1 px-4 py-2 min-h-[44px] bg-melon-green text-background rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                Meet someone new
-              </button>
+              {care ? (
+                <button
+                  onClick={stayInConversation}
+                  className="flex-1 px-4 py-2 min-h-[44px] bg-melon-green text-background rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  Stay with {farewell.thinker.name}
+                </button>
+              ) : (
+                <button
+                  onClick={() => leaveFarewell(false)}
+                  disabled={!farewell.text}
+                  className="flex-1 px-4 py-2 min-h-[44px] bg-melon-green text-background rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  Meet someone new
+                </button>
+              )}
               <button
                 onClick={() => leaveFarewell(true)}
                 disabled={!farewell.text}
@@ -868,7 +904,6 @@ export default function TimelessMinds() {
         </div>
       )}
 
-      {/* Phone Book Modal */}
       {/* Mounted only while open, so each visit starts with an empty search. */}
       {showPhoneBook && (
         <ThinkerPhoneBook
@@ -879,11 +914,12 @@ export default function TimelessMinds() {
         />
       )}
 
-      {/* Request Thinker Modal */}
-      <RequestThinkerModal
-        isOpen={showRequestModal}
-        onClose={() => setShowRequestModal(false)}
-      />
+      {requestsAvailable && (
+        <RequestThinkerModal
+          isOpen={showRequestModal}
+          onClose={() => setShowRequestModal(false)}
+        />
+      )}
     </div>
   )
 }

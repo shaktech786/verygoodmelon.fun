@@ -8,6 +8,7 @@ import {
   sanitizeHistory,
   tidyLine,
 } from '@/lib/games/timeless-minds/conversation'
+import { plainText } from '@/lib/games/timeless-minds/plain-text'
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null)
@@ -45,7 +46,7 @@ ${SAFETY_GUIDANCE}`,
       },
     })
 
-    const farewell = tidyLine(result.text ?? '', MAX_FAREWELL_LENGTH)
+    const farewell = tidyLine(plainText(result.text ?? ''), MAX_FAREWELL_LENGTH)
     return NextResponse.json({ farewell: farewell || fallback })
   } catch (error) {
     console.error('Timeless Minds farewell error:', error)

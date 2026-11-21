@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { vi, beforeEach, describe, it, expect } from 'vitest'
 
 const mockFetch = vi.fn()
@@ -19,7 +20,7 @@ vi.mock('@/lib/games/timeless-minds/thinkers', async (importOriginal) => {
   }
   return {
     ...actual,
-    getRandomThinker: () => mockThinker,
+    pickRandomThinker: () => mockThinker,
     getThinkerById: () => mockThinker,
   }
 })
@@ -71,6 +72,13 @@ vi.mock('@/lib/features/featureFlags', async (importOriginal) => {
 })
 
 import TimelessMinds from '@/components/games/TimelessMinds'
+import { CareModeProvider, useCareMode } from '@/components/games/CareMode'
+
+function CareProbe() {
+  return <p data-testid="care-probe">{useCareMode().care ? 'care' : 'calm'}</p>
+}
+
+const reply = (body: Record<string, unknown>) => ({ ok: true, json: async () => body })
 
 describe('TimelessMinds', () => {
   beforeEach(() => {
@@ -129,5 +137,56 @@ describe('TimelessMinds', () => {
     render(<TimelessMinds />)
     const voice = await screen.findByRole('button', { name: 'Turn on thinker voice' })
     expect(voice).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('does not take focus when the page loads', async () => {
+    render(<TimelessMinds />)
+    const box = await screen.findByRole('textbox', { name: 'Message input' })
+    expect(box).not.toHaveFocus()
+  })
+
+  it('reads Ready, not Listening, while the microphone is off', async () => {
+    render(<TimelessMinds />)
+    expect(await screen.findByText('Ready')).toBeInTheDocument()
+    expect(screen.queryByText(/Listening/)).not.toBeInTheDocument()
+  })
+
+  it('announces replies once, as plain text, in a polite conversation log', async () => {
+    mockFetch.mockImplementation(async (url: string) =>
+      url.includes('/chat') ? reply({ response: '**Breathe.** Then tell me *more*.', emotion: 'neutral' }) : reply({})
+    )
+    render(<TimelessMinds />)
+    const log = await screen.findByRole('log', { name: 'Conversation' })
+    expect(log).toHaveAttribute('aria-live', 'polite')
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Message input' }), 'Hello{Enter}')
+
+    expect(await within(log).findByText('Breathe. Then tell me more.')).toBeInTheDocument()
+    expect(log.textContent).not.toContain('*')
+  })
+
+  it('keeps tappable support in view for the rest of the visit once a reply calls for care', async () => {
+    let call = 0
+    mockFetch.mockImplementation(async (url: string) => {
+      if (!url.includes('/chat')) return reply({})
+      call += 1
+      return call === 1
+        ? reply({ response: 'I am glad you told me.', emotion: 'concerned', care: true })
+        : reply({ response: 'I am still here.', emotion: 'neutral' })
+    })
+    render(<CareModeProvider><TimelessMinds /><CareProbe /></CareModeProvider>)
+    const box = await screen.findByRole('textbox', { name: 'Message input' })
+    expect(screen.queryByRole('complementary', { name: 'Support' })).not.toBeInTheDocument()
+
+    await userEvent.type(box, 'Everyone would be fine without me{Enter}')
+    const support = await screen.findByRole('complementary', { name: 'Support' })
+    expect(within(support).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+    expect(within(support).getByRole('link', { name: '116 123' })).toHaveAttribute('href', 'tel:116123')
+    expect(within(support).getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
+    expect(screen.getByTestId('care-probe')).toHaveTextContent('care')
+
+    await userEvent.type(box, 'Thank you{Enter}')
+    await screen.findByText('I am still here.')
+    expect(screen.getByRole('complementary', { name: 'Support' })).toBeInTheDocument()
   })
 })

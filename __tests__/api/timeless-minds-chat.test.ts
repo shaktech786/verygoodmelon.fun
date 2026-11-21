@@ -14,7 +14,7 @@ vi.mock('@google/genai', () => ({
 
 import { POST as chat } from '@/app/api/timeless-minds/chat/route'
 import { POST as farewell } from '@/app/api/timeless-minds/farewell/route'
-import { MAX_HISTORY_MESSAGES, MAX_MESSAGE_LENGTH } from '@/lib/games/timeless-minds/conversation'
+import { CARE_REPLY, MAX_HISTORY_MESSAGES, MAX_MESSAGE_LENGTH } from '@/lib/games/timeless-minds/conversation'
 
 const post = async (handler: typeof chat, body: unknown) => {
   const response = await handler(new Request('http://localhost/api', {
@@ -80,6 +80,69 @@ describe('POST /api/timeless-minds/chat', () => {
     expect(prompt).toMatch(/emergency|helpline|crisis line/i)
   })
 
+  it('asks for a risk judgement with every reply', async () => {
+    await post(chat, { thinkerId: 'socrates', message: 'Hello' })
+
+    const prompt = chatConfig().config.systemInstruction
+    expect(prompt).toMatch(/"risk"/)
+    expect(prompt).toMatch(/nobody would notice/i)
+  })
+
+  it('passes on a judged reply as plain text, with no care flag when all is well', async () => {
+    sendMessage.mockResolvedValue({ text: '{"risk": false, "reply": "What do you **fear** losing?"}' })
+
+    const { data } = await post(chat, { thinkerId: 'socrates', message: 'I feel lost.' })
+
+    expect(data.response).toBe('What do you fear losing?')
+    expect(data.care).toBeUndefined()
+  })
+
+  it('flags care when the thinker judges the visitor may be at risk, and keeps the reply gentle and plain', async () => {
+    sendMessage.mockResolvedValue({ text: '```json\n{"risk": true, "reply": "I am glad you told me. Please call or text **988** now."}\n```' })
+
+    const { status, data } = await post(chat, { thinkerId: 'socrates', message: 'Everyone would be fine without me' })
+
+    expect(status).toBe(200)
+    expect(data.care).toBe(true)
+    expect(data.response).toBe('I am glad you told me. Please call or text 988 now.')
+    expect(data.emotion).toBe('concerned')
+  })
+
+  it('answers danger said outright with care and no model call', async () => {
+    const { status, data } = await post(chat, { thinkerId: 'socrates', message: 'I want to end it all' })
+
+    expect(status).toBe(200)
+    expect(data.care).toBe(true)
+    expect(data.response).toBe(CARE_REPLY)
+    expect(createChat).not.toHaveBeenCalled()
+  })
+
+  it('still answers with care when the judged reply is missing', async () => {
+    sendMessage.mockResolvedValue({ text: '{"risk": true, "reply": ""}' })
+
+    const { data } = await post(chat, { thinkerId: 'socrates', message: 'I am so tired' })
+
+    expect(data.care).toBe(true)
+    expect(data.response).toBe(CARE_REPLY)
+  })
+
+  it('recovers the words from a reply cut off mid-way, never showing raw JSON', async () => {
+    sendMessage.mockResolvedValue({ text: '{"risk": false, "reply": "Let us walk slowly through this, one' })
+
+    const { data } = await post(chat, { thinkerId: 'socrates', message: 'Help me think' })
+
+    expect(data.response).toBe('Let us walk slowly through this, one')
+    expect(data.response).not.toMatch(/[{}]|"risk"/)
+  })
+
+  it('accepts a reply that came back as plain words', async () => {
+    sendMessage.mockResolvedValue({ text: '*Ah.* What do you fear losing?' })
+
+    const { data } = await post(chat, { thinkerId: 'socrates', message: 'Hello' })
+
+    expect(data.response).toBe('Ah. What do you fear losing?')
+  })
+
   it('never names the model in a failure the page might show', async () => {
     sendMessage.mockRejectedValue(new Error('404 model not found'))
 
@@ -113,6 +176,14 @@ describe('POST /api/timeless-minds/farewell', () => {
     expect(status).toBe(200)
     expect(data.farewell).toBe('Go gently. The question you brought is already half an answer.')
     expect(JSON.stringify(generateContent.mock.calls[0][0])).toContain('Why do I worry so much?')
+  })
+
+  it('gives parting words as plain text', async () => {
+    generateContent.mockResolvedValue({ text: '**Go gently.** Your _question_ is half an answer.' })
+
+    const { data } = await post(farewell, { thinkerId: 'socrates', conversationHistory: conversation })
+
+    expect(data.farewell).toBe('Go gently. Your question is half an answer.')
   })
 
   it('says goodbye without a model call when the player never spoke', async () => {

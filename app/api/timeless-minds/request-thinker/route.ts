@@ -47,12 +47,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = getSupabaseClient()
-
-    if (!supabase) {
-      console.warn('Supabase not configured - request will be logged but not stored')
-    }
-
     const requestData = await request.json()
 
     const {
@@ -105,20 +99,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If Supabase is not configured, just return success
+    const supabase = getSupabaseClient()
     if (!supabase) {
-      return NextResponse.json({
-        success: true,
-        requestId: `req_${Date.now()}`,
-        message: 'Request received!'
-      })
+      return NextResponse.json({ error: 'Requests are not being kept just now' }, { status: 503 })
     }
 
     // Insert request into database (free — no payment required)
     const { data, error } = await supabase
       .from('thinker_requests')
       .insert({
-        requester_name: requesterName,
+        requester_name: requesterName || null,
         requester_email: requesterEmail,
         requested_name: requestedName,
         requested_era: requestedEra || null,
@@ -141,19 +131,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
-
-    // Grant phone book access
-    await supabase
-      .from('thinker_phone_book_access')
-      .insert({
-        user_email: requesterEmail,
-        user_name: requesterName,
-        access_type: 'custom_request',
-        request_id: data.id,
-        payment_intent_id: null,
-        payment_amount: 0,
-        is_active: true
-      })
 
     // Fire-and-forget: send confirmation + admin notification emails
     // Errors are logged internally — never block the response
@@ -186,8 +163,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      requestId: data.id,
-      message: 'Request submitted! You now have access to the Phone Book.'
+      requestId: data.id
     })
 
   } catch (error) {
@@ -199,57 +175,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Check if user has phone book access
-export async function GET(request: NextRequest) {
+/** The page offers requests only while they can actually be kept. */
+export async function GET() {
+  const supabase = getSupabaseClient()
+  if (!supabase) return NextResponse.json({ available: false })
   try {
-    const supabase = getSupabaseClient()
-
-    if (!supabase) {
-      return NextResponse.json({
-        hasAccess: false,
-        accessDetails: null
-      })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const email = searchParams.get('email')
-
-    if (!email) {
-      return NextResponse.json(
-        { error: 'Email parameter required' },
-        { status: 400 }
-      )
-    }
-
-    const { data, error } = await supabase
-      .from('thinker_phone_book_access')
-      .select('*')
-      .eq('user_email', email)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Supabase error:', error)
-      return NextResponse.json(
-        { error: 'Failed to check access' },
-        { status: 500 }
-      )
-    }
-
-    const hasAccess = data !== null
-
-    return NextResponse.json({
-      hasAccess,
-      accessDetails: data || null
-    })
-
-  } catch (error) {
-    console.error('Check access error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    const { error } = await supabase.from('thinker_requests').select('id').limit(1)
+    return NextResponse.json({ available: !error })
+  } catch {
+    return NextResponse.json({ available: false })
   }
 }

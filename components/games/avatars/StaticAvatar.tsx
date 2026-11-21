@@ -77,10 +77,12 @@ const StaticAvatar = forwardRef<AvatarHandle, AvatarComponentProps>(
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={avatarId}
-              alt="Thinker avatar"
+              alt=""
               className="w-full h-full object-cover"
               style={{
                 animation: 'avatar-breathe 4s ease-in-out infinite',
+                // Portraits are tall and the call window is wide: keep the face, not the chest, in frame.
+                objectPosition: 'center 22%',
               }}
               onError={() => {
                 setImageError(true)

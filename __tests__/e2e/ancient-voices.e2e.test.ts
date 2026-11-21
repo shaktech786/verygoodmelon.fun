@@ -1,18 +1,23 @@
+import { readFileSync } from 'fs'
+import path from 'path'
 import { test, expect, type Page, type Route } from '@playwright/test'
+import { getThinkerById, thinkers } from '@/lib/games/timeless-minds/thinkers'
 
 /**
  * The Sage (Timeless Minds): a video-call style conversation with a thinker from history.
  *
- * The first thinker is random, so each test calls Socrates from the phone book first.
+ * The first thinker is random, so each test calls Socrates from the directory first.
  * Replies come from a stub, and browser speech is replaced with a recorder so nothing
  * is spoken aloud and nothing paid is reached. The voice starts off: no sound until the player asks.
  */
 
 const IMAGINED = 'Imagined conversations, not real quotes from the person.'
 
-const SOCRATES_OPENING = 'I know that I know nothing. What shall we explore together?'
-const PLATO_OPENING = 'We can easily forgive a child who is afraid of the dark; the real tragedy is adults who fear the light. What truth do you seek?'
-const CURIE_OPENING = 'Nothing in life is to be feared, it is only to be understood. What would you like to understand?'
+const opening = (id: string) => getThinkerById(id)!.openingLine
+const SOCRATES_OPENING = opening('socrates')
+const PLATO_OPENING = opening('plato')
+const CURIE_OPENING = opening('marie-curie')
+const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
 const REPLY_TROUBLE = 'Forgive me, my thoughts drifted for a moment. Could you say that again?'
 
 interface ChatRequest {
@@ -39,6 +44,13 @@ async function setUpBrowser(page: Page, { speechRecognition = true } = {}) {
 
   await page.route(/\/api\/(game-events|site-visits)/, route => route.fulfill({ status: 500, json: { error: 'unavailable' } }))
   await page.route('**/api/timeless-minds/tts', route => route.fulfill({ status: 503, json: { error: 'unavailable' } }))
+  await offerRequests(page, false)
+}
+
+async function offerRequests(page: Page, available: boolean) {
+  await page.route('**/api/timeless-minds/request-thinker', route =>
+    route.request().method() === 'GET' ? route.fulfill({ json: { available } }) : route.fallback()
+  )
 }
 
 async function stubChat(page: Page, reply: (body: ChatRequest, count: number) => Promise<void> | void = () => {}) {
@@ -57,8 +69,8 @@ const bubbles = (page: Page) => page.locator('p.whitespace-pre-wrap')
 const spoken = (page: Page) => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken)
 
 async function callFromPhoneBook(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Open phone book' }).click()
-  const phoneBook = page.getByRole('dialog', { name: 'The Phone Book' })
+  await page.getByRole('button', { name: 'Directory' }).click()
+  const phoneBook = page.getByRole('dialog', { name: 'Directory' })
   await phoneBook.getByRole('searchbox', { name: 'Search thinkers' }).fill(name)
   await phoneBook.getByRole('button', { name: `Start call with ${name}` }).click()
   await expect(phoneBook).toHaveCount(0)
@@ -140,8 +152,8 @@ test('switching thinker in the phone book mid-reply starts a clean conversation'
   await send(page, 'A question Socrates never gets to answer')
   await expect(input(page)).toBeDisabled()
 
-  await page.getByRole('button', { name: 'Open phone book' }).click()
-  const phoneBook = page.getByRole('dialog', { name: 'The Phone Book' })
+  await page.getByRole('button', { name: 'Directory' }).click()
+  const phoneBook = page.getByRole('dialog', { name: 'Directory' })
   await expect(phoneBook.getByRole('searchbox', { name: 'Search thinkers' })).toBeFocused()
   await expect(phoneBook.getByText('39 thinkers available')).toBeVisible()
 
@@ -167,17 +179,23 @@ test('switching thinker in the phone book mid-reply starts a clean conversation'
   expect(requests[1].conversationHistory).toEqual([{ role: 'assistant', content: CURIE_OPENING }])
 })
 
-test('the phone book filters by field and closes with Escape', async ({ page }) => {
+test('the directory filters by a few broad shelves, with no near-duplicates, and closes with Escape', async ({ page }) => {
   await setUpBrowser(page)
   await stubChat(page)
   await openGame(page)
 
-  await page.getByRole('button', { name: 'Open phone book' }).click()
-  const phoneBook = page.getByRole('dialog', { name: 'The Phone Book' })
-  await phoneBook.getByRole('button', { name: 'Philosophy', exact: true }).click()
-  await expect(phoneBook.getByRole('button', { name: 'Philosophy', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Directory' }).click()
+  const phoneBook = page.getByRole('dialog', { name: 'Directory' })
+  await expect(phoneBook.locator('button[aria-pressed]')).toHaveText(['All', 'Philosophy & spirit', 'Science & invention', 'Arts & writing', 'Justice & leadership'])
+
+  await phoneBook.getByRole('button', { name: 'Philosophy & spirit' }).click()
+  await expect(phoneBook.getByRole('button', { name: 'Philosophy & spirit' })).toHaveAttribute('aria-pressed', 'true')
   await expect(phoneBook.getByRole('button', { name: 'Start call with Plato' })).toBeVisible()
   await expect(phoneBook.getByRole('button', { name: 'Start call with Marie Curie' })).toHaveCount(0)
+
+  await phoneBook.getByRole('button', { name: 'Justice & leadership' }).click()
+  await expect(phoneBook.getByRole('button', { name: 'Start call with Harriet Tubman' })).toBeVisible()
+  await expect(phoneBook.getByRole('button', { name: 'Start call with Eleanor Roosevelt' })).toBeVisible()
 
   await page.keyboard.press('Escape')
   await expect(phoneBook).toHaveCount(0)
@@ -319,7 +337,7 @@ test('parting words still arrive when they cannot be fetched, and the directory 
   await expect(parting).not.toContainText(/error|unavailable|AI/)
 
   await parting.getByRole('button', { name: 'Choose who is next' }).click()
-  await expect(page.getByRole('dialog', { name: 'The Phone Book' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Directory' })).toBeVisible()
 })
 
 test('meeting another thinker never brings the same one straight back', async ({ page }) => {
@@ -348,25 +366,38 @@ test('the call says plainly that the conversation is imagined, without naming th
 
 test.describe('requesting a thinker', () => {
   async function fillRequest(page: Page, name: string) {
-    await page.getByRole('button', { name: 'Request thinker' }).click()
+    await page.getByRole('button', { name: 'Request' }).click()
     const form = page.getByRole('dialog', { name: 'Request a Thinker' })
-    await form.getByLabel('Your Name').fill('Ana')
-    await form.getByLabel('Your Email').fill('ana@example.com')
+    await form.getByLabel('Your email *').fill('ana@example.com')
     await form.getByLabel(/Who would you like to talk to/).fill(name)
     await form.getByLabel('Why this person?').fill('Their curiosity')
     await form.getByRole('button', { name: 'Submit Request' }).click()
     return form
   }
 
+  test('is not offered while requests cannot be kept', async ({ page }) => {
+    await setUpBrowser(page)
+    await stubChat(page)
+    await openGame(page)
+
+    await expect(page.getByRole('button', { name: 'Directory' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Request' })).toHaveCount(0)
+  })
+
   test('a request that cannot be saved keeps the words and says so kindly', async ({ page }) => {
     await setUpBrowser(page)
-    await page.route('**/api/timeless-minds/request-thinker', route => route.fulfill({ status: 500, json: { error: 'Failed to create request' } }))
+    await offerRequests(page, true)
+    await page.route('**/api/timeless-minds/request-thinker', route =>
+      route.request().method() === 'POST'
+        ? route.fulfill({ status: 503, json: { error: 'Requests are not being kept just now' } })
+        : route.fallback()
+    )
     await openGame(page)
 
     const form = await fillRequest(page, 'Carl Jung')
     await expect(form.getByText('Your request could not be sent just now.')).toBeVisible()
     await expect(form.getByLabel(/Who would you like to talk to/)).toHaveValue('Carl Jung')
-    await expect(form.getByText(/Failed to create/)).toHaveCount(0)
+    await expect(form.getByText(/not being kept/)).toHaveCount(0)
 
     await page.keyboard.press('Escape')
     await expect(form).toHaveCount(0)
@@ -374,6 +405,7 @@ test.describe('requesting a thinker', () => {
 
   test('a request the rules turn down explains why', async ({ page }) => {
     await setUpBrowser(page)
+    await offerRequests(page, true)
     await openGame(page)
 
     const form = await fillRequest(page, 'Elon Musk')
@@ -382,14 +414,28 @@ test.describe('requesting a thinker', () => {
     expect(await form.innerText()).not.toMatch(/\bAI\b/)
   })
 
-  test('a saved request says thank you without promising extras', async ({ page }) => {
+  test('a name is optional, and a saved request says thank you without promising extras or closing on a timer', async ({ page }) => {
     await setUpBrowser(page)
-    await page.route('**/api/timeless-minds/request-thinker', route => route.fulfill({ json: { success: true, requestId: 'req_1' } }))
+    await offerRequests(page, true)
+    const sent: Array<Record<string, string>> = []
+    await page.route('**/api/timeless-minds/request-thinker', route => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      sent.push(route.request().postDataJSON())
+      return route.fulfill({ json: { success: true, requestId: 'req_1' } })
+    })
     await openGame(page)
 
     await fillRequest(page, 'Carl Jung')
-    await expect(page.getByText('Request Submitted!')).toBeVisible()
-    await expect(page.getByText(/Phone Book/)).toHaveCount(0)
+    const saved = page.getByRole('dialog', { name: 'Request saved' })
+    await expect(saved).toBeVisible()
+    expect(sent[0]).toMatchObject({ requesterName: '', requestedName: 'Carl Jung' })
+    await expect(saved.getByRole('button', { name: 'Back to the conversation' })).toBeFocused()
+    await expect(page.getByText(/Phone Book|bringing them to life/)).toHaveCount(0)
+
+    await page.waitForTimeout(3500)
+    await expect(saved).toBeVisible()
+    await saved.getByRole('button', { name: 'Back to the conversation' }).click()
+    await expect(saved).toHaveCount(0)
   })
 })
 
@@ -421,15 +467,174 @@ test.describe('on a phone', () => {
     await stubChat(page)
     await openGame(page)
 
-    for (const name of ['Open phone book', 'Request thinker', 'Start voice input', 'Turn on thinker voice', 'Turn off video', 'Say goodbye']) {
+    for (const name of ['Directory', 'Start voice input', 'Turn on thinker voice', 'Turn off video', 'Say goodbye']) {
       await expect(page.getByRole('button', { name })).toBeInViewport()
     }
+    // Every toolbar button names itself in visible words, not only an icon.
+    await expect(page.getByRole('button', { name: 'Directory' }).getByText('Directory')).toBeVisible()
     // Under 16px, phones zoom the page when the field is focused.
     expect(await input(page).evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16)
 
     await page.getByRole('button', { name: 'How do I let go?' }).or(page.getByRole('button', { name: 'What is virtue?' })).click()
     await input(page).press('Enter')
     await expect(bubbles(page).nth(2)).toContainText('Reply 1')
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+    expect(overflow).toBeLessThanOrEqual(0)
+  })
+})
+
+const CARE_REPLY = 'I am glad you told me. Please call or text 988 now.'
+
+async function stubCaringChat(page: Page) {
+  await stubChat(page)
+  await page.route('**/api/timeless-minds/chat', async route => {
+    if (!/without me/.test((route.request().postDataJSON() as ChatRequest).message)) return route.fallback()
+    await route.fulfill({ json: { response: 'I am glad you told me. Please call or text **988** now.', emotion: 'concerned', care: true } })
+  })
+}
+
+const support = (page: Page) => page.getByRole('complementary', { name: 'Support' })
+
+test('when someone may be at risk, tappable support stays for the visit, the next step stays gentle, and suggestions soften', async ({ page }) => {
+  await setUpBrowser(page)
+  await stubCaringChat(page)
+  const farewells = await stubFarewell(page)
+  await openGame(page)
+  await expect(page.getByRole('heading', { name: 'Continue your journey' })).toBeAttached()
+  await expect(support(page)).toHaveCount(0)
+
+  await send(page, 'Everyone would be fine without me')
+  await expect(bubbles(page).nth(2)).toHaveText(CARE_REPLY)
+  await expect(support(page)).toBeVisible()
+  await expect(support(page).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+  await expect(support(page).getByRole('link', { name: '116 123' })).toHaveAttribute('href', 'tel:116123')
+  await expect(support(page).getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
+  await expect(page.getByRole('heading', { name: 'Something gentle, if it helps' })).toBeAttached()
+  await expect(page.getByRole('heading', { name: 'Continue your journey' })).toHaveCount(0)
+
+  // The support stays after the conversation moves on.
+  await send(page, 'Thank you for listening')
+  await expect(bubbles(page).nth(4)).toContainText('Reply 1')
+  await expect(support(page)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Say goodbye' }).click()
+  const confirm = page.getByRole('dialog', { name: 'Say goodbye to Socrates?' })
+  await expect(confirm).not.toContainText('meet someone new')
+  await confirm.getByRole('button', { name: 'Say goodbye' }).click()
+
+  const parting = page.getByRole('dialog', { name: 'Parting words from Socrates' })
+  await expect(parting.getByRole('complementary', { name: 'Support' })).toBeVisible()
+  await expect(parting.getByRole('button', { name: 'Meet someone new' })).toHaveCount(0)
+  expect(farewells).toHaveLength(0)
+
+  await parting.getByRole('button', { name: 'Stay with Socrates' }).click()
+  await expect(parting).toHaveCount(0)
+  await expect(bubbles(page)).toHaveCount(5)
+  await expect(input(page)).toBeFocused()
+
+  // Anyone who arrives unchosen after this is calm company.
+  await page.evaluate(() => { Math.random = () => 0 })
+  await sayGoodbye(page)
+  await page.getByRole('dialog', { name: 'Parting words from Socrates' }).getByRole('button', { name: 'Choose who is next' }).click()
+  await page.keyboard.press('Escape')
+  await expect(bubbles(page)).toHaveText([opening('buddha')])
+  await expect(page.getByRole('button', { name: 'What helps you on a hard day?' })).toBeVisible()
+  await expect(support(page)).toBeVisible()
+})
+
+test('a random first thinker is never one whose life ended in despair', async ({ page }) => {
+  const vanGogh = thinkers.findIndex(t => t.id === 'vincent-van-gogh')
+  await page.addInitScript((value: number) => { Math.random = () => value }, (vanGogh + 0.5) / thinkers.length)
+  await setUpBrowser(page)
+  await page.goto('/games/ancient-voices')
+
+  await expect(bubbles(page).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Talking with/ })).not.toContainText('Vincent van Gogh')
+  await expect(bubbles(page).first()).not.toHaveText(opening('vincent-van-gogh'))
+})
+
+test('replies reach screen readers once through a polite log, the page does not grab focus, and the mic reads Ready when off', async ({ page }) => {
+  await setUpBrowser(page)
+  await stubChat(page)
+  await page.goto('/games/ancient-voices')
+
+  const log = page.getByRole('log', { name: 'Conversation' })
+  await expect(log).toHaveAttribute('aria-live', 'polite')
+  await expect(input(page)).not.toBeFocused()
+  await expect(page.getByText('Ready', { exact: true })).toBeVisible()
+  await expect(page.getByText(/Listening/)).toHaveCount(0)
+  // The only live region the game adds is the conversation itself.
+  await expect(page.locator('main [aria-live], main [role="alert"], main [role="status"]')).toHaveCount(1)
+
+  await callFromPhoneBook(page, 'Socrates')
+  await send(page, 'Hello')
+  await expect(log).toContainText('Reply 1: let us think about "Hello".')
+})
+
+test('a portrait is framed on the face, not the beard', async ({ page }) => {
+  await setUpBrowser(page)
+  await stubChat(page)
+  await page.goto('/games/ancient-voices')
+  await callFromPhoneBook(page, 'Leonardo da Vinci')
+
+  const portrait = page.locator('img[src$="leonardo-da-vinci.png"]').first()
+  await expect(portrait).toBeVisible()
+  expect(await portrait.evaluate(img => getComputedStyle(img).objectPosition)).toBe('50% 22%')
+})
+
+async function axeViolations(page: Page) {
+  await page.waitForTimeout(600)
+  await page.addScriptTag({ content: AXE_SOURCE })
+  return page.evaluate(async () => {
+    const axe = (window as unknown as { axe: { run: (context: unknown, options: unknown) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> } }).axe
+    const result = await axe.run({ include: [['main']] }, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] } })
+    return result.violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`)
+  })
+}
+
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`the call, its support panel and the directory have no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+    await setUpBrowser(page)
+    await stubCaringChat(page)
+    await openGame(page)
+    await send(page, 'Everyone would be fine without me')
+    await expect(support(page)).toBeVisible()
+    expect(await axeViolations(page)).toEqual([])
+
+    await page.getByRole('button', { name: 'Directory' }).click()
+    await expect(page.getByRole('dialog', { name: 'Directory' })).toBeVisible()
+    expect(await axeViolations(page)).toEqual([])
+  })
+}
+
+test.describe('on a phone with the keyboard open', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+  test('the newest reply, the support and the message box all stay visible without overlapping', async ({ page }) => {
+    await setUpBrowser(page)
+    await stubCaringChat(page)
+    await openGame(page)
+    await send(page, 'Hello there')
+    await expect(bubbles(page).nth(2)).toContainText('Reply 1')
+    await send(page, 'Everyone would be fine without me')
+    await expect(support(page)).toBeVisible()
+
+    await input(page).focus()
+    // An on-screen keyboard leaves roughly this much of a 390 by 844 phone.
+    await page.setViewportSize({ width: 390, height: 450 })
+
+    const reply = bubbles(page).last()
+    await expect(reply).toHaveText(CARE_REPLY)
+    await expect(input(page)).toBeInViewport()
+    await expect(reply).toBeInViewport()
+    await expect(support(page)).toBeInViewport()
+    const replyBox = (await reply.boundingBox())!
+    const supportBox = (await support(page).boundingBox())!
+    const inputBox = (await input(page).boundingBox())!
+    expect(replyBox.y + replyBox.height).toBeLessThanOrEqual(supportBox.y)
+    expect(supportBox.y + supportBox.height).toBeLessThanOrEqual(inputBox.y)
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     expect(overflow).toBeLessThanOrEqual(0)
