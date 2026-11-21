@@ -41,7 +41,7 @@ export function ShareButton({ title, text, url }: ShareButtonProps) {
           text-primary-light hover:text-foreground/80
           hover:bg-foreground/5
           transition-colors duration-75
-          focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2
+          focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2
         "
       >
         <Share2 size={18} aria-hidden="true" />

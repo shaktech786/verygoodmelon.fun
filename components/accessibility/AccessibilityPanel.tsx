@@ -273,7 +273,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
               value={settings.volume}
               aria-valuetext={`${settings.volume}%`}
               onChange={(event) => updateSetting('volume', Number(event.target.value))}
-              className="w-full accent-accent"
+              className="w-full accent-chosen-line"
             />
           </section>
 

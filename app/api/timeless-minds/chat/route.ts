@@ -4,6 +4,7 @@ import { getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import { detectEmotion } from '@/lib/games/timeless-minds/emotion-detector'
 import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
 import { VISITOR_RULE } from '@/lib/ai/visitor-rule'
+import { overstepsVisitor } from '@/lib/ai/visitor-guard'
 import {
   CARE_REPLY,
   JUDGED_REPLY_FORMAT,
@@ -131,8 +132,9 @@ ${JUDGED_REPLY_FORMAT}`
 
     const result = await chat.sendMessage({ message })
     const { risk, reply: response } = readJudgedReply(result.text ?? '')
-    if (risk) return careResponse(response && !NAMES_A_HELPLINE.test(response) ? response : CARE_REPLY)
+    if (risk) return careResponse(response && !NAMES_A_HELPLINE.test(response) && !overstepsVisitor(response) ? response : CARE_REPLY)
     if (!response) throw new Error('Empty reply')
+    if (overstepsVisitor(response)) throw new Error('Reply overstepped the visitor rule')
 
     const emotionResult = await detectEmotion(response)
 

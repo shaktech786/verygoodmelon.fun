@@ -29,7 +29,7 @@ export function AccessibilityButton({
         shadow-lg hover:shadow-xl
         transition-all duration-75
         hover:scale-110
-        focus:outline-none focus:ring-2 focus:ring-accent
+        focus:outline-none focus:ring-2 focus:ring-focus-ring
         mb-safe-bottom mr-safe-right
       "
       aria-label="Open accessibility settings"

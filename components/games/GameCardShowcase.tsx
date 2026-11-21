@@ -39,7 +39,7 @@ export function GameCardShowcase({
         ${BORDER_HOVER[game.accentColor]}
         hover:shadow-lg
         transition-[box-shadow,border-color] duration-200 ease-out
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background
       `}
       aria-label={`${game.title}${isFeatured ? ', featured today' : ''}. ${game.hook}.`}
     >

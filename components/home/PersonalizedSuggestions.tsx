@@ -17,7 +17,7 @@ function GameLink({ game }: { game: GameConfig }) {
         bg-card-bg border border-card-border
         hover:border-foreground/20 hover:bg-card-bg/80
         transition-colors duration-75
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2
       "
       aria-label={`Play ${game.title}: ${game.hook}`}
     >

@@ -87,7 +87,7 @@ export default function FinaleScreen({
             <h2
               ref={headingRef}
               tabIndex={-1}
-              className={`text-base sm:text-xl leading-relaxed mb-1 break-words text-melon-green focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded ${retroFont}`}
+              className={`text-base sm:text-xl leading-relaxed mb-1 break-words text-melon-green focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded ${retroFont}`}
             >
               <span className="sr-only">Your game is finished. It is called </span>
               {gameName}
@@ -136,7 +136,7 @@ export default function FinaleScreen({
             <button
               type="button"
               onClick={onPlayAgain}
-              className={`text-xs sm:text-sm tracking-[0.15em] px-6 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${retroFont}`}
+              className={`text-xs sm:text-sm tracking-[0.15em] px-6 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${retroFont}`}
             >
               PLAY AGAIN
             </button>

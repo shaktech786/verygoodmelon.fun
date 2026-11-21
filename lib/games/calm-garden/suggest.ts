@@ -5,8 +5,9 @@
  */
 
 import { VISITOR_RULE } from '@/lib/ai/visitor-rule'
+import { overstepsVisitor } from '@/lib/ai/visitor-guard'
 import { describeArea, describePlace, joinWords, nameOf, numberWord, withArticle } from './describe'
-import { GROUND_TOP, PLANT_TYPES, categoryOf, isPlantType, variantOf, type Plant, type PlantType, type Season } from './garden'
+import { GROUND_TOP, PLANT_TYPES, categoryOf, isPlantType, variantOf, type Plant, type PlantType, type Season, type TimeOfDay } from './garden'
 
 export interface PlantSpot {
   type: PlantType
@@ -160,8 +161,23 @@ const UNTRUSTED_LINE = /\b(ai|a\.i\.|assistant|language model|model|generat\w*|a
 // Butterflies and fireflies are the garden's only visitors; a line promising others would not come true.
 const ABSENT_VISITORS = /\b(bees?|bumblebees?|birds?|hummingbirds?|robins?|squirrels?|rabbits?|hedgehogs?|frogs?|deer|ladybirds?|ladybugs?|moths?|wasps?)\b/i
 
-/** Validates a suggestion from outside this module (the route reply, or the model's JSON). */
-export function parseSuggestion(value: unknown): Suggestion | null {
+// Only the season used to be sent, and a garden at night was offered "afternoon butterflies".
+const WRONG_TIME: Record<TimeOfDay, RegExp> = {
+  morning: /\b(afternoon|evening|tonight|night\w*|dusk|moon\w*|sunset|fireflies|firefly)\b/i,
+  day: /\b(morning|dawn|evening|tonight|night\w*|dusk|moon\w*|sunset|fireflies|firefly)\b/i,
+  evening: /\b(morning|dawn|afternoon|midday|noon|tonight's|moonlight)\b/i,
+  night: /\b(morning|dawn|afternoon|midday|noon|daytime|sunny|sunshine|sunlight|(?:morning|midday|afternoon) sun|the sun)\b/i,
+}
+
+const TIME_PHRASE: Record<TimeOfDay, string> = {
+  morning: 'morning',
+  day: 'the middle of the day',
+  evening: 'evening',
+  night: 'night',
+}
+
+/** Validates a suggestion from outside this module (the route reply, or the model's JSON), for the visitor's time of day. */
+export function parseSuggestion(value: unknown, timeOfDay?: TimeOfDay): Suggestion | null {
   if (!value || typeof value !== 'object') return null
   const v = value as Record<string, unknown>
   if (!isPlantType(v.type) || typeof v.x !== 'number' || typeof v.y !== 'number' || typeof v.line !== 'string') return null
@@ -172,7 +188,8 @@ export function parseSuggestion(value: unknown): Suggestion | null {
     .replace(/\s+/g, ' ')
     .replace(/\b(round|flat|berry)-(stone|bush)\b/gi, '$1 $2')
     .trim()
-  if (line.length < LINE_MIN || line.length > LINE_MAX || UNTRUSTED_LINE.test(line) || ABSENT_VISITORS.test(line)) return null
+  if (line.length < LINE_MIN || line.length > LINE_MAX || UNTRUSTED_LINE.test(line) || ABSENT_VISITORS.test(line) || overstepsVisitor(line)) return null
+  if (timeOfDay && WRONG_TIME[timeOfDay].test(line)) return null
   return { type: v.type, x: round2(clamp(v.x, X_MIN, X_MAX)), y: round2(clamp(v.y, Y_MIN, Y_MAX)), line }
 }
 
@@ -183,23 +200,23 @@ export function settleSpot(suggestion: Suggestion, plants: readonly PlantSpot[])
   return { ...suggestion, ...openSpot(plants, around(suggestion.x, suggestion.y, 0.12, 0.08), seeded(0.37)) }
 }
 
-export function parseSuggestionReply(text: string): Suggestion | null {
+export function parseSuggestionReply(text: string, timeOfDay?: TimeOfDay): Suggestion | null {
   const json = text.match(/\{[^{}]*\}/)
   if (!json) return null
   try {
-    return parseSuggestion(JSON.parse(json[0]))
+    return parseSuggestion(JSON.parse(json[0]), timeOfDay)
   } catch {
     return null
   }
 }
 
-export function buildSuggestionPrompt(plants: readonly PlantSpot[], season: Season): string {
+export function buildSuggestionPrompt(plants: readonly PlantSpot[], season: Season, timeOfDay: TimeOfDay = 'day'): string {
   const recent = plants.slice(-PROMPT_PLANTS)
   const asPlants: Plant[] = recent.map((p, i) => ({ ...p, id: String(i), scale: 1, colorSeed: 0, phase: 0, plantedAt: 0 }))
   const lines = asPlants.map((p) => `- ${nameOf(p.type)}: ${describePlace(p, asPlants)} (x ${p.x.toFixed(2)}, y ${p.y.toFixed(2)})`)
   const lastName = nameOf(asPlants[asPlants.length - 1].type)
 
-  return `You are an old, kind gardener looking over someone's shoulder at the small meadow garden they are planting. It is ${season}.
+  return `You are an old, kind gardener looking over someone's shoulder at the small meadow garden they are planting. It is ${season}. It is ${TIME_PHRASE[timeOfDay]} where they are.
 
 What they have planted so far, oldest first:
 ${lines.join('\n')}
@@ -207,7 +224,7 @@ ${lines.join('\n')}
 They have just planted the last one, ${withArticle(lastName)}. Do not suggest another ${lastName} or that same spot: they have only just chosen it.
 
 Suggest ONE thing to add, chosen because of something they planted: shade for flowers, somewhere to sit, company for an empty side, something for the butterflies, a quiet gap that wants filling, or a plant that likes to grow near one of theirs.
-The only creatures that visit this garden are butterflies by day and fireflies at night. Never mention any other animal, such as bees or birds.
+The only creatures that visit this garden are butterflies by day and fireflies at night. Never mention any other animal, such as bees or birds. Never name a time of day other than theirs.
 
 Plant types you may choose (id, then its name to use in your line): ${joinWords(PLANT_TYPES.map((t) => `${t} (${nameOf(t)})`))}.
 Coordinates: x runs from 0.05 (left) to 0.95 (right); y runs from ${Y_MIN} (the back, near the horizon at ${GROUND_TOP}) to ${Y_MAX} (the front). Choose open ground near the plant your line is about, leaving room: at least 0.08 away from every plant.

@@ -476,7 +476,7 @@ test.describe('The Gardener', () => {
 
     await page.clock.fastForward(SIT_MS + 1000)
     await expect(page.locator('#sit-words')).toHaveText(
-      /^An autumn garden: two flowers, a willow and three stones\. (A butterfly|Two butterflies) stayed the whole time\. You planted all of it today\.$/,
+      /^An autumn garden: two flowers, a willow and three stones\. (A butterfly|Two butterflies) came while you sat\. You planted all of it today\.$/,
     )
     expect(bodies.length).toBe(calls)
 

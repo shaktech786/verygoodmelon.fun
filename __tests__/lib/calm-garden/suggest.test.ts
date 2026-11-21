@@ -144,3 +144,29 @@ describe('asking for a suggestion', () => {
     expect(buildSuggestionPrompt(many, 'summer').match(/^- daisy/gm)?.length).toBe(40)
   })
 })
+
+describe('the time of day in a suggestion', () => {
+  const at = (line: string) => ({ type: 'lavender', x: 0.5, y: 0.8, line })
+
+  it.each([
+    ['night', 'Your daisies would bring the afternoon butterflies.'],
+    ['night', 'A sunflower would catch the morning sun.'],
+    ['evening', 'Plant it where the midday sun falls.'],
+    ['day', 'Fireflies would gather here tonight.'],
+    ['morning', 'Lavender glows by moonlight.'],
+  ] as const)('at %s, refuses %j', (timeOfDay, line) => {
+    expect(parseSuggestion(at(line), timeOfDay)).toBeNull()
+  })
+
+  it.each([
+    ['night', 'Your daisies would like some lavender beside them.'],
+    ['day', 'Butterflies love lavender. Some near the front would bring them closer.'],
+    ['evening', 'Fireflies like the shade under your oak tree.'],
+  ] as const)('at %s, keeps %j', (timeOfDay, line) => {
+    expect(parseSuggestion(at(line), timeOfDay)).not.toBeNull()
+  })
+
+  it('names the time of day in the prompt', () => {
+    expect(buildSuggestionPrompt([spot('daisy', 0.2, 0.8)], 'autumn', 'night')).toContain('It is night where they are.')
+  })
+})

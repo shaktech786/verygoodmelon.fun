@@ -45,7 +45,7 @@ function browserStorage(): Storage | null {
 }
 
 const fieldClass =
-  'w-full rounded-lg border border-card-border bg-background px-4 py-3 text-base text-foreground [overflow-wrap:anywhere] focus:outline-none focus-visible:border-accent'
+  'w-full rounded-lg border border-card-border bg-background px-4 py-3 text-base text-foreground [overflow-wrap:anywhere] focus:outline-none focus-visible:border-focus-ring'
 
 const optionClass = (selected: boolean) =>
   cn(

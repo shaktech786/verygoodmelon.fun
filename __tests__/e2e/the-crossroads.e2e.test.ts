@@ -513,8 +513,7 @@ test.describe('database reachable', () => {
       }).toPass()
       await expect(card(page, choiceB(page))).toContainText('50% chose this')
       await expect(page.getByText(/almost evenly split/)).toBeVisible()
-      // Regression: the result and the way on are brought on screen, without the player hunting for them
-      await expect(page.getByText(/^You chose /)).toBeInViewport()
+      // Regression: the way on is on screen without the player hunting for it
       await expect(nextButton(page)).toBeInViewport({ ratio: 1 })
       await nextButton(page).tap()
       await expect(progress(page, 2)).toBeVisible()
@@ -522,4 +521,38 @@ test.describe('database reachable', () => {
       expect(overflow).toBeLessThanOrEqual(0)
     })
   })
+
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
+    test.describe(`the question and the way on at ${viewport.width}x${viewport.height}`, () => {
+      test.use({ viewport, reducedMotion: 'reduce' })
+
+      test('after each choice the question stays clear of the header and Next is in view; each new card lands the same way', async ({ page }) => {
+        await databaseUp(page)
+        await failingRealtime(page)
+        await page.goto('/games/the-crossroads')
+        const question = page.getByRole('list', { name: 'The two answers' }).locator('xpath=preceding-sibling::h2')
+        const questionTop = async () => {
+          const header = await page.getByRole('banner').boundingBox()
+          const box = await question.boundingBox()
+          return (box?.y ?? -1) - ((header?.y ?? 0) + (header?.height ?? 0))
+        }
+
+        const landings: number[] = []
+        for (let n = 1; n <= 5; n++) {
+          await expect(progress(page, n)).toBeVisible()
+          await choose(n % 2 ? choiceA(page) : choiceB(page))
+          await expect(page.getByText(/% chose this/).first()).toBeVisible()
+          await expect.poll(questionTop).toBeGreaterThanOrEqual(8)
+          await expect(nextButton(page)).toBeInViewport({ ratio: 1 })
+          await nextButton(page).click()
+          await expect(progress(page, n + 1)).toBeVisible()
+          await expect(question).toBeFocused()
+          await expect.poll(questionTop).toBeGreaterThanOrEqual(8)
+          landings.push(Math.round((await question.boundingBox())?.y ?? -1))
+        }
+        // The card lands at the same height every time: the context line can differ, so allow a line of slack
+        expect(Math.max(...landings.slice(1)) - Math.min(...landings.slice(1))).toBeLessThanOrEqual(80)
+      })
+    })
+  }
 })

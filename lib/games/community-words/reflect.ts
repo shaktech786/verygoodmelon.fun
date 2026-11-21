@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 import { VISITOR_RULE } from '@/lib/ai/visitor-rule'
+import { overstepsVisitor } from '@/lib/ai/visitor-guard'
 import { MAX_SUBMISSION_LENGTH, moderateSubmission, soundsLikeDistress } from './moderation'
 import { clientAddress, createRateLimiter } from './rateLimit'
 
@@ -79,19 +80,22 @@ function parseJudgedReply(text: string): JudgedReply | null {
   return null
 }
 
-/** A reflection is only passed on if it would be fit for the shared cloud and never gives itself away. */
+/** A reflection is only passed on if it would be fit for the shared cloud, never gives itself away and never oversteps. */
 function usable(text: string): string | null {
   const reflection = text.trim().replace(/^["“]+|["”]+$/g, '').trim()
-  if (!reflection || SELF_DISCLOSURE.test(reflection)) return null
+  if (!reflection || SELF_DISCLOSURE.test(reflection) || overstepsVisitor(reflection)) return null
   return moderateSubmission(reflection).ok ? reflection : null
 }
 
 const MAX_INTENTION_LENGTH = 120
 
 /** An intention is shown as the player's own plan for tomorrow, so it must never carry danger or say "today". */
+// Whoever they greeted on the other side may have died, so a plan to contact someone could ask the impossible.
+const CONTACTS_SOMEONE = /^(?:call|ring|phone|text|visit|message|email|write to|reach out|see|hug)\b/i
+
 function usableIntention(text: string): string | null {
   const intention = usable(text)
-  if (!intention || intention.length > MAX_INTENTION_LENGTH || soundsLikeDistress(intention) || /\btoday\b/i.test(intention)) {
+  if (!intention || intention.length > MAX_INTENTION_LENGTH || soundsLikeDistress(intention) || /\btoday\b/i.test(intention) || CONTACTS_SOMEONE.test(intention)) {
     return null
   }
   return intention

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button, buttonClassName } from '@/components/ui/Button'
+import { StickyActionBar } from '@/components/ui/StickyActionBar'
 import { MessagesSquare, RotateCcw, Loader2, Square, Play, Shuffle, UserRound, HelpCircle, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
@@ -36,6 +37,8 @@ const TURN_PAUSE_MS = 1500
 const NAME_MAX = 60
 const TOPIC_MAX = 120
 const STICK_TO_BOTTOM_PX = 48
+// Below this width the transcript grows with the page instead of scrolling in a box of its own
+const TRANSCRIPT_BOX_QUERY = '(min-width: 640px)'
 const ABORTED = Symbol('aborted')
 const ACTION = 'flex items-center gap-2'
 
@@ -99,6 +102,11 @@ function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T | 
   })
 }
 
+/** The lowest point of the screen not covered by the action bar resting on it. */
+function visibleBottom(bar: HTMLElement | null): number {
+  return Math.min(window.innerHeight, bar?.getBoundingClientRect().top ?? window.innerHeight)
+}
+
 const focusLost = () => !document.activeElement || document.activeElement === document.body
 
 class Declined extends Error {
@@ -125,6 +133,7 @@ export default function MindDebate() {
 
   const regionRef = useRef<HTMLDivElement>(null)
   const debateRef = useRef<HTMLDivElement>(null)
+  const barRef = useRef<HTMLDivElement>(null)
   const person1Ref = useRef<HTMLInputElement>(null)
   const topicRef = useRef<HTMLInputElement>(null)
   const startRef = useRef<HTMLButtonElement>(null)
@@ -156,7 +165,13 @@ export default function MindDebate() {
   // Follows new text only while the reader is already at the bottom, so scrolling back to reread is never yanked away
   useEffect(() => {
     const el = debateRef.current
-    if (el && stickToBottomRef.current) el.scrollTop = el.scrollHeight
+    if (!el || !stickToBottomRef.current) return
+    if (window.matchMedia(TRANSCRIPT_BOX_QUERY).matches) {
+      el.scrollTop = el.scrollHeight
+      return
+    }
+    const hidden = el.getBoundingClientRect().bottom - visibleBottom(barRef.current)
+    if (hidden > 0) window.scrollBy({ top: hidden })
   }, [history, typingText, phase])
 
   // Whatever control was just pressed usually disappears with the phase it belonged to, so focus moves to the next sensible place
@@ -179,13 +194,22 @@ export default function MindDebate() {
     }
   }, [phase])
 
-  const handleTranscriptScroll = () => {
+  const handleTranscriptScroll = useCallback(() => {
     const el = debateRef.current
     if (!el) return
-    stickToBottomRef.current = el.scrollTop + el.clientHeight >= el.scrollHeight - STICK_TO_BOTTOM_PX
+    stickToBottomRef.current = window.matchMedia(TRANSCRIPT_BOX_QUERY).matches
+      ? el.scrollTop + el.clientHeight >= el.scrollHeight - STICK_TO_BOTTOM_PX
+      : el.getBoundingClientRect().bottom <= visibleBottom(barRef.current) + STICK_TO_BOTTOM_PX
     // Reading back pauses the debate; coming back down to the newest turn lets it go on
     if (stickToBottomRef.current && !turnByTurnRef.current) advanceRef.current?.()
-  }
+  }, [])
+
+  // On a phone the page itself scrolls, so reading back is noticed there
+  useEffect(() => {
+    if (phase !== 'debating') return
+    window.addEventListener('scroll', handleTranscriptScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleTranscriptScroll)
+  }, [phase, handleTranscriptScroll])
 
   const chooseTurnByTurn = (on: boolean) => {
     setTurnByTurnChoice(on)
@@ -435,7 +459,7 @@ export default function MindDebate() {
                 onChange={(e) => setPerson1(e.target.value)}
                 placeholder="e.g. Socrates"
                 maxLength={NAME_MAX}
-                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
+                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring transition-colors"
                 autoComplete="off"
               />
             </div>
@@ -450,7 +474,7 @@ export default function MindDebate() {
                 onChange={(e) => setPerson2(e.target.value)}
                 placeholder="e.g. Nietzsche"
                 maxLength={NAME_MAX}
-                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
+                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring transition-colors"
                 autoComplete="off"
               />
             </div>
@@ -468,7 +492,7 @@ export default function MindDebate() {
               onChange={(e) => setTopic(e.target.value)}
               placeholder="e.g. Is free will an illusion?"
               maxLength={TOPIC_MAX}
-              className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
+              className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring transition-colors"
               autoComplete="off"
             />
           </div>
@@ -520,19 +544,19 @@ export default function MindDebate() {
     >
       <section
         aria-labelledby="arena-question"
-        className="bg-card-bg border border-card-border rounded-xl px-4 pt-5 pb-4 sm:px-8 sm:pt-6 mb-4"
+        className="bg-card-bg border border-card-border rounded-xl px-4 pt-3 pb-3 sm:px-8 sm:pt-6 sm:pb-4 mb-3 sm:mb-4"
       >
-        <p className="text-sm text-foreground/75 text-center">The question</p>
-        <h2 id="arena-question" className="mt-1 text-xl sm:text-2xl font-semibold text-center text-foreground break-words">
+        <p className="hidden sm:block text-sm text-foreground/75 text-center">The question</p>
+        <h2 id="arena-question" className="sm:mt-1 text-xl sm:text-2xl font-semibold text-center text-foreground break-words">
           {/* A question turned down for what it says is not echoed back in large type */}
           {phase === 'declined' && declineReason === 'topic' ? 'A question set aside' : <>&ldquo;{topicName}&rdquo;</>}
         </h2>
-        <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 sm:gap-6">
+        <div className="mt-2 sm:mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 sm:gap-6">
           <Speaker name={person1Name} side="left" state={activeSide === 'left' ? activeState : null} reducedMotion={reducedMotion} />
-          <span className="self-center pb-8 text-xl sm:text-2xl font-semibold text-foreground/60" aria-hidden="true">&amp;</span>
+          <span className="self-center pb-6 sm:pb-8 text-xl sm:text-2xl font-semibold text-foreground/60" aria-hidden="true">&amp;</span>
           <Speaker name={person2Name} side="right" state={activeSide === 'right' ? activeState : null} reducedMotion={reducedMotion} />
         </div>
-        <p className="mt-3 text-sm text-foreground/75 text-center">Imagined voices, not real quotes.</p>
+        <p className="mt-1 sm:mt-3 text-sm text-foreground/75 text-center">Imagined voices, not real quotes.</p>
       </section>
 
       {(phase === 'debating' || phase === 'stopped') && (
@@ -551,7 +575,7 @@ export default function MindDebate() {
             {Array.from({ length: TOTAL_ROUNDS }, (_, i) => (
               <div
                 key={i}
-                className={`w-2 h-2 rounded-full transition-colors ${i < history.length ? 'bg-accent' : 'bg-foreground/15'}`}
+                className={`w-2 h-2 rounded-full transition-colors ${i < history.length ? 'bg-melon-green' : 'bg-foreground/15'}`}
               />
             ))}
           </div>
@@ -565,7 +589,7 @@ export default function MindDebate() {
         role="log"
         aria-live="polite"
         aria-label="Debate transcript"
-        className="bg-card-bg border border-card-border rounded-xl p-4 sm:p-6 min-h-[240px] max-h-[60vh] overflow-y-auto space-y-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="bg-card-bg border border-card-border rounded-xl p-4 sm:p-6 min-h-[160px] sm:min-h-[240px] sm:max-h-[60vh] sm:overflow-y-auto space-y-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
       >
         {history.map((entry) => (
           <DebateBubble key={entry.round} entry={entry} side={sideOf(entry.round)} />
@@ -618,7 +642,7 @@ export default function MindDebate() {
         <ClosingThoughts closing={closing} first={person1Name} second={person2Name} headingRef={closingHeadingRef} />
       )}
 
-      <div className="flex flex-wrap justify-center gap-3 mt-5">
+      <StickyActionBar ref={barRef} className="mt-2 sm:mt-3 flex flex-wrap justify-center gap-3">
         {phase === 'debating' && (turnByTurn || awaitingReader) && (
           <button
             type="button"
@@ -669,10 +693,10 @@ export default function MindDebate() {
           <RotateCcw size={16} aria-hidden="true" />
           New debate
         </Button>
-      </div>
+      </StickyActionBar>
 
       {(phase === 'debating' || phase === 'stopped') && (
-        <div className="mt-4 flex justify-center">
+        <div className="mt-2 flex justify-center">
           <PaceToggle checked={turnByTurn} onChange={chooseTurnByTurn} />
         </div>
       )}
@@ -687,7 +711,7 @@ function PaceToggle({ checked, onChange }: { checked: boolean; onChange: (on: bo
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 shrink-0 accent-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="h-4 w-4 shrink-0 accent-chosen-line focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
       />
       <span>
         Turn by turn <span className="text-foreground/75">(each reply waits for Next turn)</span>
@@ -733,7 +757,7 @@ function Medallion({ side, speaking }: { side: Side; speaking: boolean }) {
     <svg
       viewBox="0 0 14 14"
       shapeRendering="crispEdges"
-      className="w-16 h-16 sm:w-24 sm:h-24"
+      className="w-12 h-12 sm:w-24 sm:h-24"
       style={side === 'right' ? { transform: 'scaleX(-1)' } : undefined}
       aria-hidden="true"
     >
@@ -767,7 +791,7 @@ function Speaker({
       >
         <Medallion side={side} speaking={state === 'speaking'} />
       </div>
-      <p className="mt-2 text-base sm:text-lg font-medium text-foreground break-words max-w-full">{name}</p>
+      <p className="mt-1 sm:mt-2 text-base sm:text-lg font-medium text-foreground break-words max-w-full">{name}</p>
       <p className="text-sm text-foreground/75 min-h-[1.25rem]" aria-hidden="true">
         {state === 'speaking' ? 'speaking' : state === 'thinking' ? 'thinking' : ''}
       </p>

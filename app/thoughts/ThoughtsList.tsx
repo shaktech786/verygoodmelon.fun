@@ -60,7 +60,7 @@ export function ThoughtsList({ thoughts }: ThoughtsListProps) {
         >
           <Link
             href={`/thoughts/${thought.slug}`}
-            className="block bg-card-bg border border-card-border rounded-lg p-6 hover:border-accent/30 transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
+            className="block bg-card-bg border border-card-border rounded-lg p-6 hover:border-accent/30 transition-colors focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2 focus:ring-offset-background"
           >
             {/* Meta row */}
             <div className="flex items-center gap-3 mb-3 text-sm">

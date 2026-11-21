@@ -501,7 +501,7 @@ function Chip({ pressed, onToggle, children }: { pressed: boolean; onToggle: () 
       onClick={onToggle}
       className={cn(
         'px-3 py-1.5 rounded-full text-sm border transition-colors duration-75',
-        'focus:outline-none focus:ring-2 focus:ring-accent',
+        'focus:outline-none focus:ring-2 focus:ring-focus-ring',
         pressed ? 'border-chosen-line bg-chosen text-foreground' : 'border-card-border text-foreground/75 hover:border-accent/50',
       )}
     >
@@ -520,7 +520,6 @@ export default function BreathingPatterns() {
   const [sessionState, setSessionState] = useState<SessionState>('idle')
   const [elapsedMs, setElapsedMs] = useState(0)
   const [patternStartMs, setPatternStartMs] = useState(0)
-  const [patternsUsed, setPatternsUsed] = useState<BreathPatternId[]>([])
   const [breaths, setBreaths] = useState<Breath[]>([])
   const [freeBreathCount, setFreeBreathCount] = useState(0)
   const [checkIn, setCheckIn] = useState<CheckIn | null>(null)
@@ -585,13 +584,12 @@ export default function BreathingPatterns() {
     lastCueRef.current = ''
     justStartedRef.current = true
     setPatternStartMs(0)
-    setPatternsUsed([patternId ?? selectedPatternId])
     setElapsedMs(0)
     setFreeBreathCount(0)
     setBreaths([])
     setCheckIn(null)
     setSessionState('active')
-  }, [selectedPatternId])
+  }, [])
 
   // Brings the guided breaths of the current pattern into the log, up to `count`.
   const logGuidedBreaths = useCallback((count: number) => {
@@ -666,7 +664,6 @@ export default function BreathingPatterns() {
     setPatternStartMs(elapsed)
     setElapsedMs(elapsed)
     setSelectedPatternId(patternId)
-    setPatternsUsed((used) => (used.includes(patternId) ? used : [...used, patternId]))
   }, [selectedPatternId, sessionState, breathsInCurrentPattern, logGuidedBreaths])
 
   // ---------------------------------------------------------------------------
@@ -871,9 +868,11 @@ export default function BreathingPatterns() {
       minutes > 0
         ? `${minutes} minute${minutes !== 1 ? 's' : ''}${seconds > 0 ? ` and ${seconds} second${seconds !== 1 ? 's' : ''}` : ''}`
         : `${seconds} second${seconds !== 1 ? 's' : ''}`
-    const usedNames = patternsUsed.map((id) => PATTERNS.find((p) => p.id === id)!.name)
+    // Only rhythms actually breathed: passing over an option while paused is not breathing it
+    const breathed = [...new Set(breaths.map((breath) => breath.pattern))]
+    const usedNames = breathed.map((id) => PATTERNS.find((p) => p.id === id)!.name)
     const reply = CHECK_INS.find((c) => c.id === checkIn)
-    const onlyFree = isFreeMode && patternsUsed.length === 1
+    const onlyFree = isFreeMode && breathed.every((id) => id === 'free')
 
     return (
       <section className="max-w-2xl mx-auto" aria-label="Breathing guide">
@@ -899,7 +898,7 @@ export default function BreathingPatterns() {
                 longer breaths grew longer seeds.
               </p>
             )}
-            {!onlyFree && (
+            {!onlyFree && usedNames.length > 0 && (
               <p className="text-sm text-foreground/70 mt-1">
                 {`${usedNames.length > 1 ? 'Patterns' : 'Pattern'}: ${usedNames.join(', ')}`}
               </p>
@@ -910,15 +909,9 @@ export default function BreathingPatterns() {
             <legend className="text-base text-foreground mb-3 mx-auto">How do you feel now?</legend>
             <div className="flex flex-wrap justify-center gap-2">
               {CHECK_INS.map((option) => (
-                <Button
-                  key={option.id}
-                  variant={checkIn === option.id ? 'primary' : 'secondary'}
-                  size="sm"
-                  aria-pressed={checkIn === option.id}
-                  onClick={() => setCheckIn(option.id)}
-                >
+                <Chip key={option.id} pressed={checkIn === option.id} onToggle={() => setCheckIn(option.id)}>
                   {option.label}
-                </Button>
+                </Chip>
               ))}
             </div>
             <p className="mt-3 min-h-6 text-sm text-foreground/80" aria-live="polite">
@@ -1060,7 +1053,7 @@ export default function BreathingPatterns() {
                     onClick={() => switchPattern(p.id)}
                     className={cn(
                       'px-3 py-1.5 rounded-full text-xs border transition-colors duration-75',
-                      'focus:outline-none focus:ring-2 focus:ring-accent',
+                      'focus:outline-none focus:ring-2 focus:ring-focus-ring',
                       p.id === selectedPatternId
                         ? 'border-chosen-line bg-chosen text-foreground'
                         : 'border-card-border text-foreground/75 hover:border-accent/50',
@@ -1094,13 +1087,13 @@ export default function BreathingPatterns() {
 
   return (
     <section className="max-w-2xl mx-auto" aria-label="Breathing guide">
-      <p className="text-center text-sm sm:text-base text-foreground/75 mb-4">
-        Pick a rhythm and follow the dot around its shape. Every breath you finish sets a seed in the melon.
+      <p className="text-center text-sm sm:text-base text-foreground/75 mb-3 sm:mb-4">
+        Pick a rhythm and follow the dot around its shape.
       </p>
 
       {shownMelon && (
-        <figure className="flex items-center justify-center gap-3 mb-4">
-          <svg viewBox="0 0 200 200" className="w-14 h-14 shrink-0" aria-hidden="true">
+        <figure className="flex items-center justify-center gap-3 mb-3 sm:mb-4">
+          <svg viewBox="0 0 200 200" className="w-12 h-12 sm:w-14 sm:h-14 shrink-0" aria-hidden="true">
             <MelonSvg c={100} r={96} breaths={shownMelon.breaths} />
           </svg>
           <figcaption className="text-sm text-foreground/75">
@@ -1110,7 +1103,7 @@ export default function BreathingPatterns() {
       )}
 
       <div
-        className="grid grid-cols-1 gap-2 mb-5"
+        className="grid grid-cols-1 gap-2 mb-4 sm:mb-5"
         role="radiogroup"
         aria-label="Breathing pattern"
         onKeyDown={(e) => {
@@ -1128,8 +1121,8 @@ export default function BreathingPatterns() {
             tabIndex={selectedPatternId === p.id ? 0 : -1}
             onClick={() => setSelectedPatternId(p.id)}
             className={cn(
-              'text-left px-4 py-3 rounded-lg border transition-all duration-75',
-              'focus:outline-none focus:ring-2 focus:ring-accent',
+              'text-left px-4 py-2.5 sm:py-3 rounded-lg border transition-all duration-75',
+              'focus:outline-none focus:ring-2 focus:ring-focus-ring',
               selectedPatternId === p.id
                 ? 'border-chosen-line bg-chosen'
                 : 'border-card-border bg-card-bg hover:border-accent/40',
@@ -1175,7 +1168,7 @@ export default function BreathingPatterns() {
               onClick={() => setLengthMinutes(l.minutes)}
               className={cn(
                 'px-3 py-1.5 rounded-full text-sm border transition-colors duration-75',
-                'focus:outline-none focus:ring-2 focus:ring-accent',
+                'focus:outline-none focus:ring-2 focus:ring-focus-ring',
                 lengthMinutes === l.minutes
                   ? 'border-chosen-line bg-chosen text-foreground'
                   : 'border-card-border text-foreground/75 hover:border-accent/50',
@@ -1187,20 +1180,6 @@ export default function BreathingPatterns() {
         </div>
       </div>
 
-      <div className="flex flex-wrap justify-center gap-2 mb-2">
-        <Chip pressed={tonesOn} onToggle={() => setTonesOn((on) => !on)}>Breath tones</Chip>
-        {canBuzz && (
-          <Chip pressed={buzzWithBreath} onToggle={() => setBuzzWithBreath((on) => !on)}>Buzz as each breath turns</Chip>
-        )}
-      </div>
-      <p className="text-center text-sm text-foreground/75 mb-4 max-w-md mx-auto">
-        {!tonesOn
-          ? 'Breath tones let you follow along with your eyes closed.'
-          : audible
-            ? 'A rising note means breathe in, a falling one means breathe out. They play on their own, with or without the background sound.'
-            : 'Sound is muted in the accessibility settings, so the tones stay silent.'}
-      </p>
-
       <div className="text-center">
         <Button variant="primary" size="lg" onClick={() => startSession()}>
           Begin breathing
@@ -1209,6 +1188,20 @@ export default function BreathingPatterns() {
           Arrow keys choose. Enter begins.
         </p>
       </div>
+      <div className="flex flex-wrap justify-center gap-2 mt-6 mb-2">
+        <Chip pressed={tonesOn} onToggle={() => setTonesOn((on) => !on)}>Breath tones</Chip>
+        {canBuzz && (
+          <Chip pressed={buzzWithBreath} onToggle={() => setBuzzWithBreath((on) => !on)}>Buzz as each breath turns</Chip>
+        )}
+      </div>
+      <p className="text-center text-sm text-foreground/75 max-w-md mx-auto">
+        {!tonesOn
+          ? 'Breath tones let you follow along with your eyes closed.'
+          : audible
+            ? 'A rising note means breathe in, a falling one means breathe out. They play on their own, with or without the background sound.'
+            : 'Sound is muted in the accessibility settings, so the tones stay silent.'}
+      </p>
+
     </section>
   )
 }

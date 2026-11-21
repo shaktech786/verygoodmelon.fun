@@ -45,7 +45,7 @@ export function ToastContainer() {
             className="
               text-primary-light hover:text-foreground
               transition-colors duration-75
-              focus:outline-none focus:ring-2 focus:ring-accent
+              focus:outline-none focus:ring-2 focus:ring-focus-ring
             "
             aria-label="Dismiss notification"
           >

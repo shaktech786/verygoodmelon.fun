@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
-import { PLANT_TYPES, seasonAt, type PlantType } from '@/lib/games/calm-garden/garden'
+import { PLANT_TYPES, seasonAt, timeOfDayAt, type PlantType } from '@/lib/games/calm-garden/garden'
 import { buildSuggestionPrompt, parseSuggestionReply, repeatsLastPlant, settleSpot, suggestLocally } from '@/lib/games/calm-garden/suggest'
 
 // ---------------------------------------------------------------------------
@@ -51,6 +51,8 @@ const requestSchema = z.object({
     .max(120),
   // The visitor's own season: it is spring in Sydney while it is autumn where this runs.
   season: z.enum(['spring', 'summer', 'autumn', 'winter']).optional(),
+  // And their own hour, so a garden at night is not offered afternoon butterflies.
+  timeOfDay: z.enum(['morning', 'day', 'evening', 'night']).optional(),
 })
 
 // ---------------------------------------------------------------------------
@@ -76,11 +78,12 @@ export async function POST(request: NextRequest) {
   }
   const plants = parsed.data.elements
   const season = parsed.data.season ?? seasonAt(new Date())
+  const timeOfDay = parsed.data.timeOfDay ?? timeOfDayAt(new Date())
 
   try {
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
-      contents: buildSuggestionPrompt(plants, season),
+      contents: buildSuggestionPrompt(plants, season, timeOfDay),
       config: {
         temperature: 0.8,
         topP: 0.9,
@@ -88,7 +91,7 @@ export async function POST(request: NextRequest) {
         ...MINIMAL_THINKING,
       },
     })
-    const suggestion = parseSuggestionReply(result.text ?? '')
+    const suggestion = parseSuggestionReply(result.text ?? '', timeOfDay)
     if (!suggestion) throw new Error('Unusable garden suggestion reply')
     const settled = settleSpot(suggestion, plants)
     // Suggesting the plant just placed reads as not having looked; the local rules never do

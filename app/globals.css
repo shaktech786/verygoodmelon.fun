@@ -29,7 +29,8 @@
   --card-bg: #ffffff;
   --card-border: #e8e8e8;
   --hover-bg: #f7f7f7;
-  --focus-ring: var(--accent);
+  /* Rind green, like --chosen: red is kept for the main action, and a red ring reads as "wrong". */
+  --focus-ring: var(--melon-green);
   /* "Yours" and "selected": rind green, so red stays for the main action. Built from --melon-green, so every theme and contrast setting follows. */
   --chosen: color-mix(in srgb, var(--melon-green) 12%, var(--card-bg));
   --chosen-line: var(--melon-green);
@@ -684,7 +685,7 @@ html[data-contrast="high"] {
   --card-bg: #ffffff;
   --card-border: #333333;
   --hover-bg: #f0f0f0;
-  --focus-ring: #b01c2e;
+  --focus-ring: #0f3d22;
 }
 
 html[data-contrast="extra-high"] {
@@ -722,7 +723,7 @@ html[data-theme="dark"][data-contrast="high"] {
   --card-bg: #121212;
   --card-border: #bdbdbd;
   --hover-bg: #262626;
-  --focus-ring: #ff8f9a;
+  --focus-ring: #8fdcb4;
 }
 
 html[data-theme="dark"][data-contrast="extra-high"] {
@@ -761,7 +762,7 @@ html[data-theme="dark"][data-contrast="extra-high"] {
     --card-bg: #121212;
     --card-border: #bdbdbd;
     --hover-bg: #262626;
-    --focus-ring: #ff8f9a;
+    --focus-ring: #8fdcb4;
   }
 
   html[data-theme="auto"][data-contrast="extra-high"] {

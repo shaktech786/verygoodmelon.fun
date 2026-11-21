@@ -199,12 +199,11 @@ export default function CascadeGame() {
     const s = gameStateRef.current
     const finalScore = s ? Math.floor(s.score) : score
     const run = runRef.current
-    const hasChain = allMutations.some(m => m.id === 'combo_chain') && (s?.maxCombo ?? 0) > 1
     const style: PlayStyle = s ? getProfileSummary(s).playStyle : 'gentle'
     setScore(finalScore)
     setFinale({
-      statValue: (hasChain ? s?.maxCombo : s?.collectTotal) ?? 0,
-      statLabel: hasChain ? 'longest rhythm' : 'lights gathered',
+      statValue: s?.collectTotal ?? 0,
+      statLabel: 'lights gathered',
       totalTime: s?.totalTime ?? 0,
       closingLine: reflection({ transformed: s?.transformed ?? 0, bumps: s?.bumps ?? 0, carries: s?.carries ?? 0 }),
     })
@@ -359,14 +358,14 @@ export default function CascadeGame() {
               type="button"
               onClick={resume}
               autoFocus
-              className={`text-xs tracking-[0.15em] px-5 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${retroFont.className}`}
+              className={`text-xs tracking-[0.15em] px-5 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${retroFont.className}`}
             >
               RESUME
             </button>
             <button
               type="button"
               onClick={handlePlayAgain}
-              className="text-sm underline cursor-pointer text-foreground/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded px-1 min-h-[44px]"
+              className="text-sm underline cursor-pointer text-foreground/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded px-1 min-h-[44px]"
             >
               Start over
             </button>
@@ -415,7 +414,7 @@ export default function CascadeGame() {
             <button
               type="button"
               onClick={pause}
-              className="inline-flex items-center gap-2 min-h-11 px-4 rounded-lg border border-card-border bg-card-bg text-sm text-foreground/85 hover:text-foreground cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="inline-flex items-center gap-2 min-h-11 px-4 rounded-lg border border-card-border bg-card-bg text-sm text-foreground/85 hover:text-foreground cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               <Pause size={16} aria-hidden="true" />
               Pause

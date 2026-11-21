@@ -136,7 +136,7 @@ export default function WorryCapsule() {
     const next = capsules.map((c) => (c.id === capsule.id ? openCapsule(c, outcome, note, now()) : c))
     if (!commit(next).ok) return false
     go({ kind: 'shelf' })
-    setAnnouncement('Closed and kept with the others.')
+    setAnnouncement(capsules.length > 1 ? 'Closed and kept with the others.' : 'Closed and kept here.')
     return true
   }
 
@@ -313,13 +313,17 @@ export default function WorryCapsule() {
                     type="button"
                     onClick={() => go({ kind: 'capsule', id: capsule.id })}
                     aria-label={ready ? `Ready to open, sealed ${sealedOn}` : `Opens ${formatDay(capsule.opensOn, today)}, sealed ${sealedOn}`}
-                    className="group w-full rounded-md pb-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent hover:bg-hover-bg transition-colors duration-75"
+                    className="group w-full rounded-md pb-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring hover:bg-hover-bg transition-colors duration-75"
                   >
                     <Jar scene={ready ? 'ready' : 'sealed'} motion={false} plank={false} className="w-20 h-[4.5rem] sm:w-24 sm:h-[5.4rem] mx-auto" />
                     <span className={cn('block text-xs sm:text-sm', ready ? 'font-semibold text-foreground' : 'text-foreground/75')}>
                       {ready ? 'Ready' : `Opens ${formatDay(capsule.opensOn, today, 'short')}`}
                     </span>
-                    <span className="block text-xs text-foreground/75">sealed {sealedDay(capsule, today, 'short')}</span>
+                    <span className="block text-xs text-foreground/75">
+                      sealed {sealedDay(capsule, today, 'short')}
+                      {/* The words stay sealed until it opens, so jars from one day are told apart by their order alone */}
+                      {place && place.of > 1 && <span className="block">{place.position} of {place.of}</span>}
+                    </span>
                   </button>
                 </li>
               )
@@ -340,7 +344,7 @@ export default function WorryCapsule() {
                   <button
                     type="button"
                     onClick={() => go({ kind: 'capsule', id: capsule.id })}
-                    className="w-full flex items-center gap-3 px-2 py-3 text-left hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent transition-colors duration-75"
+                    className="w-full flex items-center gap-3 px-2 py-3 text-left hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring transition-colors duration-75"
                   >
                     <OutcomeMark outcome={capsule.opening.outcome} className="w-4 h-4" />
                     <span className="min-w-0 flex-1">
@@ -469,7 +473,7 @@ function Composer({ draft, restored, today, snapshot, motion, focus, onChange, o
           placeholder="I’m worried that…"
           onChange={(event) => onChange({ ...draft, text: event.target.value })}
           aria-describedby={left <= 100 ? `${id}-left` : undefined}
-          className="w-full rounded-lg border border-card-border bg-background px-3.5 py-3 text-base text-foreground placeholder:text-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent resize-y"
+          className="w-full rounded-lg border border-card-border bg-background px-3.5 py-3 text-base text-foreground placeholder:text-foreground/50 focus:outline-none focus:ring-2 focus:ring-focus-ring resize-y"
         />
         {left <= 100 && (
           <p id={`${id}-left`} className="mt-1 text-xs text-foreground/75 text-right">{left} characters left</p>
@@ -490,7 +494,7 @@ function Composer({ draft, restored, today, snapshot, motion, focus, onChange, o
                 value={horizon.id}
                 checked={draft.horizon === horizon.id}
                 onChange={() => onChange({ ...draft, horizon: horizon.id })}
-                className="mt-1 accent-[var(--accent)] focus:outline-none"
+                className="mt-1 accent-chosen-line focus:outline-none"
               />
               <span>
                 <span className="block text-sm font-medium text-foreground">{horizon.label}</span>
@@ -667,7 +671,7 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: 
                       value={horizon.id}
                       checked={again === horizon.id}
                       onChange={() => setAgain(horizon.id)}
-                      className="mt-1 accent-[var(--accent)] focus:outline-none"
+                      className="mt-1 accent-chosen-line focus:outline-none"
                     />
                     <span>
                       <span className="block text-sm font-medium text-foreground">{horizon.label}</span>
@@ -691,7 +695,7 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: 
                 maxLength={MAX_NOTE_LENGTH}
                 rows={2}
                 onChange={(event) => setNote(event.target.value)}
-                className="w-full rounded-lg border border-card-border bg-background px-3.5 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent resize-y"
+                className="w-full rounded-lg border border-card-border bg-background px-3.5 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-focus-ring resize-y"
               />
             </div>
           )}
@@ -787,7 +791,7 @@ function Rescue({ draft, reason, today, focus, onRetry, onBack }: RescueProps) {
           value={worry}
           rows={3}
           onFocus={(event) => event.target.select()}
-          className="w-full rounded-lg border border-card-border bg-background px-3.5 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+          className="w-full rounded-lg border border-card-border bg-background px-3.5 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-focus-ring"
         />
       </div>
       <div className="flex flex-wrap gap-2">

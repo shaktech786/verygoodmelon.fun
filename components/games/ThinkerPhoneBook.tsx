@@ -94,7 +94,7 @@ export default function ThinkerPhoneBook({
               placeholder="Search by name, field, or culture..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-lg bg-background text-foreground border border-card-border placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full pl-10 pr-4 py-3 rounded-lg bg-background text-foreground border border-card-border placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring"
             />
           </div>
         </div>

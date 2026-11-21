@@ -85,7 +85,7 @@ export function SoundToggle({ gameId }: SoundToggleProps) {
           shadow-lg
           text-foreground hover:text-accent
           transition-all duration-300
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2
           ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}
         `}
       >

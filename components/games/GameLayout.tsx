@@ -135,7 +135,7 @@ export function GameLayout({
                 bg-card-bg text-foreground border border-card-border rounded-lg font-medium
                 hover:bg-hover-bg transition-colors
                 text-sm sm:text-base
-                focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2
+                focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2
               "
             >
               {backLinkText}

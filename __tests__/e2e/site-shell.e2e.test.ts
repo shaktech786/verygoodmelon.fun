@@ -340,6 +340,10 @@ test.describe('Finding your way', () => {
     const href = await start.getAttribute('href')
     const calmSlugs = SHOWCASE_GROUPS.find((group) => group.category === 'Calm')?.games.map((g) => `/games/${g.slug}`)
     expect(calmSlugs).toContain(href)
+    // "Start here" and the card marked "Today" are two different invitations, never the same game
+    const today = page.getByRole('link', { name: /, featured today\./ })
+    await expect(today).toBeVisible()
+    expect(await today.getAttribute('href')).not.toBe(href)
   })
 
   test('the homepage and the games page group and order games the same way', async ({ page }) => {

@@ -32,9 +32,7 @@ interface EngineState {
   px: number
   py: number
   combo: number
-  comboTimer: number
   multiplier: number
-  rushTimer: number
   totalTime: number
   bumps: number
   transformed: number
@@ -96,9 +94,7 @@ async function engine(page: Page): Promise<EngineState> {
       px: s.px,
       py: s.py,
       combo: s.combo,
-      comboTimer: s.comboTimer,
       multiplier: s.multiplier,
-      rushTimer: s.rushTimer,
       totalTime: s.totalTime,
       bumps: s.bumps,
       transformed: s.transformed,
@@ -113,13 +109,6 @@ async function endWave(page: Page) {
   await page.evaluate(() => {
     const s = (window as CascadeWindow).__cascadeState
     if (s) s.waveTime = 999
-  })
-}
-
-async function endRush(page: Page) {
-  await page.evaluate(() => {
-    const s = (window as CascadeWindow).__cascadeState
-    if (s) s.rushTimer = 0
   })
 }
 
@@ -224,7 +213,7 @@ test.describe('The Shapeshifter', () => {
     expect((await engine(page)).multiplier).toBeGreaterThanOrEqual(3)
     await expect(page.getByText(/×\s*glow/)).toHaveCount(0)
 
-    await endRush(page)
+    await endWave(page)
     const finale = finaleDialog(page)
     await expect(finale).toBeVisible()
     const heading = finale.getByRole('heading', { name: `Your game is finished. It is called ${NAME}` })
@@ -265,7 +254,7 @@ test.describe('The Shapeshifter', () => {
     const firstRules = (await engine(page)).activeMechanics
     expect(first).toEqual(firstRules.map((id) => OFFLINE_TITLES[id]))
 
-    await endRush(page)
+    await endWave(page)
     const finale = finaleDialog(page)
     // Nobody moved, so the game is named for a gentle player, from the rules it grew and their order
     await expect(finale.getByRole('heading', { name: /QUIET (STARS|GEMS) & (SHADOWS|TIDES|LANTERNS|GLIDES|RHYTHMS|GENTLE PULL)$/ })).toBeFocused()
@@ -376,8 +365,8 @@ test.describe('The Shapeshifter', () => {
     await expect.poll(async () => (await engine(page)).px).toBeGreaterThan(500)
   })
 
-  test('the bloom turns waiting shadows into stars, and its glow survives a lapsed rhythm', async ({ page }) => {
-    // Regression: combo decay reset the multiplier to 1 in the middle of the 3x rush
+  test('the bloom turns waiting shadows into stars, and no glow fades while the player rests', async ({ page }) => {
+    // Regression: a pause once lowered the glow, and the bloom's bonus ran out on a timer of its own
     await mockMutations(page)
     await openGame(page)
     await page.keyboard.press('Enter')
@@ -393,12 +382,10 @@ test.describe('The Shapeshifter', () => {
     expect(bloom.entities.filter((e) => e.type === 'chaser')).toHaveLength(0)
     await expect(page.getByText('the bloom')).toBeVisible()
 
-    await page.evaluate(() => {
-      const s = (window as CascadeWindow).__cascadeState
-      if (s) { s.combo = 1; s.comboTimer = 0.01 }
-    })
-    await expect.poll(async () => (await engine(page)).combo).toBe(0)
-    expect((await engine(page)).multiplier).toBe(3)
+    const resting = (await engine(page)).combo
+    await page.waitForTimeout(4000)
+    expect((await engine(page)).combo).toBeGreaterThanOrEqual(resting)
+    expect((await engine(page)).multiplier).toBeGreaterThanOrEqual(3)
   })
 
   test('a shadow that reaches the orb only nudges it: no light is lost and nothing shakes', async ({ page }) => {
@@ -439,7 +426,7 @@ test.describe('The Shapeshifter', () => {
     await page.keyboard.press('Enter')
     for (let n = 1; n <= 6; n++) await mutate(page, n)
     await page.keyboard.down('ArrowDown')
-    await endRush(page)
+    await endWave(page)
     const finale = finaleDialog(page)
     await expect(finale.getByRole('heading', { name: /ORBIT GARDEN DELUXE/ })).toBeFocused()
     await page.waitForTimeout(500)
@@ -487,7 +474,7 @@ test.describe('The Shapeshifter', () => {
     expect(await axeViolations(page)).toEqual([])
     await page.keyboard.press('Enter')
     for (let n = 2; n <= 6; n++) await mutate(page, n)
-    await endRush(page)
+    await endWave(page)
     await expect(finaleDialog(page).getByRole('button', { name: 'PLAY AGAIN' })).toBeVisible()
     expect(await axeViolations(page)).toEqual([])
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))

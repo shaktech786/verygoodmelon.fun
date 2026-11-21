@@ -252,6 +252,8 @@ test.describe('The Patient One', () => {
     // Words on the page: the time never cuts them off, the player says when they are done.
     await expect(page.getByRole('heading', { name: REWARD_HEADING })).toHaveCount(0)
     await expect(page.getByRole('status').filter({ hasText: 'Finish your thought, then press Done.' })).toBeVisible()
+    // The whole time was given, so nothing is "early" any more
+    await expect(page.getByRole('button', { name: 'Leave early' })).toHaveCount(0)
     await page.getByRole('button', { name: 'Done', exact: true }).click()
     await expect(page.getByText('You gave the blue mug a whole minute. Most things get a glance.')).toBeVisible()
   })
@@ -311,6 +313,10 @@ test.describe('The Patient One', () => {
     // Starting again begins from the full time.
     await taskButton(page, 'Look at One Thing').click()
     await expect(timer(page)).toHaveText('1:00')
+    // Read out in plain words: "1 minute", never "1 minutes 0 seconds"
+    await expect(timer(page)).toHaveAccessibleName('1 minute remaining')
+    await advance(page, 5000)
+    await expect(timer(page)).toHaveAccessibleName('55 seconds remaining')
   })
 
   test('time away from the tab does not count: the moment waits and welcomes you back', async ({ page }) => {

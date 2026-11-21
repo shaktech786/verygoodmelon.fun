@@ -439,24 +439,31 @@ test.describe('requesting a thinker', () => {
   })
 })
 
-test('the legal disclaimer opens from the call and links back to the game', async ({ page, context }) => {
+test('"About these conversations" opens in the same tab, plain words first and the terms folded away', async ({ page }) => {
   await setUpBrowser(page)
   await stubChat(page)
   await openGame(page)
 
   const link = page.getByRole('link', { name: 'About these conversations' })
   await expect(link).toHaveAttribute('href', '/games/ancient-voices/disclaimer')
+  await expect(link).not.toHaveAttribute('target', '_blank')
+  expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(44)
 
-  const [disclaimer] = await Promise.all([context.waitForEvent('page'), link.click()])
-  await expect(disclaimer.getByRole('heading', { name: 'Legal Disclaimer', level: 1 })).toBeVisible()
-  await expect(disclaimer.getByRole('heading', { name: 'Imagined conversations, not real quotes' })).toBeVisible()
-  expect(await disclaimer.locator('main').innerText()).not.toMatch(/\bAI\b/)
-  await expect(disclaimer.getByRole('link', { name: 'Back to The Sage' })).toHaveAttribute('href', '/games/ancient-voices')
-  await expect(disclaimer.getByRole('link', { name: 'Return to The Sage' })).toHaveAttribute('href', '/games/ancient-voices')
+  await link.click()
+  await expect(page).toHaveURL(/\/games\/ancient-voices\/disclaimer$/)
+  await expect(page).toHaveTitle(/^About these conversations/)
+  await expect(page.getByRole('heading', { name: 'About these conversations', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Imagined conversations, not real quotes' })).toBeVisible()
+  // The legal text waits behind a fold instead of greeting the visitor
+  await expect(page.getByRole('heading', { name: '7. Limitation of Liability' })).toBeHidden()
+  await page.getByText('The full terms').click()
+  await expect(page.getByRole('heading', { name: '7. Limitation of Liability' })).toBeVisible()
+  expect(await page.locator('main').innerText()).not.toMatch(/\bAI\b/)
+  await expect(page.getByRole('link', { name: 'Back to The Sage' })).toHaveAttribute('href', '/games/ancient-voices')
 
-  await disclaimer.getByRole('link', { name: 'Return to The Sage' }).click()
-  await expect(disclaimer).toHaveURL(/\/games\/ancient-voices$/)
-  await expect(disclaimer.getByRole('textbox', { name: 'Message input' })).toBeVisible()
+  await page.getByRole('link', { name: 'Return to The Sage' }).click()
+  await expect(page).toHaveURL(/\/games\/ancient-voices$/)
+  await expect(page.getByRole('textbox', { name: 'Message input' })).toBeVisible()
 })
 
 test.describe('on a phone', () => {

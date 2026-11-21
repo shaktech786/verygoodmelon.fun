@@ -60,7 +60,7 @@ const RULES: Record<string, (run: RunSoFar) => Omit<RuleText, 'mechanicId'>> = {
   }),
   combo_chain: () => ({
     title: 'RHYTHM',
-    description: 'Gathering in a steady rhythm makes your glow grow.',
+    description: 'Every light you gather makes your glow grow, and it stays.',
     flavorText: 'No rush. Just a rhythm.',
   }),
   gravity_well: () => ({

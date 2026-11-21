@@ -182,7 +182,7 @@ export default function CalmGarden() {
   }, [])
 
   // `said` is what was just announced for the planting, so the idea is heard after it, not instead of it.
-  const fetchSuggestion = useCallback(async (current: Plant[], said: string, season: Season) => {
+  const fetchSuggestion = useCallback(async (current: Plant[], said: string, season: Season, timeOfDay: TimeOfDay) => {
     if (suggestPendingRef.current) return
     suggestPendingRef.current = true
     const spots = current.slice(-120).map(({ type, x, y }) => ({ type, x, y }))
@@ -191,9 +191,9 @@ export default function CalmGarden() {
       const res = await fetch('/api/calm-garden/suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ elements: spots, season }),
+        body: JSON.stringify({ elements: spots, season, timeOfDay }),
       })
-      if (res.ok) next = parseSuggestion((await res.json())?.suggestion)
+      if (res.ok) next = parseSuggestion((await res.json())?.suggestion, timeOfDay)
     } catch {
       // Unreachable: the garden answers from its own rules below.
     } finally {
@@ -228,7 +228,7 @@ export default function CalmGarden() {
     if (!offerOpen && next.length >= SUGGEST_EVERY && sinceSuggestRef.current >= SUGGEST_EVERY && suggestCountRef.current < MAX_SUGGESTIONS) {
       sinceSuggestRef.current = 0
       suggestCountRef.current++
-      void fetchSuggestion(next, message, clock.season)
+      void fetchSuggestion(next, message, clock.season, clock.tod)
     }
   }, [plants, remember, setPlants, fetchSuggestion, clock.tod, clock.season, suggestion])
 
@@ -345,8 +345,17 @@ export default function CalmGarden() {
   const sitKind = clock.tod === 'night' || clock.tod === 'evening' ? 'firefly' : 'butterfly'
   const closingLine = useMemo(() => {
     if (sitAt === null) return ''
-    return sitLine({ plants, visitors: sitVisitors, visitorKind: sitKind, season: clock.season, since: plantedSince(plants, sitAt), now: sitAt })
-  }, [plants, sitVisitors, sitKind, clock.season, sitAt])
+    return sitLine({
+      plants,
+      visitors: sitVisitors,
+      visitorKind: sitKind,
+      before: visitors,
+      kindBefore: visitorKind,
+      season: clock.season,
+      since: plantedSince(plants, sitAt),
+      now: sitAt,
+    })
+  }, [plants, sitVisitors, sitKind, visitors, visitorKind, clock.season, sitAt])
 
   const handleSitKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Escape') {
@@ -623,8 +632,8 @@ export default function CalmGarden() {
   // Render
   // ---------------------------------------------------------------------------
 
-  const smallButton = 'rounded-md px-3 py-1.5 font-medium hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
-  const mainButton = 'rounded-md px-3 py-1.5 font-medium bg-melon-green text-background hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1'
+  const smallButton = 'rounded-md px-3 py-1.5 font-medium hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
+  const mainButton = 'rounded-md px-3 py-1.5 font-medium bg-melon-green text-background hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-1'
 
   let status: React.ReactNode = null
   if (movingPlant) {
@@ -693,7 +702,7 @@ export default function CalmGarden() {
                 'block w-full touch-none',
                 sitting
                   ? 'aspect-square sm:aspect-[16/10]'
-                  : 'aspect-[4/3] sm:aspect-[16/10] lg:max-h-[calc(100svh-15rem)] cursor-crosshair focus-visible:outline-4! focus-visible:outline-solid! focus-visible:outline-accent! focus-visible:-outline-offset-4!',
+                  : 'aspect-[4/3] sm:aspect-[16/10] lg:max-h-[calc(100svh-15rem)] cursor-crosshair focus-visible:outline-4! focus-visible:outline-solid! focus-visible:outline-focus-ring! focus-visible:-outline-offset-4!',
               )}
               role="application"
               aria-label="Your garden"
@@ -761,13 +770,14 @@ export default function CalmGarden() {
               onClick={() => setSelectedType(variant.id)}
               className={cn(
                 'flex flex-col items-center gap-0.5 rounded-lg px-1 pt-1.5 pb-1 text-[11px] leading-tight transition-colors duration-75',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
                 selectedType === variant.id
                   ? 'bg-chosen border border-chosen-line text-foreground'
                   : 'border border-transparent text-foreground/80 hover:bg-hover-bg hover:text-foreground',
               )}
             >
-              <span className="rounded-md bg-success/25 p-0.5">
+              {/* The plants are drawn in daylight colours, so their tile stays a light meadow green in every theme */}
+              <span className="rounded-md bg-[#d6ecdd] p-0.5">
                 <PlantIcon type={variant.id} season={clock.season} />
               </span>
               <span className="text-center">{variant.label}</span>
@@ -802,7 +812,7 @@ export default function CalmGarden() {
           aria-describedby="sit-hint"
           className={cn(
             'mt-3 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-medium transition-opacity duration-75',
-            'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
             canSit ? 'bg-melon-green text-background hover:opacity-90' : 'bg-foreground/10 text-foreground/60 cursor-not-allowed',
           )}
         >
@@ -821,7 +831,7 @@ export default function CalmGarden() {
             if (details.open) requestAnimationFrame(() => details.scrollIntoView({ block: 'nearest' }))
           }}
         >
-          <summary ref={listSummaryRef} className="cursor-pointer rounded text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+          <summary ref={listSummaryRef} className="cursor-pointer rounded text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
             What&apos;s in your garden
           </summary>
           {listOpen && (plants.length === 0 ? (

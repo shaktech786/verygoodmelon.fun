@@ -196,7 +196,7 @@ export default async function AnalyticsPage() {
                       <th scope="row" className="px-6 py-3 font-medium">
                         <Link
                           href={`/games/${game.slug}`}
-                          className="text-foreground hover:text-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent rounded"
+                          className="text-foreground hover:text-accent transition-colors focus:outline-none focus:ring-2 focus:ring-focus-ring rounded"
                         >
                           {game.title}
                         </Link>

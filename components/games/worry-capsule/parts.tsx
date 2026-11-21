@@ -47,7 +47,7 @@ export function Slip({ children, className, label }: { children: ReactNode; clas
   )
 }
 
-const link = 'underline underline-offset-2 text-foreground hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-sm'
+const link = 'underline underline-offset-2 text-foreground hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-sm'
 
 export function HelpLine() {
   return (

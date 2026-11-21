@@ -170,6 +170,17 @@ function timesWord(n: number): string {
   return `${n} times`
 }
 
+/** "1 minute 5 seconds", "2 minutes", "40 seconds": what a screen reader hears for the timer. */
+function timeInWords(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  const parts = [
+    minutes > 0 && `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`,
+    (seconds > 0 || minutes === 0) && `${seconds} ${seconds === 1 ? 'second' : 'seconds'}`,
+  ].filter(Boolean)
+  return parts.join(' ')
+}
+
 function MomentIcon({ id, className }: { id: MomentId; className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden="true" focusable="false">
@@ -261,7 +272,7 @@ function WordChip({ label, pressed, onToggle }: { label: string; pressed: boolea
       onClick={onToggle}
       className={cn(
         'px-3 py-1.5 rounded-full text-sm border transition-colors duration-75',
-        'focus:outline-none focus:ring-2 focus:ring-accent',
+        'focus:outline-none focus:ring-2 focus:ring-focus-ring',
         pressed ? 'border-chosen-line bg-chosen text-foreground' : 'border-card-border text-foreground/75 hover:border-accent/50',
       )}
     >
@@ -608,7 +619,7 @@ export default function TheUnrusher() {
                       setLookedAt(e.target.value)
                     }}
                     {...writingHandlers}
-                    className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-focus-ring"
                   />
                 </label>
               )}
@@ -653,7 +664,7 @@ export default function TheUnrusher() {
                           setThings(next)
                         }}
                         {...writingHandlers}
-                        className="flex-1 min-w-0 rounded-lg border border-card-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                        className="flex-1 min-w-0 rounded-lg border border-card-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-focus-ring"
                       />
                     </label>
                   ))}
@@ -685,14 +696,20 @@ export default function TheUnrusher() {
                   className="text-base text-foreground/70 tabular-nums"
                   role="timer"
                   aria-live="off"
-                  aria-label={`${Math.floor(timeRemaining / 60)} minutes ${timeRemaining % 60} seconds remaining`}
+                  aria-label={`${timeInWords(timeRemaining)} remaining`}
                 >
                   {Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, '0')}
                 </div>
                 {compact && (
-                  <Button variant="ghost" onClick={resetTask}>
-                    Leave early
-                  </Button>
+                  timeUp ? (
+                    <Button variant="ghost" onClick={() => finishMoment(currentTask)}>
+                      Done
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" onClick={resetTask}>
+                      Leave early
+                    </Button>
+                  )
                 )}
               </div>
 
@@ -705,9 +722,6 @@ export default function TheUnrusher() {
                     <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
                       <Button variant="primary" onClick={() => finishMoment(currentTask)} className="w-full sm:w-auto">
                         Done
-                      </Button>
-                      <Button variant="ghost" onClick={resetTask}>
-                        Leave early
                       </Button>
                     </div>
                   </>
@@ -848,7 +862,7 @@ export default function TheUnrusher() {
               onClick={() => startTask(task)}
               className={cn(
                 'bg-card-bg border border-card-border rounded-lg p-5 text-left transition-all duration-75',
-                'hover:border-accent hover:shadow-md focus:outline-none focus:ring-2 focus:ring-accent',
+                'hover:border-accent hover:shadow-md focus:outline-none focus:ring-2 focus:ring-focus-ring',
               )}
               aria-label={`${task.title}: ${task.description} ${task.durationLabel}.${isCompleted ? ' Savored today.' : ''}`}
             >

@@ -103,7 +103,7 @@ export function FreshThought({ mounted }: FreshThoughtProps) {
             onClick={() => setOpen(!open)}
             aria-expanded={open}
             aria-controls="fresh-thought-body"
-            className="mt-2 min-h-[44px] px-1 text-sm font-medium text-foreground underline underline-offset-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="mt-2 min-h-[44px] px-1 text-sm font-medium text-foreground underline underline-offset-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             {open ? 'Show less' : 'Read the whole thought'}
           </button>

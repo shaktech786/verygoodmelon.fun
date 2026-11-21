@@ -26,7 +26,7 @@ export function DevTimeTravel({ offsetDays, today }: { offsetDays: number; today
             key={step.label}
             type="button"
             onClick={() => setDevOffsetDays(offsetDays + step.days)}
-            className="rounded border border-card-border bg-background px-3 py-1.5 text-foreground hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="rounded border border-card-border bg-background px-3 py-1.5 text-foreground hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             {step.label}
           </button>
@@ -34,7 +34,7 @@ export function DevTimeTravel({ offsetDays, today }: { offsetDays: number; today
         <button
           type="button"
           onClick={() => setDevOffsetDays(0)}
-          className="rounded border border-card-border bg-background px-3 py-1.5 text-foreground hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="rounded border border-card-border bg-background px-3 py-1.5 text-foreground hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           Back to today
         </button>

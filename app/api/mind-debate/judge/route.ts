@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 import { VISITOR_RULE } from '@/lib/ai/visitor-rule'
+import { overstepsVisitor } from '@/lib/ai/visitor-guard'
 import {
   NAME_MAX, TOPIC_MAX,
   clean, cleanHistory, isRefusal, plainSpeech, clampToSentences,
@@ -17,7 +18,7 @@ function toClosing(parsed: Record<string, unknown>): Closing | null {
     const value = parsed[key]
     if (typeof value !== 'string') return null
     const line = clampToSentences(plainSpeech(value), LINE_MAX)
-    if (!line || isRefusal(line)) return null
+    if (!line || isRefusal(line) || overstepsVisitor(line)) return null
     closing[key] = line
   }
   return closing as Closing

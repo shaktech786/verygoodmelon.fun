@@ -128,7 +128,7 @@ export function SubmitThought() {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={6}
-            className="w-full rounded-lg border border-card-border bg-card-bg px-4 py-3 text-foreground text-sm leading-relaxed placeholder:text-primary-light focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background resize-y"
+            className="w-full rounded-lg border border-card-border bg-card-bg px-4 py-3 text-foreground text-sm leading-relaxed placeholder:text-primary-light focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2 focus:ring-offset-background resize-y"
             placeholder="Write something honest..."
             aria-describedby="thought-body-hint"
             required
@@ -166,7 +166,7 @@ export function SubmitThought() {
                 className={`
                   inline-flex items-center cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-medium
                   border transition-colors
-                  focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2 focus-within:ring-offset-background
+                  focus-within:ring-2 focus-within:ring-focus-ring focus-within:ring-offset-2 focus-within:ring-offset-background
                   ${
                     theme === t.value
                       ? 'border-chosen-line bg-chosen text-foreground'
@@ -207,7 +207,7 @@ export function SubmitThought() {
             value={authorName}
             onChange={(e) => setAuthorName(e.target.value)}
             maxLength={100}
-            className="w-full rounded-lg border border-card-border bg-card-bg px-4 py-2.5 text-foreground text-sm placeholder:text-primary-light focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
+            className="w-full rounded-lg border border-card-border bg-card-bg px-4 py-2.5 text-foreground text-sm placeholder:text-primary-light focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2 focus:ring-offset-background"
             placeholder="Leave blank to stay anonymous"
             aria-describedby="author-name-hint"
             disabled={state === 'submitting'}
@@ -237,7 +237,7 @@ export function SubmitThought() {
             inline-flex items-center gap-2 rounded-lg px-5 py-2.5
             bg-accent text-white text-sm font-medium
             transition-colors hover:bg-accent/90
-            focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background
+            focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2 focus:ring-offset-background
             disabled:opacity-50 disabled:cursor-not-allowed
           "
         >

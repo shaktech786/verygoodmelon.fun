@@ -273,7 +273,8 @@ export default function IdeaLab() {
       const gold = golds.find(g => g.name.toLowerCase() === name.toLowerCase())
       settle({ name, emoji, description, status: 'new', riddle: gold?.riddles[0] }, updatedDiscoveries)
     } catch (error) {
-      console.error('Combination error:', error)
+      // The bench already answers in its own words; a failed pair is not an error worth shouting about
+      console.warn('Combination unresolved:', error)
       const unresolved: CombinationResult = {
         name: 'Mystery',
         emoji: '❓',
@@ -566,7 +567,7 @@ export default function IdeaLab() {
                   <a
                     href="#great-work-title"
                     onClick={skipToRiddles}
-                    className="sr-only focus:not-sr-only focus:px-3 focus:py-2 rounded-lg text-sm font-medium text-foreground underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    className="sr-only focus:not-sr-only focus:px-3 focus:py-2 rounded-lg text-sm font-medium text-foreground underline focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                   >
                     Skip to the riddles
                   </a>
@@ -603,7 +604,7 @@ export default function IdeaLab() {
                         aria-disabled={isCombining}
                         className={`
                           flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-lg border transition-colors
-                          text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-card-bg
+                          text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card-bg
                           ${isSelected
                             ? 'border-chosen-line bg-chosen text-foreground shadow-[inset_0_0_0_1px_var(--chosen-line)]'
                             : gold
@@ -647,7 +648,7 @@ export default function IdeaLab() {
               </div>
 
               <div
-                className="lg:min-h-0 lg:overflow-y-auto rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="lg:min-h-0 lg:overflow-y-auto rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                 role={wide ? 'region' : undefined}
                 aria-label={wide ? 'Riddles' : undefined}
                 tabIndex={wide ? 0 : undefined}

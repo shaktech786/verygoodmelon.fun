@@ -15,7 +15,8 @@ export interface Combination {
 /** The sixteen starting ideas: the lead, and the light, an alchemist begins with. */
 export const BASE_CONCEPTS: Concept[] = [
   { id: 'love', name: 'Love', emoji: '💕', isBase: true },
-  { id: 'fear', name: 'Fear', emoji: '🌫️', isBase: true },
+  // Mist was nearly invisible on a light chip; a peek through the fingers is fear held gently
+  { id: 'fear', name: 'Fear', emoji: '🫣', isBase: true },
   { id: 'time', name: 'Time', emoji: '⏳', isBase: true },
   { id: 'death', name: 'Death', emoji: '🕯️', isBase: true },
   { id: 'knowledge', name: 'Knowledge', emoji: '📚', isBase: true },

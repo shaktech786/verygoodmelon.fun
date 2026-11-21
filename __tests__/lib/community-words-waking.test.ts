@@ -7,7 +7,7 @@ describe('excerpt', () => {
   })
 
   it('shortens long words at a word boundary', () => {
-    const long = 'Oh. Mum? I was so scared of this part and it was just quiet. I wish I had danced more.'
+    const long = 'Mum, I wish I had danced more with you in the kitchen on all those slow Sunday mornings.'
     const short = excerpt(long)
     expect(short.endsWith('…')).toBe(true)
     expect(short.length).toBeLessThanOrEqual(61)
@@ -33,5 +33,28 @@ describe('wakingLine', () => {
     const line = wakingLine({ words: 'I never want to go back', intention: '', care: true })
     expect(line).not.toContain('go back')
     expect(line).toMatch(/good to have you here/i)
+  })
+})
+
+describe('what is quoted back at dawn', () => {
+  it('prefers the sentence about longing or love', () => {
+    expect(excerpt('I am so tired. I miss my brother and his stupid jokes.')).toBe('I miss my brother and his stupid jokes.')
+    expect(excerpt('It is cold here. I love you, Mum.')).toBe('I love you, Mum.')
+  })
+
+  it.each([
+    'I am so tired',
+    'I am so tired.',
+    'So exhausted. I cannot do this anymore.',
+    'Everything hurts and I am scared.',
+  ])('never quotes tiredness or distress back: %j', (words) => {
+    expect(excerpt(words)).toBeNull()
+    const line = wakingLine({ words, intention: 'Drink a glass of water slowly.', care: false })
+    expect(line).not.toMatch(/tired|exhausted|hurts|scared|anymore/i)
+    expect(line).not.toContain('“')
+  })
+
+  it('drops the tired sentence and keeps the rest', () => {
+    expect(excerpt('I am so tired. Is that you, Grandpa?')).toBe('Is that you, Grandpa?')
   })
 })

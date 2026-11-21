@@ -46,6 +46,24 @@ test.describe('The Final Word', () => {
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('Mum, you were right about the garden.')
   })
 
+  test('when the count cannot load nothing stands in for it, and "today" is said once at most', async ({ page }) => {
+    await page.route('**/api/last-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
+    await page.route('**/api/last-words/reflect', (route) =>
+      route.fulfill({ json: { reflection: 'This is about your sister. Someone could hear it from you today.' } })
+    )
+    await page.goto('/games/final-breath')
+    await expect(async () => {
+      await page.getByRole('textbox', { name: 'Your final words' }).fill('Tell my sister she was the brave one.')
+      await expect(page.getByRole('button', { name: 'Leave these words' })).toBeEnabled({ timeout: 500 })
+    }).toPass()
+    await page.getByRole('button', { name: 'Leave these words' }).click()
+
+    await expect(page.getByRole('heading', { name: "These don't have to wait" })).toBeVisible()
+    await expect(page.getByText(/Take a moment|others would say|first words here/)).toHaveCount(0)
+    const text = await page.locator('main').innerText()
+    expect(text.match(/\btoday\b/gi) ?? []).toHaveLength(1)
+  })
+
   test('someone who may be in danger is not offered a flame to put out', async ({ page }) => {
     await page.route('**/api/last-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
     await page.route('**/api/last-words/reflect', (route) => route.fulfill({ status: 500, json: {} }))

@@ -613,11 +613,11 @@ export default function TimelessMinds() {
             aria-live="polite"
             aria-label="Conversation"
             tabIndex={0}
-            className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3 bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+            className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3 bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring"
             style={{ scrollbarGutter: 'stable' }}
           >
             {messages.length === 1 && showTopicSuggestions && (
-              <div className="mb-3 p-3 bg-accent/5 border border-accent/20 rounded-lg">
+              <div className="mb-3 p-3 bg-card-bg border border-card-border rounded-lg">
                 <p className="text-xs text-foreground/70 mb-2">Try asking about:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {getTopicSuggestions(thinker, care).map(topic => (
@@ -628,7 +628,7 @@ export default function TimelessMinds() {
                         setShowTopicSuggestions(false)
                         inputRef.current?.focus()
                       }}
-                      className="text-sm px-3 py-1.5 min-h-[44px] bg-accent/10 hover:bg-accent/20 text-foreground rounded-full transition-colors"
+                      className="text-sm px-3 py-1.5 min-h-[44px] bg-background border border-card-border hover:border-chosen-line text-foreground rounded-full transition-colors"
                     >
                       {topic}
                     </button>
@@ -728,12 +728,14 @@ export default function TimelessMinds() {
       <div className="shrink-0 bg-black/80 px-2 sm:px-4 py-1.5 sm:py-2 text-center text-[11px] sm:text-xs text-white/80 border-t border-gray-800/50">
         <p>
           {IMAGINED_NOTE} Inspired by their life and writing, for reflection only.{' '}
+          {/* Same tab, unless leaving would end a conversation the visitor is in the middle of */}
           <a
             href="/games/ancient-voices/disclaimer"
-            target="_blank"
-            className="text-white underline"
+            {...(messages.some((m) => m.role === 'user') && { target: '_blank' })}
+            className="inline-flex items-center min-h-11 px-2 text-white underline"
           >
             About these conversations
+            {messages.some((m) => m.role === 'user') && <span className="sr-only"> (opens in a new tab)</span>}
           </a>
         </p>
       </div>

@@ -106,23 +106,43 @@ function inventory(plants: readonly Plant[]): string {
   return joinWords(parts)
 }
 
+type VisitorKind = 'butterfly' | 'firefly'
+
 export interface SitMoment {
   plants: readonly Plant[]
+  /** Visiting by the end of the sit. */
   visitors: number
-  visitorKind: 'butterfly' | 'firefly'
+  visitorKind: VisitorKind
+  /** Already visiting when they sat down; the rest arrived while they sat. */
+  before: number
+  kindBefore: VisitorKind
   season: Season
   /** When the oldest thing in the garden was planted. */
   since: number
   now: number
 }
 
+function some(count: number, kind: VisitorKind): string {
+  const plural = kind === 'butterfly' ? 'butterflies' : 'fireflies'
+  return count === 1 ? `a ${kind}` : `${numberWord(count)} ${plural}`
+}
+
+function visitorsLine({ visitors, visitorKind, before, kindBefore }: SitMoment): string {
+  if (visitors === 0) return 'It was quiet, and that was enough.'
+  if (before === 0) return `${capitalize(some(visitors, visitorKind))} came while you sat.`
+  if (kindBefore !== visitorKind) {
+    const earlier = before === 1 ? `The ${kindBefore}` : `The ${kindBefore === 'butterfly' ? 'butterflies' : 'fireflies'}`
+    return `${earlier} gave way to ${some(visitors, visitorKind)} as the light went.`
+  }
+  if (visitors <= before) return `${capitalize(some(visitors, visitorKind))} stayed the whole time.`
+  return `${capitalize(some(before, visitorKind))} ${before === 1 ? 'was' : 'were'} here when you sat down, and ${numberWord(visitors - before)} more came.`
+}
+
 /** The single line someone is left with after sitting with their garden. */
-export function sitLine({ plants, visitors, visitorKind, season, since, now }: SitMoment): string {
+export function sitLine(moment: SitMoment): string {
+  const { plants, season, since, now } = moment
   const garden = `${capitalize(withArticle(season))} garden: ${inventory(plants)}.`
-  const plural = visitorKind === 'butterfly' ? 'butterflies' : 'fireflies'
-  const stayed = visitors === 0
-    ? 'It was quiet, and that was enough.'
-    : `${visitors === 1 ? `A ${visitorKind}` : `${capitalize(numberWord(visitors))} ${plural}`} stayed the whole time.`
+  const stayed = visitorsLine(moment)
   const days = Math.floor(Math.max(0, now - since) / DAY)
   const time = days === 0
     ? 'You planted all of it today.'

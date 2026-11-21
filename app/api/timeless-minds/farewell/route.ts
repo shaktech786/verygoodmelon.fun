@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
 import { VISITOR_RULE } from '@/lib/ai/visitor-rule'
+import { overstepsVisitor } from '@/lib/ai/visitor-guard'
 import { getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import {
   MAX_FAREWELL_LENGTH,
@@ -50,7 +51,7 @@ ${SAFETY_GUIDANCE}`,
     })
 
     const farewell = tidyLine(plainText(result.text ?? ''), MAX_FAREWELL_LENGTH)
-    return NextResponse.json({ farewell: farewell || fallback })
+    return NextResponse.json({ farewell: farewell && !overstepsVisitor(farewell) ? farewell : fallback })
   } catch (error) {
     console.error('Timeless Minds farewell error:', error)
     return NextResponse.json({ farewell: fallback })

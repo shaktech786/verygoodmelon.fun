@@ -43,9 +43,9 @@ export const DEFAULT_PARAMS: Record<string, Record<string, number>> = {
   sweepers:     { spawnRate: 4.5, speed: 100 },
   blaster:      { fireRate: 0.3, bulletSpeed: 400, bulletSize: 4 },
   phase_dash:   { cooldown: 1.5, duration: 0.2, speedMult: 3.5 },
-  combo_chain:  { decayTime: 3.0, hitsPerLevel: 3 },
+  combo_chain:  { hitsPerLevel: 3 },
   gravity_well: { range: 90, strength: 160 },
-  score_rush:   { duration: 20, spawnMult: 3, scoreMult: 3 },
+  score_rush:   { spawnMult: 3, scoreMult: 3 },
 }
 
 // --- Entity ---
@@ -107,7 +107,6 @@ export interface GameState {
   // Score
   score: number
   combo: number
-  maxCombo: number
   multiplier: number
 
   // Wave tracking
@@ -122,8 +121,6 @@ export interface GameState {
   dashCD: number
   dashActive: boolean
   dashDuration: number
-  comboTimer: number
-  rushTimer: number
   rushActive: boolean
 
   // Input

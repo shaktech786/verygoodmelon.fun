@@ -243,6 +243,10 @@ test.describe('The Keeper', () => {
     expect(new Set(names).size).toBe(3)
     expect(names).toEqual(expect.arrayContaining([expect.stringMatching(/, 1 of 3$/), expect.stringMatching(/, 2 of 3$/), expect.stringMatching(/, 3 of 3$/)]))
     for (const name of names) expect(name).not.toMatch(/Worry number/)
+    // And by eye: each jar shows its place in the day, never its words
+    const shown = await jars.evaluateAll((buttons) => buttons.map((b) => (b as HTMLElement).innerText.replace(/\s+/g, ' ')))
+    expect(shown).toEqual(expect.arrayContaining([expect.stringMatching(/1 of 3/), expect.stringMatching(/2 of 3/), expect.stringMatching(/3 of 3/)]))
+    for (const text of shown) expect(text).not.toMatch(/worry/i)
   })
 
   test('the three outcomes are marked by shape as well as colour', async ({ page }) => {
@@ -304,7 +308,8 @@ test.describe('The Keeper', () => {
       await page.getByRole('button', { name: 'Close the capsule' }).click()
 
       await expect(shelfHeading(page)).toBeFocused()
-      await expect(page.getByText('Closed and kept with the others.')).toBeVisible()
+      // The first capsule ever closed has no others to join
+      await expect(page.getByText('Closed and kept here.')).toBeVisible()
       await expect(page.getByRole('heading', { name: 'How they turned out' })).toBeVisible()
       const [saved] = await stored(page)
       expect(saved.opening).toMatchObject({ outcome: id, note: 'Dear me: it was all right.' })

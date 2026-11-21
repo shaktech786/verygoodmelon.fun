@@ -20,12 +20,12 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement>, Bas
 const baseInputStyles = 'w-full px-3 py-2 rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed'
 
 const variants = {
-  default: 'bg-card-bg text-foreground border border-card-border hover:border-accent/50 focus:border-accent focus:ring-accent',
-  filled: 'bg-hover-bg text-foreground border-0 hover:bg-card-border focus:bg-card-bg focus:ring-accent',
-  outline: 'bg-transparent text-foreground border-2 border-card-border hover:border-accent/50 focus:border-accent focus:ring-accent'
+  default: 'bg-card-bg text-foreground border border-card-border hover:border-accent/50 focus:border-focus-ring focus:ring-focus-ring',
+  filled: 'bg-hover-bg text-foreground border-0 hover:bg-card-border focus:bg-card-bg focus:ring-focus-ring',
+  outline: 'bg-transparent text-foreground border-2 border-card-border hover:border-accent/50 focus:border-focus-ring focus:ring-focus-ring'
 }
 
-const errorStyles = 'border-danger focus:border-danger focus:ring-danger'
+const errorStyles = 'border-danger focus:border-focus-ring focus:ring-focus-ring'
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, helperText, required, variant = 'default', className, id, ...props }, ref) => {

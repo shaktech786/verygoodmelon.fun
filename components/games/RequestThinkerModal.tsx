@@ -163,7 +163,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
                 value={formData.requesterName}
                 onChange={(e) => handleChange('requesterName', e.target.value)}
                 autoComplete="name"
-                className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
               />
             </div>
 
@@ -178,7 +178,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
                 onChange={(e) => handleChange('requesterEmail', e.target.value)}
                 autoComplete="email"
                 aria-describedby="requesterEmail-hint"
-                className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
                 required
               />
               <p id="requesterEmail-hint" className="text-xs text-foreground/70 mt-1">
@@ -197,7 +197,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
               value={formData.requestedName}
               onChange={(e) => handleChange('requestedName', e.target.value)}
               placeholder="e.g., Carl Jung, Jane Austen, Richard Feynman"
-              className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
               required
             />
             <p className="text-xs text-foreground/70 mt-1">
@@ -216,7 +216,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
                 value={formData.requestedEra}
                 onChange={(e) => handleChange('requestedEra', e.target.value)}
                 placeholder="e.g., 1875-1961"
-                className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
               />
             </div>
 
@@ -230,7 +230,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
                 value={formData.requestedField}
                 onChange={(e) => handleChange('requestedField', e.target.value)}
                 placeholder="e.g., Psychology, Literature"
-                className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
               />
             </div>
           </div>
@@ -251,7 +251,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
               }}
               placeholder="What wisdom or perspective would they bring? How would they help people grow?"
               rows={3}
-              className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+              className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring resize-none"
               required
             />
           </div>
@@ -272,7 +272,7 @@ export default function RequestThinkerModal({ isOpen, onClose }: RequestThinkerM
               }}
               placeholder="Any personal reason why this person matters to you?"
               rows={2}
-              className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+              className="w-full px-3 py-2 bg-card-bg text-foreground border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring resize-none"
             />
           </div>
 

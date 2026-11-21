@@ -39,6 +39,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Red only for actions
+        run: npm run check:red
+
       - name: Build
         run: npm run build
 

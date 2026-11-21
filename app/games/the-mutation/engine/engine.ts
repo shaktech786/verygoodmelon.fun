@@ -51,7 +51,6 @@ export function createState(w: number = GAME_W, h: number = GAME_H): GameState {
     nextId: 1,
     score: 0,
     combo: 0,
-    maxCombo: 0,
     multiplier: 1,
     wave: 0,
     waveTime: 0,
@@ -62,8 +61,6 @@ export function createState(w: number = GAME_W, h: number = GAME_H): GameState {
     dashCD: 0,
     dashActive: false,
     dashDuration: 0,
-    comboTimer: 0,
-    rushTimer: 0,
     rushActive: false,
     keys: new Set(),
     mx: w / 2,
@@ -485,8 +482,6 @@ function nudge(s: GameState, e: Entity): void {
 function extendCombo(s: GameState): void {
   if (!s.activeMechanics.includes('combo_chain')) return
   s.combo++
-  s.comboTimer = getParam(s, 'combo_chain', 'decayTime')
-  if (s.combo > s.maxCombo) s.maxCombo = s.combo
   refreshMultiplier(s)
 }
 
@@ -754,16 +749,6 @@ function updatePhaseDash(s: GameState, dt: number): void {
   }
 }
 
-function updateComboChain(s: GameState, dt: number): void {
-  if (s.combo <= 0) return
-  s.comboTimer -= dt
-  if (s.comboTimer > 0) return
-  // A pause costs one level, not the whole chain
-  s.combo = Math.max(0, s.combo - getParam(s, 'combo_chain', 'hitsPerLevel'))
-  s.comboTimer = getParam(s, 'combo_chain', 'decayTime')
-  refreshMultiplier(s)
-}
-
 function updateGravityWell(s: GameState, dt: number): void {
   const range = getParam(s, 'gravity_well', 'range')
   const strength = getParam(s, 'gravity_well', 'strength')
@@ -780,10 +765,6 @@ function updateGravityWell(s: GameState, dt: number): void {
   }
 }
 
-function updateScoreRush(s: GameState, dt: number): void {
-  if (s.rushActive) s.rushTimer -= dt
-}
-
 const MECHANIC_UPDATES: Record<string, (s: GameState, dt: number) => void> = {
   arrow_keys: updateArrowKeys,
   mouse_follow: updateMouseFollow,
@@ -793,9 +774,7 @@ const MECHANIC_UPDATES: Record<string, (s: GameState, dt: number) => void> = {
   sweepers: updateSweepers,
   blaster: updateBlaster,
   phase_dash: updatePhaseDash,
-  combo_chain: updateComboChain,
   gravity_well: updateGravityWell,
-  score_rush: updateScoreRush,
 }
 
 // ==========================================
@@ -811,7 +790,6 @@ export function activateMechanic(s: GameState, mechanicId: string, params: Recor
 
   if (mechanicId === 'score_rush') {
     s.rushActive = true
-    s.rushTimer = merged.duration
     bloomAway(s)
   }
   refreshMultiplier(s)
@@ -843,7 +821,6 @@ export function shouldMutate(s: GameState): boolean {
 
 export function isGameComplete(s: GameState): boolean {
   if (s.wave < MAX_WAVES - 1) return false
-  if (s.rushActive) return s.rushTimer <= 0
   return s.waveTime >= WAVE_DURATION[s.wave]
 }
 

@@ -93,7 +93,7 @@ function GentleExit() {
           <li key={game.id}>
             <Link
               href={`/games/${game.slug}`}
-              className="inline-flex items-center min-h-11 px-5 rounded-lg border border-card-border bg-card-bg text-foreground font-medium hover:bg-hover-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="inline-flex items-center min-h-11 px-5 rounded-lg border border-card-border bg-card-bg text-foreground font-medium hover:bg-hover-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               {game.title}: {game.description}
             </Link>
@@ -269,7 +269,7 @@ export default function FirstWords() {
                       }}
                       maxLength={MAX_INTENTION_LENGTH}
                       placeholder="Something small you could do tomorrow…"
-                      className="mt-2 w-full resize-none overflow-hidden px-4 py-3 border border-card-border rounded-lg bg-background text-foreground text-base sm:text-lg placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent"
+                      className="mt-2 w-full resize-none overflow-hidden px-4 py-3 border border-card-border rounded-lg bg-background text-foreground text-base sm:text-lg placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring"
                     />
                     <p className="mt-1 text-xs sm:text-sm text-primary-light">
                       Change it, or leave it empty. It is never sent or saved anywhere; you can copy it once you wake.

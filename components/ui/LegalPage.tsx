@@ -54,7 +54,7 @@ export function LegalLink({ href, children }: LegalLinkProps) {
     <a
       href={href}
       {...(isExternal && { target: '_blank', rel: 'noopener noreferrer' })}
-      className="text-accent underline underline-offset-2 hover:no-underline transition-colors focus:outline-none focus:ring-2 focus:ring-accent rounded"
+      className="text-accent underline underline-offset-2 hover:no-underline transition-colors focus:outline-none focus:ring-2 focus:ring-focus-ring rounded"
     >
       {children}
       {isExternal && <span className="sr-only"> (opens in a new tab)</span>}

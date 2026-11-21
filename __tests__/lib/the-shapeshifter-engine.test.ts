@@ -98,23 +98,29 @@ describe('The Shapeshifter engine', () => {
     expect(count(s, 'chaser')).toBe(0)
     expect(count(s, 'sweeper')).toBe(0)
     expect(s.multiplier).toBe(3)
+    // The bloom's bonus does not run out on a clock of its own
+    run(s, 60)
+    expect(s.multiplier).toBe(3)
   })
 
-  it('a lapsed chain steps down one level instead of collapsing to nothing', () => {
-    const s = withMechanics('arrow_keys', 'combo_chain')
-    s.combo = 7
-    s.comboTimer = 0.01
+  it('a pause never lowers the glow: it lasts the whole run', () => {
+    const s = withMechanics('arrow_keys', 'stars', 'combo_chain')
+    s.combo = 6
+    place(s, 'star', s.px, s.py)
+    run(s, STEP)
+    expect(s.combo).toBe(7)
+    expect(s.multiplier).toBe(3)
 
-    run(s, 0.05)
+    run(s, 30)
 
-    expect(s.combo).toBe(4)
-    expect(s.multiplier).toBe(2)
+    // Lights may keep arriving and adding to it, but nothing is ever taken away
+    expect(s.combo).toBeGreaterThanOrEqual(7)
+    expect(s.multiplier).toBeGreaterThanOrEqual(3)
   })
 
   it('a long rhythm tops out at a modest glow instead of compounding without limit', () => {
     const s = withMechanics('arrow_keys', 'stars', 'combo_chain', 'score_rush')
     s.combo = 60
-    s.comboTimer = 3
     place(s, 'star', s.px, s.py)
     run(s, STEP)
 

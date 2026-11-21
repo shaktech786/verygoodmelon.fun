@@ -61,4 +61,16 @@ describe('POST /api/calm-garden/suggest', () => {
     expect(data.suggestion.type).not.toBe('lavender')
     expect(data.suggestion.line).not.toMatch(/lavender/i)
   })
+
+  it('tells the gardener the visitor’s time of day, and refuses a made-up one', async () => {
+    await ask({ elements, season: 'autumn', timeOfDay: 'night' }, '10.0.0.6')
+    expect(promptSent()).toContain('It is night where they are.')
+    expect((await ask({ elements, season: 'autumn', timeOfDay: 'teatime' }, '10.0.0.7')).status).toBe(400)
+  })
+
+  it('swaps a line that names the wrong time of day for one of its own', async () => {
+    generateContent.mockResolvedValue({ text: '{"type": "lavender", "x": 0.5, "y": 0.9, "line": "Your daisies would bring the afternoon butterflies."}' })
+    const { data } = await ask({ elements, season: 'autumn', timeOfDay: 'night' }, '10.0.0.8')
+    expect(data.suggestion.line).not.toMatch(/afternoon/i)
+  })
 })

@@ -220,7 +220,7 @@ export default function GameCanvas({
         ref={canvasRef}
         width={width}
         height={height}
-        className="w-full block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="w-full block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         style={{ aspectRatio: `${width} / ${height}`, touchAction: 'none' }}
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}

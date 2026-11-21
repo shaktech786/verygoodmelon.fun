@@ -75,7 +75,7 @@ export function WritingForm({ prompts, label, placeholder, submitLabel, onSubmit
         <button
           type="button"
           onClick={() => setPromptIndex((i) => (i + 1) % prompts.length)}
-          className="shrink-0 text-xs sm:text-sm text-primary-light underline underline-offset-4 decoration-foreground/30 hover:text-foreground rounded px-1 -mx-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="shrink-0 text-xs sm:text-sm text-primary-light underline underline-offset-4 decoration-foreground/30 hover:text-foreground rounded px-1 -mx-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           Another question
         </button>
@@ -94,7 +94,7 @@ export function WritingForm({ prompts, label, placeholder, submitLabel, onSubmit
         placeholder={placeholder}
         maxLength={MAX_SUBMISSION_LENGTH}
         rows={4}
-        className="w-full min-h-[7.5rem] sm:min-h-[9rem] px-4 py-3 border border-card-border rounded-lg bg-background text-foreground text-base sm:text-lg leading-relaxed resize-y placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent"
+        className="w-full min-h-[7.5rem] sm:min-h-[9rem] px-4 py-3 border border-card-border rounded-lg bg-background text-foreground text-base sm:text-lg leading-relaxed resize-y placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring"
       />
       <div className="flex justify-between items-center text-xs sm:text-sm text-primary-light">
         <span className="hidden sm:inline">Ctrl or ⌘ + Enter to send</span>
@@ -109,7 +109,7 @@ export function WritingForm({ prompts, label, placeholder, submitLabel, onSubmit
   )
 }
 
-const HELPLINE_LINK = 'font-medium text-foreground underline underline-offset-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
+const HELPLINE_LINK = 'font-medium text-foreground underline underline-offset-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
 
 /**
  * For when no one could tell whether the words carry danger: support within

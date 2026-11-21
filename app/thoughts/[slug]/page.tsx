@@ -124,7 +124,7 @@ export default async function ThoughtPage({ params }: PageProps) {
             </p>
             <Link
               href={`/thoughts/${related.slug}`}
-              className="block bg-card-bg border border-card-border rounded-lg p-5 hover:border-accent/30 transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
+              className="block bg-card-bg border border-card-border rounded-lg p-5 hover:border-accent/30 transition-colors focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2 focus:ring-offset-background"
             >
               <span className="inline-block bg-accent/10 text-foreground px-2 py-0.5 rounded-full text-xs font-medium mb-2">
                 {THEME_LABELS[related.theme]}

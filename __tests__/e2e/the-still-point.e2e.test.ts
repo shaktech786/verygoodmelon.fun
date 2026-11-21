@@ -218,7 +218,9 @@ test.describe('The Harmonist', () => {
     await expect(phase(page)).toHaveText('Inhale')
 
     await page.getByRole('button', { name: 'End session' }).click()
-    await expect(guide(page)).toContainText('Patterns: Box Breathing, Coherent Breathing, Physiological Sigh')
+    // The Physiological Sigh was chosen but never breathed, so the ending does not claim it
+    await expect(guide(page)).toContainText('Patterns: Box Breathing, Coherent Breathing')
+    await expect(guide(page)).not.toContainText('Physiological Sigh')
     await expect(guide(page)).toContainText('2 in all.')
   })
 
@@ -498,6 +500,14 @@ test.describe('The Harmonist', () => {
 
 test.describe('The Harmonist on a phone with reduced motion', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: 'reduce' })
+
+  test('Begin breathing is on the first screen, even with a melon from last time', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('verygoodmelon:still-point:last-melon', JSON.stringify({ v: 1, at: '2026-11-20T09:00:00.000Z', breaths: [{ pattern: 'box', seconds: 16 }] }))
+    })
+    await openGame(page)
+    await expect(page.getByRole('button', { name: 'Begin breathing' })).toBeInViewport({ ratio: 1 })
+  })
 
   test('regression: the guide keeps time without the animated canvas, and seeds still gather', async ({ page }) => {
     const errors = collectPageErrors(page)

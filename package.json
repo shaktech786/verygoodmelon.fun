@@ -24,10 +24,11 @@
     "test:visual": "playwright test __tests__/visual",
     "test:visual:ui": "playwright test __tests__/visual --ui",
     "playwright:install": "npx playwright install",
-    "qa": "npm run typecheck && npm run lint && npm run build && npm run test:e2e",
-    "qa:full": "npm run typecheck && npm run lint && npm run build && npm run test && npm run test:e2e",
+    "qa": "npm run typecheck && npm run lint && npm run check:red && npm run build && npm run test:e2e",
+    "qa:full": "npm run typecheck && npm run lint && npm run check:red && npm run build && npm run test && npm run test:e2e",
     "qa:quick": "npm run typecheck && npm run build",
-    "prepare": "husky"
+    "prepare": "husky",
+    "check:red": "node scripts/check-red-states.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

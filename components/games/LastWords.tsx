@@ -124,9 +124,10 @@ export default function LastWords() {
             <h2 ref={thanksRef} {...FOCUS_TARGET} className="text-xl sm:text-2xl font-semibold text-foreground">
               {care ? 'We’re glad you wrote this down' : 'Thank you for writing this'}
             </h2>
-            <p className="mt-1 text-primary-light">
+            {/* Silent while the count is unknown, but its line is kept so nothing below jumps under a second tap */}
+            <p className="mt-1 min-h-[1.6em] text-primary-light">
               {others === null
-                ? 'Take a moment with what you wrote.'
+                ? null
                 : others > 0
                   ? `It joins what ${others.toLocaleString()} ${others === 1 ? 'other person' : 'others'} would say.`
                   : 'Yours are the first words here.'}
@@ -167,7 +168,7 @@ export default function LastWords() {
             <section aria-labelledby="final-word-now" className="bg-card-bg border border-card-border rounded-lg p-5 sm:p-6 text-center">
               <h3 id="final-word-now" className="text-lg font-semibold text-foreground">These don&apos;t have to wait</h3>
               <p className="mt-2 text-foreground/80 leading-relaxed">
-                Most last words are things we could say today. Is there someone who would like to hear yours now?
+                Most last words are things we could already say. Is there someone who would like to hear yours now?
               </p>
               <div className="mt-4 flex justify-center">
                 <CopyWordsButton words={submitted} label="Copy my words" copiedMessage="Your words are copied, ready to send." />

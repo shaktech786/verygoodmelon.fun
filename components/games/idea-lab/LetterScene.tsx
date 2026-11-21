@@ -30,7 +30,7 @@ export const LetterScene = forwardRef<HTMLHeadingElement, LetterSceneProps>(func
         id="idea-lab-letter-title"
         ref={headingRef}
         tabIndex={-1}
-        className="scroll-mt-24 text-center text-2xl sm:text-3xl font-semibold mb-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+        className="scroll-mt-24 text-center text-2xl sm:text-3xl font-semibold mb-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
       >
         {letter.title}
       </h2>
@@ -51,7 +51,7 @@ export const LetterScene = forwardRef<HTMLHeadingElement, LetterSceneProps>(func
           <button
             type="button"
             onClick={onBeginNextWork}
-            className="px-5 py-2 min-h-[44px] rounded-lg bg-foreground text-background font-medium hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="px-5 py-2 min-h-[44px] rounded-lg bg-foreground text-background font-medium hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Begin the Second Work
           </button>
@@ -59,7 +59,7 @@ export const LetterScene = forwardRef<HTMLHeadingElement, LetterSceneProps>(func
         <button
           type="button"
           onClick={onClose}
-          className="px-5 py-2 min-h-[44px] rounded-lg border border-card-border bg-card-bg text-foreground font-medium hover:bg-hover-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="px-5 py-2 min-h-[44px] rounded-lg border border-card-border bg-card-bg text-foreground font-medium hover:bg-hover-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           Keep wandering
         </button>

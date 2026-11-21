@@ -52,25 +52,43 @@ describe('summarising the garden', () => {
 })
 
 describe('the line you are left with after sitting', () => {
-  const base = { season: 'autumn' as const, visitorKind: 'butterfly' as const, since: NOW, now: NOW }
+  const base = { season: 'autumn' as const, visitorKind: 'butterfly' as const, kindBefore: 'butterfly' as const, since: NOW, now: NOW }
 
   it('names the garden you made, who stayed and how long it has been yours', () => {
     const plants = [
       plant('daisy', 0.1, 0.6), plant('poppy', 0.2, 0.6), plant('tulip', 0.3, 0.6), plant('daisy', 0.4, 0.7), plant('sunflower', 0.5, 0.7),
       plant('oak', 0.6, 0.5), plant('flat-stone', 0.7, 0.8),
     ]
-    expect(sitLine({ ...base, plants, visitors: 2 })).toBe(
+    expect(sitLine({ ...base, plants, visitors: 2, before: 2 })).toBe(
       'An autumn garden: five flowers, an oak tree and a stone to rest on. Two butterflies stayed the whole time. You planted all of it today.',
     )
-    expect(sitLine({ ...base, plants, visitors: 1, visitorKind: 'firefly', season: 'winter', since: NOW - 3 * DAY })).toBe(
+    expect(sitLine({ ...base, plants, visitors: 1, before: 1, visitorKind: 'firefly', kindBefore: 'firefly', season: 'winter', since: NOW - 3 * DAY })).toBe(
       'A winter garden: five flowers, an oak tree and a stone to rest on. A firefly stayed the whole time. You have been tending it for three days.',
     )
   })
 
   it('is kind about a quiet garden', () => {
     const plants = [plant('pine', 0.2, 0.5), plant('willow', 0.6, 0.5), plant('crystal', 0.5, 0.8), plant('cluster', 0.4, 0.7)]
-    expect(sitLine({ ...base, plants, visitors: 0, since: NOW - DAY, season: 'spring' })).toBe(
+    expect(sitLine({ ...base, plants, visitors: 0, before: 0, since: NOW - DAY, season: 'spring' })).toBe(
       'A spring garden: two trees, some mushrooms and a crystal. It was quiet, and that was enough. You have been tending it for a day.',
     )
+  })
+
+  describe('says what actually happened with the visitors', () => {
+    const plants = [plant('daisy', 0.1, 0.6), plant('poppy', 0.2, 0.6), plant('tulip', 0.3, 0.6)]
+    const visitorsPart = (line: string) => line.split('. ').slice(1, -1).join('. ')
+
+    it('one was visiting before, more came while sitting', () => {
+      expect(visitorsPart(sitLine({ ...base, plants, before: 1, visitors: 3 }))).toBe('A butterfly was here when you sat down, and two more came')
+      expect(visitorsPart(sitLine({ ...base, plants, before: 2, visitors: 3 }))).toBe('Two butterflies were here when you sat down, and one more came')
+    })
+
+    it('none before, some came', () => {
+      expect(visitorsPart(sitLine({ ...base, plants, before: 0, visitors: 1 }))).toBe('A butterfly came while you sat')
+    })
+
+    it('day giving way to dusk', () => {
+      expect(visitorsPart(sitLine({ ...base, plants, before: 1, visitors: 3, visitorKind: 'firefly' }))).toBe('The butterfly gave way to three fireflies as the light went')
+    })
   })
 })

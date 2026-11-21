@@ -29,9 +29,9 @@ const KEYBOARD_HINTS: Record<string, string> = {
   sweepers: 'If one carries you, let it. Nothing is lost.',
   blaster: 'Hold Space or click to send light.',
   phase_dash: 'Press Space or click to glide.',
-  combo_chain: 'A pause only lowers your glow one step.',
+  combo_chain: 'Your glow only grows. Rest whenever you like.',
   gravity_well: 'No need to chase.',
-  score_rush: 'Every light counts triple until it fades.',
+  score_rush: 'Every light counts three times over, to the very end.',
 }
 
 const TOUCH_HINTS: Record<string, string> = {
@@ -139,7 +139,7 @@ export default function MutationScreen({
                   event.stopPropagation()
                   handleContinue()
                 }}
-                className={`uppercase text-[11px] sm:text-xs tracking-[0.15em] px-5 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${retroFont}`}
+                className={`uppercase text-[11px] sm:text-xs tracking-[0.15em] px-5 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${retroFont}`}
               >
                 Continue
                 {!isTouch && <span aria-hidden="true"> · Enter</span>}

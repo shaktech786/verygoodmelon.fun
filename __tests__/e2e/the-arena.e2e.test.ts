@@ -550,5 +550,41 @@ test.describe('The Arena', () => {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
       expect(overflow).toBeLessThanOrEqual(0)
     })
+
+    test('one page scroll: the transcript grows with the page, Stop and Next turn stay on screen, and reading back still pauses', async ({ page }) => {
+      let release: () => void = () => {}
+      const gate = new Promise<void>((r) => { release = r })
+      const long = 'A long and winding thought that takes its time to arrive somewhere. '.repeat(6)
+      const { turns } = await mockDebate(page, {
+        turn: async (route, body) => {
+          if (body.round === 4) await gate
+          await route.fulfill({ json: { argument: `${long}(${body.round})`, round: body.round } }).catch(() => {})
+        },
+      })
+      await openArena(page)
+      await setUp(page, 'The Moon', 'The Sun', 'Is it better to shine or to reflect?')
+      await page.getByRole('button', { name: 'Start debate' }).tap()
+      await expect(page.getByRole('button', { name: 'Stop' })).toBeInViewport({ ratio: 1 })
+      await expect(transcript(page).getByText(/\(3\)$/)).toBeVisible()
+      await expect.poll(() => turns.length).toBe(4)
+
+      // No box scrolling inside the page: the newest turn is followed by the page itself, above the controls
+      expect(await transcript(page).evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1)
+      await expect(page.getByRole('button', { name: 'Stop' })).toBeInViewport({ ratio: 1 })
+      await expect(transcript(page).getByText(/\(3\)$/)).toBeInViewport()
+
+      await page.evaluate(() => window.scrollTo({ top: 0 }))
+      // A reader's scroll is noticed on the next frame, as it would be under a finger
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+      release()
+      await expect(transcript(page).getByText(/\(4\)$/)).toBeAttached()
+      expect(await page.evaluate(() => window.scrollY)).toBeLessThan(40)
+      await expect(page.getByRole('button', { name: 'Next turn' })).toBeInViewport({ ratio: 1 })
+      await page.waitForTimeout(2500)
+      await expect(transcript(page).getByText(/\(5\)$/)).toHaveCount(0)
+
+      await page.getByRole('button', { name: 'Next turn' }).tap()
+      await expect(transcript(page).getByText(/\(5\)$/)).toBeAttached()
+    })
   })
 })

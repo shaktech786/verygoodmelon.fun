@@ -41,7 +41,7 @@ export const GoldShelf = forwardRef<HTMLHeadingElement, GoldShelfProps>(function
   return (
     <section className="bg-card-bg border border-card-border rounded-xl p-4 sm:p-5" aria-labelledby="great-work-title">
       <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
-        <h2 id="great-work-title" ref={headingRef} tabIndex={-1} className="scroll-mt-24 font-medium text-foreground/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">
+        <h2 id="great-work-title" ref={headingRef} tabIndex={-1} className="scroll-mt-24 font-medium text-foreground/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded">
           {title}
         </h2>
         <span className="text-sm text-foreground/70">{count} of {golds.length} found</span>
@@ -99,7 +99,7 @@ export const GoldShelf = forwardRef<HTMLHeadingElement, GoldShelfProps>(function
               key={completed}
               type="button"
               onClick={() => onReadLetter(completed)}
-              className="px-4 py-2 min-h-[44px] rounded-lg border border-warm bg-warm/15 text-sm font-medium text-foreground hover:bg-warm/25 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="px-4 py-2 min-h-[44px] rounded-lg border border-warm bg-warm/15 text-sm font-medium text-foreground hover:bg-warm/25 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               {LETTER_BUTTON_LABELS[completed]}
             </button>
@@ -108,7 +108,7 @@ export const GoldShelf = forwardRef<HTMLHeadingElement, GoldShelfProps>(function
             <button
               type="button"
               onClick={onBeginNextWork}
-              className="px-4 py-2 min-h-[44px] rounded-lg border border-card-border text-sm font-medium text-foreground hover:bg-hover-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="px-4 py-2 min-h-[44px] rounded-lg border border-card-border text-sm font-medium text-foreground hover:bg-hover-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               Begin the Second Work
             </button>

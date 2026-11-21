@@ -87,3 +87,90 @@ describe('the one rule every prompt that speaks to a visitor carries', () => {
     expect(sent()).toMatch(/acknowledg\w* (what|how) they feel in a few words/i)
   })
 })
+
+describe('a reply that oversteps is never shown', () => {
+  const OVERSTEP = 'There is no need to keep letting fear dictate your time, so use your time well.'
+
+  beforeEach(() => {
+    generateContent.mockReset()
+    createChat.mockClear()
+    sendMessage.mockReset()
+    process.env.GOOGLE_GEMINI_API_KEY = 'test-key'
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    delete process.env.GOOGLE_GEMINI_API_KEY
+    vi.restoreAllMocks()
+  })
+
+  it.each([
+    ['The Final Word', lastWords, { message: 'Tell my sister I love her.' }],
+    ['The Awakening', firstWords, { message: 'Is anyone there?' }],
+  ])('%s falls back to a written reflection', async (_name, handler, body) => {
+    generateContent.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: OVERSTEP, intention: 'Call your sister.' }) })
+    const data = await (await post(handler, body)).json()
+    expect(data.reflection).toBeTruthy()
+    expect(data.reflection).not.toMatch(/your time/)
+  })
+
+  it('The Awakening never carries an overstepping intention home', async () => {
+    generateContent.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: 'That was tender.', intention: 'Make the most of every morning.' }) })
+    const data = await (await post(firstWords, { message: 'I missed my dog.' })).json()
+    expect(data.reflection).toBe('That was tender.')
+    expect(data.intention).not.toMatch(/make the most/i)
+  })
+
+  it.each(['Call mum.', 'Visit Grandad on Sunday.', 'Text your brother hello.'])(
+    'The Awakening never plans to contact someone who may have died: %s',
+    async (intention) => {
+      generateContent.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: 'That was tender.', intention }) })
+      const data = await (await post(firstWords, { message: 'Mum, is that you?' })).json()
+      expect(data.intention).toBeTruthy()
+      expect(data.intention).not.toBe(intention)
+    }
+  )
+
+  it('The Awakening keeps a plan that carries the feeling, not the person', async () => {
+    const intention = 'Make her soup recipe and set a place for the memory.'
+    generateContent.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: 'That was tender.', intention }) })
+    const data = await (await post(firstWords, { message: 'Mum, is that you?' })).json()
+    expect(data.intention).toBe(intention)
+  })
+
+  it('The Sage, talking, says its in-world line instead', async () => {
+    sendMessage.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: OVERSTEP }) })
+    const response = await post(sageChat, { thinkerId: 'socrates', message: 'I feel lost.', conversationHistory: [] })
+    expect(response.ok).toBe(false)
+    expect(JSON.stringify(await response.json())).not.toMatch(/your time/)
+  })
+
+  it('The Sage, saying goodbye, leaves its written farewell', async () => {
+    generateContent.mockResolvedValue({ text: OVERSTEP })
+    const data = await (await post(sageFarewell, {
+      thinkerId: 'socrates',
+      conversationHistory: [{ role: 'user', content: 'I worry a lot.' }, { role: 'assistant', content: 'What about?' }],
+    })).json()
+    expect(data.farewell).toMatch(/^Thank you for sitting with me/)
+  })
+
+  it('The Arena closing hands over to the written closing', async () => {
+    generateContent.mockResolvedValue({ text: JSON.stringify({
+      firstInsight: 'Socrates asked who chooses.',
+      secondInsight: 'Nietzsche asked who benefits.',
+      revealed: 'Both wanted the chooser to be honest.',
+      question: 'What will you do with the time you have left?',
+    }) })
+    const response = await post(arenaClosing, {
+      person1: 'Socrates', person2: 'Nietzsche', topic: 'Is free will an illusion?',
+      history: [{ speaker: 'Socrates', argument: 'Choice needs a chooser.' }],
+    })
+    expect(response.ok).toBe(false)
+  })
+
+  it('The Gardener uses its own rules', async () => {
+    generateContent.mockResolvedValue({ text: '{"type": "lavender", "x": 0.6, "y": 0.8, "line": "Plant lavender while you still can."}' })
+    const data = await (await post(gardener, { elements: [{ type: 'daisy', x: 0.3, y: 0.7 }], season: 'spring' })).json()
+    expect(data.suggestion.line).not.toMatch(/while you/)
+  })
+})

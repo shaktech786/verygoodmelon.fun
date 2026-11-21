@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { StickyActionBar } from '@/components/ui/StickyActionBar'
 import { useRealtimeVotes } from '@/lib/hooks/useRealtimeVotes'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { DILEMMAS, type Choice, type ChoiceId } from '@/lib/games/hard-choices/dilemmas'
@@ -46,6 +47,13 @@ function firstUnansweredIndex(answers: Answers): number {
   return DILEMMAS.findIndex((dilemma) => !answers[dilemma.id])
 }
 
+const QUESTION_GAP_PX = 8
+
+/** Where the sticky site header ends; content above this line is hidden behind it. */
+function headerBottom(): number {
+  return Math.max(0, document.querySelector('header[role="banner"]')?.getBoundingClientRect().bottom ?? 0)
+}
+
 const isChoice = (answer: Answer | undefined): answer is ChoiceId => answer === 'A' || answer === 'B'
 
 /** How the player's answer sits among everyone's, without ranking anyone. */
@@ -55,10 +63,11 @@ function crowdLine(ownPercent: number): string {
   return 'People are almost evenly split on this one.'
 }
 
-const CHOICE_STYLES: Record<ChoiceId, { bar: string; glow: string; pulse: string }> = {
-  A: { bar: 'bg-accent', glow: 'shadow-[0_0_8px_rgba(230,57,70,0.4)]', pulse: 'text-accent font-medium' },
-  B: { bar: 'bg-success', glow: 'shadow-[0_0_8px_rgba(116,198,157,0.4)]', pulse: 'text-melon-green font-medium' },
-}
+// The player's side is rind green and the other neutral, so neither answer is shown as the red, "wrong" one.
+const CROWD_STYLES = {
+  mine: { bar: 'bg-chosen-line', glow: 'shadow-[0_0_8px_color-mix(in_srgb,var(--chosen-line)_40%,transparent)]' },
+  other: { bar: 'bg-foreground/35', glow: 'shadow-[0_0_8px_color-mix(in_srgb,var(--foreground)_25%,transparent)]' },
+} as const
 
 function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index: number) => void }) {
   const chosen = DILEMMAS.flatMap((dilemma, index) => {
@@ -120,7 +129,7 @@ function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index:
       </p>
 
       <details className="rounded-lg border border-card-border bg-background">
-        <summary className="cursor-pointer select-none px-4 py-3 font-medium text-foreground rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        <summary className="cursor-pointer select-none px-4 py-3 font-medium text-foreground rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
           See or change each answer
         </summary>
         <ol className="divide-y divide-card-border">
@@ -139,7 +148,7 @@ function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index:
                   type="button"
                   onClick={() => onRevisit(index)}
                   aria-label={`Revisit: ${dilemma.scenario}`}
-                  className="shrink-0 text-sm text-foreground underline underline-offset-4 rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="shrink-0 text-sm text-foreground underline underline-offset-4 rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                 >
                   Revisit
                 </button>
@@ -244,24 +253,32 @@ export default function HardChoices() {
     }
   }, [])
 
-  // Keep keyboard and screen-reader users oriented when the card changes
+  // Keep keyboard and screen-reader users oriented when the card changes, and land every new card the same way:
+  // its top just below the site header
   useEffect(() => {
     if (moveFocusToHeading.current) {
       moveFocusToHeading.current = false
-      headingRef.current?.focus()
+      const heading = headingRef.current
+      if (!heading) return
+      heading.focus({ preventScroll: true })
+      const card = heading.parentElement ?? heading
+      window.scrollTo({ top: window.scrollY + card.getBoundingClientRect().top - headerBottom() - QUESTION_GAP_PX, behavior: 'auto' })
     } else if (moveFocusToChoices.current) {
       moveFocusToChoices.current = false
       firstChoiceRef.current?.focus()
     }
   }, [currentDilemmaIndex, finished, hasVoted])
 
-  // On a phone the result and Next sit below the fold; bring them up rather than leave the player hunting.
-  // Again once the counts arrive, since their bars push Next further down.
+  // On a phone the result sits below the fold; bring it up rather than leave the player hunting, but never
+  // so far that the question slides under the header. Next stays reachable in the bar pinned to the bottom.
+  // Again once the counts arrive, since their bars make the result taller.
   useEffect(() => {
     const end = resultEndRef.current
-    if (!hasVoted || !revealResult.current || !end) return
-    // The way on matters more than the question just answered, so Next always comes into view
-    const top = window.scrollY + end.getBoundingClientRect().bottom + 16 - window.innerHeight
+    const question = headingRef.current
+    if (!hasVoted || !revealResult.current || !end || !question) return
+    const wanted = window.scrollY + end.getBoundingClientRect().bottom + 16 - window.innerHeight
+    const ceiling = window.scrollY + question.getBoundingClientRect().top - headerBottom() - QUESTION_GAP_PX
+    const top = Math.min(wanted, ceiling)
     if (top > window.scrollY) window.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' })
   }, [hasVoted, displayResults, reduceMotion])
 
@@ -390,7 +407,7 @@ export default function HardChoices() {
             </div>
             <div className="h-1 bg-foreground/10 rounded-full overflow-hidden" aria-hidden="true">
               <div
-                className="h-full bg-accent transition-all duration-300"
+                className="h-full bg-melon-green transition-all duration-300"
                 style={{ width: `${(finished ? 1 : answeredCount / DILEMMAS.length) * 100}%` }}
               />
             </div>
@@ -445,7 +462,7 @@ export default function HardChoices() {
                           aria-label={`Choice ${id}: ${choice.text}`}
                           aria-pressed={selected}
                           aria-describedby={showResults ? perspectiveId : undefined}
-                          className={`w-full text-left p-4 sm:p-6 rounded-lg flex items-start gap-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                          className={`w-full text-left p-4 sm:p-6 rounded-lg flex items-start gap-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
                             hasVoted ? 'cursor-default' : 'cursor-pointer'
                           }`}
                         >
@@ -477,7 +494,7 @@ export default function HardChoices() {
                                   </span>
                                   <span
                                     className={`transition-colors duration-300 ${
-                                      pulseChoice === id ? CHOICE_STYLES[id].pulse : 'text-foreground/75'
+                                      pulseChoice === id ? 'text-foreground font-medium' : 'text-foreground/75'
                                     }`}
                                   >
                                     {counts[id]} {counts[id] === 1 ? 'vote' : 'votes'}
@@ -485,8 +502,8 @@ export default function HardChoices() {
                                 </div>
                                 <div className="h-2 bg-foreground/5 rounded-full overflow-hidden" aria-hidden="true">
                                   <div
-                                    className={`h-full transition-all duration-300 ${CHOICE_STYLES[id].bar} ${
-                                      pulseChoice === id ? CHOICE_STYLES[id].glow : ''
+                                    className={`h-full transition-all duration-300 ${CROWD_STYLES[selected ? 'mine' : 'other'].bar} ${
+                                      pulseChoice === id ? CROWD_STYLES[selected ? 'mine' : 'other'].glow : ''
                                     }`}
                                     style={{ width: `${percentages[id]}%` }}
                                   />
@@ -521,7 +538,7 @@ export default function HardChoices() {
                 )}
               </div>
 
-              <div className="flex gap-3">
+              <StickyActionBar pinned={showResults || currentAnswer === 'skip'} className="flex gap-3">
                 {currentDilemmaIndex > 0 && (
                   <Button
                     onClick={() => navigate(currentDilemmaIndex - 1)}
@@ -540,7 +557,7 @@ export default function HardChoices() {
                     {currentDilemmaIndex === DILEMMAS.length - 1 ? 'Finish' : 'Next Dilemma'}
                   </Button>
                 )}
-              </div>
+              </StickyActionBar>
               <div ref={resultEndRef} className="scroll-mb-4" aria-hidden="true" />
 
               <div className="mt-6 text-center text-sm text-foreground/70">

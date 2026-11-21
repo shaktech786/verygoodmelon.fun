@@ -16,13 +16,20 @@ import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 // Someone arriving anxious should be pointed at something calming, never at a game about death
 const FEATURABLE_GAMES = SHOWCASE_GAMES.filter((game) => game.category === 'Calm')
 
-/** Today's featured game (rotates daily, deterministic in the visitor's own timezone). */
-function getDailyFeatured(): GameConfig | undefined {
+/**
+ * Today's featured game, marked "Today" on its card, and a different calm game to start with, so the
+ * two invitations never point at the same place. Rotates daily in the visitor's own timezone.
+ */
+function getDailyPicks(): { featured: GameConfig; start: GameConfig } | undefined {
+  if (FEATURABLE_GAMES.length === 0) return undefined
   const today = new Date()
   const dayOfYear = Math.floor(
     (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24)
   )
-  return FEATURABLE_GAMES[dayOfYear % FEATURABLE_GAMES.length]
+  return {
+    featured: FEATURABLE_GAMES[dayOfYear % FEATURABLE_GAMES.length],
+    start: FEATURABLE_GAMES[(dayOfYear + 1) % FEATURABLE_GAMES.length],
+  }
 }
 
 const GAME_INDICES = new Map(
@@ -48,7 +55,9 @@ export default function Home() {
   const { wisdom, isLoaded: wisdomLoaded } = useDailyWisdom()
   const { care } = useCareMode()
   // Picked after mount so the server's date can never disagree with the visitor's
-  const featuredGame = mounted ? getDailyFeatured() : undefined
+  const picks = mounted ? getDailyPicks() : undefined
+  const featuredGame = picks?.featured
+  const startGame = picks?.start
 
   useEffect(() => {
     queueMicrotask(() => setMounted(true))
@@ -87,13 +96,13 @@ export default function Home() {
           Small, quiet games for a busy mind. Play one for a few minutes and leave a little lighter than you came.
         </p>
         <div className="mt-5 min-h-11">
-          {featuredGame && (
+          {startGame && (
             <Link
-              href={`/games/${featuredGame.slug}`}
+              href={`/games/${startGame.slug}`}
               className="inline-flex items-center gap-2 min-h-11 px-5 rounded-full border border-card-border bg-card-bg text-sm sm:text-base text-foreground hover:bg-hover-bg transition-colors"
             >
               <span className="text-primary-light">Start here:</span>
-              <span className="font-medium">{featuredGame.title}</span>
+              <span className="font-medium">{startGame.title}</span>
               <ArrowRight size={16} aria-hidden="true" />
             </Link>
           )}
