@@ -5,6 +5,9 @@ import { test, expect, type Page } from '@playwright/test'
  * small reward. A fake clock drives every test, so durations are checked exactly.
  */
 
+const MENU_HEADING = 'Choose a moment to savor'
+const REWARD_HEADING = 'Moment savored'
+
 const URL = '/games/the-long-breath'
 const T0 = new Date('2026-11-21T10:00:00').getTime()
 
@@ -27,7 +30,7 @@ async function openGame(page: Page, startAt = T0) {
   await page.route('**/api/site-visits', (route) => route.fulfill({ status: 204 }))
   await page.clock.install({ time: startAt })
   await page.goto(URL)
-  await expect(page.getByRole('heading', { name: 'The Anti-Game' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: MENU_HEADING })).toBeVisible()
   // The saved count is read back after hydration; wait for that before playing.
   await page.waitForFunction(() => document.querySelector('h2')?.getAttribute('tabindex') === '-1')
   await page.clock.pauseAt(startAt + 60_000)
@@ -59,7 +62,7 @@ test.describe('The Patient One', () => {
       await expect(timer(page)).toHaveText('0:01')
       await advance(page, 900)
 
-      await expect(page.getByRole('heading', { name: 'You Did It' })).toBeFocused()
+      await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeFocused()
       await expect(page.getByText(`“${task.reward}”`)).toBeVisible()
       const n = index + 1
       await expect(page.getByText(`${n} ${n === 1 ? 'moment' : 'moments'} savored today`)).toBeVisible()
@@ -98,7 +101,7 @@ test.describe('The Patient One', () => {
     await advance(page, 3000)
     await page.getByRole('button', { name: 'Stop current task' }).click()
 
-    await expect(page.getByRole('heading', { name: 'The Anti-Game' })).toBeFocused()
+    await expect(page.getByRole('heading', { name: MENU_HEADING })).toBeFocused()
     await expect(page.getByText(/savored/)).toHaveCount(0)
     await expect(taskButton(page, 'Watch the Seeds')).not.toHaveAccessibleName(/Completed/)
 
@@ -107,7 +110,7 @@ test.describe('The Patient One', () => {
     await expect(timer(page)).toHaveText('0:45')
   })
 
-  test('regression: time away from the tab still counts, so the timer never stalls', async ({ page }) => {
+  test('time away from the tab does not count: the moment waits and welcomes you back', async ({ page }) => {
     await openGame(page)
     await taskButton(page, 'Listen to Silence').click()
     await advance(page, 10_000)
@@ -117,14 +120,46 @@ test.describe('The Patient One', () => {
       Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
       document.dispatchEvent(new Event('visibilitychange'))
     })
-    await page.clock.fastForward(30_000)
+    await advance(page, 120_000)
     await page.evaluate(() => {
       Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
       document.dispatchEvent(new Event('visibilitychange'))
     })
-    await expect(timer(page)).toHaveText('0:20')
-    await advance(page, 20_000)
-    await expect(page.getByRole('heading', { name: 'You Did It' })).toBeVisible()
+    await expect(timer(page)).toHaveText('0:50')
+    await expect(page.getByText('Welcome back. The moment waited for you.')).toBeVisible()
+    await expect(page.getByRole('heading', { name: REWARD_HEADING })).toHaveCount(0)
+
+    await advance(page, 49_000)
+    await expect(timer(page)).toHaveText('0:01')
+    await advance(page, 1_000)
+    await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeVisible()
+  })
+
+  test('three things noted while counting are shown back and never stored', async ({ page }) => {
+    await openGame(page)
+    await taskButton(page, 'Count Three Things').click()
+    await page.getByRole('textbox', { name: 'First thing' }).fill('Morning light')
+    await page.getByRole('textbox', { name: 'Third thing' }).fill('A friend who called')
+    await advance(page, 50_000)
+
+    await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeFocused()
+    await expect(page.getByText('Today you noticed')).toBeVisible()
+    await expect(page.getByRole('status').getByRole('listitem')).toHaveText(['Morning light', 'A friend who called'])
+    const stored = await page.evaluate(() => JSON.stringify(localStorage))
+    expect(stored).not.toContain('Morning light')
+  })
+
+  test('staying a little longer repeats the moment without counting it twice', async ({ page }) => {
+    await openGame(page)
+    await taskButton(page, 'Watch the Seeds').click()
+    await advance(page, 45_000)
+    await expect(page.getByText('1 moment savored today')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Stay a little longer' }).click()
+    await expect(page.getByRole('heading', { name: 'Watch the Seeds' })).toBeFocused()
+    await expect(timer(page)).toHaveText('0:45')
+    await advance(page, 45_000)
+    await expect(page.getByText('1 moment savored today')).toBeVisible()
   })
 
   test('regression: moments savored today survive a reload but not midnight', async ({ page }) => {
@@ -140,7 +175,7 @@ test.describe('The Patient One', () => {
 
     await page.clock.setFixedTime(new Date('2026-11-22T09:00:00'))
     await page.reload()
-    await expect(page.getByRole('heading', { name: 'The Anti-Game' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: MENU_HEADING })).toBeVisible()
     await expect(taskButton(page, 'Notice This Moment')).not.toHaveAccessibleName(/Completed/)
     await expect(page.getByText(/savored/)).toHaveCount(0)
   })
@@ -168,13 +203,13 @@ test.describe('The Patient One', () => {
     await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: 'Stop current task' })).toBeFocused()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('heading', { name: 'The Anti-Game' })).toBeFocused()
+    await expect(page.getByRole('heading', { name: MENU_HEADING })).toBeFocused()
 
     await page.keyboard.press('Tab')
     await expect(taskButton(page, 'Just Breathe')).toBeFocused()
     await page.keyboard.press(' ')
     await advance(page, 60_000)
-    await expect(page.getByRole('heading', { name: 'You Did It' })).toBeFocused()
+    await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: 'Continue Slowing Down' })).toBeFocused()
     await page.keyboard.press('Enter')
@@ -194,6 +229,6 @@ test.describe('The Patient One with reduced motion', () => {
     await expect(field.locator('div')).toHaveCount(8)
 
     await advance(page, 45_000)
-    await expect(page.getByRole('heading', { name: 'You Did It' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeVisible()
   })
 })
