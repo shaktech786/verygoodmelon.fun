@@ -7,7 +7,7 @@ export const CARDS: CardDef[] = [
   { id: 'first_hand', name: 'First-Hand Account', type: 'evidence', rarity: 'common', cost: 1, weight: 4, draw: 1, upgrade: { weight: 6 }, flavor: 'I was there.' },
   { id: 'field_study', name: 'Field Study', type: 'evidence', rarity: 'common', school: 'empiricist', cost: 2, weight: 11, upgrade: { weight: 15 }, flavor: 'Slow, patient, and hard to argue with.' },
   { id: 'corroboration', name: 'Corroboration', type: 'evidence', rarity: 'uncommon', school: 'empiricist', cost: 1, weight: 2, weightPerOtherEvidence: 2, upgrade: { weightPerOtherEvidence: 3 }, flavor: 'Two witnesses who never met.' },
-  { id: 'smoking_gun', name: 'Smoking Gun', type: 'evidence', rarity: 'rare', cost: 3, weight: 20, upgrade: { weight: 27 }, flavor: 'Some evidence leaves no room.' },
+  { id: 'smoking_gun', name: 'Smoking Gun', type: 'evidence', rarity: 'rare', cost: 3, weight: 12, upgrade: { weight: 16 }, flavor: 'Some evidence leaves no room.' },
   { id: 'counterexample', name: 'Counterexample', type: 'evidence', rarity: 'uncommon', school: 'skeptic', cost: 1, weight: 3, pierce: true, upgrade: { weight: 6 }, flavor: 'One black swan is enough.' },
   { id: 'lived_experience', name: 'Lived Experience', type: 'evidence', rarity: 'uncommon', school: 'absurdist', cost: 1, weight: 3, weightIfLowResolve: 6, upgrade: { weight: 5 }, flavor: 'Hard days teach what books cannot.' },
   { id: 'amor_fati', name: 'Amor Fati', type: 'evidence', rarity: 'uncommon', school: 'absurdist', cost: 1, weight: 2, weightPerDoubtInHand: 5, upgrade: { weightPerDoubtInHand: 7 }, flavor: 'Love your fate, including the messy parts.' },

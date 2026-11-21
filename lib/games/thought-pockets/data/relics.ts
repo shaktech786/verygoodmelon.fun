@@ -4,7 +4,7 @@ export const RELICS: RelicDef[] = [
   { id: 'ockhams_razor', name: "Ockham's Razor", text: 'An argument of exactly 2 cards gets +1 Multiplier.', flavor: 'Do not multiply things without need.' },
   { id: 'marginalia', name: 'Marginalia', text: 'Each Guard card in your argument also adds 2 Weight.', flavor: 'The best ideas are in the margins.' },
   { id: 'footnotes', name: 'Footnotes', text: 'If your argument has 4 or more cards, your Conclusion counts three times.', flavor: 'See note 14, and also note 15.' },
-  { id: 'worry_stone', name: 'Worry Stone', text: 'Each Focus you leave unspent gives you 4 Guard.', flavor: 'Smooth from years of thumbs.' },
+  { id: 'worry_stone', name: 'Worry Stone', text: 'Each Focus you leave unspent gives 3 more Guard.', flavor: 'Smooth from years of thumbs.' },
   { id: 'hourglass', name: 'Hourglass', text: 'Every third turn of a fight, gain 2 extra Focus.', flavor: 'Patience is also an argument.' },
   { id: 'lantern', name: 'Lantern', text: 'Your first argument in each fight has Pierce.', flavor: 'It does not argue with the dark.' },
   { id: 'seed_of_doubt', name: 'Seed of Doubt', text: 'Every fight starts with the enemy Unsettled 2.', flavor: 'Small, and it grows.' },

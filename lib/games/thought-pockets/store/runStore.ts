@@ -1,13 +1,13 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
-import { RunState, School } from '@/types/thought-pockets'
+import { Mode, RunState, School } from '@/types/thought-pockets'
 import { newRun } from '../engine/run'
 
-const RUN_VERSION = 2
+const RUN_VERSION = 3
 
 interface RunStore {
   run: RunState | null
-  start: (school: School, seed: number) => void
+  start: (school: School, seed: number, mode: Mode) => void
   abandon: () => void
   act: (action: (run: RunState) => RunState) => void
 }
@@ -20,7 +20,7 @@ export const useRunStore = create<RunStore>()(
   persist(
     (set) => ({
       run: null,
-      start: (school, seed) => set({ run: newRun(school, seed) }),
+      start: (school, seed, mode) => set({ run: newRun(school, seed, mode, useInsightStore.getState().beaten) }),
       abandon: () => set({ run: null }),
       act: (action) =>
         set((state) => {

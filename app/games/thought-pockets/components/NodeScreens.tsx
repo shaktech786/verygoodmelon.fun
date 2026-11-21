@@ -1,11 +1,11 @@
 'use client'
 
-import { CardInstance, RelicId, RunState } from '@/types/thought-pockets'
-import { canUpgrade, getCardDef, resolveCard } from '@/lib/games/thought-pockets/data/cards'
+import { CardInstance, CardType, RelicId, RunState } from '@/types/thought-pockets'
+import { TYPE_LABELS, canUpgrade, getCardDef, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
 import { getEventDef } from '@/lib/games/thought-pockets/data/events'
+import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import {
-  REST_HEAL_PERCENT,
   buyCard,
   buyRelic,
   cancelPick,
@@ -15,6 +15,7 @@ import {
   leaveReward,
   leaveShop,
   pickCard,
+  restAmount,
   restHeal,
   skipCards,
   startRestUpgrade,
@@ -24,21 +25,23 @@ import {
 } from '@/lib/games/thought-pockets/engine/run'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { CardFace } from './CardFace'
+import { NodeGlyph } from './Glyphs'
+import { BiasPortrait } from './Sprites'
 
-const panel = 'rounded-xl border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-4 text-[var(--tp-text)]'
+const panel = 'rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-4 text-[var(--tp-text)]'
 export const primaryButton =
-  'rounded-lg bg-[var(--tp-accent)] px-4 py-2 text-sm font-semibold text-[var(--tp-ink)] hover:brightness-110 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-text)]'
+  'rounded-md bg-[var(--tp-accent)] px-4 py-2 text-sm font-semibold text-[var(--tp-on-accent)] hover:brightness-110 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]'
 export const quietButton =
-  'rounded-lg border border-[var(--tp-line)] px-4 py-2 text-sm text-[var(--tp-text)] hover:bg-white/5 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-[var(--tp-accent)]'
+  'rounded-md border border-[var(--tp-line)] px-4 py-2 text-sm text-[var(--tp-text)] hover:bg-[var(--tp-ink)] disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]'
 
 export function RelicTile({ relicId, children }: { relicId: RelicId; children?: React.ReactNode }) {
   const relic = getRelicDef(relicId)
   return (
-    <div className="flex w-full max-w-xs flex-col gap-1 rounded-lg border-2 border-[var(--tp-accent)] bg-[var(--tp-paper)] p-3 text-[var(--tp-paper-ink)]">
-      <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-[#6b5326]">Relic</p>
+    <div className="flex w-full max-w-xs flex-col gap-1 rounded-md border-2 border-[var(--tp-logic)] bg-[var(--tp-paper)] p-3 text-[var(--tp-paper-ink)] shadow-[3px_3px_0_0_var(--tp-shadow)]">
+      <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-[var(--tp-paper-muted)]">Relic</p>
       <p className="font-serif text-base font-semibold">{relic.name}</p>
       <p className="text-sm leading-snug">{relic.text}</p>
-      <p className="text-xs italic text-[#5a4c3a]">{relic.flavor}</p>
+      <p className="text-xs italic text-[var(--tp-paper-muted)]">{relic.flavor}</p>
       {children}
     </div>
   )
@@ -78,17 +81,36 @@ function DeckPicker({ run }: { run: RunState }) {
   )
 }
 
+function deckMix(run: RunState): string {
+  const counts = new Map<CardType, number>()
+  for (const card of run.deck) {
+    const type = resolveCard(card).type
+    counts.set(type, (counts.get(type) ?? 0) + 1)
+  }
+  return [...counts.entries()].map(([type, n]) => `${n} ${TYPE_LABELS[type]}`).join(', ')
+}
+
 export function RewardScreen({ run }: { run: RunState }) {
   const act = useRunStore((s) => s.act)
   const reward = run.reward
   if (!reward) return null
   const title = { battle: 'You made your point', elite: 'A hard argument, won', boss: 'Floor complete', treasure: 'Treasure' }[reward.source]
+  const enemyId = reward.source === 'treasure' ? undefined : run.map.find((n) => n.id === run.position)?.enemyId
+  const foe = enemyId ? getEnemyDef(enemyId) : null
   return (
     <section className={panel} aria-labelledby="reward-title">
       <h2 id="reward-title" className="font-serif text-2xl font-semibold">
         {title}
       </h2>
-      {reward.gold > 0 && <p className="mt-1">+{reward.gold} gold.</p>}
+      {foe && (
+        <div className="mt-2 flex items-center gap-3 rounded-md bg-[var(--tp-ink)] p-2" data-testid="insight">
+          <BiasPortrait enemyId={foe.id} tier={foe.tier} className="h-12 w-12 shrink-0" />
+          <p className="text-sm">
+            <span className="font-semibold">What {foe.name} taught you:</span> {foe.insight}
+          </p>
+        </div>
+      )}
+      {reward.gold > 0 && <p className="mt-2">+{reward.gold} gold.</p>}
       {reward.relicChoices.length > 0 && (
         <div className="mt-4">
           <h3 className="font-semibold">{reward.relicChoices.length > 1 ? 'Choose a relic' : 'A relic'}</h3>
@@ -111,7 +133,9 @@ export function RewardScreen({ run }: { run: RunState }) {
       {reward.cardChoices.length > 0 && (
         <div className="mt-4">
           <h3 className="font-semibold">{reward.cardTaken ? 'Card chosen' : 'Add one card to your deck, or skip'}</h3>
-          <p className="text-sm text-[var(--tp-muted)]">A smaller deck draws its best cards more often. Skipping is a real choice.</p>
+          <p className="text-sm text-[var(--tp-muted)]">
+            Your deck: {deckMix(run)}. Logic only multiplies the Weight that Evidence brings, and a smaller deck draws its best cards more often, so skipping is a real choice.
+          </p>
           <div className="mt-2 flex flex-wrap gap-2" data-testid="card-choices">
             {reward.cardChoices.map((cardId) => (
               <CardFace
@@ -145,7 +169,8 @@ export function ShopScreen({ run }: { run: RunState }) {
   if (!shop) return null
   return (
     <section className={panel} aria-labelledby="shop-title">
-      <h2 id="shop-title" className="font-serif text-2xl font-semibold">
+      <h2 id="shop-title" className="flex items-center gap-2 font-serif text-2xl font-semibold">
+        <NodeGlyph type="shop" className="h-7 w-7 text-[var(--tp-logic)]" />
         The Bookshop
       </h2>
       <p className="mt-1 text-sm">You have {run.gold} gold. You will not afford everything.</p>
@@ -195,10 +220,11 @@ export function ShopScreen({ run }: { run: RunState }) {
 export function RestScreen({ run }: { run: RunState }) {
   const act = useRunStore((s) => s.act)
   if (run.pick) return <DeckPicker run={run} />
-  const heal = Math.floor((run.maxResolve * REST_HEAL_PERCENT) / 100)
+  const heal = restAmount(run)
   return (
     <section className={panel} aria-labelledby="rest-title">
-      <h2 id="rest-title" className="font-serif text-2xl font-semibold">
+      <h2 id="rest-title" className="flex items-center gap-2 font-serif text-2xl font-semibold">
+        <NodeGlyph type="rest" className="h-7 w-7 text-[var(--tp-logic)]" />
         A quiet place
       </h2>
       <p className="mt-1 text-sm">Choose one.</p>
@@ -222,7 +248,8 @@ export function EventScreen({ run }: { run: RunState }) {
   const def = getEventDef(event.eventId)
   return (
     <section className={panel} aria-labelledby="event-title">
-      <h2 id="event-title" className="font-serif text-2xl font-semibold">
+      <h2 id="event-title" className="flex items-center gap-2 font-serif text-2xl font-semibold">
+        <NodeGlyph type="event" className="h-7 w-7 text-[var(--tp-logic)]" />
         {def.name}
       </h2>
       <p className="mt-2 max-w-prose leading-relaxed">{def.text}</p>

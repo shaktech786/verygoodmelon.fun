@@ -5,6 +5,7 @@ import {
   CardDef,
   CardInstance,
   EnemyMove,
+  Mode,
   RelicId,
   RoundReport,
   School,
@@ -19,13 +20,17 @@ export const HAND_SIZE = 5
 export const MAX_HAND = 10
 export const MAX_TURNS = 30
 
-const DOUBT_WEIGHT = 4
+const DOUBT_WEIGHT = 3
 const OVERCONFIDENT_BONUS = 4
 const SKEPTIC_BONUS = 2
+const INDUCTION_BONUS = 1.5
+const MOTIVATED_CARDS = 3
 const GROWTH_PER_ACTION = 2
 const BANDWAGON_GROWTH = 1
 export const SORITES_CAP = 15
-const WORRY_STONE_GUARD = 4
+const SORITES_GRAIN = 5
+export const COMPOSURE_GUARD = 3
+const WORRY_STONE_GUARD = 3
 const MARGINALIA_WEIGHT = 2
 const LONG_VIEW_MAX = 2
 const HOURGLASS_FOCUS = 2
@@ -33,6 +38,9 @@ const SECOND_OPINION_DRAW = 2
 const STOIC_CAP = 12
 const SEED_UNSETTLE = 2
 const FOOTNOTES_CARDS = 4
+export const KNOWN_UNSETTLE = 2
+export const RIGOROUS_HEALTH = 1.25
+export const RIGOROUS_ATTACK = 2
 
 export interface BattleSetup {
   enemyId: string
@@ -42,6 +50,9 @@ export interface BattleSetup {
   relics: RelicId[]
   school: School
   rng: number
+  mode: Mode
+  /** You have beaten this bias in an earlier run. */
+  known: boolean
 }
 
 export interface Incoming {
@@ -130,14 +141,16 @@ export function createBattle(setup: BattleSetup): BattleState {
   const def = getEnemyDef(setup.enemyId)
   const shuffled = shuffle(setup.deck, setup.rng)
   if (setup.enemyId === TUTORIAL_ENEMY) shuffled.items = teachingOrder(shuffled.items)
+  const rigorous = setup.mode === 'rigorous'
+  const health = rigorous ? Math.round(def.health * RIGOROUS_HEALTH) : def.health
   const core: BattleCore = {
     enemy: {
       id: def.id,
-      health: def.health,
-      maxHealth: def.health,
+      health,
+      maxHealth: health,
       guard: 0,
-      strength: 0,
-      unsettle: setup.relics.includes('seed_of_doubt') ? SEED_UNSETTLE : 0,
+      strength: rigorous ? RIGOROUS_ATTACK : 0,
+      unsettle: (setup.relics.includes('seed_of_doubt') ? SEED_UNSETTLE : 0) + (setup.known ? KNOWN_UNSETTLE : 0),
       moveIndex: 0,
       seen: [],
     },
@@ -307,28 +320,30 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
       raw *= 2
       modifiers.push('You answered its question: double')
     } else {
-      modifiers.push(`Not answered: include a ${move.asks === 'guard' ? 'Guard' : move.asks === 'logic' ? 'Logic' : 'Evidence'} card to double`)
+      modifiers.push(`Not answered: include ${move.asks === 'guard' ? 'a Guard' : move.asks === 'logic' ? 'a Logic' : 'an Evidence'} card to double`)
     }
   }
-  if (rule === 'induction' && conclusion >= 0 && defs[conclusion].type === core.lastConclusionType) {
-    raw = Math.floor(raw / 2)
-    modifiers.push('Same Conclusion type as last turn: half')
+  if (rule === 'induction' && conclusion >= 0 && core.lastConclusionType && defs[conclusion].type !== core.lastConclusionType) {
+    raw = Math.floor(raw * INDUCTION_BONUS)
+    modifiers.push('A different Conclusion from last turn: +50%')
   }
 
   const pierce = defs.some((d) => d.pierce) || (has(core, 'lantern') && !core.piercedOnce)
   const blocked = pierce ? 0 : Math.min(core.enemy.guard, raw)
   let damage = raw - blocked
+  let grains = 0
   if (rule === 'sorites' && damage > SORITES_CAP) {
+    grains = Math.floor((damage - SORITES_CAP) / SORITES_GRAIN)
     damage = SORITES_CAP
-    modifiers.push(`Capped at ${SORITES_CAP}`)
+    modifiers.push(`Capped at ${SORITES_CAP}${grains > 0 ? `, the rest becomes Unsettle ${grains}` : ''}`)
   }
-  const healedBack = rule === 'motivated' && defs.length < 3 ? damage : 0
-  if (healedBack > 0) modifiers.push('Fewer than 3 cards: it explains this away')
+  const healedBack = rule === 'motivated' && defs.length < MOTIVATED_CARDS ? Math.floor(damage / 2) : 0
+  if (healedBack > 0) modifiers.push('Fewer than 3 cards: it explains half away')
   const selfLoss = rule === 'backfire' && damage > 0 ? defs.length : 0
 
-  const unspent = has(core, 'worry_stone') ? core.focus * WORRY_STONE_GUARD : 0
-  const guard = steps.reduce((sum, s) => sum + s.guard, 0) + unspent
-  const unsettle = steps.reduce((sum, s) => sum + s.unsettle, 0)
+  const composure = core.focus * (COMPOSURE_GUARD + (has(core, 'worry_stone') ? WORRY_STONE_GUARD : 0))
+  const guard = steps.reduce((sum, s) => sum + s.guard, 0) + composure
+  const unsettle = steps.reduce((sum, s) => sum + s.unsettle, 0) + grains
   const postpone = defs.some((d) => d.postpone)
 
   const enemyHealthAfter = Math.max(0, core.enemy.health - damage + healedBack)
@@ -352,6 +367,7 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
     healedBack,
     selfLoss,
     guard,
+    composure,
     unsettle,
     postpone,
     growth,

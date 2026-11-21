@@ -4,6 +4,7 @@ import {
   CardInstance,
   EventState,
   MapNode,
+  Mode,
   RelicId,
   RewardState,
   RunState,
@@ -28,10 +29,11 @@ import { createBattle } from './battle'
 import { generateFloor } from './map'
 import { pick, roll, rollInt, seedRng, shuffle } from './rng'
 
-export const START_RESOLVE = 50
+export const START_RESOLVE = 60
 export const START_GOLD = 20
-export const REST_HEAL_PERCENT = 30
-export const FLOOR_HEAL = 20
+const REST_HEAL_PERCENT: Record<Mode, number> = { gentle: 40, rigorous: 30 }
+const RIGOROUS_FLOOR_HEAL = 20
+const RECONSIDERS: Record<Mode, number> = { gentle: 1, rigorous: 0 }
 export const TEA_FLASK_HEAL = 5
 const CARD_CHOICES = 3
 const RELIC_CHOICES = 2
@@ -49,15 +51,19 @@ function instances(cardIds: string[], firstUid: number): CardInstance[] {
   return cardIds.map((cardId, i) => ({ uid: firstUid + i, cardId, upgraded: false }))
 }
 
-export function newRun(school: School, seed: number): RunState {
+/** `known` lists the opponents beaten in earlier runs. */
+export function newRun(school: School, seed: number, mode: Mode = 'gentle', known: string[] = []): RunState {
   const rng = seedRng(seed)
   const floor = generateFloor(1, rng)
   const deck = instances(getSchoolDef(school).deck, 1)
   return {
-    version: 2,
+    version: 3,
     seed,
     rng: floor.rng,
     school,
+    mode,
+    reconsiders: RECONSIDERS[mode],
+    known,
     floor: 1,
     map: floor.nodes,
     position: null,
@@ -219,6 +225,22 @@ function makeEvent(run: RunState): RunState {
   return { ...next, event, screen: 'event' }
 }
 
+function startFight(run: RunState, enemyId: string): RunState {
+  const seed = rollInt(run.rng, 0, 2 ** 31)
+  const battle = createBattle({
+    enemyId,
+    deck: run.deck,
+    resolve: run.resolve,
+    maxResolve: run.maxResolve,
+    relics: run.relics,
+    school: run.school,
+    rng: seed.value,
+    mode: run.mode,
+    known: run.known.includes(enemyId),
+  })
+  return { ...run, rng: seed.rng, battle, screen: 'battle', stats: { ...run.stats, fights: run.stats.fights + 1 } }
+}
+
 export function chooseNode(run: RunState, nodeId: string): RunState {
   const node = availableNodes(run).find((n) => n.id === nodeId)
   if (!node) return run
@@ -226,19 +248,8 @@ export function chooseNode(run: RunState, nodeId: string): RunState {
   switch (node.type) {
     case 'battle':
     case 'elite':
-    case 'boss': {
-      const seed = rollInt(moved.rng, 0, 2 ** 31)
-      const battle = createBattle({
-        enemyId: node.enemyId as string,
-        deck: moved.deck,
-        resolve: moved.resolve,
-        maxResolve: moved.maxResolve,
-        relics: moved.relics,
-        school: moved.school,
-        rng: seed.value,
-      })
-      return { ...moved, rng: seed.rng, battle, screen: 'battle', stats: { ...moved.stats, fights: moved.stats.fights + 1 } }
-    }
+    case 'boss':
+      return startFight(moved, node.enemyId as string)
     case 'rest':
       return { ...moved, screen: 'rest' }
     case 'shop':
@@ -256,9 +267,7 @@ function currentNode(run: RunState): MapNode | undefined {
 
 function finishBattle(run: RunState, battle: BattleState): RunState {
   const stats = { ...run.stats, turns: run.stats.turns + battle.turn }
-  if (battle.outcome === 'lost') {
-    return { ...run, battle: null, resolve: 0, screen: 'defeat', defeatedBy: battle.enemy.id, stats }
-  }
+  if (battle.outcome === 'lost') return { ...run, battle: null, screen: 'defeat', defeatedBy: battle.enemy.id, stats }
   const tea = run.relics.includes('tea_flask') ? TEA_FLASK_HEAL : 0
   const won: RunState = {
     ...run,
@@ -277,6 +286,13 @@ export function battleAction(run: RunState, action: (battle: BattleState) => Bat
   if (battle === run.battle) return run
   if (battle.outcome !== 'ongoing') return finishBattle(run, battle)
   return { ...run, battle }
+}
+
+/** Once per gentle run: go back to the start of the fight you just lost, with the Resolve you had then and a fresh shuffle. */
+export function reconsider(run: RunState): RunState {
+  const enemyId = run.defeatedBy
+  if (run.screen !== 'defeat' || run.reconsiders === 0 || !enemyId) return run
+  return startFight({ ...run, reconsiders: run.reconsiders - 1, defeatedBy: null }, enemyId)
 }
 
 export function takeCard(run: RunState, cardId: string): RunState {
@@ -308,7 +324,7 @@ function advanceFloor(run: RunState): RunState {
     position: null,
     visited: [],
     reward: null,
-    resolve: Math.min(run.maxResolve, run.resolve + FLOOR_HEAL),
+    resolve: run.mode === 'gentle' ? run.maxResolve : Math.min(run.maxResolve, run.resolve + RIGOROUS_FLOOR_HEAL),
     screen: 'map',
   }
 }
@@ -319,9 +335,13 @@ export function leaveReward(run: RunState): RunState {
   return { ...run, reward: null, screen: 'map' }
 }
 
+export function restAmount(run: RunState): number {
+  return Math.floor((run.maxResolve * REST_HEAL_PERCENT[run.mode]) / 100)
+}
+
 export function restHeal(run: RunState): RunState {
   if (run.screen !== 'rest' || run.pick) return run
-  const heal = Math.floor((run.maxResolve * REST_HEAL_PERCENT) / 100)
+  const heal = restAmount(run)
   return { ...run, resolve: Math.min(run.maxResolve, run.resolve + heal), screen: 'map' }
 }
 

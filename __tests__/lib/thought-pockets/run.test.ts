@@ -10,6 +10,7 @@ import {
   leaveReward,
   newRun,
   pickCard,
+  reconsider,
   restHeal,
   skipCards,
   startShopRemoval,
@@ -18,7 +19,7 @@ import {
 } from '@/lib/games/thought-pockets/engine/run'
 import { endTurn } from '@/lib/games/thought-pockets/engine/battle'
 import { MapNode, RunState } from '@/types/thought-pockets'
-import { TUTORIAL_ENEMY } from '@/lib/games/thought-pockets/data/enemies'
+import { TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { getCardDef } from '@/lib/games/thought-pockets/data/cards'
 
 function winFight(run: RunState): RunState {
@@ -203,9 +204,11 @@ describe('a run', () => {
     expect(run.screen).toBe('map')
   })
 
-  it('rest heals 30% of maximum Resolve', () => {
+  it('rest heals 40% of maximum Resolve, 30% in rigorous mode', () => {
     const run = restHeal({ ...newRun('empiricist', 2), screen: 'rest', resolve: 10 })
-    expect(run.resolve).toBe(25)
+    expect(run.resolve).toBe(10 + 24)
+    const rigorous = restHeal({ ...newRun('empiricist', 2, 'rigorous'), screen: 'rest', resolve: 10 })
+    expect(rigorous.resolve).toBe(10 + 18)
     expect(run.screen).toBe('map')
   })
 
@@ -248,5 +251,61 @@ describe('a run', () => {
     const run = newRun('rationalist', 12)
     const inBattle = chooseNode(run, availableNodes(run)[0].id)
     expect(JSON.parse(JSON.stringify(inBattle))).toEqual(inBattle)
+  })
+})
+
+describe('mercy and modes', () => {
+  it('a gentle run can reconsider one lost fight: back to its start with the Resolve you had, freshly shuffled', () => {
+    const run = newRun('empiricist', 9)
+    const entered = chooseNode({ ...run, resolve: 40 }, availableNodes(run)[0].id)
+    const lost = loseFight(entered)
+    expect(lost.screen).toBe('defeat')
+    expect(lost.reconsiders).toBe(1)
+    const again = reconsider(lost)
+    expect(again.screen).toBe('battle')
+    expect(again.reconsiders).toBe(0)
+    expect(again.defeatedBy).toBeNull()
+    expect(again.battle?.player.resolve).toBe(40)
+    expect(again.battle?.enemy.health).toBe(getEnemyDef(TUTORIAL_ENEMY).health)
+    expect(again.battle?.turn).toBe(1)
+    expect(again.battle?.rng).not.toBe(entered.battle?.rng)
+    const lostAgain = loseFight(again)
+    expect(lostAgain.screen).toBe('defeat')
+    expect(reconsider(lostAgain)).toBe(lostAgain)
+  })
+
+  it('reconsider does nothing outside a defeat', () => {
+    const run = newRun('empiricist', 9)
+    expect(reconsider(run)).toBe(run)
+  })
+
+  it('rigorous mode: no reconsider, enemies have a quarter more Resolve and hit 2 harder', () => {
+    const gentle = newRun('empiricist', 9)
+    const rigorous = newRun('empiricist', 9, 'rigorous')
+    expect(gentle.mode).toBe('gentle')
+    expect(rigorous.reconsiders).toBe(0)
+    const fight = chooseNode(rigorous, availableNodes(rigorous)[0].id).battle
+    const base = getEnemyDef(TUTORIAL_ENEMY)
+    expect(fight?.enemy.maxHealth).toBe(Math.round(base.health * 1.25))
+    expect(fight?.enemy.strength).toBe(2)
+    expect(reconsider(loseFight(chooseNode(rigorous, availableNodes(rigorous)[0].id))).screen).toBe('defeat')
+  })
+
+  it('a bias you understood in an earlier run starts every fight Unsettled 2', () => {
+    const run = newRun('empiricist', 9, 'gentle', [TUTORIAL_ENEMY])
+    const fight = chooseNode(run, availableNodes(run)[0].id).battle
+    expect(fight?.enemy.unsettle).toBe(2)
+    const stranger = newRun('empiricist', 9)
+    expect(chooseNode(stranger, availableNodes(stranger)[0].id).battle?.enemy.unsettle).toBe(0)
+  })
+
+  it('heals fully between floors in gentle mode and by 20 in rigorous mode', () => {
+    for (const mode of ['gentle', 'rigorous'] as const) {
+      let run = { ...newRun('empiricist', 21, mode), resolve: 10 }
+      const boss = nodeOfType(run, 'boss') as MapNode
+      run = leaveReward(winFight(chooseNode(withPosition(run, boss.id), boss.id)))
+      expect(run.floor).toBe(2)
+      expect(run.resolve).toBe(mode === 'gentle' ? run.maxResolve : 30)
+    }
   })
 })

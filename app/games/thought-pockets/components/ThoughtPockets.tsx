@@ -7,24 +7,42 @@ import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
 import { getSchoolDef } from '@/lib/games/thought-pockets/data/schools'
 import { KEYWORDS, Keyword } from '@/lib/games/thought-pockets/data/keywords'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
+import { COMPOSURE_GUARD } from '@/lib/games/thought-pockets/engine/battle'
 import { SoundToggle } from '@/components/ui/SoundToggle'
 import { BattleScreen } from './BattleScreen'
 import { MapScreen, FLOOR_NAMES } from './MapScreen'
 import { EventScreen, RestScreen, RewardScreen, ShopScreen, quietButton } from './NodeScreens'
-import { EndScreen, MenuScreen } from './MenuScreens'
+import { EndScreen, MenuScreen, runInProgress } from './MenuScreens'
 import { TYPE_COLORS } from './CardFace'
 
-const THEME = {
-  '--tp-ink': '#1c1814',
-  '--tp-ink-2': '#27211a',
-  '--tp-line': '#5a4d3c',
-  '--tp-text': '#f1e8d6',
-  '--tp-muted': '#c9bba3',
-  '--tp-paper': '#f4ecda',
-  '--tp-paper-ink': '#2a2118',
-  '--tp-accent': '#e8b04a',
-  '--tp-red': '#e2715f',
-} as React.CSSProperties
+/** Every colour comes from the site palette in app/globals.css, so the game follows light and dark mode. */
+const THEME_CSS = `
+.tp-root {
+  --tp-ink: var(--background);
+  --tp-ink-2: var(--card-bg);
+  --tp-line: color-mix(in srgb, var(--foreground) 24%, var(--card-bg));
+  --tp-shadow: color-mix(in srgb, var(--foreground) 14%, transparent);
+  --tp-text: var(--foreground);
+  --tp-muted: var(--primary-light);
+  --tp-paper: color-mix(in srgb, var(--card-bg) 94%, var(--warm));
+  --tp-paper-ink: var(--foreground);
+  --tp-paper-muted: var(--primary-light);
+  --tp-accent: var(--accent);
+  --tp-on-accent: var(--background);
+  --tp-focus: var(--foreground);
+  --tp-good: var(--melon-green);
+  --tp-guard: color-mix(in srgb, var(--melon-blue) 70%, var(--foreground));
+  --tp-warn: var(--accent);
+  --tp-enemy-bar: var(--melon-red);
+  --tp-player-bar: var(--success);
+  --tp-evidence: var(--melon-emerald);
+  --tp-logic: var(--warm);
+  --tp-guard-type: var(--melon-blue);
+  --tp-rhetoric: var(--melon-purple);
+  --tp-doubt: var(--primary-light);
+}
+.tp-screen:focus-visible { box-shadow: none; animation: none; }
+`
 
 function useHydrated(): boolean {
   return useSyncExternalStore(
@@ -47,8 +65,7 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
       ref={ref}
       onClose={onClose}
       aria-labelledby={`${title}-title`}
-      className="m-auto max-h-[85dvh] w-[min(42rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-5 text-[var(--tp-text)] backdrop:bg-black/60"
-      style={THEME}
+      className="tp-root m-auto max-h-[85dvh] w-[min(42rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-5 text-[var(--tp-text)] backdrop:bg-black/60"
     >
       <div className="flex items-start justify-between gap-4">
         <h2 id={`${title}-title`} className="font-serif text-2xl font-semibold">
@@ -77,9 +94,13 @@ function HowToPlay() {
         <li>
           <strong>Guard</strong> cards absorb the enemy&apos;s attack this round. Guard is used up by damage, and wears off at its owner&apos;s next turn. Enemy Guard works the same way.
         </li>
+        <li>
+          Holding back is a choice too: each Focus you leave unspent becomes {COMPOSURE_GUARD} Guard when you end your turn.
+        </li>
         <li>The enemy shows exactly what it will do next, and the preview shows exactly what will happen. Nothing is left to chance once you choose.</li>
         <li>End your turn: your argument lands, then the enemy acts. You can undo any card before that.</li>
         <li>Every bias has one rule, written under its name. Working out how to beat it is the point.</li>
+        <li>In Gentle pace, if an argument gets away from you, you may reconsider it once per run: back to its start, knowing what you know now.</li>
       </ol>
       <p className="mt-3">
         Keys in a fight: <strong>1–9</strong> play a card, <strong>U</strong> undoes, <strong>E</strong> ends the turn. On touch screens, hold a card to read it.
@@ -147,8 +168,9 @@ function DeckList({ run }: { run: RunState }) {
 
 function StatusBar({ run, onMenu, onDeck, onHelp }: { run: RunState; onMenu: () => void; onDeck: () => void; onHelp: () => void }) {
   const resolve = run.battle?.player.resolve ?? run.resolve
+  const small = `${quietButton} px-2.5 py-1 text-xs sm:px-3 sm:text-sm`
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[var(--tp-text)]">
+    <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-[var(--tp-text)] sm:mb-3 sm:gap-x-4">
       <p className="font-serif">
         <span className="font-semibold">Floor {run.floor} of 3</span>
         <span className="hidden text-[var(--tp-muted)] sm:inline"> · {FLOOR_NAMES[run.floor]}</span>
@@ -157,22 +179,24 @@ function StatusBar({ run, onMenu, onDeck, onHelp }: { run: RunState; onMenu: () 
         <span>
           Resolve <strong>{resolve}</strong>/{run.maxResolve}
         </span>
-        <span className="hidden h-2 w-24 overflow-hidden rounded-full bg-black/40 sm:block" aria-hidden="true">
-          <span className="block h-full rounded-full bg-[#8fc9a0]" style={{ width: `${(100 * resolve) / run.maxResolve}%` }} />
+        <span className="hidden h-2 w-24 overflow-hidden rounded-sm bg-[var(--tp-line)] sm:block" aria-hidden="true">
+          <span className="block h-full bg-[var(--tp-player-bar)]" style={{ width: `${(100 * resolve) / run.maxResolve}%` }} />
         </span>
-        {run.battle && run.battle.player.guard > 0 && <span className="text-[#bcd6f2]">Guard {run.battle.player.guard}</span>}
+        {run.battle && run.battle.player.guard > 0 && <span className="text-[var(--tp-guard)]">Guard {run.battle.player.guard}</span>}
       </p>
       <p>
         Gold <strong data-testid="gold">{run.gold}</strong>
       </p>
-      <div className="ml-auto flex gap-2">
-        <button type="button" className={`${quietButton} px-3 py-1`} onClick={onDeck} data-testid="open-deck">
+      {run.mode === 'rigorous' && <p className="text-xs font-semibold uppercase tracking-wide text-[var(--tp-muted)]">Rigorous</p>}
+      <div className="flex w-full gap-1.5 sm:ml-auto sm:w-auto sm:gap-2">
+        <button type="button" className={small} onClick={onDeck} data-testid="open-deck">
           Deck {run.deck.length} · Relics {run.relics.length}
         </button>
-        <button type="button" className={`${quietButton} px-3 py-1`} onClick={onHelp}>
-          How to play
+        <button type="button" className={small} onClick={onHelp}>
+          <span className="sm:hidden">Help</span>
+          <span className="hidden sm:inline">How to play</span>
         </button>
-        <button type="button" className={`${quietButton} px-3 py-1`} onClick={onMenu} data-testid="open-menu">
+        <button type="button" className={`${small} ml-auto sm:ml-0`} onClick={onMenu} data-testid="open-menu">
           Menu
         </button>
       </div>
@@ -214,15 +238,15 @@ export function ThoughtPockets() {
   }, [viewKey])
 
   return (
-    <div style={THEME} className="min-h-[calc(100dvh-4rem)] bg-[var(--tp-ink)] px-4 py-4 sm:py-6">
-      <style>{'.tp-screen:focus-visible { box-shadow: none; animation: none; }'}</style>
+    <div className="tp-root min-h-[calc(100dvh-4rem)] bg-[var(--tp-ink)] px-4 py-3 sm:py-6">
+      <style>{THEME_CSS}</style>
       <div className="mx-auto max-w-5xl">
         <h1 className="sr-only">The Philosopher</h1>
         {!hydrated ? (
           <p className="py-24 text-center text-[var(--tp-muted)]">Opening your notebook…</p>
         ) : (
           <>
-            {run && !showMenu && run.screen !== 'victory' && run.screen !== 'defeat' && (
+            {runInProgress(run) && !showMenu && run.screen !== 'defeat' && (
               <StatusBar run={run} onMenu={() => setMenuOpen(true)} onDeck={() => setDialog('deck')} onHelp={() => setDialog('help')} />
             )}
             <div ref={screenRef} tabIndex={-1} className="tp-screen outline-none" data-testid={`screen-${showMenu ? 'menu' : run.screen}`}>

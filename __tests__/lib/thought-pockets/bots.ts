@@ -1,4 +1,4 @@
-import { MAX_TURNS, canPlay, endTurn, incomingDamage, playCard, previewArgument } from '@/lib/games/thought-pockets/engine/battle'
+import { MAX_TURNS, canPlay, endTurn, incomingDamage, playCard, previewArgument, undoPlay } from '@/lib/games/thought-pockets/engine/battle'
 import {
   availableNodes,
   battleAction,
@@ -12,6 +12,7 @@ import {
   leaveShop,
   newRun,
   pickCard,
+  reconsider,
   restHeal,
   skipCards,
   startRestUpgrade,
@@ -21,7 +22,7 @@ import {
 } from '@/lib/games/thought-pockets/engine/run'
 import { canUpgrade, getCardDef, isDoubt, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
-import { BattleState, CardDef, CardInstance, CardType, MapNode, RunState, School } from '@/types/thought-pockets'
+import { BattleState, CardDef, CardInstance, CardType, MapNode, Mode, RunState, School } from '@/types/thought-pockets'
 
 export type TurnPolicy = (battle: BattleState) => BattleState
 
@@ -111,76 +112,186 @@ export function planner(weights: Weights = { defence: 2.5, unsettle: 3 }): TurnP
 
 export const planning = planner()
 
+function playFreeEngines(battle: BattleState): BattleState {
+  let state = battle
+  for (;;) {
+    const free = state.hand.find((c) => isFreeEngine(c) && canPlay(state, c.uid))
+    if (!free) return state
+    state = playCard(state, free.uid)
+  }
+}
+
+function replayWithLast(battle: BattleState, played: CardInstance[], last: CardInstance): BattleState {
+  let state = battle
+  for (let i = 0; i < played.length; i++) state = undoPlay(state)
+  for (const c of [...played.filter((p) => p !== last), last]) state = playCard(state, c.uid)
+  return state
+}
+
+/**
+ * The previous screen-reading UI driver's habit, kept as a reference: covers a hit of 5 or more
+ * with Guard, adds the cheapest and heaviest cards it can afford, then tries each as the Conclusion.
+ */
+export const uiDriver: TurnPolicy = (battle) => {
+  let state = playFreeEngines(battle)
+  for (;;) {
+    if (previewArgument(state).incomingAfterGuard < 5) break
+    const guard = state.hand.find((c) => resolveCard(c).type === 'guard' && canPlay(state, c.uid))
+    if (!guard) break
+    state = playCard(state, guard.uid)
+  }
+  const chosen: CardInstance[] = []
+  for (;;) {
+    const options = state.hand
+      .filter((c) => canPlay(state, c.uid) && resolveCard(c).type !== 'guard')
+      .sort((a, b) => resolveCard(a).cost - resolveCard(b).cost || (resolveCard(b).weight ?? 0) - (resolveCard(a).weight ?? 0))
+    if (options.length === 0) break
+    state = playCard(state, options[0].uid)
+    chosen.push(options[0])
+  }
+  let best = state
+  for (const last of chosen) {
+    const attempt = replayWithLast(state, chosen, last)
+    if (previewArgument(attempt).damage > previewArgument(best).damage) best = attempt
+  }
+  return endTurn(best)
+}
+
+/** What a careful player can read off the screen for the argument as it stands. */
+function screenValue(state: BattleState): number {
+  const p = previewArgument(state)
+  if (p.damage - p.healedBack >= state.enemy.health) return 1e6 - p.selfLoss
+  const loss = p.incomingAfterGuard + p.selfLoss
+  if (loss >= state.player.resolve) return -1e6
+  const lasting = getEnemyDef(state.enemy.id).rule === 'status_quo' ? p.blocked : 0
+  return p.damage - p.healedBack + lasting - 1.5 * loss + 2 * p.unsettle - 3 * p.growth
+}
+
+/**
+ * A careful human who never sees the next draw: adds whichever card, or pair of cards, the preview
+ * says helps most, stops when nothing helps (unspent Focus becomes Guard), then tries each card as the Conclusion.
+ */
+export const careful: TurnPolicy = (battle) => {
+  let state = playFreeEngines(battle)
+  const chosen: CardInstance[] = []
+  for (;;) {
+    let best: { cards: CardInstance[]; value: number } | null = null
+    for (const c of state.hand) {
+      if (!canPlay(state, c.uid)) continue
+      const once = playCard(state, c.uid)
+      const value = screenValue(once)
+      if (!best || value > best.value) best = { cards: [c], value }
+      for (const d of once.hand) {
+        if (!canPlay(once, d.uid)) continue
+        const twice = screenValue(playCard(once, d.uid))
+        if (twice > best.value) best = { cards: [c, d], value: twice }
+      }
+    }
+    if (!best || best.value <= screenValue(state)) break
+    for (const c of best.cards) state = playCard(state, c.uid)
+    chosen.push(...best.cards)
+  }
+  let best = state
+  for (const last of chosen) {
+    const attempt = replayWithLast(state, chosen, last)
+    if (attempt.played.length === chosen.length && screenValue(attempt) > screenValue(best)) best = attempt
+  }
+  return endTurn(best)
+}
+
+function faceValue(card: CardInstance): number {
+  const def = resolveCard(card)
+  return (def.weight ?? 0) + (def.multiplier ?? 0) * 8 + (def.unsettle ?? 0) * 2 + (def.restore ?? 0) / 2 + (def.draw ?? 0) * 3
+}
+
+/**
+ * A sensible newcomer: blocks a big hit with one Guard card, then plays the cards that look
+ * strongest and finishes on the strongest one. It never reads the enemy's rule or tries orders.
+ */
+export const firstTimer: TurnPolicy = (battle) => {
+  let state = playFreeEngines(battle)
+  const isGuard = (c: CardInstance) => resolveCard(c).type === 'guard'
+  if (incomingDamage(state, 0).total >= 8) {
+    const guard = state.hand.find((c) => isGuard(c) && canPlay(state, c.uid))
+    if (guard) state = playCard(state, guard.uid)
+  }
+  const playable = (s: BattleState) => s.hand.filter((c) => canPlay(s, c.uid))
+  const finisher = playable(state)
+    .filter((c) => !isGuard(c))
+    .sort((a, b) => faceValue(b) - faceValue(a))[0]
+  if (!finisher) return endTurn(state)
+  const keepsFinisher = (s: BattleState) => canPlay(s, finisher.uid)
+  for (;;) {
+    const next = playable(state)
+      .filter((c) => c !== finisher && keepsFinisher(playCard(state, c.uid)))
+      .sort((a, b) => Number(isGuard(a)) - Number(isGuard(b)) || faceValue(b) - faceValue(a))[0]
+    if (!next) break
+    state = playCard(state, next.uid)
+  }
+  return endTurn(playCard(state, finisher.uid))
+}
+
 interface Candidate {
   order: CardInstance[]
   damage: number
-  guard: number
+  covered: number
   repeats: number
   conclusionType: CardType
 }
 
 /**
- * Rule-blind habits: each judges an argument as if the enemy had no special rule,
- * so the enemy's rule decides which habit works best against it.
+ * Habits rank every affordable argument the same way. Blind, a habit judges arguments as if the
+ * enemy had no rule; aware, it judges them by the real preview. The gap is what reading the rule is worth.
  */
-function habit(name: string, rank: (c: Candidate, battle: BattleState, incoming: number) => number): [string, TurnPolicy] {
-  return [
-    name,
-    (battle) => {
-      const neutral = (state: BattleState): BattleState => ({ ...state, enemy: { ...state.enemy, id: 'jumping_to_conclusions', guard: 0 }, lastConclusionType: null })
-      const incoming = incomingDamage(battle, 0).total
-      const cards = battle.hand.filter((c) => !isDoubt(c))
-      let best: CardInstance[] = []
-      let bestRank = -Infinity
-      for (let mask = 1; mask < 1 << cards.length; mask++) {
-        const chosen = cards.filter((_, i) => mask & (1 << i))
-        for (const conclusion of chosen) {
-          const order = [...chosen.filter((c) => c !== conclusion), conclusion]
-          let attempt = battle
-          let legal = true
-          for (const c of order) {
-            const next = playCard(attempt, c.uid)
-            if (next === attempt) {
-              legal = false
-              break
-            }
-            attempt = next
-          }
-          if (!legal) continue
-          const preview = previewArgument(neutral(attempt))
-          const names = order.map((c) => c.cardId)
-          const candidate: Candidate = {
-            order,
-            damage: preview.raw,
-            guard: preview.guard,
-            repeats: names.length - new Set(names).size,
-            conclusionType: resolveCard(conclusion).type,
-          }
-          const r = rank(candidate, battle, incoming)
-          if (r > bestRank) {
-            bestRank = r
-            best = order
-          }
+function habit(rank: (c: Candidate, battle: BattleState) => number, aware: boolean): TurnPolicy {
+  return (battle) => {
+    const neutral = (state: BattleState): BattleState => ({ ...state, enemy: { ...state.enemy, id: 'jumping_to_conclusions', guard: 0 }, lastConclusionType: null })
+    const incoming = incomingDamage(battle, 0).total
+    const cards = battle.hand.filter((c) => !isDoubt(c))
+    let best: CardInstance[] = []
+    let bestRank = -Infinity
+    for (let mask = 1; mask < 1 << cards.length; mask++) {
+      const chosen = cards.filter((_, i) => mask & (1 << i))
+      for (const conclusion of chosen) {
+        const order = [...chosen.filter((c) => c !== conclusion), conclusion]
+        const attempt = order.reduce((state, c) => playCard(state, c.uid), battle)
+        if (attempt.played.length !== order.length) continue
+        const names = order.map((c) => c.cardId)
+        const real = previewArgument(attempt)
+        const seen = aware ? real : previewArgument(neutral(attempt))
+        const candidate: Candidate = {
+          order,
+          damage: aware ? real.damage - real.healedBack - real.selfLoss - 3 * real.growth : seen.raw,
+          covered: aware ? real.incoming - real.incomingAfterGuard : Math.min(seen.guard, incoming),
+          repeats: names.length - new Set(names).size,
+          conclusionType: resolveCard(conclusion).type,
+        }
+        const r = rank(candidate, battle)
+        if (r > bestRank) {
+          bestRank = r
+          best = order
         }
       }
-      return endTurn(best.reduce((state, c) => playCard(state, c.uid), battle))
-    },
-  ]
+    }
+    return endTurn(best.reduce((state, c) => playCard(state, c.uid), battle))
+  }
 }
 
-export const HABITS: [string, TurnPolicy][] = [
-  habit('reckless', (c) => c.damage),
-  habit('cover-then-burst', (c, _b, incoming) => Math.min(c.guard, incoming) * 3 + c.damage),
-  habit('cover-then-lean', (c, _b, incoming) => Math.min(c.guard, incoming) * 3 + c.damage - 4 * c.order.length),
-  habit('cover-then-wide', (c, _b, incoming) => Math.min(c.guard, incoming) * 3 + c.damage + 5 * c.order.length),
-  habit('cover-then-vary', (c, b, incoming) =>
-    Math.min(c.guard, incoming) * 3 + c.damage + (c.repeats === 0 && c.conclusionType !== b.lastConclusionType ? 12 : 0),
-  ),
+const HABIT_RANKS: [string, (c: Candidate, battle: BattleState) => number][] = [
+  ['reckless', (c) => c.damage],
+  ['cover-then-burst', (c) => c.covered * 3 + c.damage],
+  ['cover-then-lean', (c) => c.covered * 3 + c.damage - 4 * c.order.length],
+  ['cover-then-wide', (c) => c.covered * 3 + c.damage + 5 * c.order.length],
+  ['cover-then-vary', (c, b) => c.covered * 3 + c.damage + (c.repeats === 0 && c.conclusionType !== b.lastConclusionType ? 12 : 0)],
 ]
+
+export const HABITS: [string, TurnPolicy][] = HABIT_RANKS.map(([name, rank]) => [name, habit(rank, false)])
+export const AWARE_HABITS: [string, TurnPolicy][] = HABIT_RANKS.map(([name, rank]) => [`${name}, rule read`, habit(rank, true)])
 
 type DraftStyle = 'archetype' | 'first' | 'skip'
 
 const TAKE_THRESHOLD = 1.1
+const DUPLICATE_DISCOUNT = 0.7
 
 /** Roughly how much a card adds per Focus compared with an Observation (1.0), given the deck it joins. */
 function cardValue(def: CardDef, run: RunState): number {
@@ -202,20 +313,24 @@ function cardValue(def: CardDef, run: RunState): number {
   value += ((def.guard ?? 0) / cost / 5) * 0.8
   value += (def.draw ?? 0) * (def.cost === 0 ? 0.8 : 0.35)
   value += (def.focus ?? 0) * 1.2
-  value += (((def.unsettle ?? 0) + (def.unsettlePerCard ?? 0) * 3) * 2.5) / cost / 4
+  value += (((def.unsettle ?? 0) + (def.unsettlePerCard ?? 0) * 3) * 1.5) / cost / 4
   value += (def.restore ?? 0) / cost / 8
   if (def.pierce) value += 0.3
   if (def.postpone) value += 1
   if (def.conclusionTimes) value += 0.5
   if (def.school === run.school) value += 0.4
   if (def.addDoubt && run.school !== 'absurdist') value -= 0.4
-  return value
+  const copies = run.deck.filter((c) => c.cardId === def.id).length
+  return value * DUPLICATE_DISCOUNT ** copies
 }
+
+/** naive: first option everywhere. casual: like the UI driver, rests when low, avoids hard fights when hurt. careful: plans the route and the shop. */
+export type RunHabits = 'naive' | 'casual' | 'careful'
 
 export interface BotConfig {
   turn: TurnPolicy
   draft: DraftStyle
-  careful: boolean
+  habits: RunHabits
 }
 
 export interface FightRecord {
@@ -224,6 +339,7 @@ export interface FightRecord {
   turns: number
   won: boolean
   fullHealth: boolean
+  lost: number
 }
 
 export interface RunRecord {
@@ -235,11 +351,17 @@ export interface RunRecord {
   deck: string[]
   relics: string[]
   hitTurnCap: boolean
+  reconsidered: boolean
 }
 
-function chooseNextNode(run: RunState, options: MapNode[], careful: boolean): MapNode {
-  if (!careful) return options[0]
+function chooseNextNode(run: RunState, options: MapNode[], habits: RunHabits): MapNode {
+  if (habits === 'naive') return options[0]
   const health = run.resolve / run.maxResolve
+  if (habits === 'casual') {
+    const rest = options.find((n) => n.type === 'rest')
+    if (rest && health < 0.55) return rest
+    return options.find((n) => n.type !== 'elite' || health > 0.75) ?? options[0]
+  }
   const rank = (node: MapNode): number => {
     switch (node.type) {
       case 'rest':
@@ -303,9 +425,14 @@ function getEventChoices(run: RunState): string[] {
   return ['leave', 'nap', 'talk', 'loan', 'sell'].filter((id) => eventChoiceAvailable(run, id))
 }
 
-function handleShop(run: RunState, careful: boolean): RunState {
-  if (!careful) return leaveShop(run)
+function handleShop(run: RunState, habits: RunHabits): RunState {
+  if (habits === 'naive') return leaveShop(run)
   let next = run
+  if (habits === 'casual') {
+    const started = startShopRemoval(next)
+    if (started.pick) next = pickCard(started, (removalTarget(started) as CardInstance).uid)
+    return leaveShop(next)
+  }
   const shop = next.shop
   if (!shop) return run
   if (next.deck.some(isDoubt) || next.deck.length > 12) {
@@ -323,17 +450,22 @@ function handleShop(run: RunState, careful: boolean): RunState {
   return leaveShop(next)
 }
 
-/** Plays a whole run with the engine. `observe` sees the run at the start of every battle turn. */
-export function playRun(school: School, seed: number, config: BotConfig, observe?: (run: RunState) => void): RunRecord {
-  const careful = config.careful
-  let run = newRun(school, seed)
+/** Plays a whole run with the engine, reconsidering a lost fight whenever the run allows it. `observe` sees the run at the start of every battle turn. */
+export function playRun(school: School, seed: number, config: BotConfig, observe?: (run: RunState) => void, mode: Mode = 'gentle'): RunRecord {
+  const habits = config.habits
+  let run = newRun(school, seed, mode)
   const fights: FightRecord[] = []
   let hitTurnCap = false
+  let reconsidered = false
   for (let guard = 0; guard < 500; guard++) {
+    if (run.screen === 'defeat' && run.reconsiders > 0) {
+      run = reconsider(run)
+      reconsidered = true
+    }
     if (run.screen === 'victory' || run.screen === 'defeat') break
     switch (run.screen) {
       case 'map': {
-        const node = chooseNextNode(run, availableNodes(run), careful)
+        const node = chooseNextNode(run, availableNodes(run), habits)
         run = chooseNode(run, node.id)
         break
       }
@@ -355,6 +487,7 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
           turns: last.turn,
           won: run.screen !== 'defeat',
           fullHealth: run.screen !== 'defeat' && last.player.resolve >= startResolve,
+          lost: startResolve - last.player.resolve,
         })
         break
       }
@@ -365,7 +498,7 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
         break
       }
       case 'rest': {
-        if (run.resolve < run.maxResolve * 0.6 || !careful) run = restHeal(run)
+        if (habits === 'naive' || run.resolve < run.maxResolve * (habits === 'casual' ? 0.7 : 0.6)) run = restHeal(run)
         else {
           const started = startRestUpgrade(run)
           const target = upgradeTarget(started)
@@ -374,7 +507,7 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
         break
       }
       case 'shop':
-        run = handleShop(run, careful)
+        run = handleShop(run, habits)
         break
       case 'event':
         run = handleEvent(run)
@@ -390,5 +523,6 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
     deck: run.deck.map((c) => c.cardId),
     relics: run.relics,
     hitTurnCap,
+    reconsidered,
   }
 }

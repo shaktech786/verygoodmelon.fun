@@ -1,5 +1,7 @@
 export type School = 'empiricist' | 'pragmatist' | 'rationalist' | 'skeptic' | 'absurdist'
 
+export type Mode = 'gentle' | 'rigorous'
+
 export interface SchoolDef {
   id: School
   name: string
@@ -157,6 +159,7 @@ export interface ArgumentPreview {
   healedBack: number
   selfLoss: number
   guard: number
+  composure: number
   unsettle: number
   postpone: boolean
   growth: number
@@ -269,10 +272,13 @@ export interface RunStats {
 }
 
 export interface RunState {
-  version: 2
+  version: 3
   seed: number
   rng: number
   school: School
+  mode: Mode
+  reconsiders: number
+  known: string[]
   floor: 1 | 2 | 3
   map: MapNode[]
   position: string | null

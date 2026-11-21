@@ -70,31 +70,41 @@ describe('the argument', () => {
     expect(after.enemy.guard).toBe(0)
   })
 
+  it('holding back: each Focus left unspent becomes 3 Guard when the turn ends', () => {
+    const battle = battleWith({ hand: ['observation'] })
+    expect(previewArgument(battle).guard).toBe(9)
+    const played = playCard(battle, 100)
+    expect(previewArgument(played).guard).toBe(6)
+    expect(previewArgument(played).composure).toBe(6)
+    expect(endTurn(played).lastRound?.enemyBlocked).toBe(Math.min(6, attackOf('jumping_to_conclusions', 0)))
+  })
+
   it('your Guard absorbs the attack this round and resets on your next turn', () => {
-    const battle = playCard(battleWith({ hand: ['caveat'] }), 100)
+    const battle = playCard({ ...battleWith({ hand: ['caveat'] }), focus: 1 }, 100)
     expect(previewArgument(battle).guard).toBe(5)
     const after = endTurn(battle)
-    expect(after.player.resolve).toBe(50)
+    expect(after.player.resolve).toBe(50 - (attackOf('jumping_to_conclusions', 0) - 5))
     expect(after.lastRound?.enemyBlocked).toBe(5)
     expect(after.player.guard).toBe(0)
   })
 
   it('wins immediately on a lethal argument and the enemy does not act', () => {
     const start = battleWith({ hand: ['smoking_gun'] })
-    const after = endTurn(playCard({ ...start, focus: 3 }, 100))
+    const after = endTurn(playCard({ ...start, focus: 3, enemy: { ...start.enemy, health: 20 } }, 100))
     expect(after.outcome).toBe('won')
     expect(after.player.resolve).toBe(50)
   })
 
   it('previews exactly what you will take this round', () => {
-    const battle = playCard(battleWith({ hand: ['concede'] }), 100)
+    const attack = attackOf('jumping_to_conclusions', 0)
+    const battle = playCard({ ...battleWith({ hand: ['concede'] }), focus: 0 }, 100)
     const incoming = incomingDamage(battle, previewArgument(battle).guard)
-    expect(incoming.total).toBe(5)
-    expect(incoming.afterGuard).toBe(1)
-    expect(previewArgument(battle).incomingAfterGuard).toBe(1)
-    const noGuard = battleWith({ hand: [] })
-    expect(incomingDamage(noGuard, 0).afterGuard).toBe(5)
-    expect(endTurn(noGuard).player.resolve).toBe(45)
+    expect(incoming.total).toBe(attack)
+    expect(incoming.afterGuard).toBe(attack - 4)
+    expect(previewArgument(battle).incomingAfterGuard).toBe(attack - 4)
+    const noGuard = { ...battleWith({ hand: [] }), focus: 0 }
+    expect(incomingDamage(noGuard, 0).afterGuard).toBe(attack)
+    expect(endTurn(noGuard).player.resolve).toBe(50 - attack)
   })
 })
 
@@ -205,10 +215,11 @@ describe('school passives', () => {
   })
 
   it('Pragmatist: Guard left after the enemy acts becomes Weight next argument', () => {
-    const battle = playCard(battleWith({ hand: ['burden_of_proof'], school: 'pragmatist' }), 100)
+    const battle = playCard({ ...battleWith({ hand: ['burden_of_proof'], school: 'pragmatist' }), focus: 2 }, 100)
     const after = endTurn(battle)
-    expect(after.carriedWeight).toBe(7)
-    expect(previewArgument({ ...after, played: [] }).weight).toBe(7)
+    const left = 12 - attackOf('jumping_to_conclusions', 0)
+    expect(after.carriedWeight).toBe(left)
+    expect(previewArgument({ ...after, played: [] }).weight).toBe(left)
   })
 
   it('Rationalist: the first Logic each turn costs 0', () => {
@@ -223,17 +234,17 @@ describe('school passives', () => {
     expect(previewArgument(battle).unsettle).toBe(3)
   })
 
-  it('Absurdist: each Doubt in hand adds 4 Weight', () => {
+  it('Absurdist: each Doubt in hand adds 3 Weight', () => {
     const battle = playCard(battleWith({ hand: ['observation', 'doubt', 'doubt'], school: 'absurdist' }), 100)
-    expect(previewArgument(battle).weight).toBe(8 + 8)
+    expect(previewArgument(battle).weight).toBe(8 + 6)
   })
 })
 
 describe('enemy rules are real', () => {
   it('Sunk Cost grows by 2 each time it acts', () => {
-    const after = endTurn(battleWith({ enemyId: 'sunk_cost' }))
-    expect(after.enemy.strength).toBe(2)
-    expect(incomingDamage(after, 0).total).toBe(attackOf('sunk_cost', 1) + 2)
+    const after = endTurn(endTurn(battleWith({ enemyId: 'sunk_cost' })))
+    expect(after.enemy.strength).toBe(4)
+    expect(incomingDamage(after, 0).total).toBe(attackOf('sunk_cost', 2) + 4)
   })
 
   it('Dunning-Kruger hits +4 only while above half', () => {
@@ -273,23 +284,28 @@ describe('enemy rules are real', () => {
   })
 
   it('Backfire costs you 1 Resolve per card in an argument that hurts it', () => {
-    const battle = playAll(battleWith({ enemyId: 'backfire', hand: ['observation', 'therefore', 'concede'], school: 'skeptic' }), [100, 101, 102])
+    const battle = playAll({ ...battleWith({ enemyId: 'backfire', hand: ['observation', 'therefore', 'concede'], school: 'skeptic' }), focus: 2 }, [100, 101, 102])
     expect(previewArgument(battle).selfLoss).toBe(3)
     const after = endTurn(battle)
     expect(after.player.resolve).toBe(50 - 3 - (attackOf('backfire', 0) - 4))
   })
 
-  it('The Problem of Induction halves a repeated Conclusion type', () => {
+  it('The Problem of Induction rewards a Conclusion of a different type from last turn with +50%', () => {
     const first = endTurn(playCard(battleWith({ enemyId: 'problem_of_induction', hand: ['observation'], school: 'skeptic' }), 100))
-    const hand = [card('observation', 400), card('observation', 401), card('caveat', 402)]
+    const hand = [card('observation', 400), card('observation', 401), card('caveat', 402), card('therefore', 403)]
     const repeat = playAll({ ...first, hand }, [400, 401])
-    expect(previewArgument(repeat).damage).toBe(6)
-    expect(previewArgument(playCard(repeat, 402)).damage).toBe(8)
+    expect(previewArgument(repeat).damage).toBe(12)
+    const varied = playAll({ ...first, hand }, [400, 401, 403])
+    expect(previewArgument(varied).product).toBe(16)
+    expect(previewArgument(varied).damage).toBe(24)
   })
 
-  it('The Sorites Paradox caps one argument', () => {
+  it('The Sorites Paradox caps one argument and turns every 5 beyond the cap into 1 Unsettle', () => {
     const battle = playCard({ ...battleWith({ enemyId: 'sorites', hand: ['smoking_gun'] }), focus: 3 }, 100)
-    expect(previewArgument(battle).damage).toBe(SORITES_CAP)
+    const preview = previewArgument(battle)
+    expect(preview.damage).toBe(SORITES_CAP)
+    expect(preview.unsettle).toBe(Math.floor((24 - SORITES_CAP) / 5))
+    expect(endTurn(battle).enemy.unsettle).toBe(1)
   })
 
   it("Status Quo Bias keeps its Guard between rounds", () => {
@@ -304,10 +320,14 @@ describe('enemy rules are real', () => {
     expect(previewArgument(battle).weight).toBe(6 + 2)
   })
 
-  it('Motivated Reasoning recovers damage from arguments under 3 cards', () => {
+  it('Motivated Reasoning recovers half the damage from arguments under 3 cards', () => {
     const thin = playAll(battleWith({ enemyId: 'motivated_reasoning', hand: ['observation', 'therefore'], school: 'skeptic' }), [100, 101])
-    expect(previewArgument(thin).healedBack).toBe(previewArgument(thin).damage)
-    expect(endTurn(thin).enemy.health).toBe(getEnemyDef('motivated_reasoning').health)
+    const preview = previewArgument(thin)
+    expect(preview.damage).toBe(8)
+    expect(preview.healedBack).toBe(4)
+    expect(endTurn(thin).enemy.health).toBe(getEnemyDef('motivated_reasoning').health - 4)
+    const full = playAll(battleWith({ enemyId: 'motivated_reasoning', hand: ['observation', 'observation', 'therefore'], school: 'skeptic' }), [100, 101, 102])
+    expect(previewArgument(full).healedBack).toBe(0)
   })
 
   it('The Meaning of Life doubles an argument that answers its question', () => {
@@ -315,6 +335,7 @@ describe('enemy rules are real', () => {
     expect(previewArgument(answered).damage).toBe(16)
     const unanswered = playCard(battleWith({ enemyId: 'meaning_of_life', hand: ['therefore'], school: 'skeptic' }), 100)
     expect(previewArgument(unanswered).damage).toBe(0)
+    expect(previewArgument(unanswered).modifiers).toContain('Not answered: include an Evidence card to double')
   })
 })
 
@@ -332,9 +353,9 @@ describe('relics bend the rules', () => {
     expect(previewArgument(battle).weight).toBe(6 + 12)
   })
 
-  it('Worry Stone: unspent Focus becomes Guard', () => {
+  it('Worry Stone: unspent Focus gives 3 more Guard each', () => {
     const battle = battleWith({ hand: [], relics: ['worry_stone'] })
-    expect(previewArgument(battle).guard).toBe(12)
+    expect(previewArgument(battle).guard).toBe(18)
   })
 
   it('Lantern: the first argument pierces', () => {

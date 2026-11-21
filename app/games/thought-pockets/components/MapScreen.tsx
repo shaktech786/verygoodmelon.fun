@@ -6,6 +6,7 @@ import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { FLOOR_ROWS } from '@/lib/games/thought-pockets/engine/map'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { NODE_LABELS, NodeGlyph } from './Glyphs'
+import { BiasPortrait } from './Sprites'
 
 export const FLOOR_NAMES = { 1: 'First Impressions', 2: 'Habits of Mind', 3: 'The Big Questions' } as const
 
@@ -28,7 +29,7 @@ export function MapScreen({ run }: { run: RunState }) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
-      <section aria-label="Map" className="rounded-xl border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3">
+      <section aria-label="Map" className="rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3">
         <p className="mb-1 text-center text-sm text-[var(--tp-muted)]">Choose where to go next. Paths only lead forward.</p>
         <div className="relative mx-auto w-full max-w-[520px]" style={{ height }}>
           <svg viewBox={`0 0 ${WIDTH} ${height}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden="true">
@@ -70,15 +71,15 @@ export function MapScreen({ run }: { run: RunState }) {
                     aria-label={`Step ${node.row + 1}: ${label}, ${state}`}
                     data-testid={`node-${node.type}`}
                     data-available={available || undefined}
-                    className={`flex h-11 w-11 items-center justify-center rounded-full border-2 sm:h-12 sm:w-12 ${
+                    className={`flex h-11 w-11 items-center justify-center rounded-md border-2 sm:h-12 sm:w-12 ${
                       available
-                        ? 'cursor-pointer border-[var(--tp-accent)] bg-[var(--tp-paper)] text-[var(--tp-paper-ink)] shadow-[0_0_0_4px_rgba(232,176,74,0.25)] motion-safe:hover:scale-105'
+                        ? 'cursor-pointer border-[var(--tp-accent)] bg-[var(--tp-paper)] text-[var(--tp-paper-ink)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--tp-accent)_25%,transparent)] motion-safe:hover:scale-105'
                         : here
-                          ? 'border-[var(--tp-accent)] bg-[var(--tp-accent)] text-[var(--tp-ink)]'
+                          ? 'border-[var(--tp-accent)] bg-[var(--tp-accent)] text-[var(--tp-on-accent)]'
                           : past
                             ? 'border-[var(--tp-accent)] bg-[var(--tp-ink)] text-[var(--tp-accent)]'
                             : 'border-[var(--tp-line)] bg-[var(--tp-ink)] text-[var(--tp-muted)]'
-                    } focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-text)]`}
+                    } focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]`}
                   >
                     <NodeGlyph type={node.type} className="h-6 w-6" />
                   </button>
@@ -92,12 +93,15 @@ export function MapScreen({ run }: { run: RunState }) {
         </div>
       </section>
       <aside className="space-y-3 text-sm text-[var(--tp-text)]">
-        <div className="rounded-xl border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3">
-          <p className="text-xs uppercase tracking-wider text-[var(--tp-muted)]">Waiting at the end of this floor</p>
-          <p className="font-serif text-lg font-semibold">{bossDef.name}</p>
-          <p className="mt-1 leading-snug">{bossDef.ruleText}</p>
+        <div className="flex gap-3 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3">
+          <BiasPortrait enemyId={bossDef.id} tier="boss" className="h-16 w-16 shrink-0" />
+          <div>
+            <p className="text-xs uppercase tracking-wider text-[var(--tp-muted)]">Waiting at the end of this floor</p>
+            <p className="font-serif text-lg font-semibold">{bossDef.name}</p>
+            <p className="mt-1 leading-snug">{bossDef.ruleText}</p>
+          </div>
         </div>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 rounded-xl border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3 text-xs leading-snug">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3 text-xs leading-snug">
           <dt className="font-semibold">Fight</dt>
           <dd>A bias. Win a card.</dd>
           <dt className="font-semibold">Hard fight</dt>

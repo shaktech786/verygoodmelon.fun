@@ -1,4 +1,4 @@
-import { CardType, EnemyTier, NodeType } from '@/types/thought-pockets'
+import { CardType, NodeType } from '@/types/thought-pockets'
 
 interface GlyphProps {
   className?: string
@@ -120,32 +120,4 @@ export const NODE_LABELS: Record<NodeType, string> = {
   shop: 'Shop',
   event: 'Encounter',
   treasure: 'Treasure',
-}
-
-function initials(name: string): string {
-  return name
-    .replace(/^The /, '')
-    .split(/[\s-]+/)
-    .filter((word) => /^[A-Z]/.test(word))
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join('')
-}
-
-/** An ink seal with the opponent's initials: one ring for a bias, dots for a hard one, two rings for a problem. */
-export function EnemySeal({ name, tier, className }: GlyphProps & { name: string; tier: EnemyTier }) {
-  return (
-    <svg viewBox="0 0 64 64" className={className ?? 'h-16 w-16'} aria-hidden="true" focusable="false">
-      <circle cx="32" cy="32" r="29" fill="var(--tp-paper)" stroke="var(--tp-paper-ink)" strokeWidth="2" />
-      {tier === 'boss' && <circle cx="32" cy="32" r="24" fill="none" stroke="var(--tp-paper-ink)" strokeWidth="1.5" />}
-      {tier === 'elite' &&
-        Array.from({ length: 12 }, (_, i) => {
-          const angle = (i / 12) * Math.PI * 2
-          return <circle key={i} cx={32 + Math.cos(angle) * 25} cy={32 + Math.sin(angle) * 25} r="1.6" fill="var(--tp-paper-ink)" />
-        })}
-      <text x="32" y="39" textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="20" fill="var(--tp-paper-ink)">
-        {initials(name)}
-      </text>
-    </svg>
-  )
 }
