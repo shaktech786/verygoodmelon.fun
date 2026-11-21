@@ -288,6 +288,7 @@ export default function TheUnrusher() {
   const [buzzAtEnd, setBuzzAtEnd] = useState(false)
   const countedMsRef = useRef(0)
   const startedAtRef = useRef(0)
+  const ownScrollPendingRef = useRef(false)
   const lastTickRef = useRef(0)
   const lastStirRef = useRef(0)
   const stirsRef = useRef(0)
@@ -374,7 +375,12 @@ export default function TheUnrusher() {
   // undoes anything: the seeds simply wait until the player is still again.
   useEffect(() => {
     if (!isActive || currentTask?.id !== 'watch') return
-    const stir = () => {
+    const stir = (event: Event) => {
+      // The page's own scroll that brings the moment into view is not the player moving.
+      if (event.type === 'scroll' && ownScrollPendingRef.current) {
+        ownScrollPendingRef.current = false
+        return
+      }
       const now = Date.now()
       if (now < startedAtRef.current + STIR_GRACE_MS) return
       if (now >= lastStirRef.current + STIR_GRACE_MS) stirsRef.current += 1
@@ -382,7 +388,7 @@ export default function TheUnrusher() {
       setStirred(true)
     }
     const onPointerMove = (e: PointerEvent) => {
-      if (Math.hypot(e.movementX, e.movementY) >= MIN_POINTER_TRAVEL_PX) stir()
+      if (Math.hypot(e.movementX, e.movementY) >= MIN_POINTER_TRAVEL_PX) stir(e)
     }
     const events = ['pointerdown', 'wheel', 'scroll', 'keydown', 'touchstart'] as const
     for (const name of events) window.addEventListener(name, stir, { passive: true })
@@ -435,6 +441,7 @@ export default function TheUnrusher() {
     if (view === 'task' && card) {
       const { top, bottom } = card.getBoundingClientRect()
       if (top < 0 || bottom > window.innerHeight) {
+        ownScrollPendingRef.current = true
         card.scrollIntoView({ block: bottom - top <= window.innerHeight ? 'end' : 'start', behavior: 'instant' })
       }
     }
