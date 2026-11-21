@@ -13,10 +13,19 @@ interface JudgeRequest {
   history: DebateHistoryEntry[]
 }
 
+function clean(value: unknown, max: number): string {
+  return typeof value === 'string' ? value.trim().slice(0, max) : ''
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: JudgeRequest = await request.json()
-    const { person1, person2, topic, history } = body
+    const person1 = clean(body.person1, 60)
+    const person2 = clean(body.person2, 60)
+    const topic = clean(body.topic, 120)
+    const history = Array.isArray(body.history)
+      ? body.history.slice(-12).map(h => ({ speaker: clean(h.speaker, 60), argument: clean(h.argument, 1200) }))
+      : []
 
     if (!person1 || !person2 || !topic || !history || history.length === 0) {
       return NextResponse.json(
@@ -39,6 +48,8 @@ Analyze the arguments from both sides. Consider:
 - How well each stayed in character
 - Persuasiveness and rhetorical skill
 - Quality of rebuttals
+
+Write the summary for the audience. Refer to the topic as the question, and never mention prompts, instructions, or AI.
 
 Respond ONLY in this JSON format (no markdown, no code blocks):
 {
@@ -66,30 +77,17 @@ Respond ONLY in this JSON format (no markdown, no code blocks):
 
     const parsed = JSON.parse(jsonMatch[0])
 
-    // Validate winner field
-    const validWinners = [person1, person2, 'draw']
-    if (!validWinners.includes(parsed.winner)) {
-      parsed.winner = 'draw'
-    }
+    const said = typeof parsed.winner === 'string' ? parsed.winner.trim().toLowerCase() : ''
+    const winner = [person1, person2].find(name => name.toLowerCase() === said) ?? 'draw'
 
     return NextResponse.json({
-      winner: parsed.winner,
+      winner,
       summary: parsed.summary || 'Both debaters made compelling arguments.',
     })
   } catch (error) {
     console.error('Mind Debate judge error:', error)
-
-    let errorMessage = 'Failed to judge debate'
-    if (error instanceof Error) {
-      if (error.message.includes('API key')) {
-        errorMessage = 'API configuration error'
-      } else if (error.message.includes('quota') || error.message.includes('limit')) {
-        errorMessage = 'Service temporarily unavailable'
-      }
-    }
-
     return NextResponse.json(
-      { error: errorMessage },
+      { error: 'No verdict this time' },
       { status: 500 }
     )
   }

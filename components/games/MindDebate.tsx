@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/Button'
-import { Swords, RotateCcw, Trophy, Loader2 } from 'lucide-react'
+import { Swords, RotateCcw, Trophy, Loader2, Square, Play } from 'lucide-react'
 
 interface DebateEntry {
   speaker: string
@@ -15,10 +15,29 @@ interface Verdict {
   summary: string
 }
 
-type GamePhase = 'setup' | 'debating' | 'judging' | 'verdict'
+type GamePhase = 'setup' | 'debating' | 'stopped' | 'judging' | 'verdict'
 
 const TOTAL_ROUNDS = 6
 const CHAR_DELAY_MS = 18
+const TURN_PAUSE_MS = 400
+const NAME_MAX = 60
+const TOPIC_MAX = 120
+
+const FALLBACK_VERDICT: Verdict = {
+  winner: 'draw',
+  summary: 'No clear winner this time. Both held their ground, and the question stays open for you to decide.',
+}
+
+function speakerFor(round: number, first: string, second: string): string {
+  return round % 2 === 1 ? first : second
+}
+
+function wait(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const t = setTimeout(resolve, ms)
+    signal.addEventListener('abort', () => { clearTimeout(t); resolve() }, { once: true })
+  })
+}
 
 export default function MindDebate() {
   const [person1, setPerson1] = useState('')
@@ -28,35 +47,39 @@ export default function MindDebate() {
   const [history, setHistory] = useState<DebateEntry[]>([])
   const [currentRound, setCurrentRound] = useState(0)
   const [typingText, setTypingText] = useState('')
-  const [typingSpeaker, setTypingSpeaker] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [interruption, setInterruption] = useState<string | null>(null)
   const [verdict, setVerdict] = useState<Verdict | null>(null)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
 
   const debateRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
-  // Detect reduced motion preference
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the media query is only readable after mount
     setPrefersReducedMotion(mq.matches)
     const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches)
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
   }, [])
 
-  // Scroll to latest entry
+  useEffect(() => () => abortRef.current?.abort(), [])
+
   useEffect(() => {
     if (debateRef.current) {
       debateRef.current.scrollTop = debateRef.current.scrollHeight
     }
-  }, [history, typingText])
+  }, [history, typingText, phase])
+
+  const person1Name = person1.trim()
+  const person2Name = person2.trim()
+  const topicName = topic.trim()
+  const canStart = person1Name.length > 0 && person2Name.length > 0 && topicName.length > 0
 
   const typeText = useCallback(
-    (text: string): Promise<void> => {
+    (text: string, signal: AbortSignal): Promise<void> => {
       return new Promise((resolve) => {
-        if (prefersReducedMotion) {
-          setTypingText(text)
+        if (prefersReducedMotion || signal.aborted) {
           resolve()
           return
         }
@@ -69,178 +92,139 @@ export default function MindDebate() {
             resolve()
           }
         }, CHAR_DELAY_MS)
-
-        // Store cleanup for abort
-        abortRef.current?.signal.addEventListener('abort', () => {
-          clearInterval(interval)
-          resolve()
-        })
+        signal.addEventListener('abort', () => { clearInterval(interval); resolve() }, { once: true })
       })
     },
     [prefersReducedMotion]
   )
 
   const fetchTurn = useCallback(
-    async (
-      round: number,
-      currentHistory: DebateEntry[]
-    ): Promise<DebateEntry | null> => {
-      try {
-        const res = await fetch('/api/mind-debate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            person1: person1.trim(),
-            person2: person2.trim(),
-            topic: topic.trim(),
-            history: currentHistory.map((h) => ({
-              speaker: h.speaker,
-              argument: h.argument,
-            })),
-            round,
-            totalRounds: TOTAL_ROUNDS,
-          }),
-        })
-
-        if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error || 'Failed to generate turn')
-        }
-
-        const data = await res.json()
-        return {
-          speaker: data.speaker,
-          argument: data.argument,
-          round: data.round,
-        }
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err.message)
-        } else {
-          setError('Something went wrong')
-        }
-        return null
-      }
+    async (round: number, priorHistory: DebateEntry[], signal: AbortSignal): Promise<DebateEntry> => {
+      const res = await fetch('/api/mind-debate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          person1: person1Name,
+          person2: person2Name,
+          topic: topicName,
+          history: priorHistory.map((h) => ({ speaker: h.speaker, argument: h.argument })),
+          round,
+          totalRounds: TOTAL_ROUNDS,
+        }),
+        signal,
+      })
+      if (!res.ok) throw new Error(`turn ${res.status}`)
+      const data = await res.json()
+      if (typeof data.argument !== 'string' || !data.argument.trim()) throw new Error('empty turn')
+      return { speaker: speakerFor(round, person1Name, person2Name), argument: data.argument.trim(), round }
     },
-    [person1, person2, topic]
+    [person1Name, person2Name, topicName]
   )
 
   const fetchVerdict = useCallback(
-    async (debateHistory: DebateEntry[]) => {
-      setPhase('judging')
+    async (debateHistory: DebateEntry[], signal: AbortSignal): Promise<Verdict> => {
       try {
         const res = await fetch('/api/mind-debate/judge', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            person1: person1.trim(),
-            person2: person2.trim(),
-            topic: topic.trim(),
-            history: debateHistory.map((h) => ({
-              speaker: h.speaker,
-              argument: h.argument,
-            })),
+            person1: person1Name,
+            person2: person2Name,
+            topic: topicName,
+            history: debateHistory.map((h) => ({ speaker: h.speaker, argument: h.argument })),
           }),
+          signal,
         })
-
-        if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error || 'Failed to judge debate')
-        }
-
+        if (!res.ok) throw new Error(`judge ${res.status}`)
         const data = await res.json()
-        setVerdict(data)
-        setPhase('verdict')
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err.message)
-        } else {
-          setError('Failed to determine a winner')
+        if (typeof data.winner !== 'string' || typeof data.summary !== 'string' || !data.summary) {
+          throw new Error('bad verdict')
         }
-        setPhase('verdict')
+        return data
+      } catch {
+        return FALLBACK_VERDICT
       }
     },
-    [person1, person2, topic]
+    [person1Name, person2Name, topicName]
   )
 
-  const runDebate = useCallback(async () => {
+  const runDebate = useCallback(async (startHistory: DebateEntry[]) => {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    const { signal } = controller
+
     setPhase('debating')
-    setHistory([])
-    setError(null)
+    setInterruption(null)
     setVerdict(null)
+    setHistory(startHistory)
+    let runningHistory = startHistory
 
-    abortRef.current = new AbortController()
-    let runningHistory: DebateEntry[] = []
-
-    for (let round = 1; round <= TOTAL_ROUNDS; round++) {
-      if (abortRef.current.signal.aborted) break
-
+    for (let round = startHistory.length + 1; round <= TOTAL_ROUNDS; round++) {
       setCurrentRound(round)
-      const speaker = round % 2 === 1 ? person1.trim() : person2.trim()
-      setTypingSpeaker(speaker)
       setTypingText('')
 
-      const entry = await fetchTurn(round, runningHistory)
-      if (!entry) break
+      let entry: DebateEntry
+      try {
+        entry = await fetchTurn(round, runningHistory, signal)
+      } catch {
+        if (signal.aborted) return
+        setPhase('stopped')
+        setInterruption(`${speakerFor(round, person1Name, person2Name)} lost their train of thought.`)
+        return
+      }
+      if (signal.aborted) return
 
-      await typeText(entry.argument)
+      await typeText(entry.argument, signal)
+      if (signal.aborted) return
 
       runningHistory = [...runningHistory, entry]
-      setHistory([...runningHistory])
+      setHistory(runningHistory)
       setTypingText('')
-      setTypingSpeaker('')
 
-      // Brief pause between turns
-      if (round < TOTAL_ROUNDS) {
-        await new Promise((r) => setTimeout(r, 400))
-      }
+      if (round < TOTAL_ROUNDS) await wait(TURN_PAUSE_MS, signal)
+      if (signal.aborted) return
     }
 
-    if (!abortRef.current.signal.aborted && runningHistory.length === TOTAL_ROUNDS) {
-      await fetchVerdict(runningHistory)
-    }
-  }, [person1, person2, fetchTurn, typeText, fetchVerdict])
+    setPhase('judging')
+    const result = await fetchVerdict(runningHistory, signal)
+    if (signal.aborted) return
+    setVerdict(result)
+    setPhase('verdict')
+  }, [fetchTurn, typeText, fetchVerdict, person1Name, person2Name])
 
   const handleStart = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!person1.trim() || !person2.trim() || !topic.trim()) return
-    runDebate()
+    if (!canStart) return
+    setCurrentRound(0)
+    runDebate([])
+  }
+
+  const handleStop = () => {
+    abortRef.current?.abort()
+    setTypingText('')
+    setInterruption(null)
+    setPhase('stopped')
   }
 
   const handleNewDebate = () => {
     abortRef.current?.abort()
     setPhase('setup')
-    setPerson1('')
-    setPerson2('')
-    setTopic('')
     setHistory([])
     setCurrentRound(0)
     setTypingText('')
-    setTypingSpeaker('')
-    setError(null)
+    setInterruption(null)
     setVerdict(null)
   }
 
-  const canStart =
-    person1.trim().length > 0 &&
-    person2.trim().length > 0 &&
-    topic.trim().length > 0
 
-  // --- Setup Phase ---
   if (phase === 'setup') {
     return (
-      <div
-        className="max-w-xl mx-auto animate-fade"
-        role="region"
-        aria-label="Debate setup"
-      >
+      <div className="max-w-xl mx-auto animate-fade" role="region" aria-label="Debate setup">
         <form onSubmit={handleStart} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label
-                htmlFor="person1"
-                className="block text-sm font-medium text-foreground/70 mb-1.5"
-              >
+              <label htmlFor="person1" className="block text-sm font-medium text-foreground/70 mb-1.5">
                 First debater
               </label>
               <input
@@ -249,16 +233,13 @@ export default function MindDebate() {
                 value={person1}
                 onChange={(e) => setPerson1(e.target.value)}
                 placeholder="e.g. Socrates"
-                maxLength={60}
-                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/30 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
+                maxLength={NAME_MAX}
+                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
                 autoComplete="off"
               />
             </div>
             <div>
-              <label
-                htmlFor="person2"
-                className="block text-sm font-medium text-foreground/70 mb-1.5"
-              >
+              <label htmlFor="person2" className="block text-sm font-medium text-foreground/70 mb-1.5">
                 Second debater
               </label>
               <input
@@ -267,18 +248,15 @@ export default function MindDebate() {
                 value={person2}
                 onChange={(e) => setPerson2(e.target.value)}
                 placeholder="e.g. Nietzsche"
-                maxLength={60}
-                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/30 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
+                maxLength={NAME_MAX}
+                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
                 autoComplete="off"
               />
             </div>
           </div>
 
           <div>
-            <label
-              htmlFor="topic"
-              className="block text-sm font-medium text-foreground/70 mb-1.5"
-            >
+            <label htmlFor="topic" className="block text-sm font-medium text-foreground/70 mb-1.5">
               Topic
             </label>
             <input
@@ -287,8 +265,8 @@ export default function MindDebate() {
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="e.g. Is free will an illusion?"
-              maxLength={120}
-              className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/30 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
+              maxLength={TOPIC_MAX}
+              className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
               autoComplete="off"
             />
           </div>
@@ -306,59 +284,47 @@ export default function MindDebate() {
           </div>
         </form>
 
-        <p className="text-center text-foreground/40 text-sm mt-6">
-          Pick any two people -- real or fictional -- and watch them debate.
+        <p className="text-center text-foreground/60 text-sm mt-6">
+          Pick any two people, real or fictional, and a topic for them to argue.
         </p>
       </div>
     )
   }
 
-  // --- Debate / Judging / Verdict Phases ---
-  const person1Name = person1.trim()
-  const person2Name = person2.trim()
-  const topicName = topic.trim()
+  const nextSpeaker = speakerFor(currentRound, person1Name, person2Name)
+  const waitingForTurn = phase === 'debating' && !typingText
 
   return (
     <div
       className="max-w-4xl mx-auto animate-fade"
       role="region"
       aria-label={`Debate: ${person1Name} vs ${person2Name}`}
-      aria-live="polite"
     >
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
-        <div className="text-center sm:text-left">
-          <p className="text-sm text-foreground/50">
-            {person1Name}{' '}
-            <span className="text-accent font-semibold">vs</span>{' '}
-            {person2Name}
+        <div className="text-center sm:text-left min-w-0 max-w-full">
+          <p className="text-sm text-foreground/70 break-words">
+            {person1Name} <span className="text-accent font-semibold">vs</span> {person2Name}
           </p>
-          <p className="text-xs text-foreground/40 mt-0.5">
-            &ldquo;{topicName}&rdquo;
-          </p>
+          <p className="text-xs text-foreground/60 mt-0.5 break-words">&ldquo;{topicName}&rdquo;</p>
         </div>
 
-        {phase === 'debating' && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-foreground/60">
+        {(phase === 'debating' || phase === 'stopped') && (
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-sm font-medium text-foreground/70">
               Round {currentRound}/{TOTAL_ROUNDS}
             </span>
             <div
               className="flex gap-1"
               role="progressbar"
-              aria-valuenow={currentRound}
-              aria-valuemin={1}
+              aria-valuenow={history.length}
+              aria-valuemin={0}
               aria-valuemax={TOTAL_ROUNDS}
-              aria-label={`Round ${currentRound} of ${TOTAL_ROUNDS}`}
+              aria-label={`${history.length} of ${TOTAL_ROUNDS} rounds finished`}
             >
               {Array.from({ length: TOTAL_ROUNDS }, (_, i) => (
                 <div
                   key={i}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    i < currentRound
-                      ? 'bg-accent'
-                      : 'bg-foreground/15'
-                  }`}
+                  className={`w-2 h-2 rounded-full transition-colors ${i < history.length ? 'bg-accent' : 'bg-foreground/15'}`}
                 />
               ))}
             </div>
@@ -366,144 +332,103 @@ export default function MindDebate() {
         )}
       </div>
 
-      {/* Debate area */}
       <div
         ref={debateRef}
         className="bg-card-bg border border-card-border rounded-xl p-4 sm:p-6 min-h-[300px] max-h-[60vh] overflow-y-auto space-y-4"
       >
-        {history.map((entry, i) => {
-          const isLeft = entry.speaker === person1Name
-          return (
-            <div
-              key={i}
-              className={`flex ${isLeft ? 'justify-start' : 'justify-end'}`}
-            >
-              <div
-                className={`max-w-[85%] sm:max-w-[70%] rounded-xl px-4 py-3 ${
-                  isLeft
-                    ? 'bg-accent/10 border border-accent/20 rounded-tl-sm'
-                    : 'bg-success/10 border border-success/20 rounded-tr-sm'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span
-                    className={`text-xs font-semibold ${
-                      isLeft ? 'text-accent' : 'text-success'
-                    }`}
-                  >
-                    {entry.speaker}
-                  </span>
-                  <span className="text-xs text-foreground/30">
-                    Round {entry.round}
-                  </span>
-                </div>
-                <p className="text-sm text-foreground/80 leading-relaxed">
-                  {entry.argument}
-                </p>
-              </div>
-            </div>
-          )
-        })}
+        <div role="log" aria-live="polite" aria-label="Debate transcript" className="space-y-4">
+          {history.map((entry) => (
+            <DebateBubble key={entry.round} entry={entry} isLeft={entry.round % 2 === 1} />
+          ))}
 
-        {/* Currently typing */}
-        {typingSpeaker && typingText && (
-          <div
-            className={`flex ${
-              typingSpeaker === person1Name ? 'justify-start' : 'justify-end'
-            }`}
-          >
-            <div
-              className={`max-w-[85%] sm:max-w-[70%] rounded-xl px-4 py-3 ${
-                typingSpeaker === person1Name
-                  ? 'bg-accent/10 border border-accent/20 rounded-tl-sm'
-                  : 'bg-success/10 border border-success/20 rounded-tr-sm'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <span
-                  className={`text-xs font-semibold ${
-                    typingSpeaker === person1Name
-                      ? 'text-accent'
-                      : 'text-success'
-                  }`}
-                >
-                  {typingSpeaker}
-                </span>
-                <span className="text-xs text-foreground/30">
-                  Round {currentRound}
+          {phase === 'verdict' && verdict && (
+            <div className="mt-4 border-t border-card-border pt-4">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <Trophy size={20} className="text-accent" aria-hidden="true" />
+                <span className="text-sm font-semibold text-foreground/80 break-words">
+                  {verdict.winner === 'draw' ? 'Draw' : `${verdict.winner} wins`}
                 </span>
               </div>
-              <p className="text-sm text-foreground/80 leading-relaxed">
-                {typingText}
-                <span
-                  className="inline-block w-0.5 h-4 bg-foreground/40 ml-0.5 animate-pulse align-middle"
-                  aria-hidden="true"
-                />
+              <p className="text-sm text-foreground/70 text-center leading-relaxed max-w-lg mx-auto">
+                {verdict.summary}
               </p>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Loading indicator while waiting for next turn */}
-        {phase === 'debating' && !typingText && currentRound > 0 && history.length < TOTAL_ROUNDS && (
-          <div className="flex justify-center py-3">
-            <Loader2
-              size={20}
-              className="animate-spin text-foreground/30"
-              aria-label="Generating next argument"
+          {phase === 'stopped' && (
+            <p className="text-center text-sm text-foreground/70 py-3">
+              {interruption ?? 'The debate is paused.'}
+            </p>
+          )}
+        </div>
+
+        {phase === 'debating' && typingText && (
+          <div aria-hidden="true">
+            <DebateBubble
+              entry={{ speaker: nextSpeaker, argument: typingText, round: currentRound }}
+              isLeft={currentRound % 2 === 1}
+              typing
             />
           </div>
         )}
 
-        {/* Judging state */}
+        {waitingForTurn && (
+          <div className="flex items-center justify-center gap-2 py-3 text-foreground/60">
+            <Loader2 size={18} className={prefersReducedMotion ? '' : 'animate-spin'} aria-hidden="true" />
+            <span className="text-sm break-words">{nextSpeaker} is thinking...</span>
+          </div>
+        )}
+
         {phase === 'judging' && (
-          <div className="flex justify-center py-6">
-            <div className="flex items-center gap-2 text-foreground/50">
-              <Loader2 size={18} className="animate-spin" aria-hidden="true" />
-              <span className="text-sm">Deliberating...</span>
-            </div>
-          </div>
-        )}
-
-        {/* Verdict */}
-        {phase === 'verdict' && verdict && (
-          <div className="mt-4 border-t border-card-border pt-4">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <Trophy
-                size={20}
-                className="text-accent"
-                aria-hidden="true"
-              />
-              <span className="text-sm font-semibold text-foreground/80">
-                {verdict.winner === 'draw'
-                  ? 'Draw'
-                  : `${verdict.winner} wins`}
-              </span>
-            </div>
-            <p className="text-sm text-foreground/60 text-center leading-relaxed max-w-lg mx-auto">
-              {verdict.summary}
-            </p>
-          </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <div className="text-center py-4">
-            <p className="text-sm text-accent">{error}</p>
+          <div className="flex items-center justify-center gap-2 py-6 text-foreground/60">
+            <Loader2 size={18} className={prefersReducedMotion ? '' : 'animate-spin'} aria-hidden="true" />
+            <span className="text-sm">Weighing the arguments...</span>
           </div>
         )}
       </div>
 
-      {/* Actions */}
-      <div className="flex justify-center mt-5">
-        <Button
-          onClick={handleNewDebate}
-          variant="secondary"
-          className="flex items-center gap-2"
-        >
+      <div className="flex flex-wrap justify-center gap-3 mt-5">
+        {phase === 'debating' && (
+          <Button onClick={handleStop} variant="secondary" className="flex items-center gap-2">
+            <Square size={16} aria-hidden="true" />
+            Stop
+          </Button>
+        )}
+        {phase === 'stopped' && history.length < TOTAL_ROUNDS && (
+          <Button onClick={() => runDebate(history)} variant="primary" className="flex items-center gap-2">
+            <Play size={16} aria-hidden="true" />
+            {interruption ? 'Try again' : 'Continue'}
+          </Button>
+        )}
+        <Button onClick={handleNewDebate} variant="secondary" className="flex items-center gap-2">
           <RotateCcw size={16} aria-hidden="true" />
           New Debate
         </Button>
+      </div>
+    </div>
+  )
+}
+
+function DebateBubble({ entry, isLeft, typing = false }: { entry: DebateEntry; isLeft: boolean; typing?: boolean }) {
+  return (
+    <div className={`flex ${isLeft ? 'justify-start' : 'justify-end'}`}>
+      <div
+        className={`max-w-[85%] sm:max-w-[70%] min-w-0 rounded-xl px-4 py-3 ${
+          isLeft
+            ? 'bg-accent/10 border border-accent/20 rounded-tl-sm'
+            : 'bg-success/10 border border-success/20 rounded-tr-sm'
+        }`}
+      >
+        <div className="flex items-center gap-2 mb-1.5 min-w-0">
+          <span className={`text-xs font-semibold break-words min-w-0 ${isLeft ? 'text-accent' : 'text-melon-green'}`}>
+            {entry.speaker}
+          </span>
+          <span className="text-xs text-foreground/60 shrink-0">Round {entry.round}</span>
+        </div>
+        <p className="text-sm text-foreground/80 leading-relaxed break-words">
+          {entry.argument}
+          {typing && <span className="inline-block w-0.5 h-4 bg-foreground/40 ml-0.5 align-middle" />}
+        </p>
       </div>
     </div>
   )

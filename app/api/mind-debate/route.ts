@@ -15,10 +15,34 @@ interface DebateTurnRequest {
   totalRounds: number
 }
 
+const NAME_MAX = 60
+const TOPIC_MAX = 120
+const ARGUMENT_MAX = 1200
+const MAX_HISTORY = 12
+const MAX_ROUNDS = 12
+
+function clean(value: unknown, max: number): string {
+  return typeof value === 'string' ? value.trim().slice(0, max) : ''
+}
+
+// The model sometimes prefixes its reply with the speaker's name or wraps it in quotes.
+function stripSpeakerLabel(text: string, speaker: string): string {
+  let out = text
+  if (out.toLowerCase().startsWith(`${speaker.toLowerCase()}:`)) out = out.slice(speaker.length + 1).trim()
+  if (out.length > 1 && out.startsWith('"') && out.endsWith('"')) out = out.slice(1, -1).trim()
+  return out
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: DebateTurnRequest = await request.json()
-    const { person1, person2, topic, history, round, totalRounds } = body
+    const person1 = clean(body.person1, NAME_MAX)
+    const person2 = clean(body.person2, NAME_MAX)
+    const topic = clean(body.topic, TOPIC_MAX)
+    const { round, totalRounds } = body
+    const history = Array.isArray(body.history)
+      ? body.history.slice(-MAX_HISTORY).map(h => ({ speaker: clean(h.speaker, NAME_MAX), argument: clean(h.argument, ARGUMENT_MAX) }))
+      : []
 
     if (!person1 || !person2 || !topic) {
       return NextResponse.json(
@@ -27,7 +51,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (round < 1 || round > totalRounds) {
+    if (!Number.isInteger(round) || !Number.isInteger(totalRounds) || round < 1 || round > totalRounds || totalRounds > MAX_ROUNDS) {
       return NextResponse.json(
         { error: 'Invalid round number' },
         { status: 400 }
@@ -82,7 +106,8 @@ Respond with ONLY the argument text. No labels, no formatting, no speaker name p
         ...MINIMAL_THINKING,
       },
     })
-    const argument = (result.text ?? '').trim()
+    const argument = stripSpeakerLabel((result.text ?? '').trim(), currentSpeaker)
+    if (!argument) throw new Error('Empty debate turn')
 
     return NextResponse.json({
       speaker: currentSpeaker,
@@ -91,18 +116,8 @@ Respond with ONLY the argument text. No labels, no formatting, no speaker name p
     })
   } catch (error) {
     console.error('Mind Debate turn error:', error)
-
-    let errorMessage = 'Failed to generate debate turn'
-    if (error instanceof Error) {
-      if (error.message.includes('API key')) {
-        errorMessage = 'API configuration error'
-      } else if (error.message.includes('quota') || error.message.includes('limit')) {
-        errorMessage = 'Service temporarily unavailable'
-      }
-    }
-
     return NextResponse.json(
-      { error: errorMessage },
+      { error: 'The debate could not continue' },
       { status: 500 }
     )
   }
