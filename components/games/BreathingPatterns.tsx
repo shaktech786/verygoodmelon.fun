@@ -1103,7 +1103,7 @@ export default function BreathingPatterns() {
       )}
 
       <div
-        className="grid grid-cols-1 gap-2 mb-4 sm:mb-5"
+        className="grid grid-cols-1 gap-1.5 sm:gap-2 mb-3 sm:mb-5"
         role="radiogroup"
         aria-label="Breathing pattern"
         onKeyDown={(e) => {
@@ -1121,7 +1121,7 @@ export default function BreathingPatterns() {
             tabIndex={selectedPatternId === p.id ? 0 : -1}
             onClick={() => setSelectedPatternId(p.id)}
             className={cn(
-              'text-left px-4 py-2.5 sm:py-3 rounded-lg border transition-all duration-75',
+              'text-left px-4 py-2 sm:py-3 rounded-lg border transition-all duration-75',
               'focus:outline-none focus:ring-2 focus:ring-focus-ring',
               selectedPatternId === p.id
                 ? 'border-chosen-line bg-chosen'
