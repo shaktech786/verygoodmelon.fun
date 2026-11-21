@@ -19,14 +19,14 @@ export function Footer() {
 
           if (response.ok) {
             const data = await response.json()
-            setVisitCount(data.count)
+            if (typeof data.count === 'number') setVisitCount(data.count)
             sessionStorage.setItem('hasVisited', 'true')
           }
         } else {
           const response = await fetch('/api/site-visits')
           if (response.ok) {
             const data = await response.json()
-            setVisitCount(data.count)
+            if (typeof data.count === 'number') setVisitCount(data.count)
           }
         }
       } catch (error) {
