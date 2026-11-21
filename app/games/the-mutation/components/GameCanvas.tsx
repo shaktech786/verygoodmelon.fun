@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback } from 'react'
 import type { GameState } from '../engine/types'
-import { GAME_W, GAME_H, COLORS } from '../engine/types'
+import { GAME_W, GAME_H } from '../engine/types'
 import {
   createState,
   update as updateEngine,
@@ -13,6 +13,7 @@ import {
   advanceWave,
 } from '../engine/engine'
 import { isControlTarget } from './controls'
+import { usePalette } from './usePalette'
 
 interface GameCanvasProps {
   isPlaying: boolean
@@ -49,10 +50,20 @@ export default function GameCanvas({
   const stateRef = useRef<GameState | null>(null)
   const playingRef = useRef(false)
   const callbacksRef = useRef({ onMutationReady, onGameComplete, onScoreChange, onMultiplierChange, onRushTimerChange })
+  const palette = usePalette()
+  const paletteRef = useRef(palette)
 
   useEffect(() => {
     callbacksRef.current = { onMutationReady, onGameComplete, onScoreChange, onMultiplierChange, onRushTimerChange }
   })
+
+  // A theme change while the game is paused or between waves still repaints the frozen frame
+  useEffect(() => {
+    paletteRef.current = palette
+    const s = stateRef.current
+    const ctx = canvasRef.current?.getContext('2d')
+    if (s && ctx) renderEngine(ctx, s, palette, reducedMotion)
+  }, [palette, reducedMotion])
 
   useEffect(() => {
     const state = createState()
@@ -183,7 +194,7 @@ export default function GameCanvas({
       lastTime = time
 
       updateEngine(s, dt)
-      renderEngine(ctx, s, reducedMotion)
+      renderEngine(ctx, s, paletteRef.current, reducedMotion)
 
       const cb = callbacksRef.current
       const score = Math.floor(s.score)
@@ -225,13 +236,8 @@ export default function GameCanvas({
         ref={canvasRef}
         width={GAME_W}
         height={GAME_H}
-        className="w-full block rounded-lg"
-        style={{
-          aspectRatio: '4/3',
-          imageRendering: 'pixelated',
-          touchAction: 'none',
-          boxShadow: `0 0 40px ${COLORS.playerGlow}, inset 0 0 60px rgba(0,0,0,0.4)`,
-        }}
+        className="w-full block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        style={{ aspectRatio: '4/3', touchAction: 'none' }}
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}
         onMouseUp={release}
@@ -241,23 +247,9 @@ export default function GameCanvas({
         onTouchEnd={release}
         onTouchCancel={release}
         role="application"
-        aria-label="Cascade game area"
+        aria-label="The Shapeshifter game area"
         tabIndex={0}
       />
-      {!reducedMotion && (
-        <div
-          className="absolute inset-0 pointer-events-none rounded-lg"
-          style={{
-            background: `repeating-linear-gradient(
-              0deg,
-              transparent,
-              transparent 2px,
-              rgba(0,0,0,0.12) 2px,
-              rgba(0,0,0,0.12) 4px
-            )`,
-          }}
-        />
-      )}
     </div>
   )
 }

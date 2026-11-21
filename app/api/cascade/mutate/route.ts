@@ -1,209 +1,185 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
+import { plainSpeech, clampToSentences } from '@/app/api/mind-debate/text'
+import { MECHANIC_CATEGORIES, MECHANIC_OPTIONS, type MechanicCategory, type PlayStyle } from '@/app/games/the-mutation/engine/types'
 
 const MECHANIC_DESCRIPTIONS: Record<string, string> = {
-  arrow_keys: 'Classic 4/8-directional movement with arrow keys or WASD. Responsive, with slight momentum.',
-  mouse_follow: 'Player orb smoothly follows the mouse cursor. Intuitive and fluid.',
-  stars: 'Gold stars spawn randomly. Touch to collect for points. Gentle bobbing animation.',
-  pulse_gems: 'Cyan gems fade in and out. Can only be caught while glowing. Requires timing.',
-  chasers: 'Red square enemies that slowly follow the player. Contact costs points.',
-  sweepers: 'Orange energy beams that sweep across the arena. Contact costs points.',
-  blaster: 'Press SPACE to shoot cyan projectiles toward the mouse. Destroys chasers.',
-  phase_dash: 'Press SPACE to dash with brief invincibility. Dash through enemies to destroy them.',
-  combo_chain: 'Chain consecutive collections/kills for a score multiplier. Getting hit resets the chain.',
-  gravity_well: 'Collectibles within range are magnetically pulled toward the player.',
-  score_rush: 'Everything amplified: 3x spawn rates, 3x score. A 25-second final frenzy.',
+  arrow_keys: 'The orb moves with the arrow keys or WASD, with a little drift.',
+  mouse_follow: 'The orb glides after the pointer or a finger.',
+  stars: 'Small stars appear and bob gently. Touch one to gather it.',
+  pulse_gems: 'Gems slowly brighten and dim. Gather one while it shines.',
+  chasers: 'Shy round shadows drift toward the orb. A touch only nudges the orb away; nothing is lost.',
+  sweepers: 'Slow tides of light sweep across and carry the orb along; nothing is lost.',
+  blaster: 'The orb sends out light. Shadows the light reaches turn into stars.',
+  phase_dash: 'The orb can glide quickly. Gliding through a shadow turns it into a star.',
+  combo_chain: 'Gathering in a steady rhythm grows a glow multiplier. A pause only lowers it one step.',
+  gravity_well: 'Lights near the orb drift toward it on their own.',
+  score_rush: 'The bloom: every shadow turns to light and stars come thick and bright for the final moments.',
 }
+
+const PLAY_STYLES: readonly PlayStyle[] = ['gentle', 'explorer', 'collector', 'bold']
+
+const STYLE_NOTES: Record<PlayStyle, string> = {
+  gentle: 'moves little and lets things come to them',
+  explorer: 'roams the whole space',
+  collector: 'gathers lights steadily',
+  bold: 'goes toward the shadows and turns them into stars',
+}
+
+// Words that would make an announcement feel threatening or judge the player
+const UNKIND = /\b(lethal|kill\w*|destroy\w*|destruct\w*|devastat\w*|obliterat\w*|enem(y|ies)|attack\w*|die|dies|death|dead\w*|danger\w*|panic\w*|surviv\w*|weapon\w*|shoot\w*|bullet\w*|gun\w*|blast\w*|hurt\w*|pain\w*|lazy|lazier|loser\w*|fail\w*|refus\w*|barely|pathetic|stupid)\b/i
+
+const TITLE_MAX = 28
+const DESCRIPTION_MAX = 120
+const FLAVOR_MAX = 100
+const NAME_MAX = 32
+const TAGLINE_MAX = 110
+const HISTORY_TITLE_MAX = 40
+
+interface PlayerPicture {
+  style: PlayStyle
+  history: Array<{ id: string; title: string }>
+  active: string[]
+}
+
+function isCategory(value: unknown): value is MechanicCategory {
+  return typeof value === 'string' && (MECHANIC_CATEGORIES as readonly string[]).includes(value)
+}
+
+function readPicture(body: Record<string, unknown>): PlayerPicture {
+  const profile = typeof body.profile === 'object' && body.profile !== null ? body.profile as Record<string, unknown> : {}
+  const style = PLAY_STYLES.find(s => s === profile.playStyle) ?? 'gentle'
+  const history = (Array.isArray(body.mutations) ? body.mutations : [])
+    .slice(0, MECHANIC_CATEGORIES.length)
+    .filter((m): m is Record<string, unknown> => typeof m === 'object' && m !== null && typeof m.id === 'string' && m.id in MECHANIC_DESCRIPTIONS)
+    .map(m => ({ id: m.id as string, title: typeof m.title === 'string' ? plainSpeech(m.title).slice(0, HISTORY_TITLE_MAX) : '' }))
+  const active = (Array.isArray(body.activeMechanics) ? body.activeMechanics : [])
+    .filter((id): id is string => typeof id === 'string' && id in MECHANIC_DESCRIPTIONS)
+  return { style, history, active }
+}
+
+function count(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(999, Math.floor(value))) : 0
+}
+
+function shortTitle(text: string, max: number): string {
+  const plain = plainSpeech(text).toUpperCase()
+  if (plain.length <= max) return plain
+  const cut = plain.slice(0, max + 1)
+  const space = cut.lastIndexOf(' ')
+  return (space > 0 ? cut.slice(0, space) : plain.slice(0, max)).trim()
+}
+
+function line(value: unknown, max: number): string {
+  return typeof value === 'string' ? clampToSentences(plainSpeech(value), max) : ''
+}
+
+function readJson(text: string): Record<string, unknown> {
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error('No JSON in reply')
+  return JSON.parse(match[0])
+}
+
+const VOICE = `You are the quiet narrator of THE SHAPESHIFTER, a small calm game on a website made to leave people less anxious. The game gains one new rule each wave. Nothing in this game can hurt the player and they cannot lose.
+Voice: warm, playful, curious, a little poetic. Never mock or judge the player. Never use words about danger, violence, weapons, death, failure or laziness.`
 
 export async function POST(request: NextRequest) {
+  let body: Record<string, unknown>
   try {
-    const body = await request.json()
-
-    // Game naming request
-    if (body.isNaming) {
-      return handleNaming(body)
-    }
-
-    // Mutation selection request
-    return handleMutation(body)
-  } catch (error) {
-    console.error('Cascade mutate error:', error)
-    return NextResponse.json(
-      { error: 'Failed to generate mutation' },
-      { status: 500 }
-    )
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
+  return body.isNaming ? handleNaming(body) : handleMutation(body)
 }
 
-async function handleMutation(body: {
-  wave: number
-  category: string
-  options: string[]
-  profile: Record<string, unknown> | null
-  activeMechanics: string[]
-  mutations: Array<{ id: string; title: string }>
-}) {
-  const { wave, category, profile, activeMechanics, mutations } = body
-  const options = Array.isArray(body.options) ? body.options.filter(id => id in MECHANIC_DESCRIPTIONS) : []
-
+async function handleMutation(body: Record<string, unknown>) {
+  const { wave, category } = body
+  if (!isCategory(category) || wave !== MECHANIC_CATEGORIES.indexOf(category)) {
+    return NextResponse.json({ error: 'Unknown stage' }, { status: 400 })
+  }
+  const options = (Array.isArray(body.options) ? body.options : [])
+    .filter((id): id is string => typeof id === 'string' && MECHANIC_OPTIONS[category].includes(id))
   if (options.length === 0) {
-    return NextResponse.json({ error: 'No mechanic options provided' }, { status: 400 })
+    return NextResponse.json({ error: 'No rules offered' }, { status: 400 })
   }
 
-  // If only one option, use it (e.g., climax = score_rush)
-  if (options.length === 1) {
-    const id = options[0]
-    return generateFlavorText(id, category, profile, activeMechanics, mutations)
-  }
+  const picture = readPicture(body)
 
   try {
-    const optionsList = options.map(id =>
-      `"${id}": ${MECHANIC_DESCRIPTIONS[id] || 'A game mechanic.'}`
-    ).join('\n')
+    const optionsList = options.map(id => `"${id}": ${MECHANIC_DESCRIPTIONS[id]}`).join('\n')
+    const choice = options.length === 1
+      ? `The new rule is "${options[0]}".`
+      : `Choose the rule that would feel most delightful for this player, either one that suits how they play or a gentle surprise. Set "mechanicId" to one of: ${options.map(id => `"${id}"`).join(', ')}.`
 
-    const mutationHistory = mutations.length > 0
-      ? `Mutations so far: ${mutations.map(m => m.title).join(' → ')}`
-      : 'No mutations yet (this is the first one).'
+    const prompt = `${VOICE}
 
-    const profileDesc = profile
-      ? `Play style: ${profile.playStyle}. Movement: ${profile.moveDistance ? 'active' : 'minimal'}. Collection rate: ${profile.collectRate || 0}/s. Kills: ${profile.killRate || 0}/s.`
-      : 'New player, no data yet.'
+Wave ${(wave as number) + 1} of 7. The player ${STYLE_NOTES[picture.style]}.
+Rules so far: ${picture.history.map(m => m.title || m.id).join(' → ') || 'none yet'}.
 
-    const prompt = `You are the Game Master of CASCADE, a self-building arcade game. A player is in wave ${wave + 1}/7 and needs a new ${category} mechanic.
-
-${mutationHistory}
-${profileDesc}
-Active mechanics: ${activeMechanics.join(', ') || 'none'}
-
-CHOOSE ONE mechanic to add:
 ${optionsList}
 
-Pick whichever would be:
-1. Most FUN given how they've been playing
-2. Most INTERESTING with existing mechanics
-3. Most SURPRISING (playfully challenge their style, or reward it)
+${choice}
 
-Respond ONLY in JSON:
-{
-  "mechanicId": "${options[0]}" or "${options[1]}",
-  "title": "A fun retro announcement (2-4 words, ALL CAPS)",
-  "description": "What this does in 1 sentence",
-  "flavorText": "A fun one-liner about the player or game state"
-}`
+Announce it. Respond ONLY with JSON:
+{"mechanicId": "...", "title": "2 to 4 words, ALL CAPS", "description": "what it does, one short sentence", "flavorText": "one kind, playful line about the player or the moment"}`
 
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt,
       config: { temperature: 0.9, maxOutputTokens: 300, ...MINIMAL_THINKING },
     })
-    const text = result.text ?? ''
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('Invalid AI response')
-
-    const parsed = JSON.parse(jsonMatch[0])
-
-    // Text written for an unknown mechanic would describe the wrong rule, so drop it
-    if (!options.includes(parsed.mechanicId)) {
+    const parsed = readJson(result.text ?? '')
+    const mechanicId = options.length === 1 ? options[0] : parsed.mechanicId
+    // Text written for an unknown rule would describe the wrong thing
+    if (typeof mechanicId !== 'string' || !options.includes(mechanicId)) {
       return NextResponse.json({ mechanicId: options[0] })
     }
 
-    return NextResponse.json({
-      mechanicId: parsed.mechanicId,
-      title: parsed.title,
-      description: parsed.description,
-      flavorText: parsed.flavorText,
-    })
+    const title = typeof parsed.title === 'string' ? shortTitle(parsed.title, TITLE_MAX) : ''
+    const description = line(parsed.description, DESCRIPTION_MAX)
+    const flavorText = line(parsed.flavorText, FLAVOR_MAX)
+    if (!title || !description || UNKIND.test(`${title} ${description} ${flavorText}`)) {
+      return NextResponse.json({ mechanicId })
+    }
+    return NextResponse.json({ mechanicId, title, description, flavorText })
   } catch (error) {
-    console.error('AI mutation selection failed:', error)
-    // The client fills in its own wording for a bare mechanic id
+    console.error('Shapeshifter rule announcement failed:', error)
+    // The page fills in its own wording for a bare rule id
     return NextResponse.json({ mechanicId: options[0] })
   }
 }
 
-async function generateFlavorText(
-  mechanicId: string,
-  category: string,
-  profile: Record<string, unknown> | null,
-  activeMechanics: string[],
-  mutations: Array<{ id: string; title: string }>,
-) {
-  try {
-    const prompt = `You are the Game Master of CASCADE. Generate a fun announcement for the "${mechanicId}" mechanic (${category}).
-${MECHANIC_DESCRIPTIONS[mechanicId]}
-Active mechanics: ${activeMechanics.join(', ')}
-Mutation history: ${mutations.map(m => m.title).join(' → ')}
-Player style: ${profile?.playStyle || 'unknown'}
-
-Respond ONLY in JSON:
-{
-  "title": "Fun retro announcement (2-4 words, ALL CAPS)",
-  "description": "What this does in 1 sentence",
-  "flavorText": "Fun one-liner observation"
-}`
-
-    const result = await getGemini().models.generateContent({
-      model: GEMINI_MODEL,
-      contents: prompt,
-      config: { temperature: 1.0, maxOutputTokens: 200, ...MINIMAL_THINKING },
-    })
-    const text = result.text ?? ''
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('Parse error')
-
-    const parsed = JSON.parse(jsonMatch[0])
-    return NextResponse.json({
-      mechanicId,
-      title: parsed.title,
-      description: parsed.description,
-      flavorText: parsed.flavorText,
-    })
-  } catch {
-    return NextResponse.json({ mechanicId })
-  }
-}
-
-async function handleNaming(body: {
-  mutations: Array<{ id: string; title: string }>
-  score: number
-  profile: Record<string, unknown> | null
-}) {
-  const { mutations, score, profile } = body
+async function handleNaming(body: Record<string, unknown>) {
+  const picture = readPicture(body)
+  const transformed = count(body.transformed)
+  const nudges = count(body.nudges)
 
   try {
-    const mutationList = mutations.map((m, i) => `${i + 1}. ${m.title} (${m.id})`).join('\n')
+    const prompt = `${VOICE}
 
-    const prompt = `CASCADE, a self-building arcade game, just completed. Name this unique game.
+The player just finished their game. Name it.
 
-Mutations added:
-${mutationList}
+How it grew: ${picture.history.map(m => `${m.title || m.id} (${m.id})`).join(', ') || 'six small rules'}.
+The player ${STYLE_NOTES[picture.style]} (${picture.style}). They turned ${transformed} shadows into stars and were nudged ${nudges} times.
 
-Final score: ${score}
-Player style: ${profile?.playStyle || 'balanced'}
+Give it a name of 2 to 4 words in ALL CAPS that sounds like a gentle retro arcade cabinet, and a one-line tagline that begins "For someone who" and kindly notices how they played.
 
-Give this unique game a name (2-4 words, fun and retro-sounding, ALL CAPS) and a one-sentence arcade cabinet tagline.
-
-Respond ONLY in JSON:
-{
-  "gameName": "NEON HUNTER TURBO",
-  "tagline": "Blast through waves in this high-octane shooter-collector."
-}`
+Respond ONLY with JSON: {"gameName": "...", "tagline": "..."}`
 
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt,
       config: { temperature: 1.0, maxOutputTokens: 150, ...MINIMAL_THINKING },
     })
-    const text = result.text ?? ''
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('Parse error')
-
-    const parsed = JSON.parse(jsonMatch[0])
-    return NextResponse.json({
-      gameName: parsed.gameName,
-      tagline: parsed.tagline,
-    })
-  } catch {
-    // The client names the game from its score
+    const parsed = readJson(result.text ?? '')
+    const gameName = typeof parsed.gameName === 'string' ? shortTitle(parsed.gameName, NAME_MAX) : ''
+    const tagline = line(parsed.tagline, TAGLINE_MAX)
+    if (!gameName || !tagline || UNKIND.test(`${gameName} ${tagline}`)) return NextResponse.json({})
+    return NextResponse.json({ gameName, tagline })
+  } catch (error) {
+    console.error('Shapeshifter naming failed:', error)
+    // The page names the game from how it was played
     return NextResponse.json({})
   }
 }

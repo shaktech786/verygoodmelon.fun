@@ -23,52 +23,31 @@ export default function TitleScreen({ onStart, retroFont, isTouch }: TitleScreen
 
   return (
     <div
-      className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center rounded-lg px-4 py-8 animate-fade cursor-pointer"
-      style={{
-        background:
-          'radial-gradient(ellipse at center, rgba(0,255,136,0.06) 0%, transparent 70%), rgba(8,8,16,0.97)',
-      }}
+      className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center px-5 py-8 animate-fade cursor-pointer bg-card-bg"
       onClick={onStart}
       role="dialog"
-      aria-label="Cascade, the game that builds itself"
+      aria-label="The Shapeshifter"
     >
-      <div className="text-center">
-        <h1
-          className={`text-2xl sm:text-4xl tracking-[0.25em] sm:tracking-[0.4em] mb-3 ${retroFont}`}
-          style={{
-            color: '#00ff88',
-            textShadow: '0 0 20px rgba(0,255,136,0.5), 0 0 40px rgba(0,255,136,0.2)',
-          }}
-        >
-          CASCADE
-        </h1>
+      <div className="text-center max-w-sm">
+        <h2 className={`text-lg sm:text-3xl tracking-[0.12em] sm:tracking-[0.2em] mb-3 text-melon-green leading-relaxed ${retroFont}`}>
+          THE SHAPESHIFTER
+        </h2>
 
-        <p
-          className="text-xs sm:text-sm tracking-[0.2em] mb-8 sm:mb-12"
-          style={{ color: '#8899aa', fontFamily: 'monospace' }}
-        >
-          the game that builds itself
+        <p className="text-sm sm:text-base text-foreground/80 mb-6 sm:mb-8">
+          a little game that keeps changing its mind
         </p>
 
         <button
           type="button"
-          className={`text-xs sm:text-sm tracking-[0.15em] border px-5 py-3 rounded cursor-pointer ${retroFont}`}
-          style={{
-            color: '#00ff88',
-            borderColor: 'rgba(0,255,136,0.4)',
-            background: 'rgba(0,255,136,0.06)',
-            textShadow: '0 0 12px rgba(0,255,136,0.6)',
-          }}
+          className={`text-xs sm:text-sm tracking-[0.15em] px-6 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${retroFont}`}
         >
-          PRESS START
+          BEGIN
         </button>
 
-        <p
-          className="mt-8 sm:mt-10 text-[11px] tracking-[0.1em] leading-relaxed"
-          style={{ color: '#8899aa', fontFamily: 'monospace' }}
-        >
-          Each wave adds one new rule. No way to lose.
-          <br />
+        <p className="mt-6 sm:mt-8 text-sm text-foreground/80 leading-relaxed">
+          Each wave it learns one new rule. Nothing here can hurt you.
+        </p>
+        <p className="mt-1 text-xs text-foreground/70">
           {isTouch ? 'Tap to begin.' : 'Enter, Space or click to begin.'}
         </p>
       </div>

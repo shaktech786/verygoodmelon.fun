@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { MutationResult } from '../engine/types'
+import { MECHANIC_CATEGORIES } from '../engine/types'
 import { isControlTarget } from './controls'
+import { MechanicIcon } from './MechanicIcon'
 
 interface MutationScreenProps {
-  /** Null while the next mutation is still being chosen. */
+  /** Null while the next rule is still being chosen. */
   mutation: MutationResult | null
   waveNumber: number
   onContinue: () => void
@@ -14,28 +16,29 @@ interface MutationScreenProps {
   reducedMotion: boolean
 }
 
-const GLITCH_MS = 600
+const SHIFT_COUNT = MECHANIC_CATEGORIES.length
+const SETTLE_MS = 700
 // Long enough that a click or key press meant for the game cannot dismiss the card unread
 const READ_GUARD_MS = 800
 
 const KEYBOARD_HINTS: Record<string, string> = {
-  arrow_keys: 'ARROW KEYS / WASD to move',
-  mouse_follow: 'Move the MOUSE (or ARROW KEYS) to guide the orb',
-  stars: 'Touch stars to collect them',
-  pulse_gems: 'Catch gems while they glow',
-  chasers: 'Avoid the red squares. A hit costs 25 points',
-  sweepers: 'Dodge the beams. A hit costs 25 points',
-  blaster: 'Hold SPACE or CLICK to shoot',
-  phase_dash: 'SPACE or CLICK to dash through danger',
-  combo_chain: 'Chain pickups without getting hit',
-  gravity_well: 'Nearby collectibles drift to you',
-  score_rush: 'Everything counts triple until the timer ends',
+  arrow_keys: 'Arrow keys or WASD to move.',
+  mouse_follow: 'Move the mouse, or use the arrow keys.',
+  stars: 'Touch a star to gather it.',
+  pulse_gems: 'Gather one while it shines. There is no hurry.',
+  chasers: 'A touch only nudges you. Nothing is lost.',
+  sweepers: 'If one carries you, let it. Nothing is lost.',
+  blaster: 'Hold Space or click to send light.',
+  phase_dash: 'Press Space or click to glide.',
+  combo_chain: 'A pause only lowers your glow one step.',
+  gravity_well: 'No need to chase.',
+  score_rush: 'Every light counts triple until it fades.',
 }
 
 const TOUCH_HINTS: Record<string, string> = {
-  mouse_follow: 'DRAG your finger to guide the orb',
-  blaster: 'The orb shoots while you touch the screen',
-  phase_dash: 'The orb dashes while you touch the screen',
+  mouse_follow: 'Drag your finger to guide the orb.',
+  blaster: 'Keep a finger down to send light.',
+  phase_dash: 'Tap to glide.',
 }
 
 export default function MutationScreen({
@@ -46,12 +49,12 @@ export default function MutationScreen({
   isTouch,
   reducedMotion,
 }: MutationScreenProps) {
-  const [glitchDone, setGlitchDone] = useState(reducedMotion)
+  const [settled, setSettled] = useState(reducedMotion)
   const [ready, setReady] = useState(false)
-  const revealed = mutation !== null && glitchDone
+  const revealed = mutation !== null && settled
 
   useEffect(() => {
-    const t = setTimeout(() => setGlitchDone(true), GLITCH_MS)
+    const t = setTimeout(() => setSettled(true), SETTLE_MS)
     return () => clearTimeout(t)
   }, [])
 
@@ -82,88 +85,57 @@ export default function MutationScreen({
 
   return (
     <div
-      className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center rounded-lg px-4 py-6"
-      style={{ background: 'rgba(8,8,16,0.94)' }}
+      className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center px-5 py-6 bg-card-bg/95"
       onClick={handleContinue}
       role="dialog"
-      aria-live="assertive"
+      aria-live="polite"
       aria-label={
         mutation
-          ? `Mutation ${waveNumber} of 6: ${mutation.title}. ${mutation.description} ${controlHint}`
-          : 'A new mutation is coming'
+          ? `Shift ${waveNumber} of ${SHIFT_COUNT}: ${mutation.title}. ${mutation.description} ${controlHint}`
+          : 'The game is shifting'
       }
     >
       {!revealed && (
-        <p
-          className={`text-lg sm:text-xl tracking-[0.5em] ${retroFont}`}
-          style={{
-            color: '#ff00ff',
-            textShadow: '-2px 0 #ff0000, 2px 0 #00ffff',
-            animation: reducedMotion ? 'none' : 'cascadeGlitch 0.15s infinite',
-          }}
-        >
-          MUTATION
+        <p className={`text-sm sm:text-base tracking-[0.3em] text-foreground/80 ${reducedMotion ? '' : 'animate-pulse'} ${retroFont}`}>
+          SHIFTING
         </p>
       )}
 
       {revealed && mutation && (
-        <div className="text-center max-w-sm">
-          <p
-            className="text-[11px] tracking-[0.3em] mb-3"
-            style={{ color: '#d977d9', fontFamily: 'monospace' }}
-          >
-            MUTATION {waveNumber} / 6
+        <div className={`text-center max-w-sm ${reducedMotion ? '' : 'animate-fade'}`}>
+          <p className="text-xs tracking-[0.2em] uppercase mb-3 text-foreground/70">
+            Shift {waveNumber} of {SHIFT_COUNT}
           </p>
 
-          <h2
-            className={`text-base sm:text-2xl leading-snug mb-3 break-words ${retroFont}`}
-            style={{
-              color: '#00ff88',
-              textShadow: '0 0 16px rgba(0,255,136,0.5)',
-            }}
-          >
+          <div className="flex justify-center mb-3 text-melon-green" aria-hidden="true">
+            <MechanicIcon id={mutation.mechanicId} size={28} />
+          </div>
+
+          <h2 className={`text-sm sm:text-xl leading-relaxed mb-3 break-words text-melon-green ${retroFont}`}>
             {mutation.title}
           </h2>
 
-          <p
-            className="text-sm mb-3 leading-relaxed"
-            style={{ color: '#ccddee', fontFamily: 'monospace' }}
-          >
+          <p className="text-sm sm:text-base mb-2 leading-relaxed text-foreground break-words">
             {mutation.description}
           </p>
 
           {mutation.flavorText && (
-            <p
-              className="text-xs mb-4 italic"
-              style={{ color: '#8899aa', fontFamily: 'monospace' }}
-            >
-              &ldquo;{mutation.flavorText}&rdquo;
+            <p className="text-sm mb-4 italic text-foreground/70 break-words">
+              {mutation.flavorText}
             </p>
           )}
 
           {controlHint && (
-            <p
-              className="text-xs tracking-[0.05em] py-2 px-4 rounded border inline-block"
-              style={{
-                color: '#ffd700',
-                borderColor: 'rgba(255,215,0,0.3)',
-                fontFamily: 'monospace',
-              }}
-            >
+            <p className="text-sm py-2 px-4 rounded-lg border border-card-border bg-background text-foreground inline-block">
               {controlHint}
             </p>
           )}
 
-          <div className="mt-5 min-h-[40px]">
+          <div className="mt-5 min-h-[44px]">
             {ready && (
               <button
                 type="button"
-                className={`text-[11px] sm:text-xs tracking-[0.15em] border px-4 py-3 rounded cursor-pointer ${retroFont}`}
-                style={{
-                  color: '#00ff88',
-                  borderColor: 'rgba(0,255,136,0.4)',
-                  background: 'rgba(0,255,136,0.06)',
-                }}
+                className={`text-[11px] sm:text-xs tracking-[0.15em] px-5 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${retroFont}`}
               >
                 {isTouch ? 'TAP TO CONTINUE' : 'PRESS ENTER'}
               </button>

@@ -1,36 +1,16 @@
 // ========================================
-// CASCADE — Types & Constants
+// THE SHAPESHIFTER — Types & Constants
 // ========================================
+
+import type { Tint } from './palette'
 
 export const GAME_W = 640
 export const GAME_H = 480
 
-export const COLORS = {
-  bg: '#080810',
-  grid: '#0e0e20',
-  player: '#00ff88',
-  playerGlow: 'rgba(0,255,136,0.3)',
-  star: '#ffd700',
-  starGlow: 'rgba(255,215,0,0.3)',
-  gem: '#00ccff',
-  gemGlow: 'rgba(0,204,255,0.3)',
-  enemy: '#ff3366',
-  enemyGlow: 'rgba(255,51,102,0.3)',
-  sweeper: '#ff6600',
-  sweeperGlow: 'rgba(255,102,0,0.3)',
-  bullet: '#00ffff',
-  shield: '#9966ff',
-  dash: '#ffffff',
-  text: '#ffffff',
-  textDim: '#556677',
-  accent: '#ff00ff',
-  combo: ['#ffffff', '#ffd700', '#ff8800', '#ff00ff', '#00ffff'],
-} as const
-
 // Wave timing: [duration in seconds, score threshold to advance]
-// Whichever condition is met first triggers the next mutation
-// Wave 1 is short on purpose: movement is the only mechanic, so there is nothing to score with yet
-export const WAVE_DURATION = [10, 8, 22, 25, 28, 30, 25] as const
+// Whichever comes first moves the story on; nothing is lost by being slow
+// Wave 1 is short on purpose: the orb can only be pulsed, so there is little to do yet
+export const WAVE_DURATION = [10, 8, 22, 24, 26, 28, 20] as const
 export const WAVE_SCORE    = [10, 60, 150, 300, 500, 700, 999999] as const
 export const MAX_WAVES = 7
 
@@ -54,22 +34,23 @@ export const MECHANIC_OPTIONS: Record<MechanicCategory, readonly string[]> = {
   climax:      ['score_rush'],
 }
 
-// Default mechanic params (used when AI doesn't customize)
 export const DEFAULT_PARAMS: Record<string, Record<string, number>> = {
   arrow_keys:   { speed: 220 },
   mouse_follow: { responsiveness: 3.5 },
   stars:        { spawnRate: 1.5, value: 10 },
-  pulse_gems:   { spawnRate: 2.0, pulseSpeed: 2.0, value: 15 },
-  chasers:      { spawnRate: 4.0, speed: 65, maxCount: 6 },
-  sweepers:     { spawnRate: 3.5, speed: 120 },
+  pulse_gems:   { spawnRate: 2.0, pulseSpeed: 0.6, value: 15 },
+  chasers:      { spawnRate: 4.0, speed: 55, maxCount: 5 },
+  sweepers:     { spawnRate: 4.5, speed: 100 },
   blaster:      { fireRate: 0.3, bulletSpeed: 400, bulletSize: 4 },
-  phase_dash:   { cooldown: 2.0, duration: 0.2, speedMult: 3.5 },
-  combo_chain:  { decayTime: 2.0, hitsPerLevel: 3 },
+  phase_dash:   { cooldown: 1.5, duration: 0.2, speedMult: 3.5 },
+  combo_chain:  { decayTime: 3.0, hitsPerLevel: 3 },
   gravity_well: { range: 90, strength: 160 },
-  score_rush:   { duration: 25, spawnMult: 3, scoreMult: 3 },
+  score_rush:   { duration: 20, spawnMult: 3, scoreMult: 3 },
 }
 
 // --- Entity ---
+// Internal names predate the calmer framing: a chaser is a "shadow", a sweeper a "tide",
+// a bullet "light", score_rush "the bloom".
 
 export interface Entity {
   id: number
@@ -79,7 +60,6 @@ export interface Entity {
   vx: number
   vy: number
   size: number
-  color: string
   alpha: number
   active: boolean
   age: number
@@ -94,7 +74,7 @@ export interface Particle {
   vx: number
   vy: number
   size: number
-  color: string
+  tint: Tint
   alpha: number
   life: number
   maxLife: number
@@ -111,6 +91,9 @@ export interface GameState {
   py: number
   pvx: number
   pvy: number
+  /** Push from a shadow's nudge or a tide's current, applied on top of any movement rule. */
+  driftX: number
+  driftY: number
   pSize: number
   pBaseSize: number
   pTrail: Array<{ x: number; y: number; alpha: number }>
@@ -136,17 +119,12 @@ export interface GameState {
 
   // Mechanic-specific state
   shootCD: number
-  shieldCharges: number
-  shieldRechargeTimer: number
   dashCD: number
   dashActive: boolean
   dashDuration: number
   comboTimer: number
   rushTimer: number
   rushActive: boolean
-
-  // Effects
-  shake: number
 
   // Input
   keys: Set<string>
@@ -158,17 +136,14 @@ export interface GameState {
   // Player profile
   moveDistTotal: number
   collectTotal: number
-  killTotal: number
-  hitsTaken: number
+  transformed: number
+  nudges: number
   clickTotal: number
   moveBias: [number, number, number, number] // L R U D
 
   // Spawn timers
   spawnTimers: Record<string, number>
   totalTime: number
-
-  // Mutation history
-  mutations: MutationRecord[]
 }
 
 export interface MutationRecord {
@@ -188,13 +163,14 @@ export interface MutationResult {
   flavorText: string
 }
 
+export type PlayStyle = 'gentle' | 'explorer' | 'collector' | 'bold'
+
 export interface ProfileSummary {
-  playStyle: 'aggressive' | 'cautious' | 'explorer' | 'collector'
+  playStyle: PlayStyle
   clickRate: number
   moveDistance: number
   collectRate: number
-  killRate: number
-  hitRate: number
+  transformRate: number
   preferredDirection: string
   score: number
   wave: number

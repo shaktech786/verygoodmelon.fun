@@ -2,13 +2,17 @@
 
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Press_Start_2P } from 'next/font/google'
-import type { GameState, MutationResult, MutationRecord } from './engine/types'
-import { MECHANIC_CATEGORIES, MECHANIC_OPTIONS, DEFAULT_PARAMS, COLORS, MAX_WAVES } from './engine/types'
+import { Pause } from 'lucide-react'
+import type { GameState, MutationResult, MutationRecord, PlayStyle } from './engine/types'
+import { MECHANIC_CATEGORIES, MECHANIC_OPTIONS, DEFAULT_PARAMS, MAX_WAVES } from './engine/types'
 import { getProfileSummary } from './engine/engine'
+import { fallbackName, fallbackTagline, reflection } from './engine/naming'
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import GameCanvas from './components/GameCanvas'
 import TitleScreen from './components/TitleScreen'
 import MutationScreen from './components/MutationScreen'
 import FinaleScreen from './components/FinaleScreen'
+import { isControlTarget } from './components/controls'
 
 const retroFont = Press_Start_2P({ weight: '400', subsets: ['latin'], display: 'swap' })
 
@@ -18,73 +22,75 @@ type ActiveMechanic = { id: string; params: Record<string, number> }
 
 const MUTATE_URL = '/api/cascade/mutate'
 const REQUEST_TIMEOUT_MS = 8000
+const BLOOM_SECONDS = DEFAULT_PARAMS.score_rush.duration
+const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '])
 
 const FALLBACK_MUTATIONS: Record<string, Omit<MutationResult, 'params'>> = {
   arrow_keys: {
     mechanicId: 'arrow_keys',
-    title: 'MOVEMENT ONLINE',
-    description: 'Your orb learned to move.',
-    flavorText: 'It was tired of sitting still.',
+    title: 'IT CAN MOVE',
+    description: 'Your orb learned to wander.',
+    flavorText: 'It had been sitting still for a long time.',
   },
   mouse_follow: {
     mechanicId: 'mouse_follow',
-    title: 'FOLLOW ME',
-    description: 'Your orb follows wherever you point.',
-    flavorText: 'It has grown attached to you.',
+    title: 'IT FOLLOWS YOU',
+    description: 'Your orb drifts wherever you point.',
+    flavorText: 'It seems to like your company.',
   },
   stars: {
     mechanicId: 'stars',
-    title: 'STARS APPEARED',
-    description: 'Golden stars are spawning. Collect them.',
-    flavorText: 'The void is generous today.',
+    title: 'STARS ARRIVE',
+    description: 'Small stars appear. Gather them as you go.',
+    flavorText: 'The dark is being generous today.',
   },
   pulse_gems: {
     mechanicId: 'pulse_gems',
-    title: 'PHASE GEMS',
-    description: 'Gems fade in and out. Catch them while they glow.',
-    flavorText: 'Timing is everything.',
+    title: 'BREATHING GEMS',
+    description: 'Gems glow softly and dim again.',
+    flavorText: 'They shine at their own pace.',
   },
   chasers: {
     mechanicId: 'chasers',
-    title: 'THEY SEE YOU',
-    description: 'Red squares appeared. They drift toward you.',
-    flavorText: 'Your presence attracted attention.',
+    title: 'SHY SHADOWS',
+    description: 'Little shadows drift toward you. They only want to be near.',
+    flavorText: 'Every bright thing gathers company.',
   },
   sweepers: {
     mechanicId: 'sweepers',
-    title: 'BEAM SWEEPERS',
-    description: 'Energy beams sweep across the arena.',
-    flavorText: 'The grid is waking up.',
+    title: 'TIDES',
+    description: 'Slow tides of light sweep across and carry you along.',
+    flavorText: 'Sometimes it is easier to float.',
   },
   blaster: {
     mechanicId: 'blaster',
-    title: 'PEW PEW ONLINE',
-    description: 'Fight back. Your orb can shoot now.',
-    flavorText: 'Those stars? They were ammo all along.',
+    title: 'A LANTERN',
+    description: 'Your orb can send out light. Shadows it reaches turn into stars.',
+    flavorText: 'Shadows were only stars that had not been seen yet.',
   },
   phase_dash: {
     mechanicId: 'phase_dash',
-    title: 'PHASE SHIFT',
-    description: 'Dash through anything. Dashing through a red square breaks it.',
-    flavorText: 'You learned to phase through matter.',
+    title: 'GLIDE',
+    description: 'Your orb can glide. Glide through a shadow and it becomes a star.',
+    flavorText: 'Lighter than it looks.',
   },
   combo_chain: {
     mechanicId: 'combo_chain',
-    title: 'COMBO SYSTEM',
-    description: 'Chain pickups quickly for a score multiplier.',
-    flavorText: 'Consistency is power.',
+    title: 'RHYTHM',
+    description: 'Gathering in a steady rhythm makes your glow grow.',
+    flavorText: 'No rush. Just a rhythm.',
   },
   gravity_well: {
     mechanicId: 'gravity_well',
-    title: 'GRAVITY WELL',
-    description: 'Collectibles are drawn toward you.',
-    flavorText: 'Your presence bends the field.',
+    title: 'GENTLE PULL',
+    description: 'Lights near you drift closer on their own.',
+    flavorText: 'Good things find their way to you.',
   },
   score_rush: {
     mechanicId: 'score_rush',
-    title: 'FINAL RUSH',
-    description: 'Everything amplified. This is your moment.',
-    flavorText: 'The cascade reaches its peak.',
+    title: 'THE BLOOM',
+    description: 'Every shadow turns to light, and the stars come thick and bright.',
+    flavorText: 'Everything you met along the way, glowing at once.',
   },
 }
 
@@ -102,18 +108,12 @@ function isTextEntry(target: EventTarget | null): boolean {
 }
 
 const MUTATION_COUNT = MECHANIC_CATEGORIES.length
-
-const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
 const TOUCH_QUERY = '(pointer: coarse)'
 
-function subscribeMedia(onChange: () => void) {
-  const queries = [REDUCED_MOTION_QUERY, TOUCH_QUERY].map(q => window.matchMedia(q))
-  queries.forEach(mq => mq.addEventListener('change', onChange))
-  return () => queries.forEach(mq => mq.removeEventListener('change', onChange))
-}
-
-function useMediaQuery(query: string): boolean {
-  return useSyncExternalStore(subscribeMedia, () => window.matchMedia(query).matches, () => false)
+function subscribeTouch(onChange: () => void) {
+  const mq = window.matchMedia(TOUCH_QUERY)
+  mq.addEventListener('change', onChange)
+  return () => mq.removeEventListener('change', onChange)
 }
 
 function textOr(value: unknown, fallback: string): string {
@@ -143,10 +143,10 @@ export default function CascadeGame() {
   const [activeMechanics, setActiveMechanics] = useState<ActiveMechanic[]>([])
   const [gameName, setGameName] = useState('')
   const [tagline, setTagline] = useState('')
-  const [finale, setFinale] = useState({ statValue: 0, statLabel: '', totalTime: 0 })
-  const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY)
+  const [finale, setFinale] = useState({ statValue: 0, statLabel: '', totalTime: 0, closingLine: '' })
+  const reducedMotion = useReducedMotion()
   // Arrow keys cannot be pressed on a phone, so touch players always get the follow control
-  const isTouch = useMediaQuery(TOUCH_QUERY)
+  const isTouch = useSyncExternalStore(subscribeTouch, () => window.matchMedia(TOUCH_QUERY).matches, () => false)
   const gameStateRef = useRef<GameState | null>(null)
   const prefetchRef = useRef<{ wave: number; promise: Promise<MutationResult> } | null>(null)
   const runRef = useRef(0)
@@ -234,19 +234,21 @@ export default function CascadeGame() {
     const s = gameStateRef.current
     const finalScore = s ? Math.floor(s.score) : score
     const run = runRef.current
-    const hasChain = allMutations.some(m => m.id === 'combo_chain')
+    const hasChain = allMutations.some(m => m.id === 'combo_chain') && (s?.maxCombo ?? 0) > 1
+    const style: PlayStyle = s ? getProfileSummary(s).playStyle : 'gentle'
     setScore(finalScore)
     setFinale({
       statValue: (hasChain ? s?.maxCombo : s?.collectTotal) ?? 0,
-      statLabel: hasChain ? 'BEST CHAIN' : 'COLLECTED',
+      statLabel: hasChain ? 'longest rhythm' : 'stars gathered',
       totalTime: s?.totalTime ?? 0,
+      closingLine: reflection({ transformed: s?.transformed ?? 0, nudges: s?.nudges ?? 0 }),
     })
     setGameName('')
     setTagline('')
     setPhase('finale')
 
-    let name = `CASCADE #${finalScore}`
-    let line = 'A game that built itself around you.'
+    let name = fallbackName(allMutations.map(m => m.id), style)
+    let line = fallbackTagline(style)
     try {
       const res = await fetch(MUTATE_URL, {
         method: 'POST',
@@ -256,6 +258,8 @@ export default function CascadeGame() {
           mutations: allMutations,
           score: finalScore,
           profile: s ? getProfileSummary(s) : null,
+          transformed: s?.transformed ?? 0,
+          nudges: s?.nudges ?? 0,
         }),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       })
@@ -265,7 +269,7 @@ export default function CascadeGame() {
         if (typeof data.tagline === 'string' && data.tagline) line = data.tagline
       }
     } catch {
-      // The score-based name above is the fallback
+      // The play-style name above is the fallback
     }
     if (runRef.current !== run) return
     setGameName(name)
@@ -314,23 +318,24 @@ export default function CascadeGame() {
     }
   }, [phase, pause, resume])
 
+  // A key still held from play would otherwise scroll the page and carry the new rule's card out of view
+  useEffect(() => {
+    if (phase !== 'mutating') return
+    const onKey = (e: KeyboardEvent) => {
+      if (SCROLL_KEYS.has(e.key) && !isControlTarget(e.target)) e.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [phase])
+
   const showHud = phase === 'playing' || phase === 'paused' || phase === 'mutating'
-  const comboColor = COLORS.combo[Math.min(multiplier - 1, COLORS.combo.length - 1)]
+  const bloomLeft = rushTimer / BLOOM_SECONDS
 
   return (
     <div className="w-full max-w-[640px] mx-auto">
-      <style jsx global>{`
-        @keyframes cascadeGlitch {
-          0%, 100% { transform: translate(0); }
-          20% { transform: translate(-2px, 1px); }
-          40% { transform: translate(2px, -1px); }
-          60% { transform: translate(-1px, 2px); }
-          80% { transform: translate(1px, -2px); }
-        }
-      `}</style>
-
+      <h1 className="sr-only">The Shapeshifter</h1>
       {/* Overlays share the canvas's grid cell so a tall screen grows the box instead of being clipped */}
-      <div className="grid" style={{ background: COLORS.bg, borderRadius: '12px', overflow: 'hidden' }}>
+      <div className="grid rounded-xl overflow-hidden border border-card-border bg-card-bg">
         <div className="col-start-1 row-start-1">
           <GameCanvas
             key={runId}
@@ -348,47 +353,36 @@ export default function CascadeGame() {
 
         {showHud && (
           <div className="col-start-1 row-start-1 self-start relative w-full aspect-[4/3] pointer-events-none z-10">
-            <div className={`absolute top-2 right-3 text-right ${retroFont.className}`}>
-              <span
-                className="text-sm sm:text-base"
-                style={{ color: '#ffffff', textShadow: '0 0 8px rgba(255,255,255,0.3)' }}
-                aria-label={`Score ${score}`}
-              >
-                {score}
-              </span>
-            </div>
+            <p className="absolute top-2 left-3 text-xs text-foreground/80">
+              Wave {currentWave + 1} of {MAX_WAVES}
+            </p>
 
-            <div className="absolute top-2 left-3">
-              <span className="text-[10px] tracking-[0.1em]" style={{ color: '#8899aa', fontFamily: 'monospace' }}>
-                WAVE {currentWave + 1}/{MAX_WAVES}
-              </span>
-            </div>
+            <p className="absolute top-2 right-3 text-right text-foreground">
+              <span className="text-xs text-foreground/80 mr-1.5">light</span>
+              <span className="text-sm sm:text-base font-semibold tabular-nums">{score}</span>
+            </p>
 
             {multiplier > 1 && (
-              <div className={`absolute top-2 left-1/2 -translate-x-1/2 ${retroFont.className}`}>
-                <span
-                  className="text-xs sm:text-sm"
-                  style={{ color: comboColor, textShadow: `0 0 10px ${comboColor}66` }}
-                >
-                  {multiplier}x
-                </span>
-              </div>
+              <p className="absolute top-2 left-1/2 -translate-x-1/2 text-xs sm:text-sm font-semibold text-accent">
+                {multiplier}× glow
+              </p>
             )}
 
             {phase === 'playing' && currentWave === 0 && (
-              <p
-                className="absolute bottom-12 sm:bottom-16 inset-x-0 text-center text-[11px] tracking-[0.15em]"
-                style={{ color: '#8899aa', fontFamily: 'monospace' }}
-              >
-                {isTouch ? 'TAP THE ORB' : 'CLICK THE ORB OR PRESS SPACE'}
+              <p className="absolute bottom-12 sm:bottom-16 inset-x-0 text-center text-sm text-foreground/80">
+                {isTouch ? 'Tap the orb.' : 'Click the orb, or press Space.'}
               </p>
             )}
 
             {rushTimer > 0 && (
-              <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 ${retroFont.className}`}>
-                <span className="text-lg" style={{ color: '#ff00ff', textShadow: '0 0 12px rgba(255,0,255,0.5)' }}>
-                  {rushTimer}
-                </span>
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-1/2 max-w-[240px]" aria-hidden="true">
+                <p className="text-center text-xs text-foreground/80 mb-1">the bloom</p>
+                <div className="h-1.5 rounded-full bg-foreground/10 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full bg-[var(--melon-pink)] ${reducedMotion ? '' : 'transition-[width] duration-1000 ease-linear'}`}
+                    style={{ width: `${Math.max(0, Math.min(1, bloomLeft)) * 100}%` }}
+                  />
+                </div>
               </div>
             )}
 
@@ -397,10 +391,9 @@ export default function CascadeGame() {
                 type="button"
                 onClick={pause}
                 aria-label="Pause"
-                className={`pointer-events-auto absolute bottom-2 left-2 min-w-[40px] min-h-[40px] px-2 rounded border text-[10px] cursor-pointer ${retroFont.className}`}
-                style={{ color: '#8899aa', borderColor: 'rgba(136,153,170,0.35)', background: 'rgba(8,8,16,0.6)' }}
+                className="pointer-events-auto absolute bottom-2 left-2 w-11 h-11 flex items-center justify-center rounded-lg border border-card-border bg-card-bg/90 text-foreground/80 hover:text-foreground cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
-                II
+                <Pause size={18} aria-hidden="true" />
               </button>
             )}
           </div>
@@ -408,36 +401,28 @@ export default function CascadeGame() {
 
         {phase === 'paused' && (
           <div
-            className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center gap-4 rounded-lg px-4 py-8"
-            style={{ background: 'rgba(8,8,16,0.9)' }}
+            className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center gap-4 px-4 py-8 bg-card-bg/95"
             role="dialog"
             aria-label="Paused"
           >
-            <p className={`text-lg tracking-[0.3em] ${retroFont.className}`} style={{ color: '#00ff88' }}>
-              PAUSED
-            </p>
+            <p className={`text-base tracking-[0.3em] text-melon-green ${retroFont.className}`}>PAUSED</p>
+            <p className="text-sm text-foreground/80">Take as long as you like.</p>
             <button
               type="button"
               onClick={resume}
               autoFocus
-              className={`text-xs tracking-[0.15em] border px-5 py-3 rounded cursor-pointer ${retroFont.className}`}
-              style={{ color: '#00ff88', borderColor: 'rgba(0,255,136,0.4)', background: 'rgba(0,255,136,0.06)' }}
+              className={`text-xs tracking-[0.15em] px-5 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${retroFont.className}`}
             >
               RESUME
             </button>
             <button
               type="button"
               onClick={handlePlayAgain}
-              className="text-[11px] tracking-[0.15em] underline cursor-pointer"
-              style={{ color: '#8899aa', fontFamily: 'monospace' }}
+              className="text-sm underline cursor-pointer text-foreground/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded px-1"
             >
-              START OVER
+              Start over
             </button>
-            {!isTouch && (
-              <p className="text-[11px]" style={{ color: '#8899aa', fontFamily: 'monospace' }}>
-                Esc or P to pause and resume
-              </p>
-            )}
+            {!isTouch && <p className="text-xs text-foreground/70">Esc or P to pause and resume</p>}
           </div>
         )}
 
@@ -464,10 +449,12 @@ export default function CascadeGame() {
             statLabel={finale.statLabel}
             gameName={gameName}
             tagline={tagline}
+            closingLine={finale.closingLine}
             mutations={allMutations}
             totalTime={finale.totalTime}
             onPlayAgain={handlePlayAgain}
             retroFont={retroFont.className}
+            reducedMotion={reducedMotion}
           />
         )}
       </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import type { MutationRecord } from '../engine/types'
 import { isControlTarget } from './controls'
+import { MechanicIcon } from './MechanicIcon'
 
 interface FinaleScreenProps {
   score: number
@@ -11,27 +12,15 @@ interface FinaleScreenProps {
   /** Empty until the name has been chosen. */
   gameName: string
   tagline: string
+  closingLine: string
   mutations: MutationRecord[]
   totalTime: number
   onPlayAgain: () => void
   retroFont: string
+  reducedMotion: boolean
 }
 
-const CATEGORY_ICONS: Record<string, string> = {
-  arrow_keys: '🕹️',
-  mouse_follow: '🖱️',
-  stars: '⭐',
-  pulse_gems: '💎',
-  chasers: '👾',
-  sweepers: '⚡',
-  blaster: '🔫',
-  phase_dash: '💨',
-  combo_chain: '🔥',
-  gravity_well: '🧲',
-  score_rush: '🚀',
-}
-
-const LABEL_STYLE = { color: '#8899aa', fontFamily: 'monospace' } as const
+const REVEAL_MS = [300, 900, 1600]
 
 export default function FinaleScreen({
   score,
@@ -39,19 +28,17 @@ export default function FinaleScreen({
   statLabel,
   gameName,
   tagline,
+  closingLine,
   mutations,
   totalTime,
   onPlayAgain,
   retroFont,
+  reducedMotion,
 }: FinaleScreenProps) {
   const [phase, setPhase] = useState(0)
 
   useEffect(() => {
-    const timers = [
-      setTimeout(() => setPhase(1), 400),
-      setTimeout(() => setPhase(2), 1200),
-      setTimeout(() => setPhase(3), 2200),
-    ]
+    const timers = REVEAL_MS.map((ms, i) => setTimeout(() => setPhase(i + 1), ms))
     return () => timers.forEach(clearTimeout)
   }, [])
 
@@ -70,115 +57,76 @@ export default function FinaleScreen({
 
   const minutes = Math.floor(totalTime / 60)
   const seconds = Math.floor(totalTime % 60)
+  const fade = reducedMotion ? '' : 'animate-fade'
 
   return (
     <div
-      className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center rounded-lg px-4 py-8"
-      style={{ background: 'rgba(8,8,16,0.97)' }}
+      className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center px-4 py-8 bg-card-bg"
       role="dialog"
-      aria-label={gameName ? `Game complete. Your game: ${gameName}. Score: ${score}` : `Game complete. Score: ${score}`}
+      aria-label={gameName ? `Your game is finished. It is called ${gameName}.` : 'Your game is finished.'}
     >
       <div className="text-center w-full max-w-md">
         {phase >= 1 && (
-          <p
-            className="text-[11px] tracking-[0.3em] mb-4"
-            style={{ color: '#d977d9', fontFamily: 'monospace' }}
-          >
-            YOUR GAME IS COMPLETE
+          <p className={`text-xs tracking-[0.2em] uppercase mb-3 text-foreground/70 ${fade}`}>
+            Your game is finished. It is called
           </p>
         )}
 
         {phase >= 1 && gameName && (
-          <>
-            <h2
-              className={`text-lg sm:text-2xl leading-snug mb-2 break-words ${retroFont}`}
-              style={{
-                color: '#00ff88',
-                textShadow: '0 0 20px rgba(0,255,136,0.5)',
-              }}
-            >
+          <div className={fade}>
+            <h2 className={`text-base sm:text-2xl leading-relaxed mb-2 break-words text-melon-green ${retroFont}`}>
               {gameName}
             </h2>
-            {tagline && (
-              <p className="text-xs mb-6 italic" style={LABEL_STYLE}>
-                {tagline}
-              </p>
-            )}
-          </>
+            {tagline && <p className="text-sm italic text-foreground/80 break-words">{tagline}</p>}
+          </div>
         )}
 
         {phase >= 2 && (
-          <>
-            <div
-              className="grid grid-cols-3 gap-3 mb-6 py-3 px-2 rounded"
-              style={{ background: 'rgba(255,255,255,0.04)' }}
-            >
-              <div>
-                <p className={`text-sm sm:text-lg ${retroFont}`} style={{ color: '#ffd700' }}>
-                  {score}
-                </p>
-                <p className="text-[10px] mt-1" style={LABEL_STYLE}>SCORE</p>
-              </div>
-              <div>
-                <p className={`text-sm sm:text-lg ${retroFont}`} style={{ color: '#ff66ff' }}>
-                  {statValue}
-                </p>
-                <p className="text-[10px] mt-1" style={LABEL_STYLE}>{statLabel}</p>
-              </div>
-              <div>
-                <p className={`text-sm sm:text-lg ${retroFont}`} style={{ color: '#00ccff' }}>
-                  {minutes}:{seconds.toString().padStart(2, '0')}
-                </p>
-                <p className="text-[10px] mt-1" style={LABEL_STYLE}>TIME</p>
-              </div>
-            </div>
+          <div className={fade}>
+            <p className="text-sm sm:text-base text-foreground mt-5 mb-5 leading-relaxed">{closingLine}</p>
 
-            <div className="text-left mb-6">
-              <p className="text-[10px] tracking-[0.2em] mb-2" style={LABEL_STYLE}>
-                EVOLUTION LOG
-              </p>
+            <dl className="grid grid-cols-3 gap-2 mb-5 py-3 px-2 rounded-lg bg-background border border-card-border">
+              {[
+                ['light', String(score)],
+                [statLabel, String(statValue)],
+                ['time', `${minutes}:${seconds.toString().padStart(2, '0')}`],
+              ].map(([label, value]) => (
+                <div key={label} className="flex flex-col-reverse">
+                  <dt className="text-xs mt-0.5 text-foreground/70">{label}</dt>
+                  <dd className="text-lg font-semibold text-foreground tabular-nums">{value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <div className="text-left mb-5">
+              <p className="text-xs tracking-[0.15em] uppercase mb-2 text-foreground/70">How it grew</p>
               <ol>
                 {mutations.map((m, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center gap-2 py-1.5 border-b"
-                    style={{ borderColor: 'rgba(255,255,255,0.06)' }}
-                  >
-                    <span className="text-sm w-6 text-center" aria-hidden="true">
-                      {CATEGORY_ICONS[m.id] || '🔧'}
+                  <li key={i} className="flex items-center gap-3 py-1.5 border-b border-card-border last:border-b-0">
+                    <span className="w-5 flex justify-center text-melon-green shrink-0">
+                      <MechanicIcon id={m.id} />
                     </span>
-                    <span
-                      className="text-[11px] flex-1"
-                      style={{ color: '#aabbcc', fontFamily: 'monospace' }}
-                    >
-                      {m.title}
-                    </span>
+                    <span className="text-sm text-foreground/85 flex-1 break-words">{m.title}</span>
                   </li>
                 ))}
               </ol>
             </div>
-          </>
+          </div>
         )}
 
         {canPlayAgain && (
-          <>
+          <div className={fade}>
             <button
               type="button"
               onClick={onPlayAgain}
-              className={`text-sm tracking-[0.15em] border px-6 py-3 rounded cursor-pointer transition-transform hover:scale-105 ${retroFont}`}
-              style={{
-                color: '#00ff88',
-                borderColor: 'rgba(0,255,136,0.4)',
-                background: 'rgba(0,255,136,0.06)',
-                textShadow: '0 0 10px rgba(0,255,136,0.3)',
-              }}
+              className={`text-xs sm:text-sm tracking-[0.15em] px-6 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${retroFont}`}
             >
               PLAY AGAIN
             </button>
-            <p className="text-[11px] mt-5" style={LABEL_STYLE}>
+            <p className="text-xs mt-4 text-foreground/70">
               No one else will ever play this exact game.
             </p>
-          </>
+          </div>
         )}
       </div>
     </div>
