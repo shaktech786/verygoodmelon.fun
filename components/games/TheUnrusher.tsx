@@ -4,105 +4,97 @@ import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils/cn'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { buzz, playTones, useCanBuzz, useSoundChosen, wakeTones, type Tone } from '@/components/games/gentleCues'
 
-type TaskId = 'breathe' | 'watch' | 'listen' | 'reflect' | 'appreciate'
+type MomentId = 'watch' | 'listen' | 'look' | 'reflect' | 'appreciate'
 
-interface Task {
-  id: TaskId
+interface Moment {
+  id: MomentId
   title: string
   description: string
   duration: number // seconds
-  reward: string
-  guidance: string[] // Rotating guidance text during task
+  durationLabel: string
+  guidance: string[] // shown in turn as the moment unfolds
 }
 
-const TASKS: Task[] = [
-  {
-    id: 'breathe',
-    title: 'Just Breathe',
-    description: 'Follow the circle. Breathe with it.',
-    duration: 60,
-    reward: 'Inhale peace. Exhale worry.',
-    guidance: [
-      'Breathe in slowly...',
-      'Hold gently...',
-      'Release everything...',
-      'Feel the stillness...'
-    ]
-  },
+const MOMENTS: Moment[] = [
   {
     id: 'watch',
     title: 'Watch the Seeds',
-    description: 'Watch watermelon seeds drift slowly.',
-    duration: 45,
-    reward: 'Some things cannot be hurried.',
+    description: 'They settle only while you stay still.',
+    duration: 40,
+    durationLabel: '40 still seconds',
     guidance: [
       'Let your eyes soften...',
-      'Follow without forcing...',
-      'Time moves differently here...',
-      'No destination needed...'
-    ]
+      'Follow one seed down...',
+      'No need to help them...',
+      'Nearly all of them now...',
+    ],
   },
   {
     id: 'listen',
     title: 'Listen to Silence',
-    description: 'Close your eyes. What do you hear?',
+    description: 'Listen to what is already here.',
     duration: 60,
-    reward: 'In stillness, we find clarity.',
+    durationLabel: '60 seconds',
     guidance: [
-      'Close your eyes gently...',
-      'What sounds surround you?',
-      'The silence has layers...',
-      'Be here, nowhere else...'
-    ]
+      'Let the sounds come to you...',
+      'What is the farthest sound?',
+      'And the nearest one?',
+      'Is there a sound under the others?',
+    ],
+  },
+  {
+    id: 'look',
+    title: 'Look at One Thing',
+    description: 'Give one thing near you a whole minute.',
+    duration: 60,
+    durationLabel: '60 seconds',
+    guidance: [
+      'Its colours, then its shadow...',
+      'Where is it worn, or smooth?',
+      'How does the light sit on it?',
+      'What would a glance have missed?',
+    ],
   },
   {
     id: 'reflect',
     title: 'Notice This Moment',
-    description: 'What do you feel right now?',
+    description: 'How are you, right now?',
     duration: 45,
-    reward: 'This moment is all we truly have.',
+    durationLabel: '45 seconds',
     guidance: [
-      'How does your body feel?',
-      'What emotions are present?',
-      'This is enough...',
-      'You are here, now...'
-    ]
+      'Start with your shoulders...',
+      'Then your hands and your jaw...',
+      'Then the weather of your thoughts...',
+      'Whatever is here is allowed.',
+    ],
   },
   {
     id: 'appreciate',
     title: 'Count Three Things',
     description: 'Three things you appreciate today.',
     duration: 50,
-    reward: 'Gratitude slows time beautifully.',
+    durationLabel: '50 seconds',
     guidance: [
       'Think of something small...',
       'Something you overlooked...',
       'Someone who matters...',
-      'A moment of grace...'
-    ]
-  }
+      'A moment of grace...',
+    ],
+  },
 ]
 
-type BreathPhase = 'inhale' | 'hold' | 'exhale' | 'pause'
-
-const BREATH_PHASES: { phase: BreathPhase; endsAtMs: number }[] = [
-  { phase: 'inhale', endsAtMs: 4000 },
-  { phase: 'hold', endsAtMs: 11000 },
-  { phase: 'exhale', endsAtMs: 19000 },
-  { phase: 'pause', endsAtMs: 20000 }
-]
-const BREATH_CYCLE_MS = 20000
 const TICK_MS = 200
-const BREATH_WORDS: Record<BreathPhase, string> = { inhale: 'Inhale', hold: 'Hold', exhale: 'Exhale', pause: 'Rest' }
 
-function breathPhaseIndexAt(elapsedMs: number): number {
-  const inCycle = elapsedMs % BREATH_CYCLE_MS
-  return BREATH_PHASES.findIndex(({ endsAtMs }) => inCycle < endsAtMs)
-}
+// Watch the Seeds counts only still time. A little movement right after the tap that
+// began it is just the hand leaving the button, so it does not stir anything.
+const SEED_COUNT = 8
+const STIR_GRACE_MS = 1500
+const MIN_POINTER_TRAVEL_PX = 3
 
 // Negative delays start each seed part-way through its 8s drift, so the field is never empty.
-const FLOATING_SEEDS = Array.from({ length: 8 }, (_, i) => {
+const FLOATING_SEEDS = Array.from({ length: SEED_COUNT }, (_, i) => {
   const seededRandom = (seed: number) => {
     const x = Math.sin(seed * 9301 + 49297) * 233280
     return x - Math.floor(x)
@@ -111,48 +103,70 @@ const FLOATING_SEEDS = Array.from({ length: 8 }, (_, i) => {
     id: i,
     x: seededRandom(i * 2) * 80 + 10,
     delay: -(i + seededRandom(i * 2 + 1)),
-    restingTop: seededRandom(i * 2 + 7) * 70 + 10
+    restingTop: seededRandom(i * 2 + 7) * 55 + 5,
+    bedX: 12 + i * 10.5 + seededRandom(i * 2 + 3) * 4,
+    bedLift: seededRandom(i * 2 + 5) * 10,
   }
 })
+
+const CHIME: Tone[] = [
+  { hz: 523.25, seconds: 2.6 },
+  { hz: 659.25, at: 0.35, seconds: 2.6 },
+  { hz: 783.99, at: 0.7, seconds: 3 },
+]
+const CHIME_LOUDNESS = 0.06
+
+const HEARD = ['Traffic', 'Birds', 'Wind or rain', 'Voices', 'A hum or fan', 'My own breath', 'Almost nothing'] as const
+type Heard = (typeof HEARD)[number]
+
+const BODY_WORDS = ['Tense', 'Tired', 'Heavy', 'Restless', 'Comfortable', 'Warm'] as const
+const MIND_WORDS = ['Busy', 'Worried', 'Flat', 'Quiet', 'Content', 'Curious'] as const
+const UNEASY_WORDS: string[] = ['Tense', 'Tired', 'Heavy', 'Restless', 'Busy', 'Worried', 'Flat']
+
+const THING_LABELS = ['First thing', 'Second thing', 'Third thing']
 
 type View = 'menu' | 'task' | 'reward'
 
 const STORAGE_KEY = 'verygoodmelon:unrusher-today'
-const THING_LABELS = ['First thing', 'Second thing', 'Third thing']
 
 function todayKey(): string {
   const d = new Date()
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
 }
 
-// The menu promises moments "savored today", so the count survives a reload but not midnight.
-function loadToday(): string[] {
+// The menu shows which moments were savored today, so the list survives a reload but not midnight.
+function loadToday(): MomentId[] {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as { day: string; completed: string[] } | null
-    return saved?.day === todayKey() && Array.isArray(saved.completed) ? saved.completed : []
+    if (saved?.day !== todayKey() || !Array.isArray(saved.completed)) return []
+    return MOMENTS.map((m) => m.id).filter((id) => saved.completed.includes(id))
   } catch {
     return []
   }
 }
 
-function saveToday(completed: string[]) {
+function saveToday(completed: MomentId[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ day: todayKey(), completed }))
   } catch {
-    // Without storage the count simply lasts for this visit.
+    // Without storage the list simply lasts for this visit.
   }
 }
 
-function MomentIcon({ id, className }: { id: TaskId; className?: string }) {
+function joinNaturally(words: string[]): string {
+  if (words.length <= 1) return words.join('')
+  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
+}
+
+function timesWord(n: number): string {
+  if (n === 1) return 'once'
+  if (n === 2) return 'twice'
+  return `${n} times`
+}
+
+function MomentIcon({ id, className }: { id: MomentId; className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden="true" focusable="false">
-      {id === 'breathe' && (
-        <>
-          <circle cx="16" cy="16" r="13" className="fill-none stroke-success" strokeWidth="2" />
-          <circle cx="16" cy="16" r="8" className="fill-success/30 stroke-success" strokeWidth="1.5" />
-          <circle cx="16" cy="16" r="3" className="fill-melon-green" />
-        </>
-      )}
       {id === 'watch' && (
         <>
           <path d="M3 12 A13 13 0 0 0 29 12 Z" className="fill-melon-green" />
@@ -169,6 +183,13 @@ function MomentIcon({ id, className }: { id: TaskId; className?: string }) {
           <path d="M15 10 A8 8 0 0 1 15 22" className="fill-none stroke-accent" strokeWidth="2" strokeLinecap="round" />
           <path d="M20 6 A13 13 0 0 1 20 26" className="fill-none stroke-accent/60" strokeWidth="2" strokeLinecap="round" />
           <path d="M25 3 A17 17 0 0 1 25 29" className="fill-none stroke-accent/30" strokeWidth="2" strokeLinecap="round" />
+        </>
+      )}
+      {id === 'look' && (
+        <>
+          <circle cx="16" cy="16" r="13.5" className="fill-none stroke-warm" strokeWidth="1.5" strokeDasharray="2.5 3.5" strokeLinecap="round" />
+          <ellipse cx="16" cy="18" rx="8.5" ry="6.5" className="fill-melon-green" />
+          <ellipse cx="13" cy="15.5" rx="3" ry="1.5" className="fill-success/70" />
         </>
       )}
       {id === 'reflect' && (
@@ -189,63 +210,117 @@ function MomentIcon({ id, className }: { id: TaskId; className?: string }) {
   )
 }
 
+function WordChip({ label, pressed, onToggle }: { label: string; pressed: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onToggle}
+      className={cn(
+        'px-3 py-1.5 rounded-full text-sm border transition-colors duration-75',
+        'focus:outline-none focus:ring-2 focus:ring-accent',
+        pressed ? 'border-accent bg-accent-soft text-foreground' : 'border-card-border text-foreground/75 hover:border-accent/50',
+      )}
+    >
+      {label}
+    </button>
+  )
+}
+
+function toggleIn<T>(list: T[], item: T): T[] {
+  return list.includes(item) ? list.filter((x) => x !== item) : [...list, item]
+}
+
 const RING_RADIUS = 26
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS
 
 export default function TheUnrusher() {
-  const [currentTask, setCurrentTask] = useState<Task | null>(null)
+  const [currentTask, setCurrentTask] = useState<Moment | null>(null)
   const [elapsedMs, setElapsedMs] = useState(0)
   const [isActive, setIsActive] = useState(false)
-  const [completed, setCompleted] = useState<string[]>([])
+  const [completed, setCompleted] = useState<MomentId[]>([])
   const [showReward, setShowReward] = useState(false)
   const [welcomeBack, setWelcomeBack] = useState(false)
+  const [stirred, setStirred] = useState(false)
+  const [stirCount, setStirCount] = useState(0)
   const [things, setThings] = useState(['', '', ''])
+  const [lookedAt, setLookedAt] = useState('')
+  const [feelings, setFeelings] = useState<string[]>([])
+  const [heard, setHeard] = useState<Heard[]>([])
+  const [buzzAtEnd, setBuzzAtEnd] = useState(false)
+  const countedMsRef = useRef(0)
   const startedAtRef = useRef(0)
+  const lastTickRef = useRef(0)
+  const lastStirRef = useRef(0)
+  const stirsRef = useRef(0)
+  const buzzAtEndRef = useRef(false)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const previousViewRef = useRef<View>('menu')
   const reducedMotion = useReducedMotion()
+  const soundOn = useSoundChosen()
+  const canBuzz = useCanBuzz()
 
   useEffect(() => {
     setCompleted(loadToday())
   }, [])
 
+  useEffect(() => {
+    buzzAtEndRef.current = buzzAtEnd
+  }, [buzzAtEnd])
+
   const view: View = currentTask ? (showReward ? 'reward' : 'task') : 'menu'
 
-  // Everything on screen is derived from one wall-clock reading, so the countdown,
-  // the breathing circle and the guidance cannot drift apart. A moment only counts
-  // while it is on screen: time spent in another tab is not time spent slowing down.
+  // Time is counted in small slices of wall-clock time, and a slice only counts while
+  // the moment is on screen (and, for the seeds, while nothing has moved). Everything
+  // on screen derives from that one count, so the ring, the clock and the guidance agree.
   useEffect(() => {
     if (!isActive || !currentTask) return
+    const needsStillness = currentTask.id === 'watch'
 
-    let hiddenSince: number | null = document.visibilityState === 'hidden' ? Date.now() : null
+    let hidden = document.visibilityState === 'hidden'
+    lastTickRef.current = Date.now()
+
     const stop = () => {
       clearInterval(interval)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
     const tick = () => {
-      if (hiddenSince !== null) return
-      const elapsed = Date.now() - startedAtRef.current
-      if (elapsed >= currentTask.duration * 1000) {
+      const now = Date.now()
+      if (hidden) {
+        lastTickRef.current = now
+        return
+      }
+      const countFrom = needsStillness ? Math.max(lastTickRef.current, lastStirRef.current + STIR_GRACE_MS) : lastTickRef.current
+      countedMsRef.current += Math.max(0, now - countFrom)
+      lastTickRef.current = now
+      if (needsStillness) setStirred(now < lastStirRef.current + STIR_GRACE_MS)
+
+      if (countedMsRef.current >= currentTask.duration * 1000) {
         stop()
         setIsActive(false)
         setShowReward(true)
+        setStirCount(stirsRef.current)
         setCompleted((prev) => {
           const next = prev.includes(currentTask.id) ? prev : [...prev, currentTask.id]
           saveToday(next)
           return next
         })
+        if (currentTask.id === 'listen') {
+          playTones(CHIME, CHIME_LOUDNESS)
+          if (buzzAtEndRef.current) buzz([80, 120, 80])
+        }
         return
       }
-      setElapsedMs(elapsed)
+      setElapsedMs(countedMsRef.current)
     }
     const onVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        hiddenSince ??= Date.now()
+        hidden = true
         return
       }
-      if (hiddenSince !== null) {
-        startedAtRef.current += Date.now() - hiddenSince
-        hiddenSince = null
+      if (hidden) {
+        hidden = false
+        lastTickRef.current = Date.now()
         setWelcomeBack(true)
       }
       tick()
@@ -254,6 +329,29 @@ export default function TheUnrusher() {
     const interval = setInterval(tick, TICK_MS)
     document.addEventListener('visibilitychange', onVisibilityChange)
     return stop
+  }, [isActive, currentTask])
+
+  // Any touch, scroll, key or real pointer movement stirs the seeds. Stirring never
+  // undoes anything: the seeds simply wait until the player is still again.
+  useEffect(() => {
+    if (!isActive || currentTask?.id !== 'watch') return
+    const stir = () => {
+      const now = Date.now()
+      if (now < startedAtRef.current + STIR_GRACE_MS) return
+      if (now >= lastStirRef.current + STIR_GRACE_MS) stirsRef.current += 1
+      lastStirRef.current = now
+      setStirred(true)
+    }
+    const onPointerMove = (e: PointerEvent) => {
+      if (Math.hypot(e.movementX, e.movementY) >= MIN_POINTER_TRAVEL_PX) stir()
+    }
+    const events = ['pointerdown', 'wheel', 'scroll', 'keydown', 'touchstart'] as const
+    for (const name of events) window.addEventListener(name, stir, { passive: true })
+    window.addEventListener('pointermove', onPointerMove, { passive: true })
+    return () => {
+      for (const name of events) window.removeEventListener(name, stir)
+      window.removeEventListener('pointermove', onPointerMove)
+    }
   }, [isActive, currentTask])
 
   // Someone listening with their eyes closed should not come back to a locked
@@ -288,14 +386,24 @@ export default function TheUnrusher() {
     headingRef.current?.focus()
   }, [view])
 
-  const startTask = (task: Task) => {
-    startedAtRef.current = Date.now()
+  const startTask = (task: Moment) => {
+    const now = Date.now()
+    startedAtRef.current = now
+    countedMsRef.current = 0
+    lastStirRef.current = now - STIR_GRACE_MS
+    stirsRef.current = 0
+    wakeTones()
     setCurrentTask(task)
     setElapsedMs(0)
     setIsActive(true)
     setShowReward(false)
     setWelcomeBack(false)
+    setStirred(false)
+    setStirCount(0)
     setThings(['', '', ''])
+    setLookedAt('')
+    setFeelings([])
+    setHeard([])
   }
 
   const resetTask = () => {
@@ -306,51 +414,26 @@ export default function TheUnrusher() {
     setWelcomeBack(false)
   }
 
-  // Render active task
   if (currentTask) {
     const timeRemaining = Math.max(0, currentTask.duration - Math.floor(elapsedMs / 1000))
     const progress = Math.min(1, elapsedMs / (currentTask.duration * 1000))
-    const breathPhaseIndex = breathPhaseIndexAt(elapsedMs)
-    const breathPhase = BREATH_PHASES[breathPhaseIndex].phase
-    const lungsFull = elapsedMs > 0 && (breathPhase === 'inhale' || breathPhase === 'hold')
-    const guidanceIndex = currentTask.id === 'breathe'
-      ? breathPhaseIndex
-      : Math.min(currentTask.guidance.length - 1, Math.floor(progress * currentTask.guidance.length))
+    const guidanceIndex = Math.min(currentTask.guidance.length - 1, Math.floor(progress * currentTask.guidance.length))
+    const settledSeeds = Math.min(SEED_COUNT, Math.floor(progress * SEED_COUNT))
     const notedThings = things.map((t) => t.trim()).filter(Boolean)
+    const lookedAtName = lookedAt.trim()
+
+    const listenInstruction = soundOn
+      ? 'Close your eyes if you like. A soft chime will mark the end.'
+      : buzzAtEnd
+        ? 'Close your eyes if you like. A gentle buzz will mark the end.'
+        : 'Soften your gaze and let it rest low. The screen will change when the minute is over.'
 
     return (
       <div className="max-w-2xl mx-auto">
         <div className="bg-card-bg border border-card-border rounded-lg px-6 py-10 sm:p-12 text-center min-h-[480px] flex flex-col justify-center">
           {!showReward ? (
             <>
-              {currentTask.id === 'breathe' && (
-                <div className="mb-6 flex h-52 sm:h-64 items-center justify-center">
-                  <div
-                    className={cn(
-                      'relative rounded-full flex items-center justify-center',
-                      reducedMotion
-                        ? 'w-40 h-40'
-                        : cn(
-                          'transition-all ease-in-out',
-                          lungsFull ? 'w-48 h-48 sm:w-64 sm:h-64' : 'w-24 h-24 sm:w-32 sm:h-32',
-                          breathPhase === 'inhale' && 'duration-[4000ms]',
-                          breathPhase === 'exhale' && 'duration-[8000ms]',
-                          (breathPhase === 'hold' || breathPhase === 'pause') && 'duration-100',
-                        ),
-                    )}
-                    role="img"
-                    aria-label={`Breathing circle - ${breathPhase}`}
-                  >
-                    <div className="absolute inset-0 rounded-full bg-success/30 border-4 border-success" />
-                    <div className="absolute inset-[12%] rounded-full bg-accent-soft" />
-                    <span className="relative text-foreground text-base font-medium" aria-hidden="true">
-                      {BREATH_WORDS[breathPhase]}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {(currentTask.id === 'reflect' || currentTask.id === 'appreciate') && (
+              {(currentTask.id === 'reflect' || currentTask.id === 'appreciate' || currentTask.id === 'look') && (
                 <MomentIcon
                   id={currentTask.id}
                   className={cn('w-20 h-20 mx-auto mb-6', !reducedMotion && 'animate-pulse-slow')}
@@ -361,24 +444,49 @@ export default function TheUnrusher() {
                 {currentTask.title}
               </h2>
 
+              {currentTask.id === 'listen' && (
+                <p className="text-base text-foreground/80 mb-3 max-w-md mx-auto">{listenInstruction}</p>
+              )}
+              {currentTask.id === 'watch' && (
+                <p className="text-base text-foreground/80 mb-3 max-w-md mx-auto">
+                  The seeds settle only while you stay still. Moving never undoes anything; they just wait.
+                </p>
+              )}
+
               <p className="text-lg text-foreground/80 mb-6 min-h-8" aria-live="polite">
                 {currentTask.guidance[guidanceIndex]}
               </p>
 
               {currentTask.id === 'watch' && (
-                <div className="relative h-56 mb-6 overflow-hidden rounded-xl bg-gradient-to-b from-transparent to-accent/10" role="img" aria-label={reducedMotion ? 'Watermelon seeds resting' : 'Watermelon seeds floating gently'}>
-                  {FLOATING_SEEDS.map((seed) => (
-                    <div
-                      key={seed.id}
-                      className={`absolute w-3 h-5 bg-foreground/70 rounded-full shadow-lg ${reducedMotion ? '' : 'animate-float-seed'}`}
-                      style={{
-                        left: `${seed.x}%`,
-                        animationDelay: `${seed.delay}s`,
-                        top: reducedMotion ? `${seed.restingTop}%` : '-20px'
-                      }}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div
+                    className="relative h-56 mb-3 overflow-hidden rounded-xl bg-gradient-to-b from-transparent to-accent/10"
+                    role="img"
+                    aria-label={`${settledSeeds} of ${SEED_COUNT} seeds settled`}
+                  >
+                    {FLOATING_SEEDS.map((seed) => {
+                      const settled = seed.id < settledSeeds
+                      return (
+                        <div
+                          key={seed.id}
+                          data-settled={settled}
+                          className={cn(
+                            'absolute w-3 h-5 bg-foreground/70 rounded-full shadow-lg',
+                            settled ? !reducedMotion && 'animate-fade' : !reducedMotion && 'animate-float-seed',
+                          )}
+                          style={
+                            settled
+                              ? { left: `${seed.bedX}%`, bottom: `${8 + seed.bedLift}px`, rotate: `${seed.bedLift * 6 - 30}deg` }
+                              : { left: `${seed.x}%`, animationDelay: `${seed.delay}s`, top: reducedMotion ? `${seed.restingTop}%` : '-20px' }
+                          }
+                        />
+                      )
+                    })}
+                  </div>
+                  <p className="text-sm text-foreground/70 mb-4 min-h-5">
+                    {stirred ? 'The seeds wait while you move.' : ''}
+                  </p>
+                </>
               )}
 
               {currentTask.id === 'listen' && (
@@ -394,9 +502,51 @@ export default function TheUnrusher() {
                 </div>
               )}
 
+              {currentTask.id === 'listen' && canBuzz && !soundOn && (
+                <div className="mb-6">
+                  <WordChip label="Buzz when it ends" pressed={buzzAtEnd} onToggle={() => setBuzzAtEnd((on) => !on)} />
+                </div>
+              )}
+
+              {currentTask.id === 'look' && (
+                <label className="mb-6 mx-auto w-full max-w-sm block text-left">
+                  <span className="block text-sm text-foreground/75 text-center mb-2">
+                    What are you looking at? Naming it is optional.
+                  </span>
+                  <input
+                    type="text"
+                    value={lookedAt}
+                    maxLength={40}
+                    onChange={(e) => setLookedAt(e.target.value)}
+                    className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                </label>
+              )}
+
+              {currentTask.id === 'reflect' && (
+                <div className="mb-6 space-y-3">
+                  <p className="text-sm text-foreground/75">Tap any words that fit. None is fine too.</p>
+                  {[
+                    { label: 'In your body', words: BODY_WORDS },
+                    { label: 'In your mind', words: MIND_WORDS },
+                  ].map((group) => (
+                    <div key={group.label} role="group" aria-label={group.label} className="flex flex-wrap justify-center gap-2">
+                      {group.words.map((word) => (
+                        <WordChip
+                          key={word}
+                          label={word}
+                          pressed={feelings.includes(word)}
+                          onToggle={() => setFeelings((prev) => toggleIn(prev, word))}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {currentTask.id === 'appreciate' && (
                 <div className="mb-6 mx-auto w-full max-w-sm space-y-2 text-left">
-                  <p className="text-sm text-foreground/70 text-center mb-3">
+                  <p className="text-sm text-foreground/75 text-center mb-3">
                     Write them down if you like. They stay on this screen only.
                   </p>
                   {THING_LABELS.map((label, i) => (
@@ -455,37 +605,95 @@ export default function TheUnrusher() {
               </div>
             </>
           ) : (
-            <div className="animate-fade" role="status">
+            <div className="animate-fade">
               <MomentIcon id={currentTask.id} className="w-16 h-16 mx-auto mb-6" />
               <h2 ref={headingRef} tabIndex={-1} className="text-3xl font-semibold mb-4 text-foreground focus:outline-none">
                 Moment savored
               </h2>
-              <p className="text-xl italic text-foreground/80 mb-6 max-w-md mx-auto">
-                &ldquo;{currentTask.reward}&rdquo;
-              </p>
 
-              {currentTask.id === 'appreciate' && notedThings.length > 0 && (
+              {currentTask.id === 'watch' && (
+                <p className="text-lg text-foreground/80 mb-6 max-w-md mx-auto">
+                  {stirCount === 0
+                    ? 'All eight seeds settled, and you did not move once.'
+                    : `All eight seeds settled. You stirred them ${timesWord(stirCount)}, and ${stirCount === 1 ? 'they' : 'each time they'} waited for you.`}
+                </p>
+              )}
+
+              {currentTask.id === 'listen' && (
                 <div className="mb-6">
-                  <p className="text-sm text-foreground/70 mb-2">Today you noticed</p>
-                  <ul className="space-y-1 text-foreground">
-                    {notedThings.map((thing, i) => (
-                      <li key={i}>{thing}</li>
-                    ))}
-                  </ul>
+                  <div role="group" aria-label="What did you hear?" className="max-w-md mx-auto">
+                    <p className="text-base text-foreground mb-3" aria-hidden="true">What did you hear?</p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {HEARD.map((sound) => (
+                        <WordChip
+                          key={sound}
+                          label={sound}
+                          pressed={heard.includes(sound)}
+                          onToggle={() => setHeard((prev) => {
+                            if (sound === 'Almost nothing') return prev.includes(sound) ? [] : [sound]
+                            return toggleIn(prev.filter((s) => s !== 'Almost nothing'), sound)
+                          })}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="mt-4 min-h-14 text-lg text-foreground/80 max-w-md mx-auto" aria-live="polite">
+                    {heard.length === 0
+                      ? ''
+                      : heard[0] === 'Almost nothing'
+                        ? 'Almost nothing. That kind of quiet is rarer than it sounds.'
+                        : `You heard ${joinNaturally(heard.map((s) => (s === 'My own breath' ? 'your own breath' : s.toLowerCase())))}. Most of the day, they go unheard.`}
+                  </p>
                 </div>
+              )}
+
+              {currentTask.id === 'look' && (
+                <p className="text-lg text-foreground/80 mb-6 max-w-md mx-auto">
+                  {lookedAtName ? (
+                    <>You gave <strong className="font-semibold text-foreground">{lookedAtName}</strong> a whole minute. Most things get a glance.</>
+                  ) : (
+                    'You gave one thing a whole minute. Most things get a glance.'
+                  )}
+                </p>
+              )}
+
+              {currentTask.id === 'reflect' && (
+                <p className="text-lg text-foreground/80 mb-6 max-w-md mx-auto">
+                  {feelings.length === 0
+                    ? 'You stayed with this moment for 45 seconds without needing to name it. That counts.'
+                    : `Right now: ${joinNaturally(feelings.map((w) => w.toLowerCase()))}. ${
+                      feelings.some((w) => UNEASY_WORDS.includes(w))
+                        ? 'Naming a feeling often loosens it a little.'
+                        : 'Good to know this is here too.'
+                    }`}
+                </p>
+              )}
+
+              {currentTask.id === 'appreciate' && (
+                notedThings.length > 0 ? (
+                  <div className="mb-6">
+                    <p className="text-sm text-foreground/70 mb-2">Today you noticed</p>
+                    <ul className="space-y-1 text-lg text-foreground">
+                      {notedThings.map((thing, i) => (
+                        <li key={i}>{thing}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-lg text-foreground/80 mb-6 max-w-md mx-auto">
+                    You gave fifty seconds to what is good today, written down or not.
+                  </p>
+                )
               )}
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Button variant="primary" onClick={resetTask} className="w-full sm:w-auto">
-                  Continue Slowing Down
+                  Continue slowing down
                 </Button>
                 <Button variant="secondary" onClick={() => startTask(currentTask)} className="w-full sm:w-auto">
                   Stay a little longer
                 </Button>
               </div>
-              <p className="mt-4 text-sm text-foreground/70">
-                {completed.length} {completed.length === 1 ? 'moment' : 'moments'} savored today
-              </p>
             </div>
           )}
         </div>
@@ -493,9 +701,8 @@ export default function TheUnrusher() {
     )
   }
 
-  const allSavored = TASKS.every((task) => completed.includes(task.id))
+  const savoredToday = MOMENTS.filter((m) => completed.includes(m.id))
 
-  // Render task selection
   return (
     <div className="max-w-4xl mx-auto">
       <div className="text-center mb-6">
@@ -503,12 +710,12 @@ export default function TheUnrusher() {
           Choose a moment to savor
         </h2>
         <p className="text-sm sm:text-base text-foreground/70 max-w-xl mx-auto">
-          An anti-game: nothing to win, nothing to hurry. Slow down for one minute.
+          An anti-game about noticing: nothing to win, nothing to hurry. Pick one small thing and give it your full attention.
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        {TASKS.map((task) => {
+        {MOMENTS.map((task) => {
           const isCompleted = completed.includes(task.id)
           return (
             <button
@@ -519,7 +726,7 @@ export default function TheUnrusher() {
                 'hover:border-accent hover:shadow-md focus:outline-none focus:ring-2 focus:ring-accent',
                 isCompleted ? 'border-success' : 'border-card-border',
               )}
-              aria-label={`${task.title}: ${task.description}. ${task.duration} seconds.${isCompleted ? ' Completed.' : ''}`}
+              aria-label={`${task.title}: ${task.description} ${task.durationLabel}.${isCompleted ? ' Savored today.' : ''}`}
             >
               <div className="flex items-start gap-4">
                 <MomentIcon id={task.id} className="w-10 h-10 flex-shrink-0" />
@@ -527,7 +734,7 @@ export default function TheUnrusher() {
                   <h3 className="text-lg font-semibold mb-1 text-foreground">{task.title}</h3>
                   <p className="text-sm text-foreground/75 mb-2">{task.description}</p>
                   <div className="text-xs text-foreground/70">
-                    {task.duration} seconds
+                    {task.durationLabel}
                     {isCompleted && <span className="ml-2 font-medium text-foreground">· Savored today</span>}
                   </div>
                 </div>
@@ -537,16 +744,17 @@ export default function TheUnrusher() {
         })}
       </div>
 
-      {completed.length > 0 && (
+      {savoredToday.length > 0 && (
         <div className="bg-success/15 border border-success/40 rounded-lg p-4 text-center">
-          <p className="text-sm text-foreground">
-            You&rsquo;ve savored {completed.length} {completed.length === 1 ? 'moment' : 'moments'} today
-          </p>
-          {allSavored && (
-            <p className="text-sm text-foreground/75 mt-2">
-              Every moment here has been savored. Come back whenever the world speeds up.
-            </p>
-          )}
+          <p className="text-sm text-foreground mb-2">Today you spent time with</p>
+          <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2" aria-label="Moments savored today">
+            {savoredToday.map((m) => (
+              <li key={m.id} className="flex items-center gap-2 text-sm text-foreground">
+                <MomentIcon id={m.id} className="w-5 h-5" />
+                {m.title}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

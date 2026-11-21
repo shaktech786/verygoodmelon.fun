@@ -5,7 +5,7 @@ import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 
 export const metadata: Metadata = {
   title: 'The Patient One | VeryGoodMelon.Fun',
-  description: 'An anti-game about slowing down. Choose a one-minute moment that rewards patience and presence. No rush, just calm.'
+  description: 'An anti-game about noticing. Watch seeds settle while you stay still, listen to what is already there, or give one small thing a whole minute.'
 }
 
 export default function TheUnrusherPage() {
@@ -18,7 +18,7 @@ export default function TheUnrusherPage() {
               The Patient One
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl mx-auto">
-              The fastest way to feel calmer is to stop rushing, even for a minute.
+              Most things get a glance. Give one of them a minute.
             </p>
           </div>
 
