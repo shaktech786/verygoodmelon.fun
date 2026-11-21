@@ -13,8 +13,10 @@ jobs:
 
     env:
       GOOGLE_GEMINI_API_KEY: ${{ secrets.GOOGLE_GEMINI_API_KEY || '' }}
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || '' }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || '' }}
+      # Production has a URL whose host may be unreachable; an unresolvable placeholder
+      # reproduces that instead of the different 'not configured' code path.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://ci-placeholder.invalid' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-placeholder-anon-key' }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || '' }}
       ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY || '' }}
 

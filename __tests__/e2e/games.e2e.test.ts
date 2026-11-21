@@ -1,419 +1,108 @@
-import { test, expect } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+import { test, expect, type Page } from '@playwright/test'
+import { SHOWCASE_GAMES } from '@/lib/games/config'
 
 /**
- * E2E Tests for all VeryGoodMelon games
- *
- * Run with: npx playwright test __tests__/e2e/games.e2e.test.ts
- *
- * These tests verify:
- * - Each game page loads without errors
- * - Key interactive elements are present and functional
- * - No console errors occur
- * - Basic accessibility requirements are met
+ * Site-wide smoke checks. Each game's own behaviour is covered by its
+ * dedicated suite (__tests__/e2e/<slug>.e2e.test.ts); this file only checks
+ * what every page must get right, driven from the game config so new games
+ * are covered without editing it.
  */
 
+const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
+
+const SITE_PAGES = ['/', '/games', '/about', '/thoughts', '/privacy', '/terms']
+const GAME_PAGES = SHOWCASE_GAMES.map((game) => ({ path: `/games/${game.slug}`, title: game.title }))
+
+// Failures of services the site deliberately degrades around (database, AI,
+// voice) surface as failed network requests, which are not page bugs.
+function isExpectedConsoleError(text: string): boolean {
+  return (
+    text.includes('Failed to load resource') ||
+    text.includes('favicon') ||
+    text.includes('SpeechSynthesis')
+  )
+}
+
+async function axeViolations(page: Page): Promise<string[]> {
+  // Entrance fades would be measured mid-way as low contrast; endless ambient animations are left running.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => undefined))
+    )
+  )
+  await page.evaluate(AXE_SOURCE)
+  return page.evaluate(async () => {
+    const axe = (window as unknown as {
+      axe: {
+        run: (
+          context: unknown,
+          options: unknown
+        ) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }>
+      }
+    }).axe
+    const result = await axe.run(
+      { exclude: [['nextjs-portal']] },
+      { runOnly: ['wcag2a', 'wcag2aa'] }
+    )
+    return result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)
+  })
+}
+
 test.describe('Homepage', () => {
-  test('loads and displays game cards', async ({ page }) => {
+  test('lists every showcase game once', async ({ page }) => {
     await page.goto('/')
-
-    // Check page title
     await expect(page).toHaveTitle(/VeryGoodMelon/)
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('lighter')
 
-    // Check tagline is visible
-    await expect(page.getByText('Think deeply')).toBeVisible()
-    await expect(page.getByText('lighter')).toBeVisible()
-
-    // Check game cards are rendered (at least 10 games, grows as new games are added)
-    const gameCards = page.locator('a[href^="/games/"]')
-    const count = await gameCards.count()
-    expect(count).toBeGreaterThanOrEqual(10)
-  })
-
-  test('constellation background renders', async ({ page }) => {
-    await page.goto('/')
-
-    // Canvas element should exist (constellation background)
-    const canvas = page.locator('canvas')
-    await expect(canvas).toBeVisible()
-  })
-})
-
-test.describe('The Optimist (Hope Daily)', () => {
-  test('game loads and shows word grid', async ({ page }) => {
-    await page.goto('/games/the-silver-lining')
-
-    // Check page loads
-    await expect(page.getByRole('application', { name: /Hope Daily/i })).toBeVisible()
-
-    // Check keyboard is visible
-    await expect(page.getByRole('button', { name: 'Q' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'ENTER' })).toBeVisible()
-
-    // Check instructions are shown
-    await expect(page.getByText(/Guess the/i)).toBeVisible()
-  })
-
-  test('keyboard input works', async ({ page }) => {
-    await page.goto('/games/the-silver-lining')
-
-    // Wait for game to load
-    await page.waitForSelector('[role="application"]')
-
-    // Type a letter using keyboard
-    await page.keyboard.press('H')
-    await page.keyboard.press('E')
-    await page.keyboard.press('L')
-    await page.keyboard.press('L')
-    await page.keyboard.press('O')
-
-    // Check letters appear in grid (gridcells with letters)
-    const filledCells = page.locator('[role="gridcell"]').filter({ hasText: /[A-Z]/ })
-    await expect(filledCells.first()).toBeVisible()
-  })
-})
-
-test.describe('The Sage (Timeless Minds)', () => {
-  test('game loads with a thinker', async ({ page }) => {
-    await page.goto('/games/ancient-voices')
-
-    // Check the page loads with the game title
-    await expect(page.getByText('Timeless Minds')).toBeVisible({ timeout: 10000 })
-    await expect(page.getByText('Connect with a great thinker')).toBeVisible()
-  })
-
-  test('topic suggestions appear', async ({ page }) => {
-    await page.goto('/games/ancient-voices')
-
-    // Wait for opening message and topic suggestions
-    await page.waitForSelector('text=Try asking about', { timeout: 10000 })
-
-    // Topic suggestion buttons should be visible
-    const topicButtons = page.locator('button').filter({ hasText: /\?$/ })
-    await expect(topicButtons.first()).toBeVisible()
-  })
-
-  test('can send a message', async ({ page }) => {
-    test.skip(!process.env.GOOGLE_GEMINI_API_KEY, 'Requires Gemini API key')
-
-    await page.goto('/games/ancient-voices')
-
-    // Wait for chat to be ready
-    await page.waitForSelector('[placeholder*="Type a message"]')
-
-    // Type and send a message
-    await page.fill('[placeholder*="Type a message"]', 'Hello')
-    await page.click('button[aria-label="Send message"]')
-
-    // User message should appear
-    await expect(page.getByText('Hello')).toBeVisible()
-
-    // Wait for response (loading dots then response)
-    await page.waitForSelector('.animate-bounce', { state: 'hidden', timeout: 30000 })
-  })
-})
-
-test.describe('The Dilemma (Hard Choices)', () => {
-  test('game loads with a dilemma', async ({ page }) => {
-    await page.goto('/games/the-crossroads')
-
-    // Check title
-    await expect(page.getByRole('heading', { name: /The Dilemma/i })).toBeVisible()
-
-    // Check two choice buttons exist
-    const choiceA = page.getByRole('button', { name: /Choice A/i })
-    const choiceB = page.getByRole('button', { name: /Choice B/i })
-    await expect(choiceA).toBeVisible()
-    await expect(choiceB).toBeVisible()
-  })
-
-  test('can vote on a dilemma', async ({ page }) => {
-    // This test requires Supabase for vote persistence
-    test.skip(!process.env.NEXT_PUBLIC_SUPABASE_URL, 'Requires Supabase configuration')
-
-    await page.goto('/games/the-crossroads')
-
-    // Clear any existing votes from localStorage
-    await page.evaluate(() => localStorage.removeItem('hardChoicesVotes'))
-    await page.reload()
-
-    // Click choice A
-    const choiceA = page.getByRole('button', { name: /Choice A/i })
-    await choiceA.click()
-
-    // Results should appear (percentage text)
-    await expect(page.getByText(/% chose this/i).first()).toBeVisible({ timeout: 5000 })
-
-    // Next button should appear
-    await expect(page.getByRole('button', { name: /Next Dilemma/i })).toBeVisible()
-  })
-
-  test('has deeper philosophical dilemmas', async ({ page }) => {
-    await page.goto('/games/the-crossroads')
-
-    // Navigate through to find philosophical content
-    // Check for existential/ethics categories
-    const categoryText = page.locator('text=/existential|ethics|meaning|metaphysics|love|identity/i')
-
-    // Should find at least one philosophical category
-    let found = false
-    for (let i = 0; i < 5; i++) {
-      if (await categoryText.count() > 0) {
-        found = true
-        break
-      }
-      // Vote and go next
-      await page.getByRole('button', { name: /Choice A/i }).click()
-      await page.waitForTimeout(500)
-      const nextBtn = page.getByRole('button', { name: /Next Dilemma/i })
-      if (await nextBtn.isVisible()) {
-        await nextBtn.click()
-      }
+    for (const game of SHOWCASE_GAMES) {
+      await expect(page.locator(`main a[href="/games/${game.slug}"]`)).toHaveCount(1)
     }
-    expect(found).toBe(true)
   })
 })
 
-test.describe('The Patient One (The Unrusher)', () => {
-  test('game loads with task selection', async ({ page }) => {
-    await page.goto('/games/the-long-breath')
-
-    // Check title
-    await expect(page.getByText(/Anti-Game/i)).toBeVisible()
-
-    // Check tasks are visible
-    await expect(page.getByText('Just Breathe')).toBeVisible()
-    await expect(page.getByText('Watch the Seeds')).toBeVisible()
-    await expect(page.getByText('Listen to Silence')).toBeVisible()
-  })
-
-  test('can start a breathing task', async ({ page }) => {
-    await page.goto('/games/the-long-breath')
-
-    // Click on breathing task
-    await page.click('text=Just Breathe')
-
-    // Should show breathing guidance
-    await expect(page.getByText(/Inhale|Exhale|Hold/i)).toBeVisible({ timeout: 5000 })
-
-    // Timer should be visible
-    await expect(page.getByText(/\d:\d{2}/)).toBeVisible()
-
-    // Stop button should be available
-    await expect(page.getByText(/I need to stop/i)).toBeVisible()
-  })
-
-  test('breathing circle visualization works', async ({ page }) => {
-    await page.goto('/games/the-long-breath')
-
-    // Start breathing task
-    await page.click('text=Just Breathe')
-
-    // Check for breathing circle (the animated element)
-    const breathingCircle = page.locator('[aria-label*="Breathing circle"]')
-    await expect(breathingCircle).toBeVisible()
-  })
-})
-
-test.describe('The Final Word (Last Words)', () => {
-  test('game loads with input form', async ({ page }) => {
-    await page.goto('/games/final-breath')
-
-    // Check title and prompt
-    await expect(page.getByText(/final message/i)).toBeVisible()
-
-    // Check textarea exists
-    await expect(page.getByRole('textbox')).toBeVisible()
-
-    // Check submit button
-    await expect(page.getByRole('button', { name: /Leave Your Mark/i })).toBeVisible()
-  })
-
-  test('has rotating reflection prompts', async ({ page }) => {
-    await page.goto('/games/final-breath')
-
-    // Check for reflection prompt area
-    const promptArea = page.locator('text=/💭/')
-    await expect(promptArea).toBeVisible()
-  })
-
-  test('can type in textarea', async ({ page }) => {
-    await page.goto('/games/final-breath')
-
-    const textarea = page.getByRole('textbox')
-    await textarea.fill('Test message')
-
-    // Character count should update (12 chars)
-    await expect(page.getByText(/12\/500/)).toBeVisible()
-  })
-})
-
-test.describe('The Awakening (First Words)', () => {
-  test('game loads with ethereal theme', async ({ page }) => {
-    await page.goto('/games/first-breath')
-
-    // Check title
-    await expect(page.getByRole('heading', { name: /crossed over/i })).toBeVisible()
-
-    // Check textarea exists
-    await expect(page.getByRole('textbox')).toBeVisible()
-
-    // Check for ethereal prompt indicator
-    await expect(page.locator('text=/✦/')).toBeVisible()
-  })
-
-  test('has unique contemplative prompts', async ({ page }) => {
-    await page.goto('/games/first-breath')
-
-    // Check for awakening-specific prompts (different from last-words)
-    const prompts = [
-      'Do you recognize this place',
-      'Who do you hope to see',
-      'What do you feel now',
-      'Is it what you expected'
-    ]
-
-    // At least one prompt should be visible
-    let foundPrompt = false
-    for (const prompt of prompts) {
-      if (await page.locator(`text=${prompt}`).count() > 0) {
-        foundPrompt = true
-        break
-      }
-    }
-
-    // If not immediately visible, wait for rotation
-    if (!foundPrompt) {
-      await page.waitForTimeout(7000) // Wait for prompt rotation
-      for (const prompt of prompts) {
-        if (await page.locator(`text=${prompt}`).count() > 0) {
-          foundPrompt = true
-          break
-        }
-      }
-    }
-
-    expect(foundPrompt).toBe(true)
-  })
-
-  test('submit button has ethereal text', async ({ page }) => {
-    await page.goto('/games/first-breath')
-
-    await expect(page.getByRole('button', { name: /Share Your Vision/i })).toBeVisible()
-  })
-})
-
-test.describe('The Alchemist (Idea Lab)', () => {
-  test('game loads with concepts', async ({ page }) => {
-    await page.goto('/games/idea-lab')
-
-    // Check title
-    await expect(page.getByText('The Idea Lab')).toBeVisible()
-
-    // Dismiss intro
-    await page.getByText('Begin Exploring').click()
-
-    // Base concepts should be visible
-    await expect(page.getByText('Love')).toBeVisible()
-    await expect(page.getByText('Fear')).toBeVisible()
-    await expect(page.getByText('Time')).toBeVisible()
-  })
-
-  test('can select concepts', async ({ page }) => {
-    await page.goto('/games/idea-lab')
-
-    // Dismiss intro
-    await page.getByText('Begin Exploring').click()
-
-    // Click a concept
-    await page.getByText('Love').first().click()
-
-    // Verify concept was clicked without crash - may appear in multiple places (grid + workspace)
-    await expect(page.getByText('Love').first()).toBeVisible()
-  })
-
-  test('can combine concepts', async ({ page }) => {
-    await page.goto('/games/idea-lab')
-
-    // Dismiss intro
-    const beginButton = page.getByText('Begin Exploring')
-    if (await beginButton.isVisible()) {
-      await beginButton.click()
-    }
-
-    // Select two concepts
-    await page.getByText('Love').first().click()
-    await page.getByText('Fear').first().click()
-
-    // Wait for combination result
-    await page.waitForTimeout(3000)
-
-    // Just verify no crash - the combination may or may not show depending on API
-    await page.waitForLoadState('networkidle')
-  })
-})
-
-test.describe('Accessibility', () => {
-  const pages = [
-    { path: '/', name: 'Homepage' },
-    { path: '/games/the-silver-lining', name: 'The Optimist' },
-    { path: '/games/the-crossroads', name: 'The Dilemma' },
-    { path: '/games/the-long-breath', name: 'The Patient One' },
-    { path: '/games/final-breath', name: 'The Final Word' },
-    { path: '/games/first-breath', name: 'The Awakening' },
-    { path: '/games/idea-lab', name: 'The Alchemist' },
-  ]
-
-  for (const { path, name } of pages) {
-    test(`${name} has no obvious accessibility issues`, async ({ page }) => {
-      await page.goto(path)
-
-      // Check skip link exists
-      await expect(page.locator('a[href="#main-content"]')).toBeAttached()
-
-      // Check main landmark exists
-      await expect(page.locator('main#main-content')).toBeVisible()
-
-      // Check no images without alt text (excluding decorative)
-      const imagesWithoutAlt = page.locator('img:not([alt]):not([aria-hidden="true"])')
-      await expect(imagesWithoutAlt).toHaveCount(0)
-    })
-  }
-})
-
-test.describe('No Console Errors', () => {
-  const pages = [
-    '/',
-    '/games/the-silver-lining',
-    '/games/ancient-voices',
-    '/games/the-crossroads',
-    '/games/the-long-breath',
-    '/games/final-breath',
-    '/games/first-breath',
-    '/games/idea-lab',
-  ]
-
-  for (const path of pages) {
-    test(`${path} has no console errors`, async ({ page }) => {
+test.describe('Every page', () => {
+  for (const { path: pagePath, title } of [
+    ...SITE_PAGES.map((p) => ({ path: p, title: null as string | null })),
+    ...GAME_PAGES,
+  ]) {
+    test(`${pagePath} loads cleanly and accessibly`, async ({ page }) => {
       const errors: string[] = []
-
-      page.on('console', msg => {
-        if (msg.type() === 'error') {
-          errors.push(msg.text())
-        }
+      page.on('console', (msg) => {
+        if (msg.type() === 'error' && !isExpectedConsoleError(msg.text())) errors.push(msg.text())
       })
+      page.on('pageerror', (error) => errors.push(error.message))
 
-      await page.goto(path)
+      const response = await page.goto(pagePath)
+      expect(response?.status()).toBe(200)
       await page.waitForLoadState('networkidle')
 
-      // Filter out expected/acceptable errors
-      const criticalErrors = errors.filter(err =>
-        !err.includes('favicon') &&
-        !err.includes('Failed to load resource') &&
-        !err.includes('third-party') &&
-        !err.includes('SpeechSynthesis') // Headless browsers don't support speech synthesis
-      )
+      await expect(page.locator('a[href="#main-content"]')).toBeAttached()
+      await expect(page.locator('main#main-content')).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
+      if (title) {
+        await expect(page.getByRole('heading', { level: 1 })).toContainText(title)
+      }
+      await expect(page.locator('img:not([alt]):not([aria-hidden="true"])')).toHaveCount(0)
 
-      expect(criticalErrors).toHaveLength(0)
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+      )
+      expect(overflow).toBeLessThanOrEqual(0)
+
+      expect(await axeViolations(page)).toEqual([])
+      expect(errors).toEqual([])
     })
   }
+})
+
+test('an unknown address gets the friendly 404 page', async ({ page }) => {
+  const response = await page.goto('/this-page-does-not-exist')
+  expect(response?.status()).toBe(404)
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('leads nowhere')
+  await expect(page.getByRole('link', { name: 'Back home' })).toBeVisible()
 })
