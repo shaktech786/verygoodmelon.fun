@@ -4,228 +4,14 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { useRealtimeVotes } from '@/lib/hooks/useRealtimeVotes'
-
-type ChoiceId = 'A' | 'B'
-
-interface Choice {
-  id: ChoiceId
-  text: string
-  perspective?: string
-}
-
-interface Dilemma {
-  id: string
-  scenario: string
-  context?: string
-  choiceA: Choice
-  choiceB: Choice
-  category?: string
-}
-
-const DILEMMAS: Dilemma[] = [
-  // EXISTENTIAL & MORTALITY
-  {
-    id: 'mortality-awareness',
-    scenario: 'If you knew the exact date of your death...',
-    context: 'A reliable oracle offers to tell you when you will die',
-    choiceA: {
-      id: 'A',
-      text: 'Learn the date and live intentionally',
-      perspective: 'Knowledge is power. Knowing your timeline could help you prioritize what truly matters and avoid wasting time on the trivial.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Remain uncertain and live freely',
-      perspective: 'The beauty of life is in its unpredictability. Knowing might paralyze you with countdown anxiety rather than liberating you.'
-    },
-    category: 'existential'
-  },
-  {
-    id: 'legacy-vs-experience',
-    scenario: 'How would you spend your final year?',
-    context: 'You have one year left to live, fully healthy',
-    choiceA: {
-      id: 'A',
-      text: 'Create something that outlives you',
-      perspective: 'Leaving a lasting impact—art, writing, a foundation—extends your influence beyond your physical existence.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Experience everything you\'ve postponed',
-      perspective: 'Life is for living, not performing. The experiences you have are yours alone, and that\'s enough.'
-    },
-    category: 'existential'
-  },
-  // ETHICS & MORALITY
-  {
-    id: 'trolley-personal',
-    scenario: 'Would you sacrifice one to save many?',
-    context: 'You can save five strangers by pushing one person in front of a train',
-    choiceA: {
-      id: 'A',
-      text: 'Push the one person to save five',
-      perspective: 'Utilitarian math: five lives saved outweighs one lost. Sometimes the hardest choices are numerically simple.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Refuse to directly cause a death',
-      perspective: 'There\'s a moral difference between letting something happen and making it happen. You didn\'t create this situation.'
-    },
-    category: 'ethics'
-  },
-  {
-    id: 'lying-for-good',
-    scenario: 'Is a lie ever truly kind?',
-    context: 'A dying friend asks if they lived a meaningful life—but you think they wasted their potential',
-    choiceA: {
-      id: 'A',
-      text: 'Tell them what they need to hear',
-      perspective: 'Truth is contextual. Bringing peace to someone\'s final moments is a gift, not a deception.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Be honest, gently',
-      perspective: 'Even at the end, people deserve to be treated as capable of handling reality. Patronizing kindness isn\'t kindness.'
-    },
-    category: 'ethics'
-  },
-  // MEANING & PURPOSE
-  {
-    id: 'happiness-vs-meaning',
-    scenario: 'Which would you choose for your life?',
-    context: 'You can only optimize for one',
-    choiceA: {
-      id: 'A',
-      text: 'Constant happiness, less meaning',
-      perspective: 'What good is purpose if you\'re miserable? Happiness is the actual feeling of life being good.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Deep meaning, less happiness',
-      perspective: 'Meaning sustains us through suffering. A deeply meaningful life can include hardship and still be worth living.'
-    },
-    category: 'meaning'
-  },
-  {
-    id: 'simulation-knowledge',
-    scenario: 'If reality isn\'t what you think...',
-    context: 'You discover evidence that we\'re living in a simulation',
-    choiceA: {
-      id: 'A',
-      text: 'Accept it and keep living normally',
-      perspective: 'Simulated or not, your experiences feel real. Love is still love, pain still hurts. The substrate doesn\'t matter.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Try to find ways to "break out" or transcend',
-      perspective: 'If there\'s a higher reality, shouldn\'t we strive to reach it? Comfort shouldn\'t stop us from seeking truth.'
-    },
-    category: 'metaphysics'
-  },
-  // RELATIONSHIPS & LOVE
-  {
-    id: 'love-or-freedom',
-    scenario: 'What matters more to you?',
-    context: 'Your soulmate wants to move abroad; you want to stay',
-    choiceA: {
-      id: 'A',
-      text: 'Follow love, sacrifice your roots',
-      perspective: 'People are irreplaceable; places aren\'t. Love that deep is rare and worth restructuring your life around.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Stay true to yourself, even if alone',
-      perspective: 'Losing yourself for someone else breeds resentment. The right person would find a way to make it work.'
-    },
-    category: 'love'
-  },
-  {
-    id: 'forgiveness-limits',
-    scenario: 'Can you forgive the unforgivable?',
-    context: 'Someone who deeply betrayed you genuinely seeks your forgiveness',
-    choiceA: {
-      id: 'A',
-      text: 'Forgive to free yourself from the weight',
-      perspective: 'Holding onto anger is like drinking poison. Forgiveness is a gift to yourself, not just them.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Some actions forfeit the right to forgiveness',
-      perspective: 'Not all wounds heal. Pretending otherwise diminishes the gravity of what happened to you.'
-    },
-    category: 'relationships'
-  },
-  // ORIGINAL PRACTICAL DILEMMAS (refined)
-  {
-    id: 'career-passion',
-    scenario: 'How do you want to spend your working life?',
-    context: 'You have two paths ahead',
-    choiceA: {
-      id: 'A',
-      text: 'Financial security doing unfulfilling work',
-      perspective: 'Money buys freedom, safety, and options. You can find meaning outside the 9-5.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Meaningful work with financial uncertainty',
-      perspective: 'You spend a third of your life working. That time should feel like more than just trading hours for money.'
-    },
-    category: 'career'
-  },
-  {
-    id: 'children-climate',
-    scenario: 'Would you bring new life into this world?',
-    context: 'Climate change and global uncertainty weigh on you',
-    choiceA: {
-      id: 'A',
-      text: 'Yes—hope is an act of defiance',
-      perspective: 'Every generation has faced existential threats. Children bring joy and might be the ones who solve our problems.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'No—it wouldn\'t be fair to them',
-      perspective: 'Choosing not to create suffering is an ethical choice. There are other ways to nurture and contribute.'
-    },
-    category: 'ethics'
-  },
-  {
-    id: 'memory-erasure',
-    scenario: 'Would you erase your most painful memory?',
-    context: 'Perfect technology exists to remove one traumatic memory forever',
-    choiceA: {
-      id: 'A',
-      text: 'Yes—remove the source of suffering',
-      perspective: 'Why carry unnecessary pain? The memory serves no purpose but to hurt you.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'No—pain is part of who I am',
-      perspective: 'Our struggles shape us. Erasing the memory might erase the lessons and growth that came with it.'
-    },
-    category: 'identity'
-  },
-  {
-    id: 'radical-honesty',
-    scenario: 'Could you live with complete transparency?',
-    context: 'Everyone can see your every thought for one week',
-    choiceA: {
-      id: 'A',
-      text: 'Accept it—nothing to hide',
-      perspective: 'Living authentically means not needing privacy for shame. This could liberate you from performing.'
-    },
-    choiceB: {
-      id: 'B',
-      text: 'Refuse—some thoughts are just noise',
-      perspective: 'Not every passing thought reflects who we are. Privacy protects us from being judged by our worst impulses.'
-    },
-    category: 'identity'
-  }
-]
+import { DILEMMAS, type Choice, type ChoiceId } from '@/lib/games/hard-choices/dilemmas'
 
 const ANSWERS_KEY = 'hardChoicesVotes'
 const COUNTED_KEY = 'hardChoicesCounted'
+const LEANING_PERCENT = 60
 
-type Answers = Record<string, ChoiceId>
+type Answer = ChoiceId | 'skip'
+type Answers = Record<string, Answer>
 
 function readStored<T>(key: string, fallback: T): T {
   try {
@@ -236,13 +22,102 @@ function readStored<T>(key: string, fallback: T): T {
   }
 }
 
+function saveAnswers(answers: Answers) {
+  try {
+    localStorage.setItem(ANSWERS_KEY, JSON.stringify(answers))
+  } catch {
+    // Private browsing: answers last for this visit only
+  }
+}
+
 function firstUnansweredIndex(answers: Answers): number {
   return DILEMMAS.findIndex((dilemma) => !answers[dilemma.id])
+}
+
+const isChoice = (answer: Answer | undefined): answer is ChoiceId => answer === 'A' || answer === 'B'
+
+/** How the player's answer sits among everyone's, without ranking anyone. */
+function crowdLine(ownPercent: number): string {
+  if (ownPercent >= LEANING_PERCENT) return 'Most people chose this too.'
+  if (ownPercent <= 100 - LEANING_PERCENT) return `Fewer people chose this: ${ownPercent}% did. You are in thoughtful company.`
+  return 'People are almost evenly split on this one.'
 }
 
 const CHOICE_STYLES: Record<ChoiceId, { bar: string; glow: string; pulse: string }> = {
   A: { bar: 'bg-accent', glow: 'shadow-[0_0_8px_rgba(230,57,70,0.4)]', pulse: 'text-accent font-medium' },
   B: { bar: 'bg-success', glow: 'shadow-[0_0_8px_rgba(116,198,157,0.4)]', pulse: 'text-melon-green font-medium' },
+}
+
+function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index: number) => void }) {
+  const chosen = DILEMMAS.flatMap((dilemma, index) => {
+    const answer = answers[dilemma.id]
+    if (!isChoice(answer)) return []
+    const choice = answer === 'A' ? dilemma.choiceA : dilemma.choiceB
+    return [{ dilemma, index, choice }]
+  })
+  const passed = DILEMMAS.length - chosen.length
+
+  return (
+    <div className="space-y-5 text-left">
+      {chosen.length > 0 ? (
+        <>
+          <p className="text-foreground/80 text-center">Across these questions, this is what you reached for:</p>
+          <ul className="flex flex-wrap justify-center gap-2" aria-label="What you chose to protect">
+            {chosen.map(({ dilemma, choice }) => (
+              <li
+                key={dilemma.id}
+                className="rounded-full border border-card-border bg-background px-3 py-1 text-sm sm:text-base text-foreground"
+              >
+                {choice.value}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p className="text-foreground/80 text-center">You let every question pass today. Some days are like that.</p>
+      )}
+
+      {passed > 0 && chosen.length > 0 && (
+        <p className="text-sm text-primary-light text-center">
+          You let {passed === 1 ? 'one question' : `${passed} questions`} pass. That is allowed too.
+        </p>
+      )}
+
+      <p className="text-foreground/85 text-center leading-relaxed">
+        None of this is a verdict on who you are. It is what mattered to you today, and it is allowed to change.
+      </p>
+
+      <details className="rounded-lg border border-card-border bg-background">
+        <summary className="cursor-pointer select-none px-4 py-3 font-medium text-foreground rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+          See or change each answer
+        </summary>
+        <ol className="divide-y divide-card-border">
+          {DILEMMAS.map((dilemma, index) => {
+            const answer = answers[dilemma.id]
+            const choice: Choice | null = isChoice(answer) ? (answer === 'A' ? dilemma.choiceA : dilemma.choiceB) : null
+            return (
+              <li key={dilemma.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm text-primary-light">{dilemma.scenario}</p>
+                  <p className="text-foreground">
+                    {choice ? <><span className="font-medium">{choice.value}</span>: {choice.text}</> : 'Let it pass'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onRevisit(index)}
+                  aria-label={`Revisit: ${dilemma.scenario}`}
+                  className="shrink-0 text-sm text-foreground underline underline-offset-4 rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  Revisit
+                </button>
+              </li>
+            )
+          })}
+        </ol>
+      </details>
+    </div>
+  )
 }
 
 export default function HardChoices() {
@@ -252,11 +127,14 @@ export default function HardChoices() {
   const [pulseChoice, setPulseChoice] = useState<ChoiceId | null>(null)
   const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const firstChoiceRef = useRef<HTMLButtonElement>(null)
   const moveFocusToHeading = useRef(false)
+  const moveFocusToChoices = useRef(false)
   const hasChosen = useRef(false)
 
   const currentDilemma = DILEMMAS[currentDilemmaIndex]
-  const selectedChoice = answers[currentDilemma.id] ?? null
+  const currentAnswer = answers[currentDilemma.id]
+  const selectedChoice = isChoice(currentAnswer) ? currentAnswer : null
   const hasVoted = selectedChoice !== null
   // Perspectives never wait on the crowd counts, which arrive (or not) on their own
   const showResults = hasVoted
@@ -286,7 +164,6 @@ export default function HardChoices() {
     }
   }, [recentlyUpdated, currentDilemma.id, showResults, clearUpdated])
 
-  // Cleanup pulse timeout
   useEffect(() => {
     return () => {
       if (pulseTimeoutRef.current) clearTimeout(pulseTimeoutRef.current)
@@ -311,7 +188,7 @@ export default function HardChoices() {
     const dilemma = DILEMMAS[index]
     setFinished(false)
     setCurrentDilemmaIndex(index)
-    if (knownAnswers[dilemma.id] && !votes[dilemma.id]) {
+    if (isChoice(knownAnswers[dilemma.id]) && !votes[dilemma.id]) {
       loadResults(dilemma.id)
     }
   }
@@ -336,22 +213,32 @@ export default function HardChoices() {
     if (moveFocusToHeading.current) {
       moveFocusToHeading.current = false
       headingRef.current?.focus()
+    } else if (moveFocusToChoices.current) {
+      moveFocusToChoices.current = false
+      firstChoiceRef.current?.focus()
     }
-  }, [currentDilemmaIndex, finished])
+  }, [currentDilemmaIndex, finished, hasVoted])
+
+  const recordAnswer = (dilemmaId: string, answer: Answer | null) => {
+    const next = { ...answers }
+    if (answer) next[dilemmaId] = answer
+    else delete next[dilemmaId]
+    setAnswers(next)
+    saveAnswers(next)
+    return next
+  }
 
   const handleChoice = async (choiceId: ChoiceId) => {
     if (hasVoted) return
     hasChosen.current = true
 
     const dilemmaId = currentDilemma.id
-    const nextAnswers = { ...answers, [dilemmaId]: choiceId }
-    setAnswers(nextAnswers)
-    localStorage.setItem(ANSWERS_KEY, JSON.stringify(nextAnswers))
+    recordAnswer(dilemmaId, choiceId)
 
-    // A dilemma answered again after starting fresh is not counted twice.
+    // A dilemma answered again (changed, or after starting fresh) is not counted twice.
     const counted = readStored<string[]>(COUNTED_KEY, [])
     if (counted.includes(dilemmaId)) {
-      await loadResults(dilemmaId)
+      if (!votes[dilemmaId]) await loadResults(dilemmaId)
       return
     }
 
@@ -388,6 +275,17 @@ export default function HardChoices() {
     }
   }
 
+  const handleSkip = () => {
+    hasChosen.current = true
+    recordAnswer(currentDilemma.id, 'skip')
+    handleNext()
+  }
+
+  const handleChangeAnswer = () => {
+    moveFocusToChoices.current = true
+    recordAnswer(currentDilemma.id, null)
+  }
+
   const handleStartFresh = () => {
     localStorage.removeItem(ANSWERS_KEY)
     setAnswers({})
@@ -409,22 +307,21 @@ export default function HardChoices() {
     { id: 'A', choice: currentDilemma.choiceA },
     { id: 'B', choice: currentDilemma.choiceB },
   ]
+  const answeredCount = Object.keys(answers).filter((id) => DILEMMAS.some((d) => d.id === id)).length
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 max-w-3xl">
         <div className="animate-fade">
-          {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl sm:text-4xl font-semibold mb-3">The Dilemma</h1>
-            <p className="text-foreground/60 text-base sm:text-lg">
-              Life&apos;s deepest questions have no easy answers. But thinking through them makes us wiser.
+            <p className="text-foreground/70 text-base sm:text-lg">
+              Twelve questions with no right answers. Choose, skip or change your mind, and at the end see what you chose to protect.
             </p>
           </div>
 
-          {/* Progress indicator */}
           <div className="mb-8">
-            <div className="flex items-center justify-between text-sm text-foreground/60 mb-2">
+            <div className="flex items-center justify-between text-sm text-foreground/70 mb-2">
               <div className="flex items-center gap-2">
                 <span>
                   {finished
@@ -440,47 +337,40 @@ export default function HardChoices() {
                 )}
               </div>
               {!finished && (
-                <span className="text-xs uppercase tracking-wide">{currentDilemma.category}</span>
+                <span className="text-xs capitalize">{currentDilemma.category}</span>
               )}
             </div>
-            <div className="h-1 bg-foreground/10 rounded-full overflow-hidden">
+            <div className="h-1 bg-foreground/10 rounded-full overflow-hidden" aria-hidden="true">
               <div
                 className="h-full bg-accent transition-all duration-300"
-                style={{ width: `${((currentDilemmaIndex + 1) / DILEMMAS.length) * 100}%` }}
+                style={{ width: `${(finished ? 1 : answeredCount / DILEMMAS.length) * 100}%` }}
               />
             </div>
           </div>
 
           {finished ? (
-            <div className="bg-card-bg border border-card-border rounded-lg p-6 sm:p-8 mb-6 text-center">
+            <div className="bg-card-bg border border-card-border rounded-lg p-5 sm:p-8 mb-6">
               <h2
                 ref={headingRef}
                 tabIndex={-1}
-                className="text-xl sm:text-2xl font-medium mb-3 focus:outline-none"
+                className="text-xl sm:text-2xl font-medium mb-4 text-center focus:outline-none"
               >
-                You&apos;ve sat with all {DILEMMAS.length} dilemmas
+                What you chose to protect
               </h2>
-              <p className="text-foreground/60 mb-6">
-                There were no right answers, only yours. They may change with time, and that&apos;s part of it.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button onClick={() => navigate(0)} variant="primary">
-                  Revisit your answers
+              <Portrait answers={answers} onRevisit={navigate} />
+              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                <Button onClick={() => navigate(0)} variant="secondary">
+                  Look back from the start
                 </Button>
-                <Button onClick={handleStartFresh} variant="secondary">
+                <Button onClick={handleStartFresh} variant="ghost">
                   Clear my answers and start fresh
                 </Button>
               </div>
             </div>
           ) : (
             <>
-              {/* Dilemma card */}
               <div className="bg-card-bg border border-card-border rounded-lg p-4 sm:p-8 mb-6">
-                {currentDilemma.context && (
-                  <p className="text-foreground/60 mb-4 text-sm uppercase tracking-wide">
-                    {currentDilemma.context}
-                  </p>
-                )}
+                <p className="text-foreground/70 mb-3 text-sm sm:text-base">{currentDilemma.context}</p>
                 <h2
                   ref={headingRef}
                   tabIndex={-1}
@@ -489,11 +379,11 @@ export default function HardChoices() {
                   {currentDilemma.scenario}
                 </h2>
 
-                {/* Choices */}
                 <div className="space-y-4">
-                  {choices.map(({ id, choice }) => (
+                  {choices.map(({ id, choice }, index) => (
                     <button
                       key={id}
+                      ref={index === 0 ? firstChoiceRef : undefined}
                       onClick={() => handleChoice(id)}
                       aria-disabled={hasVoted}
                       className={`
@@ -510,7 +400,7 @@ export default function HardChoices() {
                           flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-semibold
                           ${selectedChoice === id
                             ? 'border-accent bg-accent text-white'
-                            : 'border-foreground/20 text-foreground/60'
+                            : 'border-foreground/20 text-foreground/70'
                           }
                         `}>
                           {id}
@@ -519,23 +409,23 @@ export default function HardChoices() {
                           <p className="text-lg mb-2">
                             {choice.text}
                             {selectedChoice === id && (
-                              <span className="ml-2 text-xs uppercase tracking-wide text-foreground/60">Your choice</span>
+                              <span className="ml-2 text-xs uppercase tracking-wide text-foreground/70">Your choice</span>
                             )}
                           </p>
-                          {showResults && choice.perspective && (
-                            <p className="text-sm text-foreground/60 mb-3 italic">
+                          {showResults && (
+                            <p className="text-sm text-foreground/70 mb-3 italic">
                               {choice.perspective}
                             </p>
                           )}
                           {showResults && displayResults && (
                             <div className="mt-3">
                               <div className="flex items-center justify-between text-sm mb-1">
-                                <span className="text-foreground/60">
+                                <span className="text-foreground/70">
                                   {percentages[id]}% chose this
                                 </span>
                                 <span
                                   className={`transition-colors duration-300 ${
-                                    pulseChoice === id ? CHOICE_STYLES[id].pulse : 'text-foreground/60'
+                                    pulseChoice === id ? CHOICE_STYLES[id].pulse : 'text-foreground/70'
                                   }`}
                                 >
                                   {counts[id]} {counts[id] === 1 ? 'vote' : 'votes'}
@@ -558,33 +448,22 @@ export default function HardChoices() {
                 </div>
 
                 <div role="status">
-
-                  {/* Results message - deeper reflection */}
-                  {showResults && (
-                    <div className="mt-6 p-5 bg-gradient-to-br from-accent/5 to-transparent border border-accent/10 rounded-lg">
-                      <p className="sr-only">
-                        You chose {selectedChoice}.
-                        {displayResults && ` ${percentages.A}% chose A, ${percentages.B}% chose B.`}
+                  {showResults && selectedChoice && (
+                    <div className="mt-6 p-5 bg-background border border-card-border rounded-lg text-center">
+                      <p className="text-sm text-foreground/70 mb-2">
+                        You chose <span className="font-medium text-foreground">{currentDilemma[selectedChoice === 'A' ? 'choiceA' : 'choiceB'].value}</span>.
+                        {displayResults && ` ${crowdLine(percentages[selectedChoice])}`}
                       </p>
-                      {displayResults && (
-                        <p className="text-sm text-foreground/80 text-center leading-relaxed mb-2">
-                          {percentages.A > 60 || percentages.B > 60 ? (
-                            <>
-                              <span className="font-medium">Interesting.</span> Most people lean one way here—but the minority perspective often holds wisdom worth considering.
-                            </>
-                          ) : (
-                            <>
-                              <span className="font-medium">A true dilemma.</span> Humanity is genuinely split on this one. That&apos;s what makes it worth thinking about.
-                            </>
-                          )}
-                        </p>
-                      )}
-                      <p className="text-xs text-foreground/60 text-center italic">
-                        Your answer reveals something about your values. Neither choice is wrong.
-                      </p>
+                      <p className="text-foreground/90 leading-relaxed">{currentDilemma.carry}</p>
                     </div>
                   )}
                 </div>
+
+                {currentAnswer === 'skip' && (
+                  <p className="mt-6 text-sm text-foreground/70 text-center">
+                    You let this one pass earlier. You can answer it now, or keep moving.
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-3">
@@ -597,7 +476,7 @@ export default function HardChoices() {
                     Previous
                   </Button>
                 )}
-                {showResults && (
+                {(showResults || currentAnswer === 'skip') && (
                   <Button
                     onClick={handleNext}
                     variant="primary"
@@ -608,16 +487,25 @@ export default function HardChoices() {
                 )}
               </div>
 
-              {/* Instructions */}
-              {!hasVoted && (
-                <div className="mt-8 text-center text-sm text-foreground/60">
-                  <p>Choose the option that resonates with you. There&apos;s no judgment—just reflection.</p>
-                </div>
-              )}
+              <div className="mt-6 text-center text-sm text-foreground/70">
+                {hasVoted ? (
+                  <Button variant="ghost" size="sm" onClick={handleChangeAnswer}>
+                    Change my answer
+                  </Button>
+                ) : (
+                  <>
+                    <p>Choose the option that feels truer to you. There is no judgment, only reflection.</p>
+                    {currentAnswer !== 'skip' && (
+                      <Button variant="ghost" size="sm" className="mt-2" onClick={handleSkip}>
+                        Let this one pass
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
             </>
           )}
 
-          {/* Back Home Button */}
           <div className="mt-6 text-center">
             <Link
               href="/"

@@ -1,8 +1,9 @@
 import { test, expect, type Locator, type Page, type WebSocketRoute } from '@playwright/test'
 
 /**
- * The Dilemma (Hard Choices): choose A or B on 12 dilemmas, read both
- * perspectives, and see how others chose when the vote store is reachable.
+ * The Dilemma (Hard Choices): choose A or B (or let it pass) on 12 dilemmas,
+ * read both perspectives and a thought that holds them, see how others chose
+ * when the vote store is reachable, and end with what you chose to protect.
  *
  * "DB down" is what the routes answer while Supabase is unreachable (HTTP 500);
  * "DB up" keeps vote counts in memory and stands in for Supabase Realtime.
@@ -11,9 +12,10 @@ import { test, expect, type Locator, type Page, type WebSocketRoute } from '@pla
  */
 
 const DILEMMA_COUNT = 12
-const FIRST_SCENARIO = 'If you knew the exact date of your death...'
-const FIRST_PERSPECTIVE_A = /Knowledge is power/
-const FIRST_PERSPECTIVE_B = /The beauty of life is in its unpredictability/
+const FIRST_SCENARIO = 'Which would you choose for your life?'
+const FIRST_PERSPECTIVE_A = /What good is purpose/
+const FIRST_PERSPECTIVE_B = /Meaning sustains us/
+const ENDING = 'What you chose to protect'
 
 const choiceA = (page: Page) => page.getByRole('button', { name: /^Choice A:/ })
 const choiceB = (page: Page) => page.getByRole('button', { name: /^Choice B:/ })
@@ -126,12 +128,17 @@ test.describe('database unreachable (the current reality)', () => {
       await choose(pick)
       await expect(pick).toHaveAttribute('aria-pressed', 'true')
       await expect(pick).toContainText('Your choice')
-      await expect(page.getByText('Neither choice is wrong.')).toBeVisible()
+      await expect(page.getByRole('status')).toContainText(/^You chose \S/)
       await expect(page.getByText(/% chose this/)).toHaveCount(0)
       await page.getByRole('button', { name: n === DILEMMA_COUNT ? 'Finish' : 'Next Dilemma' }).click()
     }
 
-    await expect(page.getByRole('heading', { name: `You've sat with all ${DILEMMA_COUNT} dilemmas` })).toBeFocused()
+    await expect(page.getByRole('heading', { name: ENDING })).toBeFocused()
+    // Odd dilemmas were answered A, even ones B: the portrait names what each answer protects
+    await expect(page.getByRole('list', { name: ENDING }).getByRole('listitem')).toHaveText([
+      'Joy', 'Purpose', 'Presence', 'Selfhood', 'Openness', 'Integrity',
+      'Comfort', 'Spontaneity', 'Legacy', 'Wholeness', 'Hope', 'Self-respect',
+    ])
     await expect(page.getByRole('heading', { name: FIRST_SCENARIO })).toHaveCount(0)
     await expect(page.locator('main [role="alert"]')).toHaveCount(0)
     await expect(page.getByText('Live updates active')).toHaveCount(0)
@@ -150,7 +157,7 @@ test.describe('database unreachable (the current reality)', () => {
       await new Promise((resolve) => setTimeout(resolve, 10_000))
       await route.fulfill({ status: 500, json: { error: 'Failed to fetch vote counts' } }).catch(() => {})
     })
-    await page.addInitScript(() => localStorage.setItem('hardChoicesVotes', JSON.stringify({ 'mortality-awareness': 'B' })))
+    await page.addInitScript(() => localStorage.setItem('hardChoicesVotes', JSON.stringify({ 'happiness-vs-meaning': 'B' })))
     await page.goto('/games/the-crossroads')
 
     await expect(progress(page, 2)).toBeVisible()
@@ -185,9 +192,9 @@ test.describe('database unreachable (the current reality)', () => {
 
   test('the ending offers a revisit and a fresh start that clears every answer', async ({ page }) => {
     const answers = Object.fromEntries(
-      ['mortality-awareness', 'legacy-vs-experience', 'trolley-personal', 'lying-for-good', 'happiness-vs-meaning',
-        'simulation-knowledge', 'love-or-freedom', 'forgiveness-limits', 'career-passion', 'children-climate',
-        'memory-erasure', 'radical-honesty'].map((id) => [id, 'A'])
+      ['happiness-vs-meaning', 'career-passion', 'simulation-knowledge', 'love-or-freedom', 'radical-honesty',
+        'trolley-personal', 'lying-for-good', 'mortality-awareness', 'legacy-vs-experience', 'memory-erasure',
+        'children-climate', 'forgiveness-limits'].map((id) => [id, 'A'])
     )
     const api = await databaseDown(page)
     await page.addInitScript((stored) => {
@@ -198,9 +205,9 @@ test.describe('database unreachable (the current reality)', () => {
     }, JSON.stringify(answers))
     await page.goto('/games/the-crossroads')
 
-    await expect(page.getByRole('heading', { name: `You've sat with all ${DILEMMA_COUNT} dilemmas` })).toBeVisible()
+    await expect(page.getByRole('heading', { name: ENDING })).toBeVisible()
 
-    await page.getByRole('button', { name: 'Revisit your answers' }).click()
+    await page.getByRole('button', { name: 'Look back from the start' }).click()
     await expect(page.getByRole('heading', { name: FIRST_SCENARIO })).toBeFocused()
     await expect(choiceA(page)).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByText(FIRST_PERSPECTIVE_A)).toBeVisible()
@@ -216,7 +223,7 @@ test.describe('database unreachable (the current reality)', () => {
     await choose(choiceB(page))
     await expect(choiceB(page)).toHaveAttribute('aria-pressed', 'true')
     // Never counted while the store was down, so the new answer is sent
-    expect(api.posts).toEqual([{ dilemmaId: 'mortality-awareness', choice: 'B' }])
+    expect(api.posts).toEqual([{ dilemmaId: 'happiness-vs-meaning', choice: 'B' }])
   })
 
   test('keyboard only: Enter and Space choose, focus follows to each new dilemma', async ({ page }) => {
@@ -238,7 +245,7 @@ test.describe('database unreachable (the current reality)', () => {
     await page.keyboard.press('Tab')
     await expect(nextButton(page)).toBeFocused()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('heading', { name: 'How would you spend your final year?' })).toBeFocused()
+    await expect(page.getByRole('heading', { name: 'How do you want to spend your working life?' })).toBeFocused()
 
     await page.keyboard.press('Tab')
     await page.keyboard.press('Tab')
@@ -248,9 +255,74 @@ test.describe('database unreachable (the current reality)', () => {
   })
 })
 
+test.describe('choosing at your own pace', () => {
+  test('a question can be let pass, answered later, and the ending says so kindly', async ({ page }) => {
+    const api = await databaseDown(page)
+    await page.goto('/games/the-crossroads')
+
+    await expect(async () => {
+      await page.getByRole('button', { name: 'Let this one pass' }).click()
+      await expect(progress(page, 2)).toBeVisible({ timeout: 500 })
+    }).toPass()
+    await expect(page.getByRole('heading', { name: 'How do you want to spend your working life?' })).toBeFocused()
+
+    await page.getByRole('button', { name: 'Previous' }).click()
+    await expect(page.getByText(/You let this one pass earlier/)).toBeVisible()
+    await expect(choiceA(page)).toHaveAttribute('aria-pressed', 'false')
+    await choose(choiceA(page))
+    await expect(page.getByText(FIRST_PERSPECTIVE_A)).toBeVisible()
+    expect(api.posts).toEqual([{ dilemmaId: 'happiness-vs-meaning', choice: 'A' }])
+
+    await nextButton(page).click()
+    for (let n = 2; n <= DILEMMA_COUNT; n++) {
+      await expect(progress(page, n)).toBeVisible()
+      await page.getByRole('button', { name: 'Let this one pass' }).click()
+    }
+    await expect(page.getByRole('heading', { name: ENDING })).toBeFocused()
+    await expect(page.getByRole('list', { name: ENDING }).getByRole('listitem')).toHaveText(['Joy'])
+    await expect(page.getByText('You let 11 questions pass. That is allowed too.')).toBeVisible()
+    expect(api.posts).toHaveLength(1)
+  })
+
+  test('changing your mind keeps the new answer and never counts you twice', async ({ page }) => {
+    const api = await databaseUp(page)
+    await failingRealtime(page)
+    await page.goto('/games/the-crossroads')
+
+    await choose(choiceA(page))
+    await expect(choiceA(page)).toContainText('1 vote')
+    await page.getByRole('button', { name: 'Change my answer' }).click()
+    await expect(choiceA(page)).toBeFocused()
+    await expect(choiceA(page)).toHaveAttribute('aria-pressed', 'false')
+
+    await choose(choiceB(page))
+    await expect(page.getByRole('status')).toContainText('You chose Meaning.')
+    expect(api.posts).toHaveLength(1)
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('hardChoicesVotes') ?? '{}'))
+    expect(stored).toEqual({ 'happiness-vs-meaning': 'B' })
+  })
+
+  test('from the ending, any single answer can be revisited', async ({ page }) => {
+    const ids = ['happiness-vs-meaning', 'career-passion', 'simulation-knowledge', 'love-or-freedom', 'radical-honesty',
+      'trolley-personal', 'lying-for-good', 'mortality-awareness', 'legacy-vs-experience', 'memory-erasure',
+      'children-climate', 'forgiveness-limits']
+    await databaseDown(page)
+    await page.addInitScript((stored) => localStorage.setItem('hardChoicesVotes', stored),
+      JSON.stringify(Object.fromEntries(ids.map((id) => [id, 'B']))))
+    await page.goto('/games/the-crossroads')
+
+    await expect(page.getByRole('heading', { name: ENDING })).toBeVisible()
+    await page.getByText('See or change each answer').click()
+    await page.getByRole('button', { name: 'Revisit: Would you erase your most painful memory?' }).click()
+    await expect(page.getByRole('heading', { name: 'Would you erase your most painful memory?' })).toBeFocused()
+    await expect(progress(page, 10)).toBeVisible()
+    await expect(choiceB(page)).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
 test.describe('database reachable', () => {
   test('a vote shows how others chose, goes live, and counts other people’s votes as they arrive', async ({ page }) => {
-    const api = await databaseUp(page, { 'mortality-awareness': { choiceA: 29, choiceB: 70 } })
+    const api = await databaseUp(page, { 'happiness-vs-meaning': { choiceA: 29, choiceB: 70 } })
     const realtime = await realtimeServer(page)
     await page.goto('/games/the-crossroads')
 
@@ -258,13 +330,13 @@ test.describe('database reachable', () => {
     await expect(choiceA(page)).toContainText('30% chose this')
     await expect(choiceA(page)).toContainText('30 votes')
     await expect(choiceB(page)).toContainText('70% chose this')
-    await expect(page.getByText(/Most people lean one way here/)).toBeVisible()
+    await expect(page.getByText(/Fewer people chose this: 30% did\./)).toBeVisible()
     await expect(page.getByText('Live updates active')).toBeVisible()
-    expect(api.posts).toEqual([{ dilemmaId: 'mortality-awareness', choice: 'A' }])
+    expect(api.posts).toEqual([{ dilemmaId: 'happiness-vs-meaning', choice: 'A' }])
 
     // The player's own insert echoes back over realtime and must not count twice
-    realtime.insert('mortality-awareness', 'A')
-    realtime.insert('mortality-awareness', 'B')
+    realtime.insert('happiness-vs-meaning', 'A')
+    realtime.insert('happiness-vs-meaning', 'B')
     await expect(choiceB(page)).toContainText('71 votes')
     await expect(choiceA(page)).toContainText('30 votes')
   })
@@ -303,14 +375,14 @@ test.describe('database reachable', () => {
     await expect(choiceB(page)).toHaveAttribute('aria-pressed', 'true')
     await expect(choiceA(page)).toContainText('1 vote')
     expect(api.posts).toHaveLength(1)
-    expect(api.reads).toContain('mortality-awareness')
+    expect(api.reads).toContain('happiness-vs-meaning')
   })
 
   test.describe('on a phone with reduced motion', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: 'reduce' })
 
     test('fits the screen and shows the results', async ({ page }) => {
-      await databaseUp(page, { 'mortality-awareness': { choiceA: 5, choiceB: 4 } })
+      await databaseUp(page, { 'happiness-vs-meaning': { choiceA: 5, choiceB: 4 } })
       await failingRealtime(page)
       await page.goto('/games/the-crossroads')
 
@@ -319,7 +391,7 @@ test.describe('database reachable', () => {
         await expect(choiceB(page)).toHaveAttribute('aria-pressed', 'true', { timeout: 500 })
       }).toPass()
       await expect(choiceB(page)).toContainText('50% chose this')
-      await expect(page.getByText(/A true dilemma/)).toBeVisible()
+      await expect(page.getByText(/almost evenly split/)).toBeVisible()
       await nextButton(page).scrollIntoViewIfNeeded()
       await expect(nextButton(page)).toBeVisible()
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
