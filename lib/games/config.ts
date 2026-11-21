@@ -14,7 +14,6 @@ export interface GameConfig {
   /** Short action-oriented line: what the player actually does */
   hook: string
   cardImage: string
-  cardAlt: string
   category: 'Calm' | 'Reflect' | 'Play'
   accentColor: 'accent' | 'success' | 'warning' | 'purple'
   isShowcase: boolean
@@ -30,7 +29,6 @@ export const ALL_GAMES: readonly GameConfig[] = [
     description: 'Daily word game with hopeful facts',
     hook: 'Guess the word, discover something good about the world',
     cardImage: '/games/hope-daily/card.svg',
-    cardAlt: 'The Optimist - Hope Daily Joker Card',
     category: 'Play',
     accentColor: 'success',
     isShowcase: true,
@@ -44,7 +42,6 @@ export const ALL_GAMES: readonly GameConfig[] = [
     description: 'Chat with 61 wisdom figures',
     hook: 'Ask life questions to history\'s greatest thinkers',
     cardImage: '/games/timeless-minds/card.svg',
-    cardAlt: 'The Sage - Timeless Minds Joker Card',
     category: 'Reflect',
     accentColor: 'accent',
     isShowcase: true,
@@ -56,9 +53,8 @@ export const ALL_GAMES: readonly GameConfig[] = [
     slug: 'the-crossroads', // Enigmatic: pivotal decisions
     title: 'The Dilemma',
     description: 'Critical thinking through tough choices',
-    hook: 'Vote on impossible dilemmas and see how others chose',
+    hook: 'Twelve questions with no right answer, and what your choices protect',
     cardImage: '/games/hard-choices/card.svg',
-    cardAlt: 'The Dilemma - Hard Choices Joker Card',
     category: 'Reflect',
     accentColor: 'purple',
     isShowcase: true,
@@ -72,7 +68,6 @@ export const ALL_GAMES: readonly GameConfig[] = [
     description: 'Share your last words, see humanity\'s',
     hook: 'Write what you\'d say at the end and read others\' words',
     cardImage: '/games/last-words/card.svg',
-    cardAlt: 'The Final Word - Last Words Joker Card',
     category: 'Reflect',
     accentColor: 'accent',
     isShowcase: true,
@@ -86,7 +81,6 @@ export const ALL_GAMES: readonly GameConfig[] = [
     description: 'Slow down and savor the moment',
     hook: 'A game that rewards you for not rushing',
     cardImage: '/games/the-unrusher/card.svg',
-    cardAlt: 'The Patient One - The Unrusher Joker Card',
     category: 'Calm',
     accentColor: 'success',
     isShowcase: true,
@@ -98,9 +92,8 @@ export const ALL_GAMES: readonly GameConfig[] = [
     slug: 'first-breath', // Enigmatic: beginning after the end
     title: 'The Awakening',
     description: 'Your first words after crossing over',
-    hook: 'Imagine waking up in the afterlife and speak first',
+    hook: 'Imagine the moment after your life ends, say your first words, then wake up',
     cardImage: '/games/first-words/card.svg',
-    cardAlt: 'The Awakening - First Words Joker Card',
     category: 'Reflect',
     accentColor: 'purple',
     isShowcase: true,
@@ -114,7 +107,6 @@ export const ALL_GAMES: readonly GameConfig[] = [
     description: 'Combine concepts to discover new ideas',
     hook: 'Mix two ideas together and see what emerges',
     cardImage: '/games/idea-lab/card.svg',
-    cardAlt: 'The Alchemist - Idea Lab Joker Card',
     category: 'Play',
     accentColor: 'warning',
     isShowcase: true,
@@ -128,7 +120,6 @@ export const ALL_GAMES: readonly GameConfig[] = [
     description: 'Build arguments, defeat cognitive biases',
     hook: 'Out-think cognitive biases, one argument at a time',
     cardImage: '/games/thought-pockets/card.svg',
-    cardAlt: 'The Philosopher - Thought Pockets Joker Card',
     category: 'Play',
     accentColor: 'purple',
     isShowcase: true,
@@ -142,7 +133,6 @@ export const ALL_GAMES: readonly GameConfig[] = [
     description: 'Sync your breath with living geometry',
     hook: 'Breathe along with animated patterns that calm you down',
     cardImage: '/games/breathing-patterns/card.svg',
-    cardAlt: 'The Harmonist - Breathing Patterns Joker Card',
     category: 'Calm',
     accentColor: 'success',
     isShowcase: true,
@@ -154,9 +144,8 @@ export const ALL_GAMES: readonly GameConfig[] = [
     slug: 'quiet-grove', // Enigmatic: a peaceful, hidden place to grow
     title: 'The Gardener',
     description: 'Grow a garden that knows what you need',
-    hook: 'Plant seeds of thought and watch your garden respond',
+    hook: 'Plant a quiet garden and see who comes to visit',
     cardImage: '/games/calm-garden/card.svg',
-    cardAlt: 'The Gardener - Calm Garden Joker Card',
     category: 'Calm',
     accentColor: 'success',
     isShowcase: true,
@@ -170,7 +159,6 @@ export const ALL_GAMES: readonly GameConfig[] = [
     description: 'A self-building arcade game that evolves as you play',
     hook: 'Play an arcade game that rewrites its own rules',
     cardImage: '/games/cascade/card.svg',
-    cardAlt: 'The Shapeshifter - Cascade Joker Card',
     category: 'Play',
     accentColor: 'purple',
     isShowcase: true,
@@ -184,7 +172,6 @@ export const ALL_GAMES: readonly GameConfig[] = [
     description: 'Watch any two minds debate any topic',
     hook: 'Pick two people and a topic, then watch them argue it out',
     cardImage: '/games/mind-debate/card.svg',
-    cardAlt: 'The Arena - Mind Debate Joker Card',
     category: 'Reflect',
     accentColor: 'accent',
     isShowcase: true,
