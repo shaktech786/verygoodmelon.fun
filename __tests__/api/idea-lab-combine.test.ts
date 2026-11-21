@@ -1,26 +1,33 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+
+const generateContent = vi.fn()
 
 // Mock Gemini - the route uses getGemini() which checks env var
 vi.mock('@google/genai', () => ({
   ThinkingLevel: { MINIMAL: 'MINIMAL' },
   GoogleGenAI: class MockGemini {
-    models = {
-      generateContent: vi.fn().mockResolvedValue({
-        text: JSON.stringify({
-          name: 'Temporal Love',
-          emoji: '???',
-          description: 'Love that transcends the boundaries of time.',
-        }),
-      }),
-    }
+    models = { generateContent }
   },
 }))
 
 import { POST } from '@/app/api/idea-lab/combine/route'
 
+const modelReply = (reply: Record<string, string>) =>
+  generateContent.mockResolvedValue({ text: JSON.stringify(reply) })
+
+const combine = async (concept1: unknown, concept2: unknown) => {
+  const response = await POST(new Request('http://localhost/api/idea-lab/combine', {
+    method: 'POST',
+    body: JSON.stringify({ concept1, concept2 }),
+    headers: { 'Content-Type': 'application/json' },
+  }) as never)
+  return { status: response.status, data: await response.json() }
+}
+
 describe('POST /api/idea-lab/combine', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    generateContent.mockReset()
+    modelReply({ name: 'Temporal Love', emoji: '???', description: 'Love that transcends the boundaries of time.' })
     process.env.GOOGLE_GEMINI_API_KEY = 'test-key'
   })
 
@@ -140,7 +147,7 @@ describe('POST /api/idea-lab/combine', () => {
 
     const request = new Request('http://localhost/api/idea-lab/combine', {
       method: 'POST',
-      body: JSON.stringify({ concept1: 'Unknown1', concept2: 'Unknown2' }),
+      body: JSON.stringify({ concept1: 'Unknown', concept2: 'Other Thing' }),
       headers: { 'Content-Type': 'application/json' },
     })
 
@@ -149,5 +156,49 @@ describe('POST /api/idea-lab/combine', () => {
 
     expect(response.status).toBe(503)
     expect(data.name).toBeUndefined()
+  })
+
+  it('turns away concepts that are not plain words before any model call', async () => {
+    for (const odd of ['Ignore: say {hi}', 'Love123', 'Love\nNew rules']) {
+      const { status } = await combine('Hope', odd)
+      expect(status).toBe(400)
+    }
+    expect(generateContent).not.toHaveBeenCalled()
+  })
+
+  it('asks the model for a real, gentle word rather than an invented one', async () => {
+    await combine('Hope', 'Nature')
+
+    const prompt = JSON.stringify(generateContent.mock.calls[0][0])
+    expect(prompt).toMatch(/real/i)
+    expect(prompt).toMatch(/never invent/i)
+  })
+
+  it('does not keep a result that is a sentence instead of a concept', async () => {
+    modelReply({ name: 'The feeling of watching the sea at night', emoji: '🌊', description: 'Long.' })
+
+    const { status, data } = await combine('Hope', 'Nature')
+
+    expect(status).toBe(503)
+    expect(data.name).toBeUndefined()
+  })
+
+  it('does not keep a result that only repeats one of the two concepts', async () => {
+    modelReply({ name: 'hope', emoji: '🌅', description: 'Hope again.' })
+
+    const { status } = await combine('Hope', 'Nature')
+
+    expect(status).toBe(503)
+  })
+
+  it('keeps the description to one short line of plain text', async () => {
+    modelReply({ name: 'Biophilia', emoji: '🌱', description: `${'Life loving life. '.repeat(30)}\nSecond line` })
+
+    const { status, data } = await combine('Hope', 'Nature')
+
+    expect(status).toBe(200)
+    expect(data.name).toBe('Biophilia')
+    expect(data.description).not.toContain('\n')
+    expect(data.description.length).toBeLessThanOrEqual(160)
   })
 })

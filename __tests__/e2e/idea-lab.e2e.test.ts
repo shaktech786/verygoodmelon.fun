@@ -15,6 +15,8 @@ const TABLE: Record<string, { name: string; emoji: string; description: string }
   'chaos+order': { name: 'Balance', emoji: '⚖️', description: 'Structure and spontaneity in step.' },
   // The service answering with a name the player already has.
   'beauty+nature': { name: 'Love', emoji: '💕', description: 'Beauty in nature opens the heart.' },
+  'fear+hope': { name: 'Courage', emoji: '🦁', description: 'Acting despite fear because something matters more.' },
+  'courage+wisdom': { name: 'Virtue', emoji: '🏛️', description: 'Excellence of character, practised until it is natural.' },
 }
 
 const pairKey = (a: string, b: string) => [a.toLowerCase(), b.toLowerCase()].sort().join('+')
@@ -244,4 +246,71 @@ test('curated pairs come back from the real route whichever order they are writt
 
   await combine(page, 'Order', 'Chaos')
   await expect(result(page)).toContainText('New discovery: Balance.')
+})
+
+const goldShelf = (page: Page) => page.getByRole('region', { name: /The seven golds|The Great Work is complete/ })
+
+test('a gold is celebrated, and the shelf of riddles shows what is still to find', async ({ page }) => {
+  await mockCombine(page)
+  await startLab(page)
+
+  const shelf = goldShelf(page)
+  await expect(shelf).toContainText('0 of 7 found')
+  await expect(shelf).toContainText('Fear, carried by hope.')
+  await expect(shelf.getByText('Not yet found. Riddle:', { exact: false })).toHaveCount(7)
+
+  await combine(page, 'Hope', 'Fear')
+  await expect(result(page)).toContainText('Gold: Courage, one of the seven.')
+  await expect(result(page)).toContainText('One of the seven golds. 1 of 7 found.')
+  await expect(shelf).toContainText('1 of 7 found')
+  await expect(shelf).toContainText('Acting despite fear because something matters more.')
+  await expect(shelf).not.toContainText('Fear, carried by hope.')
+})
+
+test('finding the seventh gold completes the Great Work, and the lab stays open', async ({ page }) => {
+  await mockCombine(page)
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('seeded')) return
+    sessionStorage.setItem('seeded', '1')
+    const found = ['Healing', 'Acceptance', 'Courage', 'Compassion', 'Meaning', 'Intimacy', 'Wisdom']
+    localStorage.setItem('ideaLab_discoveries', JSON.stringify(
+      found.map(name => ({ id: name.toLowerCase(), name, emoji: '✨', description: `${name}, found earlier.` }))
+    ))
+  })
+  await page.goto('/games/idea-lab')
+  await expect(goldShelf(page)).toContainText('6 of 7 found')
+
+  await combine(page, 'Wisdom', 'Courage')
+  await expect(result(page)).toContainText('Gold: Virtue, one of the seven.')
+  await expect(page.getByRole('heading', { name: 'The Great Work is complete' })).toBeVisible()
+  await expect(goldShelf(page)).toContainText('7 of 7 found')
+  await expect(goldShelf(page)).toContainText('The lab stays open whenever you want to wander.')
+  await expect(concept(page, 'Love')).toBeEnabled()
+})
+
+test('every gold can be reached from the starting ideas through the real curated pairs', async ({ page }) => {
+  await startLab(page)
+  const steps: Array<[string, string]> = [
+    ['Hope', 'Fear'], ['Love', 'Death'], ['Grief', 'Hope'], ['Fear', 'Time'], ['Time', 'Hope'],
+    ['Anxiety', 'Patience'], ['Love', 'Other'], ['Knowledge', 'Other'], ['Empathy', 'Understanding'],
+    ['Fear', 'Death'], ['Time', 'Death'], ['Mortality', 'Legacy'], ['Love', 'Truth'], ['Love', 'Freedom'],
+    ['Vulnerability', 'Trust'], ['Time', 'Knowledge'], ['Wisdom', 'Courage'],
+  ]
+  for (const [a, b] of steps) {
+    await combine(page, a, b)
+    await expect(result(page)).toContainText(/New discovery|Gold:/)
+  }
+  await expect(page.getByRole('heading', { name: 'The Great Work is complete' })).toBeVisible()
+})
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('the lab fits without sideways scrolling and concepts are easy to tap', async ({ page }) => {
+    await mockCombine(page)
+    await startLab(page)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+    const box = await concept(page, 'Love').boundingBox()
+    expect(box?.height).toBeGreaterThanOrEqual(44)
+  })
 })

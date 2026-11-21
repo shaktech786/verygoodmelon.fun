@@ -1,111 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
+import { findKnownCombination } from '@/lib/games/idea-lab/concepts'
 
 // Concepts are short names; anything longer is not from the game and would only cost model tokens.
 const MAX_CONCEPT_LENGTH = 60
+const MAX_DESCRIPTION_LENGTH = 160
+const MAX_NAME_WORDS = 3
+// Letters (any script), spaces, hyphens and apostrophes: what a concept name is made of, and nothing an instruction needs.
+const CONCEPT_PATTERN = /^[\p{L}][\p{L} '’-]*$/u
 
-interface Combination {
-  name: string
-  emoji: string
-  description: string
+function isConceptName(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0 && value.length <= MAX_CONCEPT_LENGTH && CONCEPT_PATTERN.test(value.trim())
 }
 
-// Known combinations for consistency and instant responses
-const KNOWN_COMBINATIONS: Record<string, Combination> = {
-  // Classic philosophical combinations
-  'love+fear': { name: 'Jealousy', emoji: '😒', description: 'When love fears loss, it curdles into possession.' },
-  'love+death': { name: 'Grief', emoji: '💔', description: 'Love does not end where life does—it transforms into longing.' },
-  'love+time': { name: 'Devotion', emoji: '💍', description: 'Love that endures through time becomes unbreakable.' },
-  'love+truth': { name: 'Vulnerability', emoji: '🫀', description: 'True love requires showing who we really are.' },
-  'love+freedom': { name: 'Trust', emoji: '🤝', description: 'Real love holds loosely, letting the other fly.' },
-  'love+self': { name: 'Self-Compassion', emoji: '🌷', description: 'The hardest person to truly love is yourself.' },
-  'love+other': { name: 'Empathy', emoji: '💗', description: 'Extending your heart beyond your own experience.' },
-
-  'fear+death': { name: 'Mortality', emoji: '⚰️', description: 'The universal dread that gives life its urgency.' },
-  'fear+time': { name: 'Anxiety', emoji: '😰', description: 'Fear stretched across an uncertain future.' },
-  'fear+freedom': { name: 'Vertigo', emoji: '🌀', description: 'The dizziness of infinite possibility.' },
-  'fear+truth': { name: 'Denial', emoji: '🙈', description: 'We fear what we refuse to see.' },
-  'fear+self': { name: 'Insecurity', emoji: '😟', description: 'Doubting the ground beneath your own identity.' },
-
-  'time+death': { name: 'Legacy', emoji: '📜', description: 'What remains after we are gone.' },
-  'time+knowledge': { name: 'Wisdom', emoji: '🦉', description: 'Understanding deepened by experience.' },
-  'time+hope': { name: 'Patience', emoji: '🌱', description: 'The strength to wait for what matters.' },
-  'time+chaos': { name: 'Entropy', emoji: '🔥', description: 'All things tend toward disorder.' },
-  'time+order': { name: 'History', emoji: '📖', description: 'The patterns we impose on passing moments.' },
-
-  'death+hope': { name: 'Resurrection', emoji: '🌅', description: 'The possibility of beginning again.' },
-  'death+beauty': { name: 'Impermanence', emoji: '🌸', description: 'Things are beautiful because they end.' },
-  'death+self': { name: 'Ego Death', emoji: '🦋', description: 'The dissolution that precedes transformation.' },
-
-  'knowledge+power': { name: 'Expertise', emoji: '🎓', description: 'To know deeply is to influence widely.' },
-  'knowledge+truth': { name: 'Enlightenment', emoji: '💡', description: 'When knowing aligns with what is.' },
-  'knowledge+self': { name: 'Introspection', emoji: '🔍', description: 'Turning the mind inward to examine itself.' },
-  'knowledge+other': { name: 'Understanding', emoji: '🤲', description: 'Bridging the gap between different minds.' },
-
-  'power+freedom': { name: 'Authority', emoji: '👑', description: 'The right to shape others without their consent.' },
-  'power+justice': { name: 'Law', emoji: '⚖️', description: 'Power channeled through rules.' },
-  'power+chaos': { name: 'Revolution', emoji: '✊', description: 'When accumulated force breaks old orders.' },
-  'power+self': { name: 'Autonomy', emoji: '🏔️', description: 'The power to govern yourself.' },
-
-  'freedom+order': { name: 'Discipline', emoji: '🎯', description: 'Structure that enables rather than constrains.' },
-  'freedom+truth': { name: 'Authenticity', emoji: '✨', description: 'Living as you truly are.' },
-  'freedom+self': { name: 'Liberation', emoji: '🔓', description: 'Breaking the chains you didn\'t know you wore.' },
-  'freedom+other': { name: 'Democracy', emoji: '🗳️', description: 'Freedom that includes everyone.' },
-
-  'truth+beauty': { name: 'Art', emoji: '🎨', description: 'Beauty that reveals something real.' },
-  'truth+justice': { name: 'Integrity', emoji: '🛡️', description: 'When words match actions match values.' },
-  'truth+self': { name: 'Honesty', emoji: '🪞', description: 'Seeing yourself without filters.' },
-  'truth+chaos': { name: 'Paradox', emoji: '♾️', description: 'Truths that contradict yet coexist.' },
-
-  'beauty+chaos': { name: 'Creativity', emoji: '🌈', description: 'Order emerging from disorder.' },
-  'beauty+order': { name: 'Harmony', emoji: '🎵', description: 'Elements in perfect relation.' },
-
-  'justice+chaos': { name: 'Karma', emoji: '☯️', description: 'The universe balancing itself.' },
-
-  'hope+chaos': { name: 'Faith', emoji: '🕊️', description: 'Trusting without certainty.' },
-  'hope+fear': { name: 'Courage', emoji: '🦁', description: 'Acting despite fear because something matters more.' },
-
-  'chaos+order': { name: 'Balance', emoji: '⚖️', description: 'The dance between structure and spontaneity.' },
-  'chaos+nature': { name: 'Evolution', emoji: '🧬', description: 'Random change preserved by selection.' },
-
-  'nature+death': { name: 'Cycle', emoji: '🔄', description: 'All that dies feeds new life.' },
-  'nature+beauty': { name: 'Wonder', emoji: '🌺', description: 'Amazement at what exists without us.' },
-  'nature+self': { name: 'Instinct', emoji: '🐾', description: 'The animal wisdom within.' },
-
-  'self+other': { name: 'Relationship', emoji: '🔗', description: 'Where I end and you begin becomes unclear.' },
-
-  // Some deeper combinations
-  'wisdom+courage': { name: 'Virtue', emoji: '🏛️', description: 'Excellence of character through practice.' },
-  'grief+hope': { name: 'Healing', emoji: '🩹', description: 'Pain transforming into growth.' },
-  'anxiety+patience': { name: 'Acceptance', emoji: '🙏', description: 'Finding peace with what cannot be changed.' },
-  'mortality+legacy': { name: 'Meaning', emoji: '💫', description: 'What makes a finite life worthwhile.' },
-  'empathy+understanding': { name: 'Compassion', emoji: '❤️', description: 'Feeling with others and acting to help.' },
-  'vulnerability+trust': { name: 'Intimacy', emoji: '💑', description: 'Two souls meeting without armor.' },
-  'authenticity+discipline': { name: 'Mastery', emoji: '🥋', description: 'Becoming fully yourself through dedicated practice.' },
+function oneLine(text: string): string {
+  const line = text.trim().split(/\r?\n/)[0].trim()
+  if (line.length <= MAX_DESCRIPTION_LENGTH) return line
+  const cut = line.slice(0, MAX_DESCRIPTION_LENGTH - 1)
+  return `${cut.slice(0, cut.lastIndexOf(' '))}…`
 }
-
-// Get combo key (sorted alphabetically)
-function getComboKey(concept1: string, concept2: string): string {
-  return [concept1.toLowerCase(), concept2.toLowerCase()].sort().join('+')
-}
-
-// The table above is written in reading order ("love+fear"); lookups use the sorted key.
-const KNOWN_BY_SORTED_KEY = new Map<string, Combination>(
-  Object.entries(KNOWN_COMBINATIONS).map(([key, combination]) => {
-    const [first, second] = key.split('+')
-    return [getComboKey(first, second), combination]
-  })
-)
 
 export async function POST(request: NextRequest) {
   try {
     const { concept1, concept2 } = await request.json()
 
-    if (
-      typeof concept1 !== 'string' || typeof concept2 !== 'string' ||
-      !concept1.trim() || !concept2.trim() ||
-      concept1.length > MAX_CONCEPT_LENGTH || concept2.length > MAX_CONCEPT_LENGTH
-    ) {
+    if (!isConceptName(concept1) || !isConceptName(concept2)) {
       return NextResponse.json(
         { error: 'Two concepts are required' },
         { status: 400 }
@@ -113,33 +32,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Check known combinations first
-    const known = KNOWN_BY_SORTED_KEY.get(getComboKey(concept1.trim(), concept2.trim()))
+    const known = findKnownCombination(concept1, concept2)
     if (known) {
       return NextResponse.json(known)
     }
 
     // Use AI for unknown combinations
-    const prompt = `You are a philosophical concept generator for a game called "The Idea Lab" where players combine abstract concepts to discover new ideas.
+    const prompt = `Two ideas are being mixed in a calm, reflective game about how feelings and ideas transform: "${concept1.trim()}" and "${concept2.trim()}".
 
-Given two philosophical concepts, create a meaningful new concept that represents their combination.
+Name the idea they become together.
 
-RULES:
-1. The result should be a SINGLE WORD or SHORT PHRASE (1-3 words max)
-2. It should feel like a genuine philosophical or emotional concept
-3. It should make intuitive sense as a combination
-4. Provide a short, poetic description (one sentence)
-5. Choose an appropriate emoji
+Rules:
+1. The name must be a real, recognisable English word or a well-known short phrase (1-3 words) that a thoughtful reader would know. Never invent or blend words.
+2. It must be different from both inputs and must make intuitive sense as their combination.
+3. The description is one plain sentence of at most 18 words that explains the link, the way a wise friend would.
+4. If the mix is heavy (loss, fear, conflict), name it honestly but find its humane side. No despair, no clichés.
+5. One fitting emoji.
 
-Input concepts: "${concept1}" and "${concept2}"
-
-Respond in this exact JSON format:
-{
-  "name": "ConceptName",
-  "emoji": "🔮",
-  "description": "A one-sentence poetic description of this concept."
-}
-
-Only return the JSON, no other text.`
+Respond with only this JSON:
+{"name": "Name", "emoji": "🔮", "description": "One sentence."}`
 
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
@@ -160,16 +71,18 @@ Only return the JSON, no other text.`
     }
 
     const parsed = JSON.parse(jsonMatch[0])
-    if (typeof parsed.name !== 'string' || !parsed.name.trim() || parsed.name.trim().length > MAX_CONCEPT_LENGTH) {
-      throw new Error('AI response has no usable concept name')
+    const name = typeof parsed.name === 'string' ? parsed.name.trim() : ''
+    const repeatsInput = [concept1, concept2].some(input => input.trim().toLowerCase() === name.toLowerCase())
+    if (!isConceptName(name) || name.split(/\s+/).length > MAX_NAME_WORDS || repeatsInput) {
+      throw new Error('Combination has no usable concept name')
     }
 
     return NextResponse.json({
-      name: parsed.name.trim(),
-      emoji: typeof parsed.emoji === 'string' && parsed.emoji ? parsed.emoji : '🔮',
-      description: typeof parsed.description === 'string' && parsed.description
-        ? parsed.description
-        : 'A concept beyond words.'
+      name,
+      emoji: typeof parsed.emoji === 'string' && parsed.emoji.trim() ? [...parsed.emoji.trim()].slice(0, 4).join('') : '🔮',
+      description: typeof parsed.description === 'string' && parsed.description.trim()
+        ? oneLine(parsed.description)
+        : 'An idea that is easier to feel than to say.'
     })
 
   } catch (error) {

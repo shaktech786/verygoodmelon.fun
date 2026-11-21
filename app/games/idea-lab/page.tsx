@@ -3,8 +3,8 @@ import IdeaLab from '@/components/games/IdeaLab'
 import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 
 export const metadata: Metadata = {
-  title: 'The Idea Lab - VeryGoodMelon.Fun',
-  description: 'Combine philosophical concepts to discover new ideas. Mix Love with Fear, Time with Death, Freedom with Order—what emerges might surprise you.',
+  title: 'The Alchemist | VeryGoodMelon.Fun',
+  description: 'Mix two ideas and see what they become. Seven of them are gold, and the heaviest feelings are often the way there.',
 }
 
 export default function IdeaLabPage() {
