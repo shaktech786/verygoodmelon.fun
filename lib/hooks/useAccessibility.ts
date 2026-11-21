@@ -1,250 +1,139 @@
-/**
- * useAccessibility Hook
- *
- * Manages all accessibility settings with localStorage persistence
- * and automatic system preference detection.
- */
-
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import {
   AccessibilitySettings,
   AccessibilityPreset,
+  ContrastMode,
+  TextSize,
+  ThemeMode,
   DEFAULT_ACCESSIBILITY_SETTINGS,
   ACCESSIBILITY_PRESETS,
 } from '@/types/accessibility'
 
 const STORAGE_KEY = 'verygoodmelon:accessibility:settings'
 
-/**
- * Load settings from localStorage
- */
-function loadSettings(): AccessibilitySettings {
-  if (typeof window === 'undefined') {
-    return DEFAULT_ACCESSIBILITY_SETTINGS
-  }
+const THEMES: readonly ThemeMode[] = ['light', 'dark', 'auto']
+const TEXT_SIZES: readonly TextSize[] = ['default', 'large', 'larger']
+const CONTRASTS: readonly ContrastMode[] = ['normal', 'high', 'extra-high']
 
+function oneOf<T extends string>(options: readonly T[], value: unknown, fallback: T): T {
+  return options.find((option) => option === value) ?? fallback
+}
+
+function bool(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback
+}
+
+/**
+ * Reads settings saved by any version of the site. Removed options are mapped to
+ * their nearest surviving setting so a returning visitor keeps what they chose.
+ */
+export function migrateSettings(stored: unknown): AccessibilitySettings | null {
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return null
+  const raw = stored as Record<string, unknown>
+  const defaults = DEFAULT_ACCESSIBILITY_SETTINGS
+
+  const volume =
+    typeof raw.volume === 'number' && Number.isFinite(raw.volume)
+      ? Math.round(Math.min(100, Math.max(0, raw.volume)))
+      : defaults.volume
+
+  return {
+    theme: oneOf(THEMES, raw.theme, defaults.theme),
+    textSize: oneOf(TEXT_SIZES, raw.textSize, defaults.textSize),
+    contrast: oneOf(CONTRASTS, raw.contrast, defaults.contrast),
+    reduceMotion: raw.pauseAnimations === true || bool(raw.reduceMotion, defaults.reduceMotion),
+    greyscale: raw.colorblindMode === 'monochrome' || bool(raw.greyscale, defaults.greyscale),
+    muted: bool(raw.muted, defaults.muted),
+    volume,
+  }
+}
+
+function detectSystemPreferences(): AccessibilitySettings {
+  return {
+    ...DEFAULT_ACCESSIBILITY_SETTINGS,
+    reduceMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    contrast: window.matchMedia('(prefers-contrast: more)').matches ? 'high' : 'normal',
+  }
+}
+
+function loadSettings(): AccessibilitySettings {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      // Validate parsed data has expected structure
-      if (parsed && typeof parsed === 'object') {
-        // Merge with defaults to handle new settings
-        return { ...DEFAULT_ACCESSIBILITY_SETTINGS, ...parsed }
-      }
-    }
-  } catch (error) {
-    console.error('Failed to load accessibility settings, resetting to defaults:', error)
-    // Clear corrupted data
-    try {
-      localStorage.removeItem(STORAGE_KEY)
-    } catch (e) {
-      console.error('Failed to clear corrupted settings:', e)
-    }
+    const migrated = stored ? migrateSettings(JSON.parse(stored)) : null
+    if (migrated) return migrated
+  } catch {
+    // Unreadable storage (private mode, corrupt JSON) falls through to system preferences
   }
-
   return detectSystemPreferences()
 }
 
-/**
- * Save settings to localStorage
- */
-function saveSettings(settings: AccessibilitySettings): void {
-  if (typeof window === 'undefined') return
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-  } catch (error) {
-    console.error('Failed to save accessibility settings:', error)
-  }
-}
-
-/**
- * Detect system preferences
- */
-function detectSystemPreferences(): AccessibilitySettings {
-  const settings = { ...DEFAULT_ACCESSIBILITY_SETTINGS }
-
-  if (typeof window === 'undefined') {
-    return settings
-  }
-
-  // Check for reduced motion preference
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    settings.reduceMotion = true
-  }
-
-  // Check for high contrast preference
-  if (window.matchMedia('(prefers-contrast: more)').matches) {
-    settings.contrast = 'high'
-  }
-
-  return settings
-}
-
-/**
- * Apply settings to DOM
- */
-function applySettings(settings: AccessibilitySettings): void {
-  if (typeof window === 'undefined') return
-
+export function applySettings(settings: AccessibilitySettings): void {
   const root = document.documentElement
-
-  // Transition duration
-  const transitionDuration = settings.reduceMotion ? '0ms' : '75ms'
-  root.style.setProperty('--transition-duration', transitionDuration)
-
-  // Animation speed
-  root.style.setProperty('--animation-speed', String(settings.animationSpeed))
-
-  // Contrast multiplier
-  const contrastMultiplier =
-    settings.contrast === 'extra-high' ? '1.5' :
-    settings.contrast === 'high' ? '1.2' : '1'
-  root.style.setProperty('--contrast-multiplier', contrastMultiplier)
-
-  // Pause animations
-  if (settings.pauseAnimations) {
-    root.style.setProperty('--animation-play-state', 'paused')
-  } else {
-    root.style.setProperty('--animation-play-state', 'running')
-  }
-
-  // Colorblind mode (via CSS filter)
-  const colorblindFilter = getColorblindFilter(settings.colorblindMode)
-  root.style.setProperty('--colorblind-filter', colorblindFilter)
-
-  // Data attributes for CSS targeting
-  root.setAttribute('data-reduce-motion', String(settings.reduceMotion))
+  root.setAttribute('data-theme', settings.theme)
+  root.setAttribute('data-text-size', settings.textSize)
   root.setAttribute('data-contrast', settings.contrast)
-  root.setAttribute('data-colorblind-mode', settings.colorblindMode)
-  root.setAttribute('data-pause-animations', String(settings.pauseAnimations))
+  root.setAttribute('data-reduce-motion', String(settings.reduceMotion))
+  root.setAttribute('data-greyscale', String(settings.greyscale))
   root.setAttribute('data-muted', String(settings.muted))
   root.setAttribute('data-volume', String(settings.volume))
-  root.setAttribute('data-theme', settings.theme)
 }
 
-/**
- * Get CSS filter for colorblind modes
- */
-function getColorblindFilter(mode: AccessibilitySettings['colorblindMode']): string {
-  switch (mode) {
-    case 'deuteranopia':
-      return 'url(#deuteranopia-filter)'
-    case 'protanopia':
-      return 'url(#protanopia-filter)'
-    case 'tritanopia':
-      return 'url(#tritanopia-filter)'
-    case 'monochrome':
-      return 'grayscale(100%)'
-    default:
-      return 'none'
+let current: AccessibilitySettings | null = null
+const listeners = new Set<() => void>()
+
+function getSnapshot(): AccessibilitySettings {
+  current ??= loadSettings()
+  return current
+}
+
+function getServerSnapshot(): AccessibilitySettings {
+  return DEFAULT_ACCESSIBILITY_SETTINGS
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+function commit(next: AccessibilitySettings, persist: boolean): void {
+  current = next
+  try {
+    if (persist) localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    else localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // Settings still apply for this visit when storage is unavailable
   }
+  applySettings(next)
+  listeners.forEach((listener) => listener())
 }
 
-/**
- * Main accessibility hook
- */
+/** One shared set of accessibility settings for the whole page, saved in localStorage. */
 export function useAccessibility() {
-  const [settings, setSettings] = useState<AccessibilitySettings>(loadSettings)
-  const [isInitialized, setIsInitialized] = useState(false)
+  const settings = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 
-  // Apply settings on mount (lazy initializer already loaded from localStorage)
   useEffect(() => {
     applySettings(settings)
-    queueMicrotask(() => setIsInitialized(true))
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- only run on mount
+  }, [settings])
+
+  const updateSettings = useCallback((updates: Partial<AccessibilitySettings>) => {
+    commit({ ...getSnapshot(), ...updates }, true)
   }, [])
 
-  // Save and apply settings on change
-  useEffect(() => {
-    if (!isInitialized) return
-
-    saveSettings(settings)
-    applySettings(settings)
-  }, [settings, isInitialized])
-
-  // Update a single setting
   const updateSetting = useCallback(
-    <K extends keyof AccessibilitySettings>(
-      key: K,
-      value: AccessibilitySettings[K]
-    ) => {
-      setSettings((prev) => ({ ...prev, [key]: value }))
+    <K extends keyof AccessibilitySettings>(key: K, value: AccessibilitySettings[K]) => {
+      updateSettings({ [key]: value })
     },
-    []
+    [updateSettings]
   )
 
-  // Update multiple settings at once
-  const updateSettings = useCallback(
-    (updates: Partial<AccessibilitySettings>) => {
-      setSettings((prev) => ({ ...prev, ...updates }))
-    },
-    []
+  const applyPreset = useCallback(
+    (preset: AccessibilityPreset) => updateSettings(ACCESSIBILITY_PRESETS[preset].settings),
+    [updateSettings]
   )
 
-  // Apply a preset
-  const applyPreset = useCallback((preset: AccessibilityPreset) => {
-    const presetConfig = ACCESSIBILITY_PRESETS[preset]
-    updateSettings(presetConfig.settings)
-  }, [updateSettings])
+  const resetToDefaults = useCallback(() => commit(detectSystemPreferences(), false), [])
 
-  // Reset to defaults
-  const resetToDefaults = useCallback(() => {
-    const defaults = detectSystemPreferences()
-    setSettings(defaults)
-  }, [])
-
-  // Toggle reduce motion
-  const toggleReduceMotion = useCallback(() => {
-    updateSetting('reduceMotion', !settings.reduceMotion)
-  }, [settings.reduceMotion, updateSetting])
-
-  // Toggle mute
-  const toggleMute = useCallback(() => {
-    updateSetting('muted', !settings.muted)
-  }, [settings.muted, updateSetting])
-
-  // Set volume
-  const setVolume = useCallback(
-    (volume: number) => {
-      updateSetting('volume', Math.max(0, Math.min(100, volume)))
-    },
-    [updateSetting]
-  )
-
-  return {
-    settings,
-    updateSetting,
-    updateSettings,
-    applyPreset,
-    resetToDefaults,
-    toggleReduceMotion,
-    toggleMute,
-    setVolume,
-    isInitialized,
-  }
-}
-
-/**
- * Hook to check if reduced motion is active
- * Useful for components that need to know motion preference
- */
-export function useReducedMotion(): boolean {
-  const { settings } = useAccessibility()
-  return settings.reduceMotion
-}
-
-/**
- * Hook to get current volume setting
- * Useful for audio components
- */
-export function useVolume(): { volume: number; muted: boolean } {
-  const { settings } = useAccessibility()
-  return {
-    volume: settings.volume,
-    muted: settings.muted,
-  }
+  return { settings, updateSetting, updateSettings, applyPreset, resetToDefaults }
 }

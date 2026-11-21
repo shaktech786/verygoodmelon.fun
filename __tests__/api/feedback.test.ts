@@ -90,6 +90,21 @@ describe('POST /api/feedback', () => {
     expect(data.issueNumber).toBe(1)
   })
 
+  it('thanks the visitor without mentioning how notes are processed, and keeps their words out of the logs', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const request = new Request('http://localhost/api/feedback', {
+      method: 'POST',
+      body: JSON.stringify({ feedback: 'The breathing circle felt lovely' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const data = await (await POST(request as never)).json()
+
+    expect(data.message).not.toMatch(/\bAI\b|GitHub issue/i)
+    expect(log).not.toHaveBeenCalled()
+    log.mockRestore()
+  })
+
   it('returns 500 when GitHub API fails', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,

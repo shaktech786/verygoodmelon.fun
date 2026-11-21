@@ -69,8 +69,6 @@ NOW: Return your response as valid JSON with this EXACT structure (no markdown, 
     })
     const response = result.text ?? ''
 
-    console.log('AI Response:', response) // Debug log
-
     // Parse JSON (should be direct JSON now with responseMimeType)
     let issueData
     try {
@@ -99,8 +97,6 @@ NOW: Return your response as valid JSON with this EXACT structure (no markdown, 
     if (!issueData.body.includes('automatically created from user feedback')) {
       issueData.body += '\n\n---\n\n*This issue was automatically created from user feedback.*'
     }
-
-    console.log('Parsed issue data:', issueData) // Debug log
 
     return issueData
   } catch (error) {
@@ -166,7 +162,7 @@ export async function POST(request: NextRequest) {
 
     if (!feedback || typeof feedback !== 'string' || feedback.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Feedback is required' },
+        { error: 'Please write a few words first.' },
         { status: 400 }
       )
     }
@@ -181,12 +177,12 @@ export async function POST(request: NextRequest) {
       success: true,
       issueUrl: url,
       issueNumber: number,
-      message: 'Thank you for your feedback! We\'ve created a GitHub issue to track this.'
+      message: 'Thank you. Your note arrived safely and will be read soon.'
     })
   } catch (error) {
     console.error('Feedback submission error:', error)
     return NextResponse.json(
-      { error: 'Failed to submit feedback. Please try again later.' },
+      { error: "That didn't send. Please try again in a moment." },
       { status: 500 }
     )
   }

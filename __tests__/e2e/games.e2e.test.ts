@@ -60,7 +60,7 @@ test.describe('Homepage', () => {
     await expect(page.getByRole('heading', { level: 1 })).toContainText('lighter')
 
     for (const game of SHOWCASE_GAMES) {
-      await expect(page.locator(`main a[href="/games/${game.slug}"]`)).toHaveCount(1)
+      await expect(page.locator(`main section[aria-labelledby^="category-"] a[href="/games/${game.slug}"]`)).toHaveCount(1)
     }
   })
 })

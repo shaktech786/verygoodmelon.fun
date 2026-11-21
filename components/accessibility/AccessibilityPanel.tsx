@@ -1,479 +1,363 @@
-/**
- * Accessibility Control Panel
- * Slide-out panel with all accessibility controls
- */
-
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { X, Volume2, VolumeX, Pause, Play, Eye, Palette, Moon, Sun } from 'lucide-react'
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
+import { Moon, Sun, SunMoon, X } from 'lucide-react'
 import { useAccessibility } from '@/lib/hooks/useAccessibility'
-import { AccessibilityPreset, ACCESSIBILITY_PRESETS } from '@/types/accessibility'
+import { useModalDialog } from '@/components/accessibility/useModalDialog'
+import {
+  ACCESSIBILITY_PRESETS,
+  type AccessibilityPreset,
+  type ContrastMode,
+  type TextSize,
+  type ThemeMode,
+} from '@/types/accessibility'
 
 interface AccessibilityPanelProps {
   isOpen: boolean
   onClose: () => void
 }
 
+interface ChoiceOption<T extends string> {
+  value: T
+  label: string
+  icon?: ReactNode
+}
+
+const THEME_OPTIONS: readonly ChoiceOption<ThemeMode>[] = [
+  { value: 'light', label: 'Light', icon: <Sun size={18} aria-hidden="true" /> },
+  { value: 'auto', label: 'Match device', icon: <SunMoon size={18} aria-hidden="true" /> },
+  { value: 'dark', label: 'Dark', icon: <Moon size={18} aria-hidden="true" /> },
+]
+
+const TEXT_SIZE_OPTIONS: readonly ChoiceOption<TextSize>[] = [
+  { value: 'default', label: 'Default', icon: <span aria-hidden="true" className="text-sm leading-none">A</span> },
+  { value: 'large', label: 'Large', icon: <span aria-hidden="true" className="text-base leading-none">A</span> },
+  { value: 'larger', label: 'Larger', icon: <span aria-hidden="true" className="text-lg leading-none">A</span> },
+]
+
+const CONTRAST_OPTIONS: readonly ChoiceOption<ContrastMode>[] = [
+  { value: 'normal', label: 'Standard' },
+  { value: 'high', label: 'High' },
+  { value: 'extra-high', label: 'Highest' },
+]
+
+const SECTION = 'pt-6 border-t border-card-border'
+const SECTION_HEADING = 'text-xs font-semibold uppercase tracking-wider text-primary-light mb-4'
+const QUIET_BUTTON =
+  'w-full min-h-11 px-4 py-2 rounded-lg border border-card-border bg-card-bg hover:bg-hover-bg text-foreground text-sm text-left transition-colors'
+
+function Choice<T extends string>({
+  legend,
+  name,
+  value,
+  options,
+  onChange,
+}: {
+  legend: string
+  name: string
+  value: T
+  options: readonly ChoiceOption<T>[]
+  onChange: (value: T) => void
+}) {
+  return (
+    <fieldset className="mb-5">
+      <legend className="text-sm font-medium text-foreground mb-2">{legend}</legend>
+      <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-hover-bg">
+        {options.map((option) => (
+          <label
+            key={option.value}
+            className="
+              flex flex-col items-center justify-center gap-1 min-h-11 px-1 py-2
+              rounded-md border-2 border-transparent cursor-pointer
+              text-xs font-medium text-center text-primary-light
+              hover:text-foreground transition-colors
+              has-[:checked]:bg-card-bg has-[:checked]:text-foreground has-[:checked]:border-foreground
+              has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent
+            "
+          >
+            <input
+              type="radio"
+              name={name}
+              value={option.value}
+              checked={value === option.value}
+              onChange={() => onChange(option.value)}
+              className="sr-only"
+            />
+            {option.icon}
+            {option.label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  )
+}
+
+function Switch({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string
+  description: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  const id = useId()
+  return (
+    <div className="flex items-start justify-between gap-4 mb-5">
+      <div>
+        <span id={`${id}-label`} className="block text-sm font-medium text-foreground">
+          {label}
+        </span>
+        <span id={`${id}-description`} className="block text-xs text-primary-light mt-0.5">
+          {description}
+        </span>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-labelledby={`${id}-label`}
+        aria-describedby={`${id}-description`}
+        onClick={() => onChange(!checked)}
+        className={`
+          relative shrink-0 w-12 h-7 rounded-full border-2 transition-colors
+          ${checked ? 'bg-accent border-accent' : 'bg-card-bg border-primary-light'}
+        `}
+      >
+        <span
+          aria-hidden="true"
+          className={`
+            absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform
+            ${checked ? 'translate-x-5 bg-card-bg' : 'translate-x-0 bg-primary-light'}
+          `}
+        />
+      </button>
+    </div>
+  )
+}
+
 export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps) {
-  const {
-    settings,
-    updateSetting,
-    applyPreset,
-    toggleReduceMotion,
-    toggleMute,
-    setVolume,
-  } = useAccessibility()
-
+  const { settings, updateSetting, applyPreset, resetToDefaults } = useAccessibility()
   const panelRef = useRef<HTMLDivElement>(null)
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const resetRef = useRef<HTMLButtonElement>(null)
+  const keepRef = useRef<HTMLButtonElement>(null)
+  const [confirmingReset, setConfirmingReset] = useState(false)
+  const [announcement, setAnnouncement] = useState('')
+  const volumeId = useId()
 
-  // Focus trap
+  const close = () => {
+    setConfirmingReset(false)
+    setAnnouncement('')
+    onClose()
+  }
+
+  useModalDialog(isOpen, panelRef, close)
+
+  const askedToReset = useRef(false)
   useEffect(() => {
-    if (isOpen && closeButtonRef.current) {
-      closeButtonRef.current.focus()
+    if (confirmingReset) {
+      askedToReset.current = true
+      keepRef.current?.focus()
+    } else if (askedToReset.current) {
+      askedToReset.current = false
+      resetRef.current?.focus()
     }
-  }, [isOpen])
-
-  // Close on Escape key
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose()
-      }
-    }
-
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [isOpen, onClose])
-
-  // Close on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        isOpen &&
-        panelRef.current &&
-        !panelRef.current.contains(e.target as Node)
-      ) {
-        onClose()
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isOpen, onClose])
+  }, [confirmingReset])
 
   if (!isOpen) return null
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/30 z-[60]"
-        aria-hidden="true"
-      />
+      <div className="fixed inset-0 bg-black/30 z-[60]" aria-hidden="true" onClick={close} />
 
-      {/* Panel */}
       <div
         ref={panelRef}
         id="accessibility-panel"
         role="dialog"
-        aria-labelledby="accessibility-panel-title"
         aria-modal="true"
-        className="
-          fixed top-0 right-0 bottom-0
-          w-full sm:w-96
-          bg-card-bg
-          shadow-2xl
-          z-[70]
-          overflow-y-auto
-        "
+        aria-labelledby="accessibility-panel-title"
+        tabIndex={-1}
+        className="fixed top-0 right-0 bottom-0 w-full sm:w-96 bg-card-bg text-foreground shadow-2xl z-[70] overflow-y-auto"
       >
-        {/* Header */}
-        <div className="sticky top-0 bg-card-bg border-b border-card-border px-6 py-4 flex items-center justify-between">
-          <h2
-            id="accessibility-panel-title"
-            className="text-xl font-semibold text-foreground"
-          >
-            Accessibility Settings
+        <div className="sticky top-0 z-10 bg-card-bg border-b border-card-border px-6 py-4 flex items-center justify-between">
+          <h2 id="accessibility-panel-title" className="text-xl font-semibold text-foreground">
+            Accessibility settings
           </h2>
           <button
-            ref={closeButtonRef}
-            onClick={onClose}
-            className="
-              p-2 rounded
-              hover:bg-hover-bg
-              transition-colors
-              focus:outline-none focus:ring-2 focus:ring-accent
-            "
+            type="button"
+            onClick={close}
+            className="p-2.5 rounded-lg hover:bg-hover-bg transition-colors"
             aria-label="Close accessibility settings"
           >
             <X size={20} aria-hidden="true" />
           </button>
         </div>
 
-        {/* Content */}
         <div className="px-6 py-6 space-y-6">
-          {/* Visual Controls */}
-          <section>
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <Eye size={16} aria-hidden="true" />
-              Visual
+          <p role="status" className="sr-only">
+            {announcement}
+          </p>
+
+          <section aria-labelledby="a11y-seeing">
+            <h3 id="a11y-seeing" className={SECTION_HEADING}>
+              Seeing
             </h3>
-
-            {/* Reduce Motion */}
-            <div className="mb-4">
-              <label className="flex items-center justify-between cursor-pointer">
-                <span className="text-sm text-primary">Reduce Motion</span>
-                <button
-                  role="switch"
-                  aria-checked={settings.reduceMotion}
-                  onClick={toggleReduceMotion}
-                  className={`
-                    relative w-11 h-6 rounded-full transition-colors
-                    focus:outline-none focus:ring-2 focus:ring-accent
-                    ${settings.reduceMotion ? 'bg-accent' : 'bg-gray-300'}
-                  `}
-                >
-                  <span
-                    className={`
-                      absolute top-0.5 left-0.5
-                      w-5 h-5 bg-card-bg rounded-full
-                      transition-transform
-                      ${settings.reduceMotion ? 'translate-x-5' : 'translate-x-0'}
-                    `}
-                  />
-                </button>
-              </label>
-            </div>
-
-            {/* Contrast */}
-            <div className="mb-4">
-              <label className="block text-sm text-primary mb-2">Contrast</label>
-              <select
-                value={settings.contrast}
-                onChange={(e) =>
-                  updateSetting('contrast', e.target.value as 'normal' | 'high' | 'extra-high')
-                }
-                className="
-                  w-full px-3 py-2
-                  border border-card-border rounded
-                  bg-card-bg text-foreground
-                  focus:outline-none focus:ring-2 focus:ring-accent
-                "
-              >
-                <option value="normal">Normal</option>
-                <option value="high">High</option>
-                <option value="extra-high">Extra High</option>
-              </select>
-            </div>
-
-            {/* Animation Speed */}
-            {!settings.reduceMotion && (
-              <div className="mb-4">
-                <label className="block text-sm text-primary mb-2">
-                  Animation Speed: {settings.animationSpeed}x
-                </label>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2"
-                  step="0.5"
-                  value={settings.animationSpeed}
-                  onChange={(e) =>
-                    updateSetting('animationSpeed', Number(e.target.value) as 0.5 | 1 | 1.5 | 2)
-                  }
-                  className="w-full accent-accent"
-                />
-              </div>
-            )}
-
-            {/* Colorblind Mode */}
-            <div className="mb-4">
-              <label className="block text-sm text-primary mb-2 flex items-center gap-2">
-                <Palette size={14} aria-hidden="true" />
-                Colorblind Mode
-              </label>
-              <select
-                value={settings.colorblindMode}
-                onChange={(e) =>
-                  updateSetting('colorblindMode', e.target.value as 'none' | 'deuteranopia' | 'protanopia' | 'tritanopia' | 'monochrome')
-                }
-                className="
-                  w-full px-3 py-2
-                  border border-card-border rounded
-                  bg-card-bg text-foreground
-                  focus:outline-none focus:ring-2 focus:ring-accent
-                "
-              >
-                <option value="none">None</option>
-                <option value="deuteranopia">Deuteranopia (Red-Green)</option>
-                <option value="protanopia">Protanopia (Red-Green)</option>
-                <option value="tritanopia">Tritanopia (Blue-Yellow)</option>
-                <option value="monochrome">Monochrome</option>
-              </select>
-            </div>
-
-            {/* Theme Mode - Modern Toggle */}
-            <div className="mb-4">
-              <label className="block text-sm text-primary mb-3">
-                Theme
-              </label>
-              <div
-                role="radiogroup"
-                aria-label="Theme selection"
-                className="grid grid-cols-3 gap-2 p-1 bg-foreground/5 rounded-lg"
-              >
-                {/* Light Mode */}
-                <button
-                  role="radio"
-                  aria-checked={settings.theme === 'light'}
-                  onClick={() => updateSetting('theme', 'light')}
-                  className={`
-                    px-3 py-2.5 rounded-md
-                    flex flex-col items-center justify-center gap-1
-                    transition-all duration-200
-                    focus:outline-none focus:ring-2 focus:ring-accent
-                    ${settings.theme === 'light'
-                      ? 'bg-card-bg text-foreground shadow-sm border border-card-border'
-                      : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'
-                    }
-                  `}
-                >
-                  <Sun size={18} aria-hidden="true" />
-                  <span className="text-xs font-medium">Light</span>
-                </button>
-
-                {/* Auto Mode */}
-                <button
-                  role="radio"
-                  aria-checked={settings.theme === 'auto'}
-                  onClick={() => updateSetting('theme', 'auto')}
-                  className={`
-                    px-3 py-2.5 rounded-md
-                    flex flex-col items-center justify-center gap-1
-                    transition-all duration-200
-                    focus:outline-none focus:ring-2 focus:ring-accent
-                    ${settings.theme === 'auto'
-                      ? 'bg-card-bg text-foreground shadow-sm border border-card-border'
-                      : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'
-                    }
-                  `}
-                >
-                  <div className="relative" aria-hidden="true">
-                    <Sun size={18} className="absolute -left-1" />
-                    <Moon size={18} className="absolute left-1" />
-                  </div>
-                  <span className="text-xs font-medium mt-3">Auto</span>
-                </button>
-
-                {/* Dark Mode */}
-                <button
-                  role="radio"
-                  aria-checked={settings.theme === 'dark'}
-                  onClick={() => updateSetting('theme', 'dark')}
-                  className={`
-                    px-3 py-2.5 rounded-md
-                    flex flex-col items-center justify-center gap-1
-                    transition-all duration-200
-                    focus:outline-none focus:ring-2 focus:ring-accent
-                    ${settings.theme === 'dark'
-                      ? 'bg-card-bg text-foreground shadow-sm border border-card-border'
-                      : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'
-                    }
-                  `}
-                >
-                  <Moon size={18} aria-hidden="true" />
-                  <span className="text-xs font-medium">Dark</span>
-                </button>
-              </div>
-            </div>
+            <Choice
+              legend="Theme"
+              name="a11y-theme"
+              value={settings.theme}
+              options={THEME_OPTIONS}
+              onChange={(value) => updateSetting('theme', value)}
+            />
+            <Choice
+              legend="Text size"
+              name="a11y-text-size"
+              value={settings.textSize}
+              options={TEXT_SIZE_OPTIONS}
+              onChange={(value) => updateSetting('textSize', value)}
+            />
+            <Choice
+              legend="Contrast"
+              name="a11y-contrast"
+              value={settings.contrast}
+              options={CONTRAST_OPTIONS}
+              onChange={(value) => updateSetting('contrast', value)}
+            />
+            <Switch
+              label="Greyscale"
+              description="Shows the whole site without colour, for a quieter screen."
+              checked={settings.greyscale}
+              onChange={(value) => updateSetting('greyscale', value)}
+            />
           </section>
 
-          {/* Audio Controls */}
-          <section className="pt-6 border-t border-card-border">
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              {settings.muted ? (
-                <VolumeX size={16} aria-hidden="true" />
-              ) : (
-                <Volume2 size={16} aria-hidden="true" />
-              )}
-              Audio
+          <section aria-labelledby="a11y-motion" className={SECTION}>
+            <h3 id="a11y-motion" className={SECTION_HEADING}>
+              Motion
             </h3>
-
-            {/* Mute Toggle */}
-            <div className="mb-4">
-              <button
-                onClick={toggleMute}
-                className="
-                  w-full px-4 py-2
-                  border border-card-border rounded
-                  bg-card-bg hover:bg-hover-bg
-                  text-foreground text-sm
-                  transition-colors
-                  focus:outline-none focus:ring-2 focus:ring-accent
-                  flex items-center justify-center gap-2
-                "
-              >
-                {settings.muted ? (
-                  <>
-                    <VolumeX size={16} aria-hidden="true" />
-                    Unmute
-                  </>
-                ) : (
-                  <>
-                    <Volume2 size={16} aria-hidden="true" />
-                    Mute
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Volume Slider */}
-            {!settings.muted && (
-              <div className="mb-4">
-                <label className="block text-sm text-primary mb-2">
-                  Volume: {settings.volume}%
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={settings.volume}
-                  onChange={(e) => setVolume(Number(e.target.value))}
-                  className="w-full accent-accent"
-                  aria-label="Volume level"
-                />
-              </div>
-            )}
+            <Switch
+              label="Reduce motion"
+              description="Stops floating, fading and moving effects across the site and in games."
+              checked={settings.reduceMotion}
+              onChange={(value) => updateSetting('reduceMotion', value)}
+            />
           </section>
 
-          {/* Interaction Controls */}
-          <section className="pt-6 border-t border-card-border">
-            <h3 className="text-sm font-semibold text-foreground mb-3">
-              Interaction
+          <section aria-labelledby="a11y-sound" className={SECTION}>
+            <h3 id="a11y-sound" className={SECTION_HEADING}>
+              Sound
             </h3>
-
-            {/* Pause Animations */}
-            <div className="mb-4">
-              <label className="flex items-center justify-between cursor-pointer">
-                <span className="text-sm text-primary flex items-center gap-2">
-                  {settings.pauseAnimations ? (
-                    <Pause size={14} aria-hidden="true" />
-                  ) : (
-                    <Play size={14} aria-hidden="true" />
-                  )}
-                  Pause Animations
-                </span>
-                <button
-                  role="switch"
-                  aria-checked={settings.pauseAnimations}
-                  onClick={() =>
-                    updateSetting('pauseAnimations', !settings.pauseAnimations)
-                  }
-                  className={`
-                    relative w-11 h-6 rounded-full transition-colors
-                    focus:outline-none focus:ring-2 focus:ring-accent
-                    ${settings.pauseAnimations ? 'bg-accent' : 'bg-gray-300'}
-                  `}
-                >
-                  <span
-                    className={`
-                      absolute top-0.5 left-0.5
-                      w-5 h-5 bg-card-bg rounded-full
-                      transition-transform
-                      ${settings.pauseAnimations ? 'translate-x-5' : 'translate-x-0'}
-                    `}
-                  />
-                </button>
+            <Switch
+              label="Mute all sound"
+              description="Games only play sound after you turn it on, and this silences it everywhere."
+              checked={settings.muted}
+              onChange={(value) => updateSetting('muted', value)}
+            />
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor={volumeId} className="text-sm font-medium text-foreground">
+                Volume
               </label>
+              <span className="text-sm text-primary-light" aria-hidden="true">
+                {settings.volume}%
+              </span>
             </div>
+            <input
+              id={volumeId}
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={settings.volume}
+              aria-valuetext={`${settings.volume}%`}
+              onChange={(event) => updateSetting('volume', Number(event.target.value))}
+              className="w-full accent-accent"
+            />
           </section>
 
-          {/* Presets */}
-          <section className="pt-6 border-t border-card-border">
-            <h3 className="text-sm font-semibold text-foreground mb-3">
-              Quick Presets
+          <section aria-labelledby="a11y-presets" className={SECTION}>
+            <h3 id="a11y-presets" className={SECTION_HEADING}>
+              Quick presets
             </h3>
             <div className="space-y-2">
-              {(Object.keys(ACCESSIBILITY_PRESETS) as AccessibilityPreset[]).map(
-                (presetKey) => {
-                  const preset = ACCESSIBILITY_PRESETS[presetKey]
-                  return (
-                    <button
-                      key={presetKey}
-                      onClick={() => applyPreset(presetKey)}
-                      className="
-                        w-full px-4 py-3
-                        border border-card-border rounded
-                        bg-card-bg hover:bg-hover-bg
-                        text-left
-                        transition-colors
-                        focus:outline-none focus:ring-2 focus:ring-accent
-                      "
-                    >
-                      <div className="font-medium text-sm text-foreground">
-                        {preset.name}
-                      </div>
-                      <div className="text-xs text-primary-light mt-1">
-                        {preset.description}
-                      </div>
-                    </button>
-                  )
-                }
-              )}
+              {(Object.keys(ACCESSIBILITY_PRESETS) as AccessibilityPreset[]).map((key) => {
+                const preset = ACCESSIBILITY_PRESETS[key]
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      applyPreset(key)
+                      setAnnouncement(`${preset.name} preset applied.`)
+                    }}
+                    className={QUIET_BUTTON}
+                  >
+                    <span className="block font-medium">{preset.name}</span>
+                    <span className="block text-xs text-primary-light mt-0.5">{preset.description}</span>
+                  </button>
+                )
+              })}
             </div>
           </section>
 
-          {/* Reset Settings */}
-          <section className="pt-6 border-t border-card-border">
-            <button
-              onClick={() => {
-                if (confirm('Reset all accessibility settings to defaults? This will clear your saved preferences.')) {
-                  // Clear localStorage
-                  try {
-                    localStorage.removeItem('verygoodmelon:accessibility:settings')
-                  } catch (e) {
-                    console.error('Failed to clear settings:', e)
-                  }
-                  // Apply defaults
-                  window.location.reload()
-                }
-              }}
-              className="
-                w-full px-4 py-3
-                border-2 border-danger rounded
-                bg-card-bg hover:bg-red-50
-                text-danger font-medium text-sm
-                transition-colors
-                focus:outline-none focus:ring-2 focus:ring-danger
-              "
-            >
-              Reset All Settings
-            </button>
-            <p className="text-xs text-primary-light mt-2 text-center">
-              Use this if settings stop working or to start fresh
-            </p>
-          </section>
-
-          {/* Keyboard Shortcuts Info */}
-          <section className="pt-6 border-t border-card-border">
-            <h3 className="text-sm font-semibold text-foreground mb-3">
-              Keyboard Shortcuts
+          <section aria-labelledby="a11y-keyboard" className={SECTION}>
+            <h3 id="a11y-keyboard" className={SECTION_HEADING}>
+              Keyboard
             </h3>
-            <div className="text-xs text-primary-light space-y-1">
-              <div>
-                <kbd className="px-2 py-1 bg-hover-bg rounded text-foreground">ESC</kbd> - Close
-                this panel
+            <dl className="text-sm text-primary-light space-y-2">
+              <div className="flex gap-3">
+                <dt>
+                  <kbd className="px-2 py-0.5 rounded border border-card-border bg-hover-bg text-foreground font-sans text-xs">
+                    Tab
+                  </kbd>
+                </dt>
+                <dd>Moves to the next control (Shift + Tab goes back)</dd>
               </div>
-              <div>
-                <kbd className="px-2 py-1 bg-hover-bg rounded text-foreground">M</kbd> - Mute/Unmute
+              <div className="flex gap-3">
+                <dt>
+                  <kbd className="px-2 py-0.5 rounded border border-card-border bg-hover-bg text-foreground font-sans text-xs">
+                    Esc
+                  </kbd>
+                </dt>
+                <dd>Closes this panel, the feedback form or the menu</dd>
               </div>
-              <div>
-                <kbd className="px-2 py-1 bg-hover-bg rounded text-foreground">SPACE</kbd> - Pause
-                (in games)
+            </dl>
+            <p className="text-xs text-primary-light mt-3">Each game explains its own keys on its page.</p>
+          </section>
+
+          <section aria-labelledby="a11y-reset" className={SECTION}>
+            <h3 id="a11y-reset" className="sr-only">
+              Start over
+            </h3>
+            {confirmingReset ? (
+              <div className="rounded-lg border border-card-border bg-hover-bg p-4">
+                <p className="text-sm text-foreground">
+                  Put every setting back to how it was on your first visit?
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetToDefaults()
+                      setConfirmingReset(false)
+                      setAnnouncement('All settings are back to how they started.')
+                    }}
+                    className="min-h-11 px-3 rounded-lg bg-foreground text-background text-sm font-medium"
+                  >
+                    Yes, reset
+                  </button>
+                  <button ref={keepRef} type="button" onClick={() => setConfirmingReset(false)} className={QUIET_BUTTON}>
+                    Keep my settings
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <button ref={resetRef} type="button" onClick={() => setConfirmingReset(true)} className={QUIET_BUTTON}>
+                <span className="block font-medium">Reset all settings</span>
+                <span className="block text-xs text-primary-light mt-0.5">Go back to how things looked at first</span>
+              </button>
+            )}
           </section>
         </div>
       </div>

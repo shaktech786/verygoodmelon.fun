@@ -214,6 +214,25 @@ export const SHOWCASE_GAMES = ALL_GAMES
   .filter((game) => game.isShowcase)
   .sort((a, b) => a.order - b.order)
 
+export interface GameGroup {
+  category: GameConfig['category']
+  title: string
+  description: string
+  games: GameConfig[]
+}
+
+const GROUP_HEADINGS: readonly Omit<GameGroup, 'games'>[] = [
+  { category: 'Calm', title: 'Slow down', description: 'Quiet games for when your mind is busy' },
+  { category: 'Reflect', title: 'Reflect', description: 'Big questions, held gently' },
+  { category: 'Play', title: 'Play', description: 'Thoughtful fun to get lost in' },
+]
+
+/** Showcase games in the one grouping and order every listing page uses. */
+export const SHOWCASE_GROUPS: readonly GameGroup[] = GROUP_HEADINGS.map((heading) => ({
+  ...heading,
+  games: SHOWCASE_GAMES.filter((game) => game.category === heading.category),
+})).filter((group) => group.games.length > 0)
+
 /**
  * Get game by slug
  */

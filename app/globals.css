@@ -29,6 +29,7 @@
   --card-bg: #ffffff;
   --card-border: #e8e8e8;
   --hover-bg: #f7f7f7;
+  --focus-ring: var(--accent);
 }
 
 /* Dark mode color palette */
@@ -657,57 +658,151 @@ html[data-reduce-motion="true"] [role="dialog"][aria-labelledby*="accessibility"
   transition: none !important;
 }
 
-/* High Contrast Mode */
+/*
+ * Contrast palettes, one per theme. The single-attribute rules are the light
+ * palettes; the dark ones carry two attributes so they win over them whatever
+ * the source order, which is what keeps Dark + High from going black on grey.
+ */
 html[data-contrast="high"] {
-  --foreground: #000000;
   --background: #ffffff;
+  --foreground: #000000;
+  --primary: #111111;
+  --primary-light: #333333;
+  --accent: #b01c2e;
+  --accent-hover: #8f1524;
+  --accent-soft: #ffe0e3;
+  --danger: #b01c2e;
+  --success: #1e6b45;
+  --melon-green: #0f3d22;
+  --melon-green-light: #1e6b45;
+  --melon-red: #b01c2e;
+  --card-bg: #ffffff;
   --card-border: #333333;
+  --hover-bg: #f0f0f0;
+  --focus-ring: #b01c2e;
+}
+
+html[data-contrast="extra-high"] {
+  --background: #ffffff;
+  --foreground: #000000;
+  --primary: #000000;
+  --primary-light: #1a1a1a;
+  --accent: #990000;
+  --accent-hover: #6e0000;
+  --accent-soft: #ffe0e0;
+  --danger: #990000;
+  --success: #005a2b;
+  --melon-green: #003d1d;
+  --melon-green-light: #005a2b;
+  --melon-red: #990000;
+  --card-bg: #ffffff;
+  --card-border: #000000;
+  --hover-bg: #e8e8e8;
+  --focus-ring: #000000;
+}
+
+html[data-theme="dark"][data-contrast="high"] {
+  --background: #000000;
+  --foreground: #ffffff;
+  --primary: #f5f5f5;
+  --primary-light: #d0d0d0;
+  --accent: #ff8f9a;
+  --accent-hover: #ffb0b8;
+  --accent-soft: #3d1a1e;
+  --danger: #ff8f9a;
+  --success: #8fdcb4;
+  --melon-green: #8fdcb4;
+  --melon-green-light: #c2eed6;
+  --melon-red: #ff8f9a;
+  --card-bg: #121212;
+  --card-border: #bdbdbd;
+  --hover-bg: #262626;
+  --focus-ring: #ff8f9a;
+}
+
+html[data-theme="dark"][data-contrast="extra-high"] {
+  --background: #000000;
+  --foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-light: #ebebeb;
+  --accent: #ffb3ba;
+  --accent-hover: #ffd1d5;
+  --accent-soft: #3d1a1e;
+  --danger: #ffb3ba;
+  --success: #a8f0c8;
+  --melon-green: #a8f0c8;
+  --melon-green-light: #d4f8e4;
+  --melon-red: #ffb3ba;
+  --card-bg: #000000;
+  --card-border: #ffffff;
+  --hover-bg: #1f1f1f;
+  --focus-ring: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"][data-contrast="high"] {
+    --background: #000000;
+    --foreground: #ffffff;
+    --primary: #f5f5f5;
+    --primary-light: #d0d0d0;
+    --accent: #ff8f9a;
+    --accent-hover: #ffb0b8;
+    --accent-soft: #3d1a1e;
+    --danger: #ff8f9a;
+    --success: #8fdcb4;
+    --melon-green: #8fdcb4;
+    --melon-green-light: #c2eed6;
+    --melon-red: #ff8f9a;
+    --card-bg: #121212;
+    --card-border: #bdbdbd;
+    --hover-bg: #262626;
+    --focus-ring: #ff8f9a;
+  }
+
+  html[data-theme="auto"][data-contrast="extra-high"] {
+    --background: #000000;
+    --foreground: #ffffff;
+    --primary: #ffffff;
+    --primary-light: #ebebeb;
+    --accent: #ffb3ba;
+    --accent-hover: #ffd1d5;
+    --accent-soft: #3d1a1e;
+    --danger: #ffb3ba;
+    --success: #a8f0c8;
+    --melon-green: #a8f0c8;
+    --melon-green-light: #d4f8e4;
+    --melon-red: #ffb3ba;
+    --card-bg: #000000;
+    --card-border: #ffffff;
+    --hover-bg: #1f1f1f;
+    --focus-ring: #ffffff;
+  }
 }
 
 html[data-contrast="high"] body {
   font-weight: 500;
 }
 
-/* Extra High Contrast Mode */
-html[data-contrast="extra-high"] {
-  --foreground: #000000;
-  --background: #ffffff;
-  --card-border: #000000;
-  --accent: #cc0000;
-  --success: #006600;
-}
-
 html[data-contrast="extra-high"] body {
   font-weight: 600;
 }
 
-html[data-contrast="extra-high"] a,
-html[data-contrast="extra-high"] button {
+/* Card-sized links already read as links through their border; underlining them buries the text */
+html[data-contrast="extra-high"] a:not(:has(h2, h3)) {
   text-decoration: underline;
 }
 
-/* Pause Animations - Stop all CSS animations */
-html[data-pause-animations="true"] * {
-  animation-play-state: paused !important;
+/* Text size: Tailwind sizes and spacing are in rem, so the whole layout scales with the root size */
+html[data-text-size="large"] {
+  font-size: 112.5%;
 }
 
-/* Colorblind Mode - Deuteranopia (Red-Green) */
-html[data-colorblind-mode="deuteranopia"] {
-  filter: url(#deuteranopia-filter);
+html[data-text-size="larger"] {
+  font-size: 125%;
 }
 
-/* Colorblind Mode - Protanopia (Red-Green) */
-html[data-colorblind-mode="protanopia"] {
-  filter: url(#protanopia-filter);
-}
-
-/* Colorblind Mode - Tritanopia (Blue-Yellow) */
-html[data-colorblind-mode="tritanopia"] {
-  filter: url(#tritanopia-filter);
-}
-
-/* Colorblind Mode - Monochrome */
-html[data-colorblind-mode="monochrome"] {
+/* Greyscale. On the root element a filter does not trap fixed-position children. */
+html[data-greyscale="true"] {
   filter: grayscale(100%);
 }
 
@@ -903,13 +998,7 @@ html[data-colorblind-mode="monochrome"] {
   outline: none;
   box-shadow:
     0 0 0 3px var(--background),
-    0 0 0 6px var(--accent);
-}
-
-html[data-contrast="extra-high"] *:focus-visible {
-  box-shadow:
-    0 0 0 3px var(--background),
-    0 0 0 6px #000000;
+    0 0 0 6px var(--focus-ring);
 }
 
 

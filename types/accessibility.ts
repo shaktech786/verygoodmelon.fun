@@ -4,61 +4,29 @@
 
 export type ContrastMode = 'normal' | 'high' | 'extra-high'
 
-export type ColorblindMode =
-  | 'none'
-  | 'deuteranopia'
-  | 'protanopia'
-  | 'tritanopia'
-  | 'monochrome'
-
-export type AnimationSpeed = 0.5 | 1 | 1.5 | 2
-
 export type ThemeMode = 'light' | 'dark' | 'auto'
 
+export type TextSize = 'default' | 'large' | 'larger'
+
 export interface AccessibilitySettings {
-  // Visual Controls
-  reduceMotion: boolean
-  contrast: ContrastMode
-  animationSpeed: AnimationSpeed
-  colorblindMode: ColorblindMode
-  pauseAnimations: boolean
   theme: ThemeMode
-
-  // Audio Controls
-  volume: number // 0-100
+  textSize: TextSize
+  contrast: ContrastMode
+  reduceMotion: boolean
+  greyscale: boolean
   muted: boolean
-
-  // Interaction Controls
-  showKeyboardShortcuts: boolean
-  clickAssist: boolean
-  timingFlexibility: boolean
-
-  // Content Controls
-  showInstructions: boolean
-  tutorialMode: boolean
+  /** 0-100, read by games through the html data-volume attribute */
+  volume: number
 }
 
 export const DEFAULT_ACCESSIBILITY_SETTINGS: AccessibilitySettings = {
-  // Visual
-  reduceMotion: false,
-  contrast: 'normal',
-  animationSpeed: 1,
-  colorblindMode: 'none',
-  pauseAnimations: false,
   theme: 'auto',
-
-  // Audio
-  volume: 70,
+  textSize: 'default',
+  contrast: 'normal',
+  reduceMotion: false,
+  greyscale: false,
   muted: false,
-
-  // Interaction
-  showKeyboardShortcuts: true,
-  clickAssist: false,
-  timingFlexibility: false,
-
-  // Content
-  showInstructions: true,
-  tutorialMode: true,
+  volume: 70,
 }
 
 export type AccessibilityPreset = 'calm' | 'focus' | 'sensory-friendly'
@@ -69,42 +37,20 @@ export interface AccessibilityPresetConfig {
   settings: Partial<AccessibilitySettings>
 }
 
-export const ACCESSIBILITY_PRESETS: Record<
-  AccessibilityPreset,
-  AccessibilityPresetConfig
-> = {
+export const ACCESSIBILITY_PRESETS: Record<AccessibilityPreset, AccessibilityPresetConfig> = {
   calm: {
-    name: 'Calm Mode',
-    description: 'Slower animations, reduced audio, always-visible instructions',
-    settings: {
-      reduceMotion: false,
-      animationSpeed: 0.5,
-      volume: 30,
-      contrast: 'normal',
-      showInstructions: true,
-    },
+    name: 'Calm',
+    description: 'Still motion and softer sound',
+    settings: { reduceMotion: true, muted: false, volume: 30 },
   },
   focus: {
-    name: 'Focus Mode',
-    description: 'No audio, high contrast, minimal distractions',
-    settings: {
-      reduceMotion: false,
-      muted: true,
-      contrast: 'high',
-      showInstructions: false,
-      tutorialMode: false,
-    },
+    name: 'Focus',
+    description: 'No sound and higher contrast',
+    settings: { muted: true, contrast: 'high' },
   },
   'sensory-friendly': {
-    name: 'Sensory-Friendly Mode',
-    description: 'No motion, no audio, maximum contrast, minimal stimulation',
-    settings: {
-      reduceMotion: true,
-      muted: true,
-      contrast: 'extra-high',
-      colorblindMode: 'monochrome',
-      animationSpeed: 0.5,
-      pauseAnimations: true,
-    },
+    name: 'Sensory-friendly',
+    description: 'No motion, no sound and no colour',
+    settings: { reduceMotion: true, muted: true, greyscale: true },
   },
 }

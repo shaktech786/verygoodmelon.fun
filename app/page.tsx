@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import { GameCardShowcase } from '@/components/games/GameCardShowcase'
 import { PersonalizedSuggestions } from '@/components/home/PersonalizedSuggestions'
-import { SHOWCASE_GAMES } from '@/lib/games/config'
+import { SHOWCASE_GAMES, SHOWCASE_GROUPS } from '@/lib/games/config'
 import type { GameConfig } from '@/lib/games/config'
 import { usePresence } from '@/lib/hooks/usePresence'
 import { useDailyWisdom } from '@/lib/hooks/useDailyWisdom'
@@ -12,22 +14,18 @@ import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 // Someone arriving anxious should be pointed at something calming, never at a game about death
 const FEATURABLE_GAMES = SHOWCASE_GAMES.filter((game) => game.category === 'Calm')
 
-/** Today's featured game id (rotates daily, deterministic). */
-function getDailyFeaturedId(): string | undefined {
+/** Today's featured game (rotates daily, deterministic in the visitor's own timezone). */
+function getDailyFeatured(): GameConfig | undefined {
   const today = new Date()
   const dayOfYear = Math.floor(
     (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24)
   )
-  return FEATURABLE_GAMES[dayOfYear % FEATURABLE_GAMES.length]?.id
+  return FEATURABLE_GAMES[dayOfYear % FEATURABLE_GAMES.length]
 }
 
-const CATEGORY_ORDER: GameConfig['category'][] = ['Calm', 'Reflect', 'Play']
-
-const CATEGORY_HEADINGS: Record<GameConfig['category'], { title: string; description: string }> = {
-  Calm: { title: 'Slow down', description: 'Quiet games for when your mind is busy' },
-  Reflect: { title: 'Reflect', description: 'Big questions, held gently' },
-  Play: { title: 'Play', description: 'Thoughtful fun to get lost in' },
-}
+const GAME_INDICES = new Map(
+  SHOWCASE_GROUPS.flatMap((group) => group.games).map((game, index) => [game.id, index])
+)
 
 /**
  * Homepage - Clear, Inviting, Informative
@@ -46,30 +44,11 @@ export default function Home() {
   const reduceMotion = useReducedMotion()
   const { count: presenceCount, isLoaded: presenceLoaded } = usePresence()
   const { wisdom, isLoaded: wisdomLoaded } = useDailyWisdom()
-  const featuredGameId = getDailyFeaturedId()
+  // Picked after mount so the server's date can never disagree with the visitor's
+  const featuredGame = mounted ? getDailyFeatured() : undefined
 
   useEffect(() => {
     queueMicrotask(() => setMounted(true))
-  }, [])
-
-  // Group games by category with pre-computed global indices for staggered animation
-  const { gamesByCategory, gameIndices } = useMemo(() => {
-    const groups = new Map<GameConfig['category'], GameConfig[]>()
-    const indices = new Map<string, number>()
-    let idx = 0
-
-    // First pass: group by category in display order
-    for (const cat of CATEGORY_ORDER) {
-      const catGames = SHOWCASE_GAMES.filter((g) => g.category === cat)
-      if (catGames.length > 0) {
-        groups.set(cat, catGames)
-        for (const game of catGames) {
-          indices.set(game.id, idx++)
-        }
-      }
-    }
-
-    return { gamesByCategory: groups, gameIndices: indices }
   }, [])
 
   // Subtle parallax on mouse move
@@ -101,6 +80,21 @@ export default function Home() {
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-light text-foreground">
           Feel <span className="text-accent font-medium">lighter</span>
         </h1>
+        <p className="mt-4 max-w-md mx-auto text-base sm:text-lg text-primary-light leading-relaxed">
+          Small, quiet games for a busy mind. Play one for a few minutes and leave a little lighter than you came.
+        </p>
+        <div className="mt-5 min-h-11">
+          {featuredGame && (
+            <Link
+              href={`/games/${featuredGame.slug}`}
+              className="inline-flex items-center gap-2 min-h-11 px-5 rounded-full border border-card-border bg-card-bg text-sm sm:text-base text-foreground hover:bg-hover-bg transition-colors"
+            >
+              <span className="text-primary-light">Start here:</span>
+              <span className="font-medium">{featuredGame.title}</span>
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Presence indicator - warm, not metrics-y */}
@@ -129,19 +123,15 @@ export default function Home() {
 
       {/* Games by category */}
       <div className="w-full max-w-3xl space-y-10 sm:space-y-14">
-        {CATEGORY_ORDER.map((category) => {
-          const games = gamesByCategory.get(category)
-          if (!games || games.length === 0) return null
-
+        {SHOWCASE_GROUPS.map(({ category, title, description, games }) => {
           // Use first game's index for category header delay
-          const firstGameIdx = gameIndices.get(games[0].id) ?? 0
+          const firstGameIdx = GAME_INDICES.get(games[0].id) ?? 0
 
           return (
             <section
               key={category}
               aria-labelledby={`category-${category.toLowerCase()}`}
             >
-              {/* Category header */}
               <div
                 className={`
                   mb-4 sm:mb-5
@@ -154,18 +144,18 @@ export default function Home() {
                   id={`category-${category.toLowerCase()}`}
                   className="text-sm font-semibold uppercase tracking-wider text-foreground"
                 >
-                  {CATEGORY_HEADINGS[category].title}
+                  {title}
                 </h2>
                 <p className="text-sm text-primary-light mt-0.5">
-                  {CATEGORY_HEADINGS[category].description}
+                  {description}
                 </p>
               </div>
 
               {/* Game cards in this category */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {games.map((game) => {
-                  const currentIndex = gameIndices.get(game.id) ?? 0
-                  const isFeatured = game.id === featuredGameId
+                  const currentIndex = GAME_INDICES.get(game.id) ?? 0
+                  const isFeatured = game.id === featuredGame?.id
 
                   // Very subtle parallax offset per card
                   const offsetX = (mousePosition.x - 0.5) * (currentIndex % 2 === 0 ? 1.5 : -1.5)

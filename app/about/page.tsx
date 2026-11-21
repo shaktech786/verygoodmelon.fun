@@ -15,6 +15,17 @@ export default function AboutPage() {
         </h1>
 
         <div className="space-y-6 text-primary-light leading-relaxed">
+          <div className="space-y-3 pb-6 border-b border-card-border text-lg text-foreground">
+            <p>
+              VeryGoodMelon.Fun is a small collection of quiet games for a busy mind. Every one is made with a
+              single hope: that you leave a little less anxious than when you arrived.
+            </p>
+            <p>
+              Some help you slow down, and some let you sit with a big question in a calm, low-pressure way.
+              Think deeply, feel lighter.
+            </p>
+          </div>
+
           <p className="text-lg">
             VeryGoodMelon.Fun is a side project by <span className="text-foreground font-medium">Shakeel Bhamani</span>,
             a Lead Consultant at ThoughtWorks in Atlanta, Georgia.
