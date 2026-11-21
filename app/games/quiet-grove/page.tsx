@@ -6,20 +6,20 @@ import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 export const metadata: Metadata = {
   title: 'The Gardener | VeryGoodMelon.Fun',
   description:
-    'A meditative garden where you place plants, flowers, trees, and stones. Each element gently sways in the breeze. No goals, no scores — just a calm place to grow.',
+    'Plant a small meadow garden that answers what you plant and grows while you are away, then sit with it as the light changes.',
 }
 
 export default function QuietGrovePage() {
   return (
     <GamePageWrapper gameId="calm-garden">
-      <div className="container mx-auto px-4 py-4 sm:py-6 max-w-4xl">
+      <div className="container mx-auto px-4 py-4 sm:py-6 max-w-4xl lg:max-w-6xl">
         <div className="animate-fade">
-          <div className="text-center mb-4 sm:mb-6">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-2 text-foreground">
+          <div className="text-center mb-4">
+            <h1 className="text-2xl sm:text-3xl font-semibold mb-1 text-foreground">
               The Gardener
             </h1>
-            <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl mx-auto">
-              Place what feels right. There are no wrong choices here.
+            <p className="text-sm sm:text-base text-foreground/70 max-w-2xl mx-auto">
+              Plant what feels right, then sit with it a while.
             </p>
           </div>
 

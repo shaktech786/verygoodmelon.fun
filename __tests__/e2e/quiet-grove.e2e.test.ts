@@ -2,22 +2,28 @@ import { test, expect, type Page, type Route } from '@playwright/test'
 
 /**
  * The Gardener (/games/quiet-grove): place plants on a canvas garden that persists in
- * localStorage and occasionally suggests a plant. The suggestion route is always mocked.
+ * localStorage, answers what was planted with a suggestion, can be rearranged, grows
+ * between visits, and can be sat with. The suggestion route is always mocked.
  */
 
 const URL = '/games/quiet-grove'
 const STORAGE_KEY = 'verygoodmelon:calm-garden'
+const DAY = 86_400_000
+const SIT_MS = 45_000
+const LINE = 'Your daisy could use some shade. A willow behind it, maybe?'
 
-interface StoredElement {
-  variant: { id: string }
+interface StoredPlant {
+  id: string
+  type: string
   x: number
   y: number
+  selfSown?: boolean
 }
 
 async function stubSiteApis(page: Page) {
   // Analytics need the database, which is not part of this game.
   await page.route('**/api/game-events', (route) => route.fulfill({ status: 204 }))
-  await page.route('**/api/site-visits', (route) => route.fulfill({ status: 204 }))
+  await page.route('**/api/site-visits', (route) => route.fulfill({ json: {} }))
 }
 
 function collectPageErrors(page: Page): string[] {
@@ -27,21 +33,23 @@ function collectPageErrors(page: Page): string[] {
 }
 
 async function mockSuggestion(page: Page, handler?: (route: Route) => Promise<void>) {
-  const bodies: { elements: unknown[] }[] = []
+  const bodies: { elements: Record<string, unknown>[] }[] = []
   await page.route('**/api/calm-garden/suggest', async (route) => {
     bodies.push(route.request().postDataJSON())
     if (handler) return handler(route)
-    await route.fulfill({ json: { suggestion: { type: 'willow', x: 0.8, y: 0.7, reason: 'balance' } } })
+    await route.fulfill({ json: { suggestion: { type: 'willow', x: 0.8, y: 0.7, line: LINE } } })
   })
   return bodies
 }
 
-const garden = (page: Page) => page.getByRole('img', { name: /^Garden with/ })
+const garden = (page: Page) => page.getByRole('application', { name: 'Your garden' })
+const contents = (page: Page) => page.locator('#garden-contents')
+const announcer = (page: Page) => page.locator('#garden-announcer')
 
-async function stored(page: Page): Promise<StoredElement[]> {
+async function stored(page: Page): Promise<StoredPlant[]> {
   return page.evaluate((key) => {
     const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw).elements : []
+    return raw ? JSON.parse(raw).plants : []
   }, STORAGE_KEY)
 }
 
@@ -54,17 +62,27 @@ async function plantAt(page: Page, fx: number, fy: number) {
 async function openGarden(page: Page) {
   await page.goto(URL)
   await expect(garden(page)).toBeVisible()
-  await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 0 plants/)
+  await expect(contents(page)).toHaveText(/In your garden: nothing yet\./)
   // The drawing loop sizes the canvas only once React has hydrated and wired up input.
   await expect(garden(page)).toHaveAttribute('width', /\d+/)
 }
+
+async function seedGarden(page: Page, plants: object[], lastVisit: number) {
+  await page.addInitScript(([key, value]) => {
+    if (sessionStorage.getItem('seeded')) return
+    sessionStorage.setItem('seeded', '1')
+    localStorage.setItem(key, value)
+  }, [STORAGE_KEY, JSON.stringify({ version: 2, lastVisit, plants })] as const)
+}
+
+const seeded = (id: string, type: string, x: number, y: number, plantedAt: number) => ({ id, type, x, y, scale: 1, colorSeed: 0.3, phase: 0, plantedAt })
 
 test.describe('The Gardener', () => {
   test.beforeEach(async ({ page }) => {
     await stubSiteApis(page)
   })
 
-  test('plants, accepts a suggestion, undoes, survives a reload and clears', async ({ page }) => {
+  test('plants, answers with a suggestion, undoes, survives a reload and clears', async ({ page }) => {
     const errors = collectPageErrors(page)
     const bodies = await mockSuggestion(page)
     await openGarden(page)
@@ -74,40 +92,45 @@ test.describe('The Gardener', () => {
     await plantAt(page, 0.5, 0.6)
     await page.getByRole('radio', { name: 'Crystal' }).click()
     await plantAt(page, 0.3, 0.9)
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 3 plants/)
-    await expect(page.getByText('3 plants')).toBeVisible()
+    await expect(contents(page)).toHaveText('In your garden: a daisy, an oak tree and a crystal.')
 
-    // The third plant asks the garden for an idea, sending what is already planted.
+    // The third plant asks for an idea, sending only what is planted and where.
     await expect.poll(() => bodies.length).toBe(1)
     expect(bodies[0].elements).toHaveLength(3)
-    const hint = page.getByRole('button', { name: /would welcome a Willow/ })
-    await expect(hint).toBeVisible()
+    expect(Object.keys(bodies[0].elements[0]).sort()).toEqual(['type', 'x', 'y'])
+    await expect(page.getByRole('paragraph').filter({ hasText: LINE })).toBeVisible()
+    await expect(announcer(page)).toContainText(LINE)
+    const hint = page.getByRole('button', { name: 'Plant the willow there' })
     await hint.click()
     await expect(hint).toBeHidden()
 
-    await expect.poll(async () => (await stored(page)).map((el) => el.variant.id))
-      .toEqual(['daisy', 'oak', 'crystal', 'willow'])
+    await expect.poll(async () => (await stored(page)).map((el) => el.type)).toEqual(['daisy', 'oak', 'crystal', 'willow'])
     const willow = (await stored(page))[3]
     expect(willow.x).toBeCloseTo(0.8)
     expect(willow.y).toBeCloseTo(0.7)
 
-    await page.getByRole('button', { name: 'Undo last placement' }).click()
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 3 plants/)
+    await page.getByRole('button', { name: 'Undo last change' }).click()
+    await expect(contents(page)).toHaveText('In your garden: a daisy, an oak tree and a crystal.')
 
     await page.reload()
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 3 plants/)
-    expect((await stored(page)).map((el) => el.variant.id)).toEqual(['daisy', 'oak', 'crystal'])
+    await expect(contents(page)).toHaveText('In your garden: a daisy, an oak tree and a crystal.')
+    expect((await stored(page)).map((el) => el.type)).toEqual(['daisy', 'oak', 'crystal'])
 
     await page.getByRole('button', { name: 'Clear garden' }).click()
     await page.getByRole('button', { name: 'No' }).click()
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 3 plants/)
+    await expect(contents(page)).toHaveText(/a daisy, an oak tree and a crystal/)
     await page.getByRole('button', { name: 'Clear garden' }).click()
     await page.getByRole('button', { name: 'Yes' }).click()
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 0 plants/)
-    await expect(page.getByRole('button', { name: 'Undo last placement' })).toBeDisabled()
+    await expect(contents(page)).toHaveText('In your garden: nothing yet.')
+    // Clearing is not a cliff edge: Undo brings the garden back.
+    await page.getByRole('button', { name: 'Undo last change' }).click()
+    await expect(contents(page)).toHaveText(/a daisy, an oak tree and a crystal/)
+    await page.getByRole('button', { name: 'Clear garden' }).click()
+    await page.getByRole('button', { name: 'Yes' }).click()
 
     await page.reload()
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 0 plants/)
+    await expect(contents(page)).toHaveText('In your garden: nothing yet.')
+    await expect(page.getByRole('button', { name: 'Undo last change' })).toBeDisabled()
     expect(errors).toEqual([])
   })
 
@@ -121,13 +144,17 @@ test.describe('The Gardener', () => {
     expect(count).toBe(15)
     for (let i = 0; i < count; i++) {
       await radios.nth(i).click()
-      await plantAt(page, 0.05 + (i % 8) * 0.12, i < 8 ? 0.55 : 0.85)
+      await plantAt(page, 0.06 + (i % 8) * 0.125, i < 8 ? 0.5 : 0.95)
     }
-    for (let i = 0; i < 25; i++) await plantAt(page, 0.04 + (i % 25) * 0.038, 0.4 + (i % 5) * 0.12)
+    // The keyboard plants where the cursor is, even among other plants.
+    await garden(page).focus()
+    for (let i = 0; i < 25; i++) {
+      await page.keyboard.press(i % 2 ? 'ArrowLeft' : 'ArrowDown')
+      await page.keyboard.press('Enter')
+    }
 
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 40 plants/)
-    const ids = new Set((await stored(page)).map((el) => el.variant.id))
-    expect(ids.size).toBe(15)
+    await expect.poll(async () => (await stored(page)).length).toBe(40)
+    expect(new Set((await stored(page)).map((el) => el.type)).size).toBe(15)
     expect(errors).toEqual([])
   })
 
@@ -138,14 +165,14 @@ test.describe('The Gardener', () => {
     // These heights used to be accepted and left plants floating in the sky.
     await plantAt(page, 0.5, 0.1)
     await plantAt(page, 0.5, 0.28)
-    await expect(page.getByText('That is sky. Plants need the grass below.')).toBeAttached()
+    await expect(announcer(page)).toHaveText('That is sky. Plants need the grass below.')
     expect(await stored(page)).toHaveLength(0)
 
     await plantAt(page, 0.5, 0.4)
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 1 plant\./)
+    await expect(contents(page)).toHaveText('In your garden: a daisy.')
   })
 
-  test('keyboard: plant with arrows and Enter, undo with Ctrl+Z, pick plants with arrow keys', async ({ page }) => {
+  test('keyboard: plant with arrows and Enter, hear where the spot is, undo with Ctrl+Z, pick plants with arrow keys', async ({ page }) => {
     await mockSuggestion(page)
     await openGarden(page)
 
@@ -156,12 +183,17 @@ test.describe('The Gardener', () => {
 
     await garden(page).focus()
     for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight')
+    await expect(announcer(page)).toHaveText('Near the front, in the center, on open grass.')
     await page.keyboard.press('Enter')
     await expect.poll(async () => (await stored(page)).length).toBe(1)
     const tulip = (await stored(page))[0]
-    expect(tulip.variant.id).toBe('tulip')
+    expect(tulip.type).toBe('tulip')
     expect(tulip.x).toBeCloseTo(0.65)
     expect(tulip.y).toBeCloseTo(0.75)
+    await expect(announcer(page)).toHaveText('Planted a tulip near the front, in the center.')
+
+    await page.keyboard.press('ArrowLeft')
+    await expect(announcer(page)).toHaveText('Near the front, in the center, just left of the tulip.')
 
     // The cursor never rises into the sky.
     for (let i = 0; i < 30; i++) await page.keyboard.press('ArrowUp')
@@ -170,7 +202,7 @@ test.describe('The Gardener', () => {
     expect((await stored(page))[1].y).toBeGreaterThanOrEqual(0.33)
 
     await page.keyboard.press('Control+z')
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 1 plant\./)
+    await expect(contents(page)).toHaveText('In your garden: a tulip.')
   })
 
   test('regression: arrow keys scroll the page and Enter follows links outside the garden', async ({ page }) => {
@@ -194,7 +226,7 @@ test.describe('The Gardener', () => {
     await mockSuggestion(page)
     await openGarden(page)
     for (let i = 0; i < 3; i++) await plantAt(page, 0.2 + i * 0.2, 0.6)
-    const hint = page.getByRole('button', { name: /would welcome a Willow/ })
+    const hint = page.getByRole('button', { name: 'Plant the willow there' })
     await expect(hint).toBeVisible()
 
     // No time pressure: a long pause leaves the idea where it was.
@@ -203,49 +235,55 @@ test.describe('The Gardener', () => {
 
     await page.getByRole('button', { name: 'Not now' }).click()
     await expect(hint).toBeHidden()
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 3 plants/)
     expect(await stored(page)).toHaveLength(3)
   })
 
   test('flowers draw a visitor to the garden, announced for screen readers', async ({ page }) => {
     await mockSuggestion(page, (route) => route.fulfill({ status: 503 }))
     await openGarden(page)
-    const live = page.getByRole('application').locator('[aria-live="polite"]').first()
     await plantAt(page, 0.3, 0.6)
     await plantAt(page, 0.5, 0.7)
-    await expect(live).not.toContainText('found your garden')
+    await expect(announcer(page)).not.toContainText('found your garden')
     await plantAt(page, 0.7, 0.6)
-    await expect(live).toHaveText(/A (butterfly|firefly) has found your garden\./)
+    await expect(announcer(page)).toContainText(/A (butterfly|firefly) has found your garden\./)
+    await expect(contents(page)).toHaveText(/three daisies\. A (butterfly|firefly) is visiting\./)
 
     // A garden that already has visitors does not announce them again on reload.
     await page.reload()
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 3 plants/)
-    await expect(live).not.toContainText('found your garden')
+    await expect(contents(page)).toHaveText(/three daisies/)
+    await expect(announcer(page)).not.toContainText('found your garden')
   })
 
-  test('a failing or broken suggestion service never interrupts the garden', async ({ page }) => {
+  test('a failing or broken suggestion service still gets a thoughtful suggestion, never an error', async ({ page }) => {
     const errors = collectPageErrors(page)
     const bodies = await mockSuggestion(page, (route) => route.fulfill({ status: 500, json: { error: 'down' } }))
     await openGarden(page)
 
-    for (let i = 0; i < 3; i++) await plantAt(page, 0.2 + i * 0.2, 0.6)
+    const answered = async () => {
+      const hint = page.getByRole('button', { name: /^Plant the .+ there$/ })
+      await expect(hint).toBeVisible()
+      await page.getByRole('button', { name: 'Not now' }).click()
+    }
+    for (let i = 0; i < 3; i++) await plantAt(page, 0.2 + i * 0.25, 0.6)
     await expect.poll(() => bodies.length).toBe(1)
+    await answered()
 
     await page.unroute('**/api/calm-garden/suggest')
-    await mockSuggestion(page, (route) => route.fulfill({ json: { suggestion: { type: 'dragon', x: 'left' } } }))
-    for (let i = 0; i < 3; i++) await plantAt(page, 0.2 + i * 0.2, 0.8)
+    await mockSuggestion(page, (route) => route.fulfill({ json: { suggestion: { type: 'dragon', x: 'left', line: 'As an AI model' } } }))
+    for (let i = 0; i < 3; i++) await plantAt(page, 0.2 + i * 0.25, 0.85)
+    await answered()
 
     await page.unroute('**/api/calm-garden/suggest')
     await mockSuggestion(page, (route) => route.abort())
-    for (let i = 0; i < 3; i++) await plantAt(page, 0.3 + i * 0.2, 0.7)
+    for (let i = 0; i < 3; i++) await plantAt(page, 0.1 + i * 0.25, 0.75)
+    await answered()
 
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 9 plants/)
-    await expect(page.getByRole('button', { name: /would welcome/ })).toHaveCount(0)
-    await expect(page.getByRole('application').getByText(/error|went wrong|generat|try again/i)).toHaveCount(0)
+    expect(await stored(page)).toHaveLength(9)
+    await expect(page.locator('main').getByText(/error|went wrong|generat|try again|\bAI\b/i)).toHaveCount(0)
     expect(errors).toEqual([])
   })
 
-  test('a corrupt or outdated saved garden loads without breaking', async ({ page }) => {
+  test('a garden saved by the first version loads, migrated, and a broken save starts fresh', async ({ page }) => {
     const errors = collectPageErrors(page)
     await mockSuggestion(page)
     await page.addInitScript((key) => {
@@ -256,16 +294,19 @@ test.describe('The Gardener', () => {
         elements: [
           { id: 'a', variant: { category: 'flower', id: 'daisy', label: 'Daisy' }, x: 0.5, y: 0.6, scale: 1, colorSeed: 0.2, phase: 0, placedAt: 0 },
           { id: 'b', variant: { category: 'tree', id: 'baobab', label: 'Baobab' }, x: 0.4, y: 0.6, scale: 1, colorSeed: 0.2, phase: 0, placedAt: 0 },
+          { id: 'c', variant: { category: 'tree', id: 'pine', label: 'Pine Tree' }, x: 0.2, y: 0.8, scale: 1.1, colorSeed: 0.6, phase: 1, placedAt: 0 },
           null,
         ],
       }))
     }, STORAGE_KEY)
     await page.goto(URL)
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 1 plant\./)
+    await expect(contents(page)).toHaveText('In your garden: a daisy and a pine tree.')
+    await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '{}').version, STORAGE_KEY)).toBe(2)
+    expect((await stored(page)).map((p) => [p.id, p.type])).toEqual([['a', 'daisy'], ['c', 'pine']])
 
     await page.evaluate((key) => localStorage.setItem(key, '{not json'), STORAGE_KEY)
     await page.reload()
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 0 plants/)
+    await expect(contents(page)).toHaveText('In your garden: nothing yet.')
     expect(errors).toEqual([])
   })
 
@@ -276,31 +317,198 @@ test.describe('The Gardener', () => {
     await plantAt(page, 0.7, 0.8)
 
     await page.setViewportSize({ width: 600, height: 700 })
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 2 plants/)
+    await expect(contents(page)).toHaveText(/^In your garden: two daisies\./)
     const box = await garden(page).boundingBox()
     expect(box!.width).toBeLessThanOrEqual(600)
-    await plantAt(page, 0.5, 0.5)
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 3 plants/)
+    await plantAt(page, 0.5, 0.45)
+    await expect(contents(page)).toHaveText(/^In your garden: three daisies\./)
   })
 
-  test('reduced motion: the garden still plants and persists', async ({ browser }) => {
+  test('reduced motion: the garden still plants, persists and can be sat with', async ({ browser }) => {
     const context = await browser.newContext({ reducedMotion: 'reduce' })
     const page = await context.newPage()
     await stubSiteApis(page)
     await mockSuggestion(page)
+    await page.clock.install({ time: new Date('2026-11-21T13:00:00') })
     await openGarden(page)
-    await plantAt(page, 0.4, 0.6)
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 1 plant\./)
+    for (let i = 0; i < 3; i++) await plantAt(page, 0.2 + i * 0.3, 0.6)
     await page.reload()
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 1 plant\./)
+    await expect(contents(page)).toHaveText(/three daisies/)
+    await page.getByRole('button', { name: 'Sit with your garden' }).click()
+    await page.clock.fastForward(SIT_MS + 1000)
+    await expect(page.locator('#sit-words')).toContainText('three flowers')
     await context.close()
+  })
+
+  test('tap a plant to choose it, then move it, drag it or remove it', async ({ page }) => {
+    const errors = collectPageErrors(page)
+    await mockSuggestion(page)
+    await openGarden(page)
+    await page.getByRole('radio', { name: 'Oak Tree' }).click()
+    await plantAt(page, 0.3, 0.6)
+    await page.getByRole('radio', { name: 'Round Stone' }).click()
+    await plantAt(page, 0.7, 0.85)
+
+    // Tapping the oak's canopy chooses it instead of planting on top of it.
+    await plantAt(page, 0.3, 0.45)
+    await expect(page.getByText(/^Oak Tree, .*Drag it, or:$/)).toBeVisible()
+    expect(await stored(page)).toHaveLength(2)
+
+    await page.getByRole('button', { name: 'Move', exact: true }).click()
+    await expect(page.getByRole('paragraph').filter({ hasText: /Tap the grass where the oak tree should go/ })).toBeVisible()
+    await plantAt(page, 0.8, 0.5)
+    await expect.poll(async () => (await stored(page))[0].x).toBeCloseTo(0.8, 1)
+    expect(await stored(page)).toHaveLength(2)
+    await expect(announcer(page)).toContainText('Set the oak tree down')
+
+    // Dragging a plant moves it in one gesture.
+    const box = (await garden(page).boundingBox())!
+    await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.84)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.8, { steps: 6 })
+    await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.75, { steps: 6 })
+    await page.mouse.up()
+    await expect.poll(async () => (await stored(page))[1].x).toBeCloseTo(0.2, 1)
+    await expect(announcer(page)).toContainText('Moved the round stone')
+
+    await plantAt(page, 0.2, 0.74)
+    await page.getByRole('button', { name: 'Remove', exact: true }).click()
+    await expect(contents(page)).toHaveText('In your garden: an oak tree.')
+    await page.getByRole('button', { name: 'Undo last change' }).click()
+    await expect(contents(page)).toHaveText('In your garden: an oak tree and a round stone.')
+    expect(errors).toEqual([])
+  })
+
+  test('the list of plants reads the garden aloud and lets keyboard users move and remove plants', async ({ page }) => {
+    await mockSuggestion(page)
+    await openGarden(page)
+    await plantAt(page, 0.2, 0.9)
+    await page.getByRole('radio', { name: 'Flat Stone' }).click()
+    await plantAt(page, 0.26, 0.9)
+
+    await page.getByText("What's in your garden").click()
+    const list = page.locator('details').getByRole('list')
+    await expect(list.getByRole('listitem')).toHaveText([
+      /Daisy, near the front, on the left, just left of the flat stone/,
+      /Flat Stone, near the front, on the left, just right of the daisy/,
+    ])
+
+    await page.getByRole('button', { name: /^Move the daisy/ }).click()
+    await expect(garden(page)).toBeFocused()
+    await expect(announcer(page)).toHaveText('Moving the daisy. Arrow keys move it, Enter sets it down, Escape puts it back.')
+    for (let i = 0; i < 10; i++) await page.keyboard.press('ArrowRight')
+    await expect(announcer(page)).toHaveText(/^Near the front, (in the center|on the right)/)
+    await page.keyboard.press('Enter')
+    await expect(announcer(page)).toHaveText(/^Set the daisy down near the front/)
+    expect((await stored(page))[0].x).toBeCloseTo(0.5)
+
+    // Escape puts a moving plant back where it was.
+    await page.getByRole('button', { name: /^Move the flat stone/ }).click()
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('Escape')
+    expect((await stored(page))[1].y).toBeCloseTo(0.9)
+
+    await page.getByRole('button', { name: /^Remove the daisy/ }).click()
+    await expect(contents(page)).toHaveText('In your garden: a flat stone.')
+    await expect(page.getByRole('button', { name: /^Remove the flat stone/ })).toBeFocused()
+  })
+
+  test('sit with your garden: the tools step away, the light changes, and you are left with one line', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-11-21T13:00:00') })
+    const bodies = await mockSuggestion(page)
+    await openGarden(page)
+
+    const sit = page.getByRole('button', { name: 'Sit with your garden' })
+    await expect(sit).toBeDisabled()
+    // Stones are welcome but are not yet a garden to sit with.
+    await page.getByRole('radio', { name: 'Round Stone' }).click()
+    for (let i = 0; i < 3; i++) await plantAt(page, 0.15 + i * 0.3, 0.9)
+    await expect(sit).toBeDisabled()
+    await page.getByRole('radio', { name: 'Poppy' }).click()
+    await plantAt(page, 0.2, 0.6)
+    await plantAt(page, 0.5, 0.6)
+    await page.getByRole('radio', { name: 'Willow' }).click()
+    await plantAt(page, 0.8, 0.55)
+    await expect(sit).toBeEnabled()
+    await expect(announcer(page)).toContainText('Your garden is ready to sit with')
+    const calls = bodies.length
+
+    await sit.click()
+    const dialog = page.getByRole('dialog', { name: 'Sitting with your garden' })
+    await expect(dialog).toBeVisible()
+    // The sitting view covers the tools: what sits over the plant picker is the dialog.
+    expect(await page.getByRole('radiogroup').evaluate((el) => {
+      const r = el.getBoundingClientRect()
+      return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('[role=dialog]') !== null
+    })).toBe(true)
+    const stand = dialog.getByRole('button', { name: 'Stand up' })
+    await expect(stand).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(stand).toBeFocused()
+    await expect(dialog).toContainText('Stay as long as you like.')
+
+    await page.clock.fastForward(SIT_MS + 1000)
+    await expect(page.locator('#sit-words')).toHaveText(
+      /^An autumn garden: two flowers, a willow and three stones\. (A butterfly|Two butterflies) stayed the whole time\. You planted all of it today\.$/,
+    )
+    expect(bodies.length).toBe(calls)
+
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(sit).toBeFocused()
+    expect(await stored(page)).toHaveLength(6)
+  })
+
+  test('coming back after a few days, the garden has grown and a flower has seeded itself', async ({ page }) => {
+    const now = Date.parse('2026-11-24T10:00:00')
+    await page.clock.install({ time: new Date(now) })
+    await mockSuggestion(page)
+    await seedGarden(page, [
+      seeded('a', 'poppy', 0.25, 0.7, now - 3 * DAY),
+      seeded('b', 'poppy', 0.4, 0.75, now - 3 * DAY),
+      seeded('c', 'oak', 0.6, 0.5, now - 3 * DAY),
+    ], now - 2 * DAY)
+    await page.goto(URL)
+
+    await expect(page.getByRole('paragraph').filter({ hasText: /^While you were away, your oak tree grew a little taller and a new poppy came up on its own\.$/ })).toBeVisible()
+    await expect(announcer(page)).toContainText('While you were away')
+    await expect(contents(page)).toHaveText('In your garden: three poppies and an oak tree. A butterfly is visiting.')
+    await expect.poll(async () => (await stored(page)).filter((p) => p.selfSown)).toHaveLength(1)
+    await page.getByText("What's in your garden").click()
+    await expect(page.getByRole('listitem').filter({ hasText: 'came up on its own' })).toHaveCount(1)
+
+    // Reloading straight away is not a new visit: nothing more grows.
+    await page.reload()
+    await expect(page.getByText(/While you were away/)).toHaveCount(0)
+    expect(await stored(page)).toHaveLength(4)
+  })
+
+  test('at 1280x800 the garden, every plant, Undo and Sit fit on one screen, with no score or page-wide application', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await mockSuggestion(page)
+    await openGarden(page)
+    for (let i = 0; i < 3; i++) await plantAt(page, 0.2 + i * 0.3, 0.6)
+    await expect(page.getByRole('button', { name: 'Plant the willow there' })).toBeVisible()
+
+    await expect(garden(page)).toBeInViewport({ ratio: 1 })
+    for (const radio of await page.getByRole('radio').all()) await expect(radio).toBeInViewport({ ratio: 1 })
+    await expect(page.getByRole('button', { name: 'Undo last change' })).toBeInViewport({ ratio: 1 })
+    await expect(page.getByRole('button', { name: 'Sit with your garden' })).toBeInViewport({ ratio: 1 })
+    await expect(page.getByRole('button', { name: 'Plant the willow there' })).toBeInViewport({ ratio: 1 })
+    expect(await page.evaluate(() => window.scrollY)).toBe(0)
+
+    await expect(page.getByText(/^\d+ plants?$/)).toHaveCount(0)
+    // Only the canvas itself takes keys directly; the rest of the game reads normally.
+    await expect(page.getByRole('application')).toHaveCount(1)
+    await expect(page.getByRole('application').getByRole('radiogroup')).toHaveCount(0)
+    await expect(page.getByText(/^Keys: Tab to the garden/)).toBeVisible()
   })
 })
 
 test.describe('The Gardener on a touch screen', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
-  test('regression: one tap plants exactly one plant', async ({ page }) => {
+  test('regression: one tap plants exactly one plant, and the tools fit without keyboard hints', async ({ page }) => {
     const errors = collectPageErrors(page)
     await stubSiteApis(page)
     await mockSuggestion(page)
@@ -308,20 +516,27 @@ test.describe('The Gardener on a touch screen', () => {
 
     const box = (await garden(page).boundingBox())!
     await garden(page).tap({ position: { x: box.width * 0.3, y: box.height * 0.7 } })
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 1 plant\./)
+    await expect(contents(page)).toHaveText('In your garden: a daisy.')
     expect(await stored(page)).toHaveLength(1)
 
     // Every plant is visible without opening anything, and nothing scrolls sideways.
     await expect(page.getByRole('radio')).toHaveCount(15)
     for (const radio of await page.getByRole('radio').all()) await expect(radio).toBeInViewport({ ratio: 0 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+    await expect(page.getByText(/^Keys: Tab to the garden/)).toBeHidden()
+
     await page.getByRole('radio', { name: 'Pine Tree' }).tap()
     await expect(page.getByRole('radio', { name: 'Pine Tree' })).toHaveAttribute('aria-checked', 'true')
     await garden(page).tap({ position: { x: box.width * 0.6, y: box.height * 0.6 } })
-    await garden(page).tap({ position: { x: box.width * 0.8, y: box.height * 0.9 } })
+    await garden(page).tap({ position: { x: box.width * 0.85, y: box.height * 0.9 } })
 
-    await page.getByRole('button', { name: /would welcome a Willow/ }).tap()
-    await expect(garden(page)).toHaveAttribute('aria-label', /Garden with 4 plants/)
+    await page.getByRole('button', { name: 'Plant the willow there' }).tap()
+    await expect(contents(page)).toHaveText('In your garden: a daisy, two pine trees and a willow.')
+
+    await page.getByRole('button', { name: 'Sit with your garden' }).tap()
+    await expect(page.getByRole('dialog', { name: 'Sitting with your garden' })).toBeVisible()
+    await page.getByRole('button', { name: 'Stand up' }).tap()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
     expect(errors).toEqual([])
   })
 })
