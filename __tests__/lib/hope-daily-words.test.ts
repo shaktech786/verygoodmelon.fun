@@ -29,6 +29,14 @@ describe('The Optimist word list', () => {
     }
   })
 
+  it('cites an https source for every fact', () => {
+    for (const entry of wordList) {
+      expect(entry.source.trim().length, entry.word).toBeGreaterThan(0)
+      expect(() => new URL(entry.source), entry.word).not.toThrow()
+      expect(new URL(entry.source).protocol, entry.word).toBe('https:')
+    }
+  })
+
   it('never gives the answer away in the clue', () => {
     for (const entry of wordList) {
       expect(entry.clue.toUpperCase(), entry.word).not.toContain(entry.word)
