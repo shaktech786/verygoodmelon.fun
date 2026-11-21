@@ -6,7 +6,7 @@ import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'First Breath | VeryGoodMelon.Fun',
+  title: 'The Awakening | VeryGoodMelon.Fun',
   description: 'What would your first words be after crossing over? Share your awakening and see what others would say in a beautiful word cloud.'
 }
 
@@ -17,7 +17,7 @@ export default function FirstBreathPage() {
         <div className="animate-fade">
           <div className="text-center mb-4 sm:mb-6">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-2 text-foreground">
-              First Breath
+              The Awakening
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl mx-auto">
               You&apos;ve just crossed over. What are your first words?
