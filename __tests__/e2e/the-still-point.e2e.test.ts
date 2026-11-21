@@ -115,7 +115,7 @@ test.describe('The Harmonist', () => {
     })
   }
 
-  test('switching pattern mid-session starts the new pattern from its first breath', async ({ page }) => {
+  test('starting a new pattern after a session begins from its first breath', async ({ page }) => {
     await openGame(page)
     await startPattern(page, /Box Breathing/)
     await advance(page, 9000)
@@ -128,6 +128,65 @@ test.describe('The Harmonist', () => {
     await expect(phase(page)).toHaveText('Inhale')
     await expect(sessionTime(page)).toHaveText('0:00')
     await advance(page, 6000)
+    await expect(phase(page)).toHaveText('Exhale')
+  })
+
+  test('changing rhythm mid-session keeps the clock and starts the new pattern on an inhale', async ({ page }) => {
+    await openGame(page)
+    await startPattern(page, /Box Breathing/)
+    await advance(page, 9000)
+    await expect(phase(page)).toHaveText('Exhale')
+
+    const rhythm = page.getByRole('radiogroup', { name: 'Change rhythm' })
+    await rhythm.getByRole('radio', { name: 'Coherent' }).click()
+    await expect(rhythm.getByRole('radio', { name: 'Coherent' })).toHaveAttribute('aria-checked', 'true')
+    await expect(phase(page)).toHaveText('Inhale')
+    await expect(sessionTime(page)).toHaveText('0:09')
+    await advance(page, 6000)
+    await expect(phase(page)).toHaveText('Exhale')
+    await expect(sessionTime(page)).toHaveText('0:15')
+
+    // Arrow keys move through the rhythms too.
+    await rhythm.getByRole('radio', { name: 'Coherent' }).focus()
+    await page.keyboard.press('ArrowRight')
+    await expect(rhythm.getByRole('radio', { name: 'Physiological Sigh' })).toBeFocused()
+    await expect(phase(page)).toHaveText('Inhale')
+
+    await page.getByRole('button', { name: 'End breathing session' }).click()
+    await expect(app(page)).toContainText('Patterns: Box Breathing, Coherent Breathing, Physiological Sigh')
+  })
+
+  test('a timed session finishes the breath in progress, then asks how you feel', async ({ page }) => {
+    await openGame(page)
+    await page.getByRole('radio', { name: '1 min' }).click()
+    await startPattern(page, /Box Breathing/)
+    await expect(app(page)).toContainText('0:00 of 1:00')
+
+    await advance(page, 61_000)
+    await expect(phase(page)).toHaveText('Hold')
+    await expect(app(page)).toContainText('finishing this breath')
+
+    // Box breathing is 16s a cycle, so the fourth breath ends at 1:04.
+    await advance(page, 3500)
+    await expect(app(page).getByRole('heading', { name: 'Well done.' })).toBeVisible()
+    await expect(app(page)).toContainText('You spent 1 minute and 4 seconds breathing.')
+    await expect(app(page)).toContainText('4 full breaths, start to finish.')
+
+    await page.getByRole('button', { name: 'Still tense' }).click()
+    await expect(page.getByRole('button', { name: 'Still tense' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(app(page)).toContainText('Physiological Sigh')
+    await page.getByRole('button', { name: 'One minute of sighs' }).click()
+    await expect(phase(page)).toHaveText('Inhale')
+    await expect(app(page)).toContainText('Physiological Sigh')
+    await expect(app(page)).toContainText('0:00 of 1:00')
+  })
+
+  test('an open session keeps going until you end it', async ({ page }) => {
+    await openGame(page)
+    await page.getByRole('radio', { name: 'Open' }).click()
+    await startPattern(page, /Coherent/)
+    await advance(page, 10 * 60_000)
+    await expect(sessionTime(page)).toHaveText('10:00')
     await expect(phase(page)).toHaveText('Exhale')
   })
 
