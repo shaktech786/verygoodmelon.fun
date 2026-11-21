@@ -1,7 +1,8 @@
 import { test, expect, type Page, type Route } from '@playwright/test'
 
 /**
- * The Arena (/games/the-arena): pick two people and a topic, watch six rounds, read the verdict.
+ * The Arena (/games/the-arena): pick two people and a topic, watch six rounds, then read a
+ * closing that names what each side got right instead of crowning a winner.
  * Both endpoints are mocked so the suite never reaches the paid model.
  */
 
@@ -26,6 +27,13 @@ function argumentFor(body: TurnBody): string {
   return `${speaker} makes point ${body.round} on ${body.topic}.`
 }
 
+const CLOSING = {
+  firstInsight: 'The first voice showed that doubt still needs a doubter.',
+  secondInsight: 'The second voice showed that reasons can be instincts in disguise.',
+  revealed: 'Both treated freedom as something practised rather than owned.',
+  question: 'Which of your habits did you actually choose?',
+}
+
 async function mockDebate(page: Page, opts: { turn?: TurnHandler; judgeStatus?: number } = {}) {
   const turns: TurnBody[] = []
   const judged: JudgeBody[] = []
@@ -39,7 +47,7 @@ async function mockDebate(page: Page, opts: { turn?: TurnHandler; judgeStatus?: 
     const body = route.request().postDataJSON() as JudgeBody
     judged.push(body)
     if (opts.judgeStatus) return route.fulfill({ status: opts.judgeStatus, json: { error: 'No verdict this time' } })
-    return route.fulfill({ json: { winner: body.person2, summary: 'The closing rebuttal carried the room.' } })
+    return route.fulfill({ json: CLOSING })
   })
   return { turns, judged }
 }
@@ -57,12 +65,13 @@ async function setUp(page: Page, first: string, second: string, topic: string) {
 }
 
 const transcript = (page: Page) => page.getByRole('log', { name: 'Debate transcript' })
+const closing = (page: Page) => page.getByRole('region', { name: 'Closing thoughts' })
 const debate = (page: Page) => page.getByRole('region', { name: /^Debate:/ })
 
 test.describe('The Arena', () => {
   test.use({ reducedMotion: 'reduce' })
 
-  test('a full debate runs six alternating rounds to a verdict, and a second debate starts clean', async ({ page }) => {
+  test('a full debate runs six alternating rounds to a closing with no winner, and a second debate starts clean', async ({ page }) => {
     const { turns, judged } = await mockDebate(page)
     await openArena(page)
 
@@ -74,8 +83,13 @@ test.describe('The Arena', () => {
     await setUp(page, 'Socrates', 'Nietzsche', 'Is free will an illusion?')
     await page.getByLabel('Topic').press('Enter')
 
-    await expect(transcript(page).getByText('The closing rebuttal carried the room.')).toBeVisible()
-    await expect(transcript(page).getByText('Nietzsche wins')).toBeVisible()
+    await expect(closing(page).getByText(CLOSING.question)).toBeVisible()
+    await expect(closing(page).getByText('What each got right')).toBeVisible()
+    await expect(closing(page).getByText(CLOSING.firstInsight)).toBeVisible()
+    await expect(closing(page).getByText(CLOSING.secondInsight)).toBeVisible()
+    await expect(closing(page).getByText(CLOSING.revealed)).toBeVisible()
+    await expect(debate(page).getByText(/\bwins\b|winner|trophy/i)).toHaveCount(0)
+    await expect(debate(page).getByText('Imagined voices, not real quotes.')).toBeVisible()
     for (let round = 1; round <= 6; round++) {
       const speaker = round % 2 === 1 ? 'Socrates' : 'Nietzsche'
       await expect(transcript(page).getByText(`${speaker} makes point ${round} on Is free will an illusion?.`)).toBeVisible()
@@ -89,7 +103,7 @@ test.describe('The Arena', () => {
     await expect(page.getByLabel('First debater')).toHaveValue('Socrates')
     await page.getByLabel('Topic').fill('Is music necessary?')
     await page.getByRole('button', { name: 'Start Debate' }).click()
-    await expect(transcript(page).getByText('Nietzsche wins')).toBeVisible()
+    await expect(closing(page)).toBeVisible()
     await expect(transcript(page).getByText(/Is free will an illusion/)).toHaveCount(0)
     await expect(transcript(page).getByText(/makes point/)).toHaveCount(6)
   })
@@ -97,14 +111,14 @@ test.describe('The Arena', () => {
   test.describe('with motion', () => {
     test.use({ reducedMotion: 'no-preference' })
 
-    test('arguments type out with motion on and the debate still reaches a verdict', async ({ page }) => {
+    test('arguments type out with motion on and the debate still reaches its closing', async ({ page }) => {
       await mockDebate(page)
       await openArena(page)
       await setUp(page, 'Ada Lovelace', 'Alan Turing', 'Can machines dream?')
       await page.getByRole('button', { name: 'Start Debate' }).click()
       await expect(page.getByText('Round 1/6')).toBeVisible()
       await expect(transcript(page).getByText(/makes point 1/)).toBeVisible()
-      await expect(transcript(page).getByText('Alan Turing wins')).toBeVisible({ timeout: 20_000 })
+      await expect(closing(page).getByText(CLOSING.question)).toBeVisible({ timeout: 20_000 })
     })
   })
 
@@ -132,7 +146,7 @@ test.describe('The Arena', () => {
     expect(turns.map((t) => t.round)).toEqual([1, 2, 3])
 
     await page.getByRole('button', { name: 'Continue' }).click()
-    await expect(transcript(page).getByText('Aristotle wins')).toBeVisible()
+    await expect(closing(page)).toBeVisible()
     expect(turns.map((t) => t.round)).toEqual([1, 2, 3, 3, 4, 5, 6])
     await expect(transcript(page).getByText(/makes point/)).toHaveCount(6)
   })
@@ -157,7 +171,7 @@ test.describe('The Arena', () => {
     await page.getByRole('button', { name: 'Start Debate' }).click()
     release()
 
-    await expect(transcript(page).getByText('Hume wins')).toBeVisible()
+    await expect(closing(page)).toBeVisible()
     await expect(transcript(page).getByText(/First topic/)).toHaveCount(0)
     await expect(transcript(page).getByText(/makes point/)).toHaveCount(6)
   })
@@ -181,7 +195,7 @@ test.describe('The Arena', () => {
     await expect(debate(page).getByText(/error|API|failed|generat/i)).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Try again' }).click()
-    await expect(transcript(page).getByText('Sartre wins')).toBeVisible()
+    await expect(closing(page)).toBeVisible()
     await expect(transcript(page).getByText(/makes point/)).toHaveCount(6)
   })
 
@@ -196,14 +210,88 @@ test.describe('The Arena', () => {
     await expect(page.getByText('Round 1', { exact: true })).toHaveCount(0)
   })
 
-  test('when no verdict comes back the debate still ends with a calm draw', async ({ page }) => {
+  test('when no closing comes back the debate still ends with a calm, complete one', async ({ page }) => {
     await mockDebate(page, { judgeStatus: 500 })
     await openArena(page)
     await setUp(page, 'Marie Curie', 'Batman', 'Should we fear the dark?')
     await page.getByRole('button', { name: 'Start Debate' }).click()
-    await expect(transcript(page).getByText('Draw')).toBeVisible()
-    await expect(transcript(page).getByText(/No clear winner this time/)).toBeVisible()
-    await expect(debate(page).getByText(/error|failed|verdict this time/i)).toHaveCount(0)
+    await expect(closing(page).getByText('Marie Curie held to what they believed and said it plainly.')).toBeVisible()
+    await expect(closing(page).getByText('Batman kept pressing on the question underneath.')).toBeVisible()
+    await expect(closing(page).getByText('If you had joined them, what would you have added?')).toBeVisible()
+    await expect(debate(page).getByText(/error|failed|closing this time/i)).toHaveCount(0)
+  })
+
+  test('a pairing the debaters will not voice ends quietly, with no refusal, no closing and a way forward', async ({ page }) => {
+    const { turns, judged } = await mockDebate(page, {
+      turn: (route) => route.fulfill({ json: { declined: true } }),
+    })
+    await openArena(page)
+    await setUp(page, 'A notorious dictator', 'Gandhi', 'Which people deserve less?')
+    await page.getByRole('button', { name: 'Start Debate' }).click()
+
+    await expect(transcript(page).getByText(/The Arena will sit out/)).toBeVisible()
+    await expect(transcript(page).getByText(/Round 1/)).toHaveCount(0)
+    await expect(debate(page).getByText(/cannot|unable|guidelines|request|\bAI\b/)).toHaveCount(0)
+    await page.waitForTimeout(300)
+    expect(turns).toHaveLength(1)
+    expect(judged).toHaveLength(0)
+
+    await debate(page).getByRole('button', { name: 'Surprise me' }).click()
+    await expect(page.getByLabel('First debater')).not.toHaveValue('A notorious dictator')
+    await expect(page.getByLabel('Topic')).not.toHaveValue('')
+    await expect(page.getByRole('button', { name: 'Start Debate' })).toBeEnabled()
+  })
+
+  test('a decline partway through keeps what was said and asks for nothing more', async ({ page }) => {
+    const { turns, judged } = await mockDebate(page, {
+      turn: (route, body) =>
+        route.fulfill({ json: body.round === 3 ? { declined: true } : { argument: argumentFor(body), round: body.round } }),
+    })
+    await openArena(page)
+    await setUp(page, 'Kant', 'Hume', 'Is it ever right to lie?')
+    await page.getByRole('button', { name: 'Start Debate' }).click()
+
+    await expect(transcript(page).getByText(/The Arena will sit out/)).toBeVisible()
+    await expect(transcript(page).getByText(/makes point/)).toHaveCount(2)
+    await page.waitForTimeout(300)
+    expect(turns.map((t) => t.round)).toEqual([1, 2, 3])
+    expect(judged).toHaveLength(0)
+  })
+
+  test('Surprise me fills a ready-made pairing that can start straight away', async ({ page }) => {
+    const { turns } = await mockDebate(page)
+    await openArena(page)
+    await page.getByRole('button', { name: 'Surprise me' }).click()
+
+    for (const field of ['First debater', 'Second debater', 'Topic']) {
+      await expect(page.getByLabel(field)).not.toHaveValue('')
+    }
+    const first = await page.getByLabel('First debater').inputValue()
+    await page.getByRole('button', { name: 'Start Debate' }).click()
+    await expect(closing(page)).toBeVisible()
+    expect(turns[0].person1).toBe(first)
+  })
+
+  test('a reader scrolled back to an earlier turn is not pulled down by new ones', async ({ page }) => {
+    let release: () => void = () => {}
+    const gate = new Promise<void>((r) => { release = r })
+    const long = 'A long and winding thought that takes its time to arrive somewhere. '.repeat(6)
+    await mockDebate(page, {
+      turn: async (route, body) => {
+        if (body.round === 4) await gate
+        await route.fulfill({ json: { argument: `${long}(${body.round})`, round: body.round } }).catch(() => {})
+      },
+    })
+    await openArena(page)
+    await setUp(page, 'Plato', 'Aristotle', 'Are ideas real?')
+    await page.getByRole('button', { name: 'Start Debate' }).click()
+    await expect(transcript(page).getByText(/\(3\)$/)).toBeVisible()
+
+    await expect(transcript(page)).toHaveAttribute('tabindex', '0')
+    await transcript(page).evaluate((el) => { el.scrollTop = 0; el.dispatchEvent(new Event('scroll')) })
+    release()
+    await expect(transcript(page).getByText(/\(5\)$/)).toBeAttached()
+    expect(await transcript(page).evaluate((el) => el.scrollTop)).toBeLessThan(40)
   })
 
   test('two debaters with the same name still alternate sides', async ({ page }) => {
@@ -212,7 +300,7 @@ test.describe('The Arena', () => {
     await openArena(page)
     await setUp(page, 'Socrates', 'Socrates', 'Know thyself?')
     await page.getByRole('button', { name: 'Start Debate' }).click()
-    await expect(transcript(page).getByText('Socrates wins')).toBeVisible()
+    await expect(closing(page)).toBeVisible()
 
     const lefts = await transcript(page).locator('.justify-start').count()
     const rights = await transcript(page).locator('.justify-end').count()
@@ -229,7 +317,7 @@ test.describe('The Arena', () => {
       await setUp(page, long, 'Bartholomew Montgomery-Featherstonehaugh III of Somewhere', 'x'.repeat(140))
       await expect(page.getByLabel('Topic')).toHaveValue('x'.repeat(120))
       await page.getByRole('button', { name: 'Start Debate' }).tap()
-      await expect(transcript(page).getByText(/wins$/)).toBeVisible()
+      await expect(closing(page)).toBeVisible()
 
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
       expect(overflow).toBeLessThanOrEqual(0)

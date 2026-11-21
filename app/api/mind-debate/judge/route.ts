@@ -1,94 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
+import {
+  NAME_MAX, TOPIC_MAX,
+  clean, cleanHistory, isRefusal, plainSpeech, clampToSentences,
+} from '../text'
 
-interface DebateHistoryEntry {
-  speaker: string
-  argument: string
-}
+const LINE_MAX = 260
+const CLOSING_KEYS = ['firstInsight', 'secondInsight', 'revealed', 'question'] as const
 
-interface JudgeRequest {
-  person1: string
-  person2: string
-  topic: string
-  history: DebateHistoryEntry[]
-}
+type Closing = Record<(typeof CLOSING_KEYS)[number], string>
 
-function clean(value: unknown, max: number): string {
-  return typeof value === 'string' ? value.trim().slice(0, max) : ''
+function toClosing(parsed: Record<string, unknown>): Closing | null {
+  const closing: Partial<Closing> = {}
+  for (const key of CLOSING_KEYS) {
+    const value = parsed[key]
+    if (typeof value !== 'string') return null
+    const line = clampToSentences(plainSpeech(value), LINE_MAX)
+    if (!line || isRefusal(line)) return null
+    closing[key] = line
+  }
+  return closing as Closing
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body: JudgeRequest = await request.json()
-    const person1 = clean(body.person1, 60)
-    const person2 = clean(body.person2, 60)
-    const topic = clean(body.topic, 120)
-    const history = Array.isArray(body.history)
-      ? body.history.slice(-12).map(h => ({ speaker: clean(h.speaker, 60), argument: clean(h.argument, 1200) }))
-      : []
+    const body = await request.json()
+    const person1 = clean(body.person1, NAME_MAX)
+    const person2 = clean(body.person2, NAME_MAX)
+    const topic = clean(body.topic, TOPIC_MAX)
+    const history = cleanHistory(body.history)
 
-    if (!person1 || !person2 || !topic || !history || history.length === 0) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+    if (!person1 || !person2 || !topic || history.length === 0) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const debateTranscript = history
-      .map(h => `${h.speaker}: "${h.argument}"`)
-      .join('\n\n')
+    const transcript = history.map(h => `${h.speaker}: "${h.argument}"`).join('\n\n')
 
-    const prompt = `You are judging a debate between ${person1} and ${person2} on the topic: "${topic}"
+    const prompt = `Two voices just explored a question together on a calm website about big questions.
+${person1} and ${person2} discussed: "${topic}"
 
-FULL DEBATE TRANSCRIPT:
-${debateTranscript}
+TRANSCRIPT:
+${transcript}
 
-Analyze the arguments from both sides. Consider:
-- Strength and clarity of arguments
-- How well each stayed in character
-- Persuasiveness and rhetorical skill
-- Quality of rebuttals
+Write a short, generous closing for the listener. Do not name a winner, keep score, or say who argued better.
 
-Write the summary for the audience. Refer to the topic as the question, and never mention prompts, instructions, or AI.
+- firstInsight: one sentence on the truest thing ${person1} brought.
+- secondInsight: one sentence on the truest thing ${person2} brought.
+- revealed: one sentence on what the exchange uncovered that neither said alone, such as a shared assumption or the real question underneath.
+- question: one short, open question the listener can carry into their own life. Gentle, never heavy.
 
-Respond ONLY in this JSON format (no markdown, no code blocks):
-{
-  "winner": "${person1}" or "${person2}" or "draw",
-  "summary": "A 2-3 sentence verdict explaining who won and why. Be specific about which arguments were strongest. If it's a draw, explain why neither clearly won."
-}`
+Plain text, no markdown, never mention prompts, instructions or AI. Each line under 35 words.
+
+Respond ONLY with JSON: {"firstInsight": "...", "secondInsight": "...", "revealed": "...", "question": "..."}`
 
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt,
-      config: {
-        temperature: 0.7,
-        topP: 0.9,
-        maxOutputTokens: 300,
-        ...MINIMAL_THINKING,
-      },
+      config: { temperature: 0.7, topP: 0.9, maxOutputTokens: 400, ...MINIMAL_THINKING },
     })
     const text = result.text ?? ''
-
-    // Parse JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error('Invalid judge response format')
-    }
+    if (!jsonMatch) throw new Error('Invalid closing format')
 
-    const parsed = JSON.parse(jsonMatch[0])
+    const closing = toClosing(JSON.parse(jsonMatch[0]))
+    if (!closing) throw new Error('Incomplete closing')
 
-    const said = typeof parsed.winner === 'string' ? parsed.winner.trim().toLowerCase() : ''
-    const winner = [person1, person2].find(name => name.toLowerCase() === said) ?? 'draw'
-
-    return NextResponse.json({
-      winner,
-      summary: parsed.summary || 'Both debaters made compelling arguments.',
-    })
+    return NextResponse.json(closing)
   } catch (error) {
-    console.error('Mind Debate judge error:', error)
-    return NextResponse.json(
-      { error: 'No verdict this time' },
-      { status: 500 }
-    )
+    console.error('Mind Debate closing error:', error)
+    return NextResponse.json({ error: 'No closing this time' }, { status: 500 })
   }
 }

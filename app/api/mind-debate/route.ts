@@ -1,29 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
+import {
+  NAME_MAX, TOPIC_MAX, STEP_ASIDE,
+  clean, cleanHistory, isRefusal, plainSpeech, clampToSentences,
+} from './text'
 
-interface DebateHistoryEntry {
-  speaker: string
-  argument: string
-}
-
-interface DebateTurnRequest {
-  person1: string
-  person2: string
-  topic: string
-  history: DebateHistoryEntry[]
-  round: number
-  totalRounds: number
-}
-
-const NAME_MAX = 60
-const TOPIC_MAX = 120
-const ARGUMENT_MAX = 1200
-const MAX_HISTORY = 12
 const MAX_ROUNDS = 12
-
-function clean(value: unknown, max: number): string {
-  return typeof value === 'string' ? value.trim().slice(0, max) : ''
-}
+const TURN_MAX = 600
 
 // The model sometimes prefixes its reply with the speaker's name or wraps it in quotes.
 function stripSpeakerLabel(text: string, speaker: string): string {
@@ -35,30 +18,21 @@ function stripSpeakerLabel(text: string, speaker: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const body: DebateTurnRequest = await request.json()
+    const body = await request.json()
     const person1 = clean(body.person1, NAME_MAX)
     const person2 = clean(body.person2, NAME_MAX)
     const topic = clean(body.topic, TOPIC_MAX)
     const { round, totalRounds } = body
-    const history = Array.isArray(body.history)
-      ? body.history.slice(-MAX_HISTORY).map(h => ({ speaker: clean(h.speaker, NAME_MAX), argument: clean(h.argument, ARGUMENT_MAX) }))
-      : []
+    const history = cleanHistory(body.history)
 
     if (!person1 || !person2 || !topic) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
     if (!Number.isInteger(round) || !Number.isInteger(totalRounds) || round < 1 || round > totalRounds || totalRounds > MAX_ROUNDS) {
-      return NextResponse.json(
-        { error: 'Invalid round number' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid round number' }, { status: 400 })
     }
 
-    // Determine whose turn it is (odd rounds = person1, even = person2)
     const currentSpeaker = round % 2 === 1 ? person1 : person2
     const opponent = round % 2 === 1 ? person2 : person1
 
@@ -69,56 +43,46 @@ export async function POST(request: NextRequest) {
     const roundContext = round === 1
       ? 'This is the opening statement. Set the tone and stake your position.'
       : round === totalRounds
-        ? 'This is the final round. Make your strongest closing argument.'
-        : `This is round ${round} of ${totalRounds}. Build on or counter previous arguments.`
+        ? 'This is the final round. Make your best closing point, and you may grant your opponent one thing they got right.'
+        : `This is round ${round} of ${totalRounds}. Answer what was just said, then add one new idea.`
 
-    const systemPrompt = `You are simulating a debate. You must now speak AS ${currentSpeaker}, arguing about: "${topic}"
+    const prompt = `You are writing one turn of a friendly, thoughtful debate for a calm website about big questions.
+Speak AS ${currentSpeaker}, debating ${opponent}, on the question: "${topic}"
 
-YOUR ROLE: You ARE ${currentSpeaker}. Argue from their known perspective, beliefs, personality, and communication style.
-
-OPPONENT: ${opponent}
-
-DEBATE HISTORY:
+DEBATE SO FAR:
 ${historyText}
 
-ROUND CONTEXT: ${roundContext}
+ROUND: ${roundContext}
 
-RULES:
-- Write 2-4 sentences ONLY. Be punchy, persuasive, and in-character.
-- Use ${currentSpeaker}'s actual known views, manner of speaking, and rhetorical style.
-- If ${currentSpeaker} is fictional, use their established characterization.
-- Address previous arguments directly when relevant.
-- Be witty and engaging, not dry or academic.
-- No meta-commentary. No "As ${currentSpeaker}, I think..." - just speak as them directly.
-- Never break character or acknowledge being an AI.
-- Keep it respectful but spirited. This should be fun to watch.
+HOW TO SPEAK:
+- 2 or 3 sentences, under 70 words. Plain spoken text, no markdown, no labels, no speaker name prefix.
+- Use ${currentSpeaker}'s known views, manner and style. If they are fictional or not a person, use their established character.
+- Disagree generously: challenge the idea, never the person. No insults, mockery, slurs or contempt.
+- If ${currentSpeaker} is a real living person, voice the spirit of their public views. Never invent quotes, private facts, scandals or claims about real people.
+- Be warm, witty and clear. Leave the listener with something to think about.
 
-Respond with ONLY the argument text. No labels, no formatting, no speaker name prefix.`
+WHEN TO STEP ASIDE:
+Reply with exactly ${STEP_ASIDE} and nothing else if voicing this turn would mean any of these:
+- speaking as someone chiefly known for atrocities, terror or hatred, in their own voice;
+- arguing that any group of people is inferior, or that anyone should be harmed;
+- mocking, threatening or making claims about a private individual;
+- sexual content, self-harm, or instructions for anything dangerous.
+Never explain, apologise or mention rules. Either speak in character or send ${STEP_ASIDE}.`
 
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
-      contents: systemPrompt,
-      config: {
-        temperature: 0.9,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 256,
-        ...MINIMAL_THINKING,
-      },
+      contents: prompt,
+      config: { temperature: 0.9, topP: 0.95, topK: 40, maxOutputTokens: 256, ...MINIMAL_THINKING },
     })
-    const argument = stripSpeakerLabel((result.text ?? '').trim(), currentSpeaker)
+    const raw = (result.text ?? '').trim()
+    if (isRefusal(raw)) return NextResponse.json({ declined: true })
+
+    const argument = clampToSentences(plainSpeech(stripSpeakerLabel(raw, currentSpeaker)), TURN_MAX)
     if (!argument) throw new Error('Empty debate turn')
 
-    return NextResponse.json({
-      speaker: currentSpeaker,
-      argument,
-      round,
-    })
+    return NextResponse.json({ speaker: currentSpeaker, argument, round })
   } catch (error) {
     console.error('Mind Debate turn error:', error)
-    return NextResponse.json(
-      { error: 'The debate could not continue' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'The debate could not continue' }, { status: 500 })
   }
 }

@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/Button'
-import { Swords, RotateCcw, Trophy, Loader2, Square, Play } from 'lucide-react'
+import { MessagesSquare, RotateCcw, Loader2, Square, Play, Shuffle } from 'lucide-react'
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
 interface DebateEntry {
   speaker: string
@@ -10,22 +11,58 @@ interface DebateEntry {
   round: number
 }
 
-interface Verdict {
-  winner: string
-  summary: string
+interface Closing {
+  firstInsight: string
+  secondInsight: string
+  revealed: string
+  question: string
 }
 
-type GamePhase = 'setup' | 'debating' | 'stopped' | 'judging' | 'verdict'
+interface Pairing {
+  first: string
+  second: string
+  topic: string
+}
+
+type GamePhase = 'setup' | 'debating' | 'stopped' | 'declined' | 'judging' | 'closing'
 
 const TOTAL_ROUNDS = 6
 const CHAR_DELAY_MS = 18
 const TURN_PAUSE_MS = 400
 const NAME_MAX = 60
 const TOPIC_MAX = 120
+const STICK_TO_BOTTOM_PX = 48
 
-const FALLBACK_VERDICT: Verdict = {
-  winner: 'draw',
-  summary: 'No clear winner this time. Both held their ground, and the question stays open for you to decide.',
+const PAIRINGS: readonly Pairing[] = [
+  { first: 'Marcus Aurelius', second: 'Oscar Wilde', topic: 'Should you care what others think?' },
+  { first: 'A cat', second: 'A dog', topic: 'Is a nap a waste of a day?' },
+  { first: 'The Moon', second: 'The Sun', topic: 'Is it better to shine or to reflect?' },
+  { first: 'Socrates', second: 'Nietzsche', topic: 'Is free will an illusion?' },
+  { first: 'Jane Austen', second: 'Sherlock Holmes', topic: 'Can you reason your way into love?' },
+  { first: 'Lao Tzu', second: 'Benjamin Franklin', topic: 'Is doing nothing ever the wise choice?' },
+  { first: 'The Tortoise', second: 'The Hare', topic: 'Is slow and steady overrated?' },
+  { first: 'Ada Lovelace', second: 'Mary Shelley', topic: 'Should we fear what we create?' },
+  { first: 'Winnie-the-Pooh', second: 'Seneca', topic: 'Is it enough to want very little?' },
+  { first: 'An old oak tree', second: 'A mayfly', topic: 'Is a short life a lesser life?' },
+  { first: 'Hypatia', second: 'Carl Sagan', topic: 'Does the universe mind that we are here?' },
+  { first: 'Epicurus', second: 'A busy parent', topic: 'Is a simple life a happy life?' },
+]
+
+function fallbackClosing(first: string, second: string): Closing {
+  return {
+    firstInsight: `${first} held to what they believed and said it plainly.`,
+    secondInsight: `${second} kept pressing on the question underneath.`,
+    revealed: 'Neither voice held the whole answer, which is often where the best questions live.',
+    question: 'If you had joined them, what would you have added?',
+  }
+}
+
+function isClosing(data: unknown): data is Closing {
+  if (typeof data !== 'object' || data === null) return false
+  const d = data as Record<string, unknown>
+  return ['firstInsight', 'secondInsight', 'revealed', 'question'].every(
+    (key) => typeof d[key] === 'string' && (d[key] as string).trim() !== ''
+  )
 }
 
 function speakerFor(round: number, first: string, second: string): string {
@@ -39,6 +76,8 @@ function wait(ms: number, signal: AbortSignal): Promise<void> {
   })
 }
 
+class Declined extends Error {}
+
 export default function MindDebate() {
   const [person1, setPerson1] = useState('')
   const [person2, setPerson2] = useState('')
@@ -48,28 +87,26 @@ export default function MindDebate() {
   const [currentRound, setCurrentRound] = useState(0)
   const [typingText, setTypingText] = useState('')
   const [interruption, setInterruption] = useState<string | null>(null)
-  const [verdict, setVerdict] = useState<Verdict | null>(null)
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+  const [closing, setClosing] = useState<Closing | null>(null)
+  const reducedMotion = useReducedMotion()
 
   const debateRef = useRef<HTMLDivElement>(null)
+  const stickToBottomRef = useRef(true)
   const abortRef = useRef<AbortController | null>(null)
-
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- the media query is only readable after mount
-    setPrefersReducedMotion(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
+  const pairingRef = useRef(-1)
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
+  // Follows new text only while the reader is already at the bottom, so scrolling back to reread is never yanked away
   useEffect(() => {
-    if (debateRef.current) {
-      debateRef.current.scrollTop = debateRef.current.scrollHeight
-    }
+    const el = debateRef.current
+    if (el && stickToBottomRef.current) el.scrollTop = el.scrollHeight
   }, [history, typingText, phase])
+
+  const handleTranscriptScroll = () => {
+    const el = debateRef.current
+    if (el) stickToBottomRef.current = el.scrollTop + el.clientHeight >= el.scrollHeight - STICK_TO_BOTTOM_PX
+  }
 
   const person1Name = person1.trim()
   const person2Name = person2.trim()
@@ -79,7 +116,7 @@ export default function MindDebate() {
   const typeText = useCallback(
     (text: string, signal: AbortSignal): Promise<void> => {
       return new Promise((resolve) => {
-        if (prefersReducedMotion || signal.aborted) {
+        if (reducedMotion || signal.aborted) {
           resolve()
           return
         }
@@ -95,7 +132,7 @@ export default function MindDebate() {
         signal.addEventListener('abort', () => { clearInterval(interval); resolve() }, { once: true })
       })
     },
-    [prefersReducedMotion]
+    [reducedMotion]
   )
 
   const fetchTurn = useCallback(
@@ -115,14 +152,15 @@ export default function MindDebate() {
       })
       if (!res.ok) throw new Error(`turn ${res.status}`)
       const data = await res.json()
+      if (data.declined === true) throw new Declined()
       if (typeof data.argument !== 'string' || !data.argument.trim()) throw new Error('empty turn')
       return { speaker: speakerFor(round, person1Name, person2Name), argument: data.argument.trim(), round }
     },
     [person1Name, person2Name, topicName]
   )
 
-  const fetchVerdict = useCallback(
-    async (debateHistory: DebateEntry[], signal: AbortSignal): Promise<Verdict> => {
+  const fetchClosing = useCallback(
+    async (debateHistory: DebateEntry[], signal: AbortSignal): Promise<Closing> => {
       try {
         const res = await fetch('/api/mind-debate/judge', {
           method: 'POST',
@@ -135,14 +173,12 @@ export default function MindDebate() {
           }),
           signal,
         })
-        if (!res.ok) throw new Error(`judge ${res.status}`)
-        const data = await res.json()
-        if (typeof data.winner !== 'string' || typeof data.summary !== 'string' || !data.summary) {
-          throw new Error('bad verdict')
-        }
+        if (!res.ok) throw new Error(`closing ${res.status}`)
+        const data: unknown = await res.json()
+        if (!isClosing(data)) throw new Error('bad closing')
         return data
       } catch {
-        return FALLBACK_VERDICT
+        return fallbackClosing(person1Name, person2Name)
       }
     },
     [person1Name, person2Name, topicName]
@@ -154,9 +190,10 @@ export default function MindDebate() {
     abortRef.current = controller
     const { signal } = controller
 
+    stickToBottomRef.current = true
     setPhase('debating')
     setInterruption(null)
-    setVerdict(null)
+    setClosing(null)
     setHistory(startHistory)
     let runningHistory = startHistory
 
@@ -167,8 +204,12 @@ export default function MindDebate() {
       let entry: DebateEntry
       try {
         entry = await fetchTurn(round, runningHistory, signal)
-      } catch {
+      } catch (error) {
         if (signal.aborted) return
+        if (error instanceof Declined) {
+          setPhase('declined')
+          return
+        }
         setPhase('stopped')
         setInterruption(`${speakerFor(round, person1Name, person2Name)} lost their train of thought.`)
         return
@@ -187,11 +228,11 @@ export default function MindDebate() {
     }
 
     setPhase('judging')
-    const result = await fetchVerdict(runningHistory, signal)
+    const result = await fetchClosing(runningHistory, signal)
     if (signal.aborted) return
-    setVerdict(result)
-    setPhase('verdict')
-  }, [fetchTurn, typeText, fetchVerdict, person1Name, person2Name])
+    setClosing(result)
+    setPhase('closing')
+  }, [fetchTurn, typeText, fetchClosing, person1Name, person2Name])
 
   const handleStart = (e: React.FormEvent) => {
     e.preventDefault()
@@ -207,16 +248,26 @@ export default function MindDebate() {
     setPhase('stopped')
   }
 
-  const handleNewDebate = () => {
+  const backToSetup = () => {
     abortRef.current?.abort()
     setPhase('setup')
     setHistory([])
     setCurrentRound(0)
     setTypingText('')
     setInterruption(null)
-    setVerdict(null)
+    setClosing(null)
   }
 
+  const handleSurprise = () => {
+    let next = Math.floor(Math.random() * PAIRINGS.length)
+    if (next === pairingRef.current) next = (next + 1) % PAIRINGS.length
+    pairingRef.current = next
+    const pairing = PAIRINGS[next]
+    setPerson1(pairing.first)
+    setPerson2(pairing.second)
+    setTopic(pairing.topic)
+    if (phase !== 'setup') backToSetup()
+  }
 
   if (phase === 'setup') {
     return (
@@ -224,7 +275,7 @@ export default function MindDebate() {
         <form onSubmit={handleStart} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="person1" className="block text-sm font-medium text-foreground/70 mb-1.5">
+              <label htmlFor="person1" className="block text-sm font-medium text-foreground/80 mb-1.5">
                 First debater
               </label>
               <input
@@ -234,12 +285,12 @@ export default function MindDebate() {
                 onChange={(e) => setPerson1(e.target.value)}
                 placeholder="e.g. Socrates"
                 maxLength={NAME_MAX}
-                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
+                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
                 autoComplete="off"
               />
             </div>
             <div>
-              <label htmlFor="person2" className="block text-sm font-medium text-foreground/70 mb-1.5">
+              <label htmlFor="person2" className="block text-sm font-medium text-foreground/80 mb-1.5">
                 Second debater
               </label>
               <input
@@ -249,14 +300,14 @@ export default function MindDebate() {
                 onChange={(e) => setPerson2(e.target.value)}
                 placeholder="e.g. Nietzsche"
                 maxLength={NAME_MAX}
-                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
+                className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
                 autoComplete="off"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="topic" className="block text-sm font-medium text-foreground/70 mb-1.5">
+            <label htmlFor="topic" className="block text-sm font-medium text-foreground/80 mb-1.5">
               Topic
             </label>
             <input
@@ -266,26 +317,35 @@ export default function MindDebate() {
               onChange={(e) => setTopic(e.target.value)}
               placeholder="e.g. Is free will an illusion?"
               maxLength={TOPIC_MAX}
-              className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
+              className="w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
               autoComplete="off"
             />
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 flex flex-col sm:flex-row gap-3">
             <Button
               type="submit"
               variant="primary"
               disabled={!canStart}
-              className="w-full flex items-center justify-center gap-2"
+              className="flex-1 flex items-center justify-center gap-2"
             >
-              <Swords size={18} aria-hidden="true" />
+              <MessagesSquare size={18} aria-hidden="true" />
               Start Debate
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleSurprise}
+              className="flex items-center justify-center gap-2"
+            >
+              <Shuffle size={18} aria-hidden="true" />
+              Surprise me
             </Button>
           </div>
         </form>
 
-        <p className="text-center text-foreground/60 text-sm mt-6">
-          Pick any two people, real or fictional, and a topic for them to argue.
+        <p className="text-center text-foreground/70 text-sm mt-6">
+          Pick any two minds, real or imagined, and a question for them to explore.
         </p>
       </div>
     )
@@ -298,19 +358,21 @@ export default function MindDebate() {
     <div
       className="max-w-4xl mx-auto animate-fade"
       role="region"
-      aria-label={`Debate: ${person1Name} vs ${person2Name}`}
+      aria-label={`Debate: ${person1Name} and ${person2Name}`}
     >
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
         <div className="text-center sm:text-left min-w-0 max-w-full">
-          <p className="text-sm text-foreground/70 break-words">
-            {person1Name} <span className="text-accent font-semibold">vs</span> {person2Name}
+          <p className="text-sm text-foreground/80 break-words">
+            {person1Name} <span className="text-accent font-semibold" aria-hidden="true">&amp;</span>
+            <span className="sr-only">and</span> {person2Name}
           </p>
-          <p className="text-xs text-foreground/60 mt-0.5 break-words">&ldquo;{topicName}&rdquo;</p>
+          <p className="text-xs text-foreground/70 mt-0.5 break-words">&ldquo;{topicName}&rdquo;</p>
+          <p className="text-xs text-foreground/70 mt-0.5">Imagined voices, not real quotes.</p>
         </div>
 
         {(phase === 'debating' || phase === 'stopped') && (
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm font-medium text-foreground/70">
+            <span className="text-sm font-medium text-foreground/80">
               Round {currentRound}/{TOTAL_ROUNDS}
             </span>
             <div
@@ -334,33 +396,16 @@ export default function MindDebate() {
 
       <div
         ref={debateRef}
-        className="bg-card-bg border border-card-border rounded-xl p-4 sm:p-6 min-h-[300px] max-h-[60vh] overflow-y-auto space-y-4"
+        onScroll={handleTranscriptScroll}
+        tabIndex={0}
+        role="log"
+        aria-live="polite"
+        aria-label="Debate transcript"
+        className="bg-card-bg border border-card-border rounded-xl p-4 sm:p-6 min-h-[300px] max-h-[60vh] overflow-y-auto space-y-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        <div role="log" aria-live="polite" aria-label="Debate transcript" className="space-y-4">
-          {history.map((entry) => (
-            <DebateBubble key={entry.round} entry={entry} isLeft={entry.round % 2 === 1} />
-          ))}
-
-          {phase === 'verdict' && verdict && (
-            <div className="mt-4 border-t border-card-border pt-4">
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <Trophy size={20} className="text-accent" aria-hidden="true" />
-                <span className="text-sm font-semibold text-foreground/80 break-words">
-                  {verdict.winner === 'draw' ? 'Draw' : `${verdict.winner} wins`}
-                </span>
-              </div>
-              <p className="text-sm text-foreground/70 text-center leading-relaxed max-w-lg mx-auto">
-                {verdict.summary}
-              </p>
-            </div>
-          )}
-
-          {phase === 'stopped' && (
-            <p className="text-center text-sm text-foreground/70 py-3">
-              {interruption ?? 'The debate is paused.'}
-            </p>
-          )}
-        </div>
+        {history.map((entry) => (
+          <DebateBubble key={entry.round} entry={entry} isLeft={entry.round % 2 === 1} />
+        ))}
 
         {phase === 'debating' && typingText && (
           <div aria-hidden="true">
@@ -373,17 +418,36 @@ export default function MindDebate() {
         )}
 
         {waitingForTurn && (
-          <div className="flex items-center justify-center gap-2 py-3 text-foreground/60">
-            <Loader2 size={18} className={prefersReducedMotion ? '' : 'animate-spin'} aria-hidden="true" />
+          <div className="flex items-center justify-center gap-2 py-3 text-foreground/70">
+            <Loader2 size={18} className={reducedMotion ? '' : 'animate-spin'} aria-hidden="true" />
             <span className="text-sm break-words">{nextSpeaker} is thinking...</span>
           </div>
         )}
 
-        {phase === 'judging' && (
-          <div className="flex items-center justify-center gap-2 py-6 text-foreground/60">
-            <Loader2 size={18} className={prefersReducedMotion ? '' : 'animate-spin'} aria-hidden="true" />
-            <span className="text-sm">Weighing the arguments...</span>
+        {phase === 'stopped' && (
+          <p className="text-center text-sm text-foreground/80 py-3">
+            {interruption ?? 'The debate is paused.'}
+          </p>
+        )}
+
+        {phase === 'declined' && (
+          <div className="text-center py-4 max-w-md mx-auto">
+            <p className="text-sm text-foreground/80 leading-relaxed">
+              This conversation is one The Arena will sit out. Some voices are better left unspoken here.
+            </p>
+            <p className="text-sm text-foreground/80 mt-2">Try another pair, or let it surprise you.</p>
           </div>
+        )}
+
+        {phase === 'judging' && (
+          <div className="flex items-center justify-center gap-2 py-6 text-foreground/70">
+            <Loader2 size={18} className={reducedMotion ? '' : 'animate-spin'} aria-hidden="true" />
+            <span className="text-sm">Letting it settle...</span>
+          </div>
+        )}
+
+        {phase === 'closing' && closing && (
+          <ClosingThoughts closing={closing} first={person1Name} second={person2Name} />
         )}
       </div>
 
@@ -400,12 +464,54 @@ export default function MindDebate() {
             {interruption ? 'Try again' : 'Continue'}
           </Button>
         )}
-        <Button onClick={handleNewDebate} variant="secondary" className="flex items-center gap-2">
+        {phase === 'declined' && (
+          <Button onClick={handleSurprise} variant="primary" className="flex items-center gap-2">
+            <Shuffle size={16} aria-hidden="true" />
+            Surprise me
+          </Button>
+        )}
+        <Button onClick={backToSetup} variant="secondary" className="flex items-center gap-2">
           <RotateCcw size={16} aria-hidden="true" />
           New Debate
         </Button>
       </div>
     </div>
+  )
+}
+
+function ClosingThoughts({ closing, first, second }: { closing: Closing; first: string; second: string }) {
+  return (
+    <section aria-label="Closing thoughts" className="mt-2 border-t border-card-border pt-5 space-y-5">
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground/70 text-center mb-3">
+          What each got right
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 min-w-0">
+            <p className="text-xs font-semibold text-accent break-words mb-1">{first}</p>
+            <p className="text-sm text-foreground/85 leading-relaxed break-words">{closing.firstInsight}</p>
+          </div>
+          <div className="rounded-lg border border-success/40 bg-success/10 px-4 py-3 min-w-0">
+            <p className="text-xs font-semibold text-melon-green break-words mb-1">{second}</p>
+            <p className="text-sm text-foreground/85 leading-relaxed break-words">{closing.secondInsight}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="text-center max-w-lg mx-auto">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground/70 mb-2">
+          What the conversation revealed
+        </h2>
+        <p className="text-sm text-foreground/85 leading-relaxed break-words">{closing.revealed}</p>
+      </div>
+
+      <div className="text-center max-w-lg mx-auto pb-1">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground/70 mb-2">
+          To take with you
+        </h2>
+        <p className="text-base text-foreground italic leading-relaxed break-words">{closing.question}</p>
+      </div>
+    </section>
   )
 }
 
@@ -420,12 +526,13 @@ function DebateBubble({ entry, isLeft, typing = false }: { entry: DebateEntry; i
         }`}
       >
         <div className="flex items-center gap-2 mb-1.5 min-w-0">
-          <span className={`text-xs font-semibold break-words min-w-0 ${isLeft ? 'text-accent' : 'text-melon-green'}`}>
+          <span className={`w-2 h-2 rounded-full shrink-0 ${isLeft ? 'bg-accent' : 'bg-success'}`} aria-hidden="true" />
+          <span className="text-xs font-semibold break-words min-w-0 text-foreground">
             {entry.speaker}
           </span>
-          <span className="text-xs text-foreground/60 shrink-0">Round {entry.round}</span>
+          <span className="text-xs text-foreground/70 shrink-0">Round {entry.round}</span>
         </div>
-        <p className="text-sm text-foreground/80 leading-relaxed break-words">
+        <p className="text-sm text-foreground/85 leading-relaxed break-words">
           {entry.argument}
           {typing && <span className="inline-block w-0.5 h-4 bg-foreground/40 ml-0.5 align-middle" />}
         </p>

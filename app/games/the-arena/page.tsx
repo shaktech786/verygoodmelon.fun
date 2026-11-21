@@ -5,7 +5,7 @@ import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 
 const MindDebate = dynamic(() => import('@/components/games/MindDebate'), {
   loading: () => (
-    <div className="min-h-[400px] flex items-center justify-center text-primary-light/50">
+    <div className="min-h-[400px] flex items-center justify-center text-foreground/70">
       Loading...
     </div>
   ),
