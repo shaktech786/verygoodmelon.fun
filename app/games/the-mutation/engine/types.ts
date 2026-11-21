@@ -29,7 +29,8 @@ export const COLORS = {
 
 // Wave timing: [duration in seconds, score threshold to advance]
 // Whichever condition is met first triggers the next mutation
-export const WAVE_DURATION = [10, 20, 22, 25, 28, 30, 25] as const
+// Wave 1 is short on purpose: movement is the only mechanic, so there is nothing to score with yet
+export const WAVE_DURATION = [10, 8, 22, 25, 28, 30, 25] as const
 export const WAVE_SCORE    = [10, 60, 150, 300, 500, 700, 999999] as const
 export const MAX_WAVES = 7
 
@@ -185,9 +186,6 @@ export interface MutationResult {
   title: string
   description: string
   flavorText: string
-  controlHint?: string
-  gameName?: string
-  tagline?: string
 }
 
 export interface ProfileSummary {

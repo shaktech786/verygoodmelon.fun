@@ -12,6 +12,7 @@ import {
   activateMechanic,
   advanceWave,
 } from '../engine/engine'
+import { isControlTarget } from './controls'
 
 interface GameCanvasProps {
   isPlaying: boolean
@@ -19,11 +20,18 @@ interface GameCanvasProps {
   onMutationReady: () => void
   onGameComplete: () => void
   onScoreChange: (score: number) => void
-  onComboChange: (combo: number, multiplier: number) => void
-  onWaveChange: (wave: number) => void
+  onMultiplierChange: (multiplier: number) => void
   onRushTimerChange: (timer: number) => void
   gameStateRef: React.MutableRefObject<GameState | null>
   reducedMotion: boolean
+}
+
+type CascadeWindow = Window & { __cascadeState?: GameState }
+
+const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '])
+
+function normalizeKey(key: string): string {
+  return key.length === 1 ? key.toLowerCase() : key
 }
 
 export default function GameCanvas({
@@ -32,28 +40,30 @@ export default function GameCanvas({
   onMutationReady,
   onGameComplete,
   onScoreChange,
-  onComboChange,
-  onWaveChange,
+  onMultiplierChange,
   onRushTimerChange,
   gameStateRef,
   reducedMotion,
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stateRef = useRef<GameState | null>(null)
-  const animRef = useRef<number>(0)
-  const lastTimeRef = useRef<number>(0)
-  const lastScoreRef = useRef<number>(0)
-  const lastComboRef = useRef<number>(0)
-  const lastWaveRef = useRef<number>(0)
+  const playingRef = useRef(false)
+  const callbacksRef = useRef({ onMutationReady, onGameComplete, onScoreChange, onMultiplierChange, onRushTimerChange })
 
-  // Initialize game state
+  useEffect(() => {
+    callbacksRef.current = { onMutationReady, onGameComplete, onScoreChange, onMultiplierChange, onRushTimerChange }
+  })
+
   useEffect(() => {
     const state = createState()
     stateRef.current = state
     gameStateRef.current = state
+    // Lets the e2e suite fast-forward waves instead of waiting out real timers
+    if (process.env.NODE_ENV !== 'production') {
+      (window as CascadeWindow).__cascadeState = state
+    }
   }, [gameStateRef])
 
-  // Apply mechanics when they change
   useEffect(() => {
     const s = stateRef.current
     if (!s) return
@@ -62,153 +72,152 @@ export default function GameCanvas({
     }
   }, [activeMechanics])
 
-  // Coordinate transform: display → logical
   const toLogical = useCallback((clientX: number, clientY: number): [number, number] => {
     const canvas = canvasRef.current
     if (!canvas) return [GAME_W / 2, GAME_H / 2]
     const rect = canvas.getBoundingClientRect()
-    const scaleX = GAME_W / rect.width
-    const scaleY = GAME_H / rect.height
     return [
-      (clientX - rect.left) * scaleX,
-      (clientY - rect.top) * scaleY,
+      (clientX - rect.left) * (GAME_W / rect.width),
+      (clientY - rect.top) * (GAME_H / rect.height),
     ]
   }, [])
 
-  // Input handlers
   useEffect(() => {
-    const s = stateRef.current
-    if (!s) return
-
     const onKeyDown = (e: KeyboardEvent) => {
-      s.keys.add(e.key)
-      // Prevent page scroll with arrow keys/space
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
-        e.preventDefault()
+      const s = stateRef.current
+      if (!s || !playingRef.current || isControlTarget(e.target)) return
+      const key = normalizeKey(e.key)
+      if (SCROLL_KEYS.has(key)) e.preventDefault()
+      if (e.repeat) return
+      s.keys.add(key)
+      // Before any mechanic exists the orb can only be pulsed, so the keyboard gets a way to do it
+      if (s.activeMechanics.length === 0 && (key === ' ' || key === 'Enter')) {
+        s.mx = s.px
+        s.my = s.py
+        s.clickThisFrame = true
       }
     }
     const onKeyUp = (e: KeyboardEvent) => {
-      s.keys.delete(e.key)
+      stateRef.current?.keys.delete(normalizeKey(e.key))
+    }
+    const releaseAll = () => {
+      const s = stateRef.current
+      if (!s) return
+      s.keys.clear()
+      s.mDown = false
     }
 
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', releaseAll)
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', releaseAll)
     }
   }, [])
 
-  // Mouse/touch handlers on canvas
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  const pointTo = useCallback((clientX: number, clientY: number) => {
     const s = stateRef.current
     if (!s) return
-    const [x, y] = toLogical(e.clientX, e.clientY)
+    const [x, y] = toLogical(clientX, clientY)
     s.mx = x
     s.my = y
   }, [toLogical])
 
-  const handleMouseDown = useCallback(() => {
+  const press = useCallback(() => {
     const s = stateRef.current
     if (!s) return
     s.mDown = true
     s.clickThisFrame = true
   }, [])
 
-  const handleMouseUp = useCallback(() => {
+  const release = useCallback(() => {
     const s = stateRef.current
-    if (!s) return
-    s.mDown = false
+    if (s) s.mDown = false
   }, [])
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    pointTo(e.clientX, e.clientY)
+  }, [pointTo])
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    pointTo(e.clientX, e.clientY)
+    press()
+  }, [pointTo, press])
 
   const handleTouchMove = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
-    const s = stateRef.current
-    if (!s || !e.touches[0]) return
-    e.preventDefault()
-    const [x, y] = toLogical(e.touches[0].clientX, e.touches[0].clientY)
-    s.mx = x
-    s.my = y
-  }, [toLogical])
+    const touch = e.touches[0]
+    if (touch) pointTo(touch.clientX, touch.clientY)
+  }, [pointTo])
 
   const handleTouchStart = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
-    const s = stateRef.current
-    if (!s || !e.touches[0]) return
-    e.preventDefault()
-    const [x, y] = toLogical(e.touches[0].clientX, e.touches[0].clientY)
-    s.mx = x
-    s.my = y
-    s.mDown = true
-    s.clickThisFrame = true
-  }, [toLogical])
+    const touch = e.touches[0]
+    if (!touch) return
+    pointTo(touch.clientX, touch.clientY)
+    press()
+  }, [pointTo, press])
 
-  const handleTouchEnd = useCallback(() => {
-    const s = stateRef.current
-    if (!s) return
-    s.mDown = false
-  }, [])
-
-  // Game loop
   useEffect(() => {
-    if (!isPlaying) {
-      cancelAnimationFrame(animRef.current)
-      return
-    }
+    playingRef.current = isPlaying
+    if (!isPlaying) return
 
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
     if (!canvas || !ctx) return
 
-    lastTimeRef.current = performance.now()
+    // Keeps Space and Enter on the game instead of re-pressing whichever button was clicked last
+    canvas.focus({ preventScroll: true })
+
+    let frame = 0
+    let lastTime = performance.now()
+    let lastScore = -1
+    let lastMultiplier = -1
+    let lastRush = -1
 
     const loop = (time: number) => {
       const s = stateRef.current
       if (!s) return
 
-      const dt = Math.min((time - lastTimeRef.current) / 1000, 0.1)
-      lastTimeRef.current = time
+      const dt = Math.min(Math.max(time - lastTime, 0) / 1000, 0.1)
+      lastTime = time
 
-      // Update
       updateEngine(s, dt)
+      renderEngine(ctx, s, reducedMotion)
 
-      // Render
-      renderEngine(ctx, s)
-
-      // Notify React of state changes (throttled — only when values change)
-      if (Math.floor(s.score) !== lastScoreRef.current) {
-        lastScoreRef.current = Math.floor(s.score)
-        onScoreChange(lastScoreRef.current)
+      const cb = callbacksRef.current
+      const score = Math.floor(s.score)
+      if (score !== lastScore) {
+        lastScore = score
+        cb.onScoreChange(score)
       }
-      if (s.combo !== lastComboRef.current) {
-        lastComboRef.current = s.combo
-        onComboChange(s.combo, s.multiplier)
+      if (s.multiplier !== lastMultiplier) {
+        lastMultiplier = s.multiplier
+        cb.onMultiplierChange(s.multiplier)
       }
-      if (s.wave !== lastWaveRef.current) {
-        lastWaveRef.current = s.wave
-        onWaveChange(s.wave)
-      }
-      if (s.rushActive) {
-        onRushTimerChange(Math.max(0, Math.ceil(s.rushTimer)))
+      const rush = s.rushActive ? Math.max(0, Math.ceil(s.rushTimer)) : 0
+      if (rush !== lastRush) {
+        lastRush = rush
+        cb.onRushTimerChange(rush)
       }
 
-      // Check mutation trigger
       if (shouldMutate(s)) {
         advanceWave(s)
-        onMutationReady()
-        return // stop loop, orchestrator will restart
-      }
-
-      // Check game complete
-      if (isGameComplete(s)) {
-        onGameComplete()
+        cb.onMutationReady()
         return
       }
 
-      animRef.current = requestAnimationFrame(loop)
+      if (isGameComplete(s)) {
+        cb.onGameComplete()
+        return
+      }
+
+      frame = requestAnimationFrame(loop)
     }
 
-    animRef.current = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(animRef.current)
-  }, [isPlaying, onMutationReady, onGameComplete, onScoreChange, onComboChange, onWaveChange, onRushTimerChange])
+    frame = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(frame)
+  }, [isPlaying, reducedMotion])
 
   return (
     <div className="relative select-none">
@@ -216,26 +225,28 @@ export default function GameCanvas({
         ref={canvasRef}
         width={GAME_W}
         height={GAME_H}
-        className="w-full max-w-[640px] mx-auto block rounded-lg"
+        className="w-full block rounded-lg"
         style={{
           aspectRatio: '4/3',
           imageRendering: 'pixelated',
+          touchAction: 'none',
           boxShadow: `0 0 40px ${COLORS.playerGlow}, inset 0 0 60px rgba(0,0,0,0.4)`,
         }}
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
+        onMouseUp={release}
+        onMouseLeave={release}
         onTouchMove={handleTouchMove}
         onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
+        onTouchEnd={release}
+        onTouchCancel={release}
         role="application"
         aria-label="Cascade game area"
         tabIndex={0}
       />
-      {/* CRT Scanlines */}
       {!reducedMotion && (
         <div
-          className="absolute inset-0 pointer-events-none rounded-lg max-w-[640px] mx-auto"
+          className="absolute inset-0 pointer-events-none rounded-lg"
           style={{
             background: `repeating-linear-gradient(
               0deg,

@@ -1,26 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
+import { isControlTarget } from './controls'
 
 interface TitleScreenProps {
   onStart: () => void
   retroFont: string
+  isTouch: boolean
 }
 
-export default function TitleScreen({ onStart, retroFont }: TitleScreenProps) {
-  const [visible, setVisible] = useState(false)
-  const [pulseClass, setPulseClass] = useState(false)
-
-  useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 100)
-    const p = setInterval(() => setPulseClass(v => !v), 800)
-    return () => { clearTimeout(t); clearInterval(p) }
-  }, [])
-
-  // Start on any key or click
+export default function TitleScreen({ onStart, retroFont, isTouch }: TitleScreenProps) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Tab') return // allow tab navigation
+      if (e.repeat || isControlTarget(e.target)) return
+      if (e.key !== 'Enter' && e.key !== ' ') return
+      e.preventDefault()
       onStart()
     }
     window.addEventListener('keydown', handler)
@@ -29,26 +23,18 @@ export default function TitleScreen({ onStart, retroFont }: TitleScreenProps) {
 
   return (
     <div
-      className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-500 rounded-lg ${
-        visible ? 'opacity-100' : 'opacity-0'
-      }`}
-      style={{ background: 'rgba(8,8,16,0.95)' }}
+      className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center rounded-lg px-4 py-8 animate-fade cursor-pointer"
+      style={{
+        background:
+          'radial-gradient(ellipse at center, rgba(0,255,136,0.06) 0%, transparent 70%), rgba(8,8,16,0.97)',
+      }}
       onClick={onStart}
       role="dialog"
-      aria-label="Cascade - Press any key to start"
+      aria-label="Cascade, the game that builds itself"
     >
-      {/* Glow background */}
-      <div
-        className="absolute inset-0 rounded-lg"
-        style={{
-          background: 'radial-gradient(ellipse at center, rgba(0,255,136,0.06) 0%, transparent 70%)',
-        }}
-      />
-
-      {/* Title */}
-      <div className="relative z-10 text-center">
+      <div className="text-center">
         <h1
-          className={`text-3xl sm:text-4xl tracking-[0.4em] mb-3 ${retroFont}`}
+          className={`text-2xl sm:text-4xl tracking-[0.25em] sm:tracking-[0.4em] mb-3 ${retroFont}`}
           style={{
             color: '#00ff88',
             textShadow: '0 0 20px rgba(0,255,136,0.5), 0 0 40px rgba(0,255,136,0.2)',
@@ -58,36 +44,32 @@ export default function TitleScreen({ onStart, retroFont }: TitleScreenProps) {
         </h1>
 
         <p
-          className="text-xs sm:text-sm tracking-[0.2em] mb-1 opacity-50"
-          style={{ color: '#556677', fontFamily: 'monospace' }}
+          className="text-xs sm:text-sm tracking-[0.2em] mb-8 sm:mb-12"
+          style={{ color: '#8899aa', fontFamily: 'monospace' }}
         >
-          the game that builds
-        </p>
-        <p
-          className="text-xs sm:text-sm tracking-[0.2em] mb-12 opacity-50"
-          style={{ color: '#556677', fontFamily: 'monospace' }}
-        >
-          itself
+          the game that builds itself
         </p>
 
-        {/* Start prompt */}
         <button
-          className={`text-xs sm:text-sm tracking-[0.15em] border-none bg-transparent cursor-pointer transition-opacity ${retroFont}`}
+          type="button"
+          className={`text-xs sm:text-sm tracking-[0.15em] border px-5 py-3 rounded cursor-pointer ${retroFont}`}
           style={{
-            color: pulseClass ? '#00ff88' : '#00cc6a',
-            textShadow: pulseClass ? '0 0 12px rgba(0,255,136,0.6)' : 'none',
+            color: '#00ff88',
+            borderColor: 'rgba(0,255,136,0.4)',
+            background: 'rgba(0,255,136,0.06)',
+            textShadow: '0 0 12px rgba(0,255,136,0.6)',
           }}
-          aria-label="Start game"
         >
           PRESS START
         </button>
 
-        {/* Subtitle */}
         <p
-          className="mt-10 text-[10px] tracking-[0.1em] opacity-30"
-          style={{ color: '#556677', fontFamily: 'monospace' }}
+          className="mt-8 sm:mt-10 text-[11px] tracking-[0.1em] leading-relaxed"
+          style={{ color: '#8899aa', fontFamily: 'monospace' }}
         >
-          every play is different.
+          Each wave adds one new rule. No way to lose.
+          <br />
+          {isTouch ? 'Tap to begin.' : 'Enter, Space or click to begin.'}
         </p>
       </div>
     </div>

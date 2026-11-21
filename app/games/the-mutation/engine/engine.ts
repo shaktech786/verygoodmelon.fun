@@ -127,11 +127,6 @@ export function update(s: GameState, dt: number): void {
   if (s.shake > 0) s.shake = Math.max(0, s.shake - dt * 12)
   if (s.shootCD > 0) s.shootCD -= dt
 
-  // Shield recharge
-  if (s.activeMechanics.includes('blaster') || s.activeMechanics.includes('phase_dash')) {
-    // handled in mechanic updates
-  }
-
   // Clamp player to bounds
   const margin = s.pSize
   s.px = clamp(s.px, margin, s.w - margin)
@@ -145,11 +140,11 @@ export function update(s: GameState, dt: number): void {
 // MAIN RENDER
 // ==========================================
 
-export function render(ctx: CanvasRenderingContext2D, s: GameState): void {
+export function render(ctx: CanvasRenderingContext2D, s: GameState, reducedMotion = false): void {
   ctx.save()
 
   // Screen shake
-  if (s.shake > 0) {
+  if (s.shake > 0 && !reducedMotion) {
     const sx = (Math.random() - 0.5) * s.shake * 2
     const sy = (Math.random() - 0.5) * s.shake * 2
     ctx.translate(sx, sy)
@@ -210,17 +205,6 @@ export function render(ctx: CanvasRenderingContext2D, s: GameState): void {
   }
   ctx.globalAlpha = 1
 
-  // Wave 0 click hint
-  if (s.wave === 0 && s.activeMechanics.length === 0) {
-    const pulse = Math.sin(s.totalTime * 3) * 0.3 + 0.7
-    ctx.globalAlpha = pulse * 0.6
-    ctx.fillStyle = COLORS.textDim
-    ctx.font = '10px monospace'
-    ctx.textAlign = 'center'
-    ctx.fillText('CLICK', s.w / 2, s.h / 2 + 40)
-    ctx.globalAlpha = 1
-  }
-
   // Gravity well range indicator
   if (s.activeMechanics.includes('gravity_well')) {
     const range = getParam(s, 'gravity_well', 'range')
@@ -229,6 +213,14 @@ export function render(ctx: CanvasRenderingContext2D, s: GameState): void {
     ctx.beginPath()
     ctx.arc(s.px, s.py, range, 0, Math.PI * 2)
     ctx.stroke()
+  }
+
+  if (s.activeMechanics.includes('phase_dash')) {
+    const ready = s.dashCD <= 0
+    ctx.fillStyle = ready ? COLORS.player : COLORS.textDim
+    ctx.font = '11px monospace'
+    ctx.textAlign = 'right'
+    ctx.fillText(ready ? 'DASH READY' : 'DASH CHARGING', s.w - 12, s.h - 14)
   }
 
   // Dash trail effect
@@ -332,11 +324,8 @@ function renderEntity(ctx: CanvasRenderingContext2D, e: Entity, s: GameState): v
 function renderPlayer(ctx: CanvasRenderingContext2D, s: GameState): void {
   ctx.save()
 
-  // Invincibility blink
-  if (s.invTimer > 0 && Math.floor(s.totalTime * 12) % 2 === 0) {
-    ctx.restore()
-    return
-  }
+  // Steady fade while invincible: a blink here flashed six times a second
+  if (s.invTimer > 0 && !s.dashActive) ctx.globalAlpha = 0.45
 
   // Glow
   ctx.shadowBlur = 22
@@ -350,7 +339,7 @@ function renderPlayer(ctx: CanvasRenderingContext2D, s: GameState): void {
   // Inner bright core
   ctx.shadowBlur = 0
   ctx.fillStyle = '#ffffff'
-  ctx.globalAlpha = 0.6
+  ctx.globalAlpha *= 0.6
   ctx.beginPath()
   ctx.arc(s.px, s.py, s.pSize * 0.35, 0, Math.PI * 2)
   ctx.fill()
@@ -492,14 +481,7 @@ function collectItem(s: GameState, e: Entity): void {
   e.active = false
   burst(s, e.x, e.y, e.color, 6)
 
-  // Combo chain
-  if (s.activeMechanics.includes('combo_chain')) {
-    s.combo++
-    s.comboTimer = getParam(s, 'combo_chain', 'decayTime')
-    const hitsPerLevel = getParam(s, 'combo_chain', 'hitsPerLevel')
-    s.multiplier = 1 + Math.floor(s.combo / hitsPerLevel)
-    if (s.combo > s.maxCombo) s.maxCombo = s.combo
-  }
+  extendCombo(s)
 }
 
 function killEnemy(s: GameState, e: Entity): void {
@@ -509,13 +491,24 @@ function killEnemy(s: GameState, e: Entity): void {
   burst(s, e.x, e.y, COLORS.enemy, 10)
   s.shake = Math.min(s.shake + 2, 6)
 
-  if (s.activeMechanics.includes('combo_chain')) {
-    s.combo++
-    s.comboTimer = getParam(s, 'combo_chain', 'decayTime')
-    const hitsPerLevel = getParam(s, 'combo_chain', 'hitsPerLevel')
-    s.multiplier = 1 + Math.floor(s.combo / hitsPerLevel)
-    if (s.combo > s.maxCombo) s.maxCombo = s.combo
-  }
+  extendCombo(s)
+}
+
+function extendCombo(s: GameState): void {
+  if (!s.activeMechanics.includes('combo_chain')) return
+  s.combo++
+  s.comboTimer = getParam(s, 'combo_chain', 'decayTime')
+  if (s.combo > s.maxCombo) s.maxCombo = s.combo
+  refreshMultiplier(s)
+}
+
+// The rush bonus has to survive combo changes, so the multiplier is always derived from both.
+function refreshMultiplier(s: GameState): void {
+  const comboLevel = s.activeMechanics.includes('combo_chain')
+    ? 1 + Math.floor(s.combo / getParam(s, 'combo_chain', 'hitsPerLevel'))
+    : 1
+  const rush = s.rushActive ? getParam(s, 'score_rush', 'scoreMult') : 1
+  s.multiplier = comboLevel * rush
 }
 
 function hitPlayer(s: GameState): void {
@@ -524,23 +517,35 @@ function hitPlayer(s: GameState): void {
   s.invTimer = 1.0
   s.shake = 5
   burst(s, s.px, s.py, COLORS.enemy, 14)
-  // Reset combo
   s.combo = 0
-  s.multiplier = 1
   s.comboTimer = 0
+  refreshMultiplier(s)
 }
 
 // ==========================================
 // MECHANIC UPDATES
 // ==========================================
 
+function heldDirection(s: GameState): [number, number] {
+  let ax = 0, ay = 0
+  if (s.keys.has('ArrowLeft') || s.keys.has('a')) ax = -1
+  if (s.keys.has('ArrowRight') || s.keys.has('d')) ax = 1
+  if (s.keys.has('ArrowUp') || s.keys.has('w')) ay = -1
+  if (s.keys.has('ArrowDown') || s.keys.has('s')) ay = 1
+  return [ax, ay]
+}
+
+function isActionHeld(s: GameState): boolean {
+  return s.keys.has(' ') || s.mDown
+}
+
 function updateArrowKeys(s: GameState, dt: number): void {
   const speed = getParam(s, 'arrow_keys', 'speed')
-  let ax = 0, ay = 0
-  if (s.keys.has('ArrowLeft') || s.keys.has('a')) { ax = -1; s.moveBias[0]++ }
-  if (s.keys.has('ArrowRight') || s.keys.has('d')) { ax = 1; s.moveBias[1]++ }
-  if (s.keys.has('ArrowUp') || s.keys.has('w')) { ay = -1; s.moveBias[2]++ }
-  if (s.keys.has('ArrowDown') || s.keys.has('s')) { ay = 1; s.moveBias[3]++ }
+  let [ax, ay] = heldDirection(s)
+  if (ax < 0) s.moveBias[0]++
+  if (ax > 0) s.moveBias[1]++
+  if (ay < 0) s.moveBias[2]++
+  if (ay > 0) s.moveBias[3]++
 
   // Normalize diagonal
   if (ax !== 0 && ay !== 0) {
@@ -568,6 +573,14 @@ function updateArrowKeys(s: GameState, dt: number): void {
 
 function updateMouseFollow(s: GameState, dt: number): void {
   const resp = getParam(s, 'mouse_follow', 'responsiveness')
+
+  // Keyboard-only players steer by pushing the follow target ahead of the orb
+  const [ax, ay] = heldDirection(s)
+  if (ax !== 0 || ay !== 0) {
+    s.mx = clamp(s.px + ax * KEY_STEER_REACH, 0, s.w)
+    s.my = clamp(s.py + ay * KEY_STEER_REACH, 0, s.h)
+  }
+
   const dx = s.mx - s.px
   const dy = s.my - s.py
   const d = Math.sqrt(dx * dx + dy * dy)
@@ -727,7 +740,7 @@ function updateSweepers(s: GameState, dt: number): void {
 function updateBlaster(s: GameState, _dt: number): void {
   const p = s.mechanicParams.blaster || DEFAULT_PARAMS.blaster
 
-  if (s.keys.has(' ') && s.shootCD <= 0) {
+  if (isActionHeld(s) && s.shootCD <= 0) {
     // Direction: toward mouse, or last movement direction
     let dx = s.mx - s.px
     let dy = s.my - s.py
@@ -776,7 +789,7 @@ function updatePhaseDash(s: GameState, dt: number): void {
     }
   }
 
-  if (s.keys.has(' ') && s.dashCD <= 0 && !s.dashActive) {
+  if (isActionHeld(s) && s.dashCD <= 0 && !s.dashActive) {
     s.dashActive = true
     s.dashDuration = p.duration
     s.dashCD = p.cooldown
@@ -804,7 +817,7 @@ function updateComboChain(s: GameState, dt: number): void {
     s.comboTimer -= dt
     if (s.comboTimer <= 0) {
       s.combo = 0
-      s.multiplier = 1
+      refreshMultiplier(s)
     }
   }
 }
@@ -832,7 +845,6 @@ function updateGravityWell(s: GameState, dt: number): void {
 function updateScoreRush(s: GameState, dt: number): void {
   if (!s.rushActive) return
   s.rushTimer -= dt
-  // Score multiplier is handled via s.multiplier in activation
 }
 
 // ==========================================
@@ -866,6 +878,8 @@ function renderScoreRush(ctx: CanvasRenderingContext2D, s: GameState): void {
 // ==========================================
 // MECHANIC LOOKUP TABLES
 // ==========================================
+
+const KEY_STEER_REACH = 70
 
 const MECHANIC_UPDATES: Record<string, (s: GameState, dt: number) => void> = {
   arrow_keys: updateArrowKeys,
@@ -902,10 +916,8 @@ export function activateMechanic(s: GameState, mechanicId: string, params: Recor
   if (mechanicId === 'score_rush') {
     s.rushActive = true
     s.rushTimer = merged.duration || 25
-    // Boost multiplier
-    const scoreMult = merged.scoreMult || 3
-    s.multiplier = Math.max(s.multiplier, scoreMult)
   }
+  refreshMultiplier(s)
 }
 
 // ==========================================

@@ -43,9 +43,10 @@ async function handleMutation(body: {
   activeMechanics: string[]
   mutations: Array<{ id: string; title: string }>
 }) {
-  const { wave, category, options, profile, activeMechanics, mutations } = body
+  const { wave, category, profile, activeMechanics, mutations } = body
+  const options = Array.isArray(body.options) ? body.options.filter(id => id in MECHANIC_DESCRIPTIONS) : []
 
-  if (!options || options.length === 0) {
+  if (options.length === 0) {
     return NextResponse.json({ error: 'No mechanic options provided' }, { status: 400 })
   }
 
@@ -101,26 +102,21 @@ Respond ONLY in JSON:
 
     const parsed = JSON.parse(jsonMatch[0])
 
-    // Validate mechanic ID
+    // Text written for an unknown mechanic would describe the wrong rule, so drop it
     if (!options.includes(parsed.mechanicId)) {
-      parsed.mechanicId = options[0]
+      return NextResponse.json({ mechanicId: options[0] })
     }
 
     return NextResponse.json({
       mechanicId: parsed.mechanicId,
-      title: parsed.title || 'NEW MECHANIC',
-      description: parsed.description || '',
-      flavorText: parsed.flavorText || '',
+      title: parsed.title,
+      description: parsed.description,
+      flavorText: parsed.flavorText,
     })
   } catch (error) {
     console.error('AI mutation selection failed:', error)
-    // Fallback: pick first option
-    return NextResponse.json({
-      mechanicId: options[0],
-      title: category.toUpperCase() + ' UNLOCKED',
-      description: MECHANIC_DESCRIPTIONS[options[0]] || 'A new mechanic.',
-      flavorText: '',
-    })
+    // The client fills in its own wording for a bare mechanic id
+    return NextResponse.json({ mechanicId: options[0] })
   }
 }
 
@@ -157,17 +153,12 @@ Respond ONLY in JSON:
     const parsed = JSON.parse(jsonMatch[0])
     return NextResponse.json({
       mechanicId,
-      title: parsed.title || category.toUpperCase() + ' ACTIVATED',
-      description: parsed.description || MECHANIC_DESCRIPTIONS[mechanicId] || '',
-      flavorText: parsed.flavorText || '',
+      title: parsed.title,
+      description: parsed.description,
+      flavorText: parsed.flavorText,
     })
   } catch {
-    return NextResponse.json({
-      mechanicId,
-      title: category.toUpperCase() + ' ACTIVATED',
-      description: MECHANIC_DESCRIPTIONS[mechanicId] || 'A new mechanic.',
-      flavorText: '',
-    })
+    return NextResponse.json({ mechanicId })
   }
 }
 
@@ -208,13 +199,11 @@ Respond ONLY in JSON:
 
     const parsed = JSON.parse(jsonMatch[0])
     return NextResponse.json({
-      gameName: parsed.gameName || 'CASCADE UNKNOWN',
-      tagline: parsed.tagline || 'A unique game that will never exist again.',
+      gameName: parsed.gameName,
+      tagline: parsed.tagline,
     })
   } catch {
-    return NextResponse.json({
-      gameName: 'CASCADE #' + Math.floor(Math.random() * 9999),
-      tagline: 'A unique game that built itself around you.',
-    })
+    // The client names the game from its score
+    return NextResponse.json({})
   }
 }
