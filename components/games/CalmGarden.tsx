@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils/cn'
 import { Undo2, Trash2 } from 'lucide-react'
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,6 +48,8 @@ interface GardenState {
 const STORAGE_KEY = 'verygoodmelon:calm-garden'
 const SUGGEST_THRESHOLD = 3
 const SUGGESTION_DURATION_MS = 10_000
+// Normalized y of the drawn horizon. Planting starts here; above it is sky.
+const GROUND_TOP = 0.33
 
 const PLANT_VARIANTS: PlantVariant[] = [
   // Flowers (5 varieties)
@@ -198,7 +201,7 @@ function drawFlower(
     for (let i = 0; i < 6; i++) {
       ctx.beginPath()
       ctx.arc(
-        topX + (Math.random() - 0.5) * 4 * scale,
+        topX + Math.sin(i * 2.1 + colorSeed * 10) * 2 * scale,
         topY - i * 3 * scale,
         2.5 * scale, 0, Math.PI * 2,
       )
@@ -520,7 +523,7 @@ function drawStars(ctx: CanvasRenderingContext2D, w: number, h: number, time: nu
   for (let i = 0; i < starCount; i++) {
     // Deterministic pseudo-random positions from index
     const sx = ((i * 7919 + 104729) % 1000) / 1000 * w
-    const sy = ((i * 6271 + 87119) % 1000) / 1000 * (h * 0.4)
+    const sy = ((i * 6271 + 87119) % 1000) / 1000 * (h * 0.3)
     const twinkle = 0.3 + Math.sin(time * 0.001 + i * 2.3) * 0.3
     ctx.beginPath()
     ctx.arc(sx, sy, 1 + (i % 3) * 0.5, 0, Math.PI * 2)
@@ -540,7 +543,12 @@ function loadGarden(): GardenState {
     if (!raw) return { elements: [], version: 1 }
     const parsed = JSON.parse(raw) as GardenState
     if (!Array.isArray(parsed.elements)) return { elements: [], version: 1 }
-    return parsed
+    // Re-link each element to the current variant list; drop anything unrecognisable.
+    const elements = parsed.elements.flatMap((el) => {
+      const variant = PLANT_VARIANTS.find((v) => v.id === el?.variant?.id)
+      return variant && typeof el.x === 'number' && typeof el.y === 'number' ? [{ ...el, variant }] : []
+    })
+    return { elements, version: 1 }
   } catch {
     return { elements: [], version: 1 }
   }
@@ -561,11 +569,12 @@ function saveGarden(state: GardenState) {
 
 export default function CalmGarden() {
   const [elements, setElements] = useState<PlacedElement[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [selectedVariant, setSelectedVariant] = useState<PlantVariant>(PLANT_VARIANTS[0])
   const [suggestion, setSuggestion] = useState<AISuggestion | null>(null)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [announcement, setAnnouncement] = useState('')
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+  const prefersReducedMotion = useReducedMotion()
   const [keyboardCursor, setKeyboardCursor] = useState<{ x: number; y: number } | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
 
@@ -574,30 +583,19 @@ export default function CalmGarden() {
   const mouseRef = useRef<{ x: number; y: number }>({ x: -1, y: -1 })
   const suggestPendingRef = useRef(false)
   const suggestCountRef = useRef(0)
-  const lastPlaceCountRef = useRef(0)
 
   // Load from localStorage on mount
   useEffect(() => {
-    const saved = loadGarden()
-    setElements(saved.elements)
-    lastPlaceCountRef.current = saved.elements.length
+    setElements(loadGarden().elements)
+    setLoaded(true)
   }, [])
 
-  // Reduced motion
+  // Persist on change, but never before the saved garden has been read back,
+  // or the initial empty state would overwrite it.
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setPrefersReducedMotion(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
-
-  // Persist on change
-  useEffect(() => {
-    if (elements.length === 0 && lastPlaceCountRef.current === 0) return
+    if (!loaded) return
     saveGarden({ elements, version: 1 })
-    lastPlaceCountRef.current = elements.length
-  }, [elements])
+  }, [elements, loaded])
 
   // Category icons for the picker
   const categoryLabel = useCallback((cat: PlantCategory): string => {
@@ -621,7 +619,6 @@ export default function CalmGarden() {
     }
   }, [])
 
-  // AI suggestion fetcher
   const fetchSuggestion = useCallback(async (currentElements: PlacedElement[]) => {
     if (suggestPendingRef.current) return
     suggestPendingRef.current = true
@@ -641,34 +638,26 @@ export default function CalmGarden() {
           canvasHeight: 1,
         }),
       })
-
-      if (!res.ok) {
-        suggestPendingRef.current = false
-        return
-      }
+      if (!res.ok) return
 
       const data = await res.json()
-      if (data.suggestion) {
-        const variant = PLANT_VARIANTS.find(v => v.id === data.suggestion.type)
-          || PLANT_VARIANTS.find(v => v.category === data.suggestion.type)
-          || PLANT_VARIANTS[Math.floor(Math.random() * PLANT_VARIANTS.length)]
+      const variant = PLANT_VARIANTS.find(v => v.id === data?.suggestion?.type)
+      if (!variant || typeof data.suggestion.x !== 'number' || typeof data.suggestion.y !== 'number') return
 
-        setSuggestion({
-          variant,
-          x: Math.max(0.05, Math.min(0.95, data.suggestion.x)),
-          y: Math.max(0.3, Math.min(0.95, data.suggestion.y)),
-          expiresAt: Date.now() + SUGGESTION_DURATION_MS,
-        })
-        setAnnouncement(`The garden suggests placing a ${variant.label}`)
-      }
+      setSuggestion({
+        variant,
+        x: Math.max(0.05, Math.min(0.95, data.suggestion.x)),
+        y: Math.max(GROUND_TOP, Math.min(0.95, data.suggestion.y)),
+        expiresAt: Date.now() + SUGGESTION_DURATION_MS,
+      })
+      setAnnouncement(`The garden would welcome a ${variant.label}`)
     } catch {
-      // Silently fail — AI is invisible
+      // A missing suggestion is not worth interrupting the garden for.
     } finally {
       suggestPendingRef.current = false
     }
   }, [])
 
-  // Place an element
   const placeElement = useCallback((x: number, y: number, variant: PlantVariant) => {
     const newEl: PlacedElement = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -680,38 +669,33 @@ export default function CalmGarden() {
       phase: Math.random() * Math.PI * 2,
       placedAt: Date.now(),
     }
+    const next = [...elements, newEl]
+    setElements(next)
 
-    setElements(prev => {
-      const next = [...prev, newEl]
+    // Suggest at the threshold and every 3 placements after it, a few times per garden
+    if (
+      next.length >= SUGGEST_THRESHOLD &&
+      (next.length - SUGGEST_THRESHOLD) % 3 === 0 &&
+      suggestCountRef.current < 5
+    ) {
+      suggestCountRef.current++
+      fetchSuggestion(next)
+    }
 
-      // Trigger AI suggestion after threshold
-      if (next.length >= SUGGEST_THRESHOLD && suggestCountRef.current < 5) {
-        // Only suggest every 3 placements after threshold
-        if ((next.length - SUGGEST_THRESHOLD) % 3 === 0) {
-          suggestCountRef.current++
-          fetchSuggestion(next)
-        }
-      }
-
-      return next
-    })
-
-    // Clear current suggestion on placement
     setSuggestion(null)
     setAnnouncement(`Placed ${variant.label} in your garden`)
-  }, [fetchSuggestion])
+  }, [elements, fetchSuggestion])
 
-  // Undo
+  const acceptSuggestion = useCallback(() => {
+    if (suggestion) placeElement(suggestion.x, suggestion.y, suggestion.variant)
+  }, [suggestion, placeElement])
+
   const undoLast = useCallback(() => {
-    setElements(prev => {
-      if (prev.length === 0) return prev
-      const removed = prev[prev.length - 1]
-      setAnnouncement(`Removed ${removed.variant.label}`)
-      return prev.slice(0, -1)
-    })
-  }, [])
+    if (elements.length === 0) return
+    setElements(elements.slice(0, -1))
+    setAnnouncement(`Removed ${elements[elements.length - 1].variant.label}`)
+  }, [elements])
 
-  // Clear garden
   const clearGarden = useCallback(() => {
     setElements([])
     setSuggestion(null)
@@ -720,7 +704,8 @@ export default function CalmGarden() {
     setAnnouncement('Garden cleared')
   }, [])
 
-  // Handle canvas click
+  // One handler for mouse, pen and touch: a tap fires click too, so a separate
+  // touch handler would plant everything twice.
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -729,48 +714,18 @@ export default function CalmGarden() {
     const x = (e.clientX - rect.left) / rect.width
     const y = (e.clientY - rect.top) / rect.height
 
-    // Don't place in the sky area (top 25%)
-    if (y < 0.25) return
+    if (y < GROUND_TOP) {
+      setAnnouncement('That is sky. Plants need the grass below.')
+      return
+    }
 
-    // Check if clicking on a suggestion
-    if (suggestion && Date.now() < suggestion.expiresAt) {
-      const dx = Math.abs(x - suggestion.x)
-      const dy = Math.abs(y - suggestion.y)
-      if (dx < 0.04 && dy < 0.04) {
-        placeElement(suggestion.x, suggestion.y, suggestion.variant)
-        return
-      }
+    if (suggestion && Math.abs(x - suggestion.x) < 0.05 && Math.abs(y - suggestion.y) < 0.05) {
+      acceptSuggestion()
+      return
     }
 
     placeElement(x, y, selectedVariant)
-  }, [selectedVariant, suggestion, placeElement])
-
-  // Handle touch
-  const handleCanvasTouch = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault()
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const touch = e.touches[0]
-    if (!touch) return
-
-    const rect = canvas.getBoundingClientRect()
-    const x = (touch.clientX - rect.left) / rect.width
-    const y = (touch.clientY - rect.top) / rect.height
-
-    if (y < 0.25) return
-
-    if (suggestion && Date.now() < suggestion.expiresAt) {
-      const dx = Math.abs(x - suggestion.x)
-      const dy = Math.abs(y - suggestion.y)
-      if (dx < 0.06 && dy < 0.06) {
-        placeElement(suggestion.x, suggestion.y, suggestion.variant)
-        return
-      }
-    }
-
-    placeElement(x, y, selectedVariant)
-  }, [selectedVariant, suggestion, placeElement])
+  }, [selectedVariant, suggestion, placeElement, acceptSuggestion])
 
   // Track mouse for plant lean effect
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -783,83 +738,69 @@ export default function CalmGarden() {
     }
   }, [])
 
-  // Keyboard controls
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (e.target instanceof HTMLButtonElement) return
-
-      const step = 0.03
-
-      switch (e.key) {
-        case 'ArrowUp': {
-          e.preventDefault()
-          setKeyboardCursor(prev => {
-            const cur = prev || { x: 0.5, y: 0.6 }
-            return { x: cur.x, y: Math.max(0.25, cur.y - step) }
-          })
-          break
-        }
-        case 'ArrowDown': {
-          e.preventDefault()
-          setKeyboardCursor(prev => {
-            const cur = prev || { x: 0.5, y: 0.6 }
-            return { x: cur.x, y: Math.min(0.98, cur.y + step) }
-          })
-          break
-        }
-        case 'ArrowLeft': {
-          e.preventDefault()
-          setKeyboardCursor(prev => {
-            const cur = prev || { x: 0.5, y: 0.6 }
-            return { x: Math.max(0.02, cur.x - step), y: cur.y }
-          })
-          break
-        }
-        case 'ArrowRight': {
-          e.preventDefault()
-          setKeyboardCursor(prev => {
-            const cur = prev || { x: 0.5, y: 0.6 }
-            return { x: Math.min(0.98, cur.x + step), y: cur.y }
-          })
-          break
-        }
-        case 'Enter': {
-          e.preventDefault()
-          if (keyboardCursor) {
-            placeElement(keyboardCursor.x, keyboardCursor.y, selectedVariant)
-          }
-          break
-        }
-        case 'z':
-        case 'Z': {
-          if (e.ctrlKey || e.metaKey) {
-            e.preventDefault()
-            undoLast()
-          }
-          break
-        }
-        case 'Escape': {
-          setKeyboardCursor(null)
-          setPickerOpen(false)
-          break
-        }
-      }
+  const handleCanvasFocus = useCallback((e: React.FocusEvent<HTMLCanvasElement>) => {
+    // Only show the planting cursor to keyboard users, not after a mouse click.
+    if (e.currentTarget.matches(':focus-visible')) {
+      setKeyboardCursor(prev => prev ?? { x: 0.5, y: 0.75 })
     }
+  }, [])
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [keyboardCursor, selectedVariant, placeElement, undoLast])
+  // Arrow keys and Enter only act while the garden itself is focused, so the
+  // rest of the page keeps normal scrolling and link activation.
+  const handleCanvasKeyDown = useCallback((e: React.KeyboardEvent<HTMLCanvasElement>) => {
+    const step = 0.03
+    const cur = keyboardCursor ?? { x: 0.5, y: 0.75 }
+    switch (e.key) {
+      case 'ArrowUp':
+        e.preventDefault()
+        setKeyboardCursor({ x: cur.x, y: Math.max(GROUND_TOP, cur.y - step) })
+        break
+      case 'ArrowDown':
+        e.preventDefault()
+        setKeyboardCursor({ x: cur.x, y: Math.min(0.98, cur.y + step) })
+        break
+      case 'ArrowLeft':
+        e.preventDefault()
+        setKeyboardCursor({ x: Math.max(0.02, cur.x - step), y: cur.y })
+        break
+      case 'ArrowRight':
+        e.preventDefault()
+        setKeyboardCursor({ x: Math.min(0.98, cur.x + step), y: cur.y })
+        break
+      case 'Enter':
+      case ' ':
+        e.preventDefault()
+        setKeyboardCursor(cur)
+        placeElement(cur.x, cur.y, selectedVariant)
+        break
+      case 'Escape':
+        setKeyboardCursor(null)
+        break
+    }
+  }, [keyboardCursor, selectedVariant, placeElement])
+
+  const handleGardenKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      undoLast()
+    }
+  }, [undoLast])
+
+  const handlePickerKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    const forward = e.key === 'ArrowRight' || e.key === 'ArrowDown'
+    const back = e.key === 'ArrowLeft' || e.key === 'ArrowUp'
+    if (!forward && !back) return
+    e.preventDefault()
+    const idx = PLANT_VARIANTS.findIndex(v => v.id === selectedVariant.id)
+    const next = PLANT_VARIANTS[(idx + (forward ? 1 : -1) + PLANT_VARIANTS.length) % PLANT_VARIANTS.length]
+    setSelectedVariant(next)
+    document.getElementById(`plant-${next.id}`)?.focus()
+  }, [selectedVariant])
 
   // Expire suggestion
   useEffect(() => {
     if (!suggestion) return
-    const remaining = suggestion.expiresAt - Date.now()
-    if (remaining <= 0) {
-      setSuggestion(null)
-      return
-    }
-    const timer = setTimeout(() => setSuggestion(null), remaining)
+    const timer = setTimeout(() => setSuggestion(null), Math.max(0, suggestion.expiresAt - Date.now()))
     return () => clearTimeout(timer)
   }, [suggestion])
 
@@ -888,7 +829,9 @@ export default function CalmGarden() {
     const ro = new ResizeObserver(resizeCanvas)
     ro.observe(canvas)
 
-    const tick = (now: number) => {
+    const tick = (frameTime: number) => {
+      // A frozen clock keeps stars and the suggestion glow still for reduced motion.
+      const now = prefersReducedMotion ? 0 : frameTime
       const w = canvas.width / dpr
       const h = canvas.height / dpr
 
@@ -898,11 +841,11 @@ export default function CalmGarden() {
 
       // -- Sky gradient --
       const skyColors = COLORS.sky[timeOfDay]
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.6)
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.38)
       skyGrad.addColorStop(0, skyColors.top)
       skyGrad.addColorStop(1, skyColors.bottom)
       ctx.fillStyle = skyGrad
-      ctx.fillRect(0, 0, w, h * 0.6)
+      ctx.fillRect(0, 0, w, h * 0.38)
 
       // Stars at night
       if (timeOfDay === 'night') {
@@ -910,20 +853,20 @@ export default function CalmGarden() {
       }
 
       // -- Ground gradient --
-      const groundGrad = ctx.createLinearGradient(0, h * 0.55, 0, h)
+      const groundGrad = ctx.createLinearGradient(0, h * 0.32, 0, h)
       groundGrad.addColorStop(0, '#7db87d')
       groundGrad.addColorStop(0.4, '#5a9a5a')
       groundGrad.addColorStop(1, '#3d7a3d')
       ctx.fillStyle = groundGrad
-      ctx.fillRect(0, h * 0.55, w, h * 0.45)
+      ctx.fillRect(0, h * 0.32, w, h * 0.68)
 
       // Gentle ground curve
       ctx.beginPath()
-      ctx.moveTo(0, h * 0.58)
-      ctx.quadraticCurveTo(w * 0.3, h * 0.54, w * 0.5, h * 0.56)
-      ctx.quadraticCurveTo(w * 0.7, h * 0.58, w, h * 0.55)
-      ctx.lineTo(w, h * 0.6)
-      ctx.lineTo(0, h * 0.6)
+      ctx.moveTo(0, h * 0.33)
+      ctx.quadraticCurveTo(w * 0.3, h * 0.30, w * 0.5, h * 0.31)
+      ctx.quadraticCurveTo(w * 0.7, h * 0.33, w, h * 0.31)
+      ctx.lineTo(w, h * 0.36)
+      ctx.lineTo(0, h * 0.36)
       ctx.closePath()
       ctx.fillStyle = '#6aad6a'
       ctx.fill()
@@ -953,7 +896,7 @@ export default function CalmGarden() {
       }
 
       // -- Draw suggestion glow --
-      if (suggestion && Date.now() < suggestion.expiresAt) {
+      if (suggestion) {
         drawSuggestionGlow(ctx, suggestion, w, h, now)
       }
 
@@ -1002,6 +945,7 @@ export default function CalmGarden() {
       className="max-w-4xl mx-auto"
       role="application"
       aria-label="The Gardener - a calm garden where you place plants"
+      onKeyDown={handleGardenKeyDown}
     >
       {/* Screen reader announcements */}
       <div aria-live="polite" aria-atomic="true" className="sr-only">
@@ -1012,12 +956,13 @@ export default function CalmGarden() {
       <div className="relative bg-card-bg border border-card-border rounded-lg overflow-hidden">
         <canvas
           ref={canvasRef}
-          className="w-full aspect-[4/3] cursor-crosshair"
+          className="block w-full aspect-[4/3] max-h-[65vh] cursor-crosshair"
           onClick={handleCanvasClick}
-          onTouchStart={handleCanvasTouch}
           onMouseMove={handleMouseMove}
+          onFocus={handleCanvasFocus}
+          onKeyDown={handleCanvasKeyDown}
           role="img"
-          aria-label={`Garden with ${elements.length} ${elements.length === 1 ? 'plant' : 'plants'}. Click to place ${selectedVariant.label}.`}
+          aria-label={`Garden with ${elements.length} ${elements.length === 1 ? 'plant' : 'plants'}. Arrow keys move the planting spot, Enter places a ${selectedVariant.label}.`}
           tabIndex={0}
         />
 
@@ -1028,9 +973,13 @@ export default function CalmGarden() {
 
         {/* Suggestion hint */}
         {suggestion && (
-          <div className="absolute top-3 left-3 text-xs text-white/60 bg-black/20 rounded px-2 py-1 select-none pointer-events-none animate-fade">
-            The garden has a suggestion...
-          </div>
+          <button
+            type="button"
+            onClick={acceptSuggestion}
+            className="absolute top-3 left-3 max-w-[65%] text-left text-xs text-white bg-black/40 hover:bg-black/55 rounded px-2 py-1 animate-fade focus:outline-none focus:ring-2 focus:ring-accent"
+          >
+            The garden would welcome a {suggestion.variant.label} at the glow. Plant it
+          </button>
         )}
       </div>
 
@@ -1041,7 +990,8 @@ export default function CalmGarden() {
             Select a plant type, then click on the garden to place it
           </span>
           <button
-            className="text-xs text-foreground/50 hover:text-foreground/80 transition-colors sm:hidden"
+            type="button"
+            className="text-xs text-foreground/70 hover:text-foreground transition-colors sm:hidden"
             onClick={() => setPickerOpen(!pickerOpen)}
             aria-expanded={pickerOpen}
             aria-controls="plant-picker"
@@ -1058,12 +1008,16 @@ export default function CalmGarden() {
           )}
           role="radiogroup"
           aria-label="Plant type selector"
+          onKeyDown={handlePickerKeyDown}
         >
           {PLANT_VARIANTS.map(variant => (
             <button
               key={variant.id}
+              id={`plant-${variant.id}`}
+              type="button"
               role="radio"
               aria-checked={selectedVariant.id === variant.id}
+              tabIndex={selectedVariant.id === variant.id ? 0 : -1}
               onClick={() => {
                 setSelectedVariant(variant)
                 setPickerOpen(false)
@@ -1128,8 +1082,8 @@ export default function CalmGarden() {
       </div>
 
       {/* Keyboard instructions */}
-      <div className="text-center mt-3 text-xs text-foreground/30">
-        <p>Click or tap to place. Arrow keys to move cursor, Enter to place. Ctrl+Z to undo.</p>
+      <div className="text-center mt-3 text-xs text-foreground/50">
+        <p>Click or tap the grass to plant. Keyboard: focus the garden, move with arrow keys, Enter to plant, Ctrl+Z to undo.</p>
       </div>
     </div>
   )

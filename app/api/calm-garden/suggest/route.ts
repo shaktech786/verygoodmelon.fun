@@ -78,7 +78,7 @@ function fallbackSuggestion(
 
   for (let attempt = 0; attempt < 20; attempt++) {
     const cx = 0.05 + Math.random() * 0.9
-    const cy = 0.3 + Math.random() * 0.65
+    const cy = 0.35 + Math.random() * 0.6
 
     let minDist = Infinity
     for (const el of elements) {
@@ -108,6 +108,7 @@ function fallbackSuggestion(
 // ---------------------------------------------------------------------------
 
 export async function POST(request: NextRequest) {
+  let elements: z.infer<typeof requestSchema>['elements'] = []
   try {
     // Rate limiting
     const ip = request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown'
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { elements } = parsed.data
+    elements = parsed.data.elements
 
     // Build a description of what the user has placed
     const elementSummary = elements
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest) {
 
     const prompt = `You are a garden composition advisor. A user is building a meditative garden by placing elements on a canvas.
 
-The canvas uses normalized coordinates: x goes from 0 (left) to 1 (right), y goes from 0 (top) to 1 (bottom). The ground starts at approximately y=0.25 (above that is sky). Elements should only be placed on the ground area (y between 0.3 and 0.95).
+The canvas uses normalized coordinates: x goes from 0 (left) to 1 (right), y goes from 0 (top) to 1 (bottom). The ground starts at approximately y=0.33 (above that is sky). Elements should only be placed on the ground area (y between 0.35 and 0.95).
 
 Current garden elements: ${elementSummary}
 
@@ -153,7 +154,7 @@ Analyze the garden layout and suggest ONE element to add that would improve the 
 Respond with ONLY valid JSON in this exact format:
 {"type": "element-type-id", "x": 0.5, "y": 0.6, "reason": "brief reason"}
 
-The type must be one of the valid types listed above. x must be 0.05-0.95, y must be 0.3-0.95. Keep the reason under 15 words.`
+The type must be one of the valid types listed above. x must be 0.05-0.95, y must be 0.35-0.95. Keep the reason under 15 words.`
 
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
@@ -186,7 +187,7 @@ The type must be one of the valid types listed above. x must be 0.05-0.95, y mus
       typeof suggestion.x !== 'number' ||
       typeof suggestion.y !== 'number' ||
       suggestion.x < 0.05 || suggestion.x > 0.95 ||
-      suggestion.y < 0.3 || suggestion.y > 0.95
+      suggestion.y < 0.35 || suggestion.y > 0.95
     ) {
       throw new Error('Invalid suggestion from AI')
     }
@@ -202,23 +203,7 @@ The type must be one of the valid types listed above. x must be 0.05-0.95, y mus
   } catch (error) {
     console.error('Calm garden suggest error:', error)
 
-    // Graceful fallback
-    try {
-      const body = await request.clone().json()
-      const parsed = requestSchema.safeParse(body)
-      const elements = parsed.success ? parsed.data.elements : []
-      return NextResponse.json({
-        suggestion: fallbackSuggestion(elements),
-      })
-    } catch {
-      return NextResponse.json({
-        suggestion: {
-          type: VALID_TYPES[Math.floor(Math.random() * VALID_TYPES.length)],
-          x: 0.3 + Math.random() * 0.4,
-          y: 0.4 + Math.random() * 0.4,
-          reason: 'This spot feels right.',
-        },
-      })
-    }
+    // The body has already been read, so the fallback uses the elements parsed above.
+    return NextResponse.json({ suggestion: fallbackSuggestion(elements) })
   }
 }
