@@ -97,13 +97,13 @@ describe('ErrorBoundary', () => {
     expect(screen.getByRole('button', { name: /reload page/i })).toBeInTheDocument()
   })
 
-  it('has Go Home button', () => {
+  it('links home with a full page load', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
       </ErrorBoundary>
     )
 
-    expect(screen.getByRole('button', { name: /go home/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /go home/i })).toHaveAttribute('href', '/')
   })
 })

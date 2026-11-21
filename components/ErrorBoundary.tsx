@@ -2,7 +2,7 @@
 
 import { Component, ReactNode } from 'react'
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Button, buttonClassName } from '@/components/ui/Button'
 
 interface Props {
   children: ReactNode
@@ -94,10 +94,6 @@ export class ErrorBoundary extends Component<Props, State> {
     window.location.reload()
   }
 
-  goHome = () => {
-    window.location.href = '/'
-  }
-
   render() {
     const { hasError, error, errorInfo } = this.state
     const { children, fallback } = this.props
@@ -173,14 +169,15 @@ export class ErrorBoundary extends Component<Props, State> {
                   <RefreshCw size={18} />
                   Reload Page
                 </Button>
-                <Button
-                  onClick={this.goHome}
-                  variant="secondary"
-                  className="flex-1 flex items-center justify-center gap-2"
+                {/* A full page load, not client navigation, so the broken state is left behind */}
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- see above */}
+                <a
+                  href="/"
+                  className={buttonClassName('secondary', 'md', 'flex-1 flex items-center justify-center gap-2')}
                 >
-                  <Home size={18} />
+                  <Home size={18} aria-hidden="true" />
                   Go Home
-                </Button>
+                </a>
               </div>
 
               {/* Help text */}
