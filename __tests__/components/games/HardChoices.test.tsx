@@ -91,6 +91,40 @@ describe('HardChoices', () => {
     })
   })
 
+  it('lets the player continue without crowd results when the vote cannot be saved', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: '' })
+
+    render(<HardChoices />)
+    fireEvent.click(screen.getByRole('button', { name: /Choice A/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Next Dilemma/i })).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('button', { name: /Choice A/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByText(/% chose this/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Couldn't Load/i)).not.toBeInTheDocument()
+    expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+      'hardChoicesVotes',
+      JSON.stringify({ 'mortality-awareness': 'A' })
+    )
+  })
+
+  it('shows a previously made choice without crowd results when results cannot be loaded', async () => {
+    mockLocalStorage.setItem('hardChoicesVotes', JSON.stringify({ 'mortality-awareness': 'B' }))
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: '' })
+
+    render(<HardChoices />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Next Dilemma/i })).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('button', { name: /Choice B/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByText(/% chose this/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Couldn't Load/i)).not.toBeInTheDocument()
+  })
+
   it('navigates to next dilemma', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
