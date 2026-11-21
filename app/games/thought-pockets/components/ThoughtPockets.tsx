@@ -9,7 +9,8 @@ import { KEYWORDS, Keyword, keywordText } from '@/lib/games/thought-pockets/data
 import { conclusionLine } from '@/lib/games/thought-pockets/data/conclusion'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { COMPOSURE_GUARD } from '@/lib/games/thought-pockets/engine/battle'
-import { PHASE_SPILL } from '@/lib/games/thought-pockets/data/enemies'
+import { PROBLEM_RULE } from '@/lib/games/thought-pockets/data/enemies'
+import { RUN_FLOORS } from '@/lib/games/thought-pockets/engine/run'
 import { TIRING } from '@/lib/games/thought-pockets/data/pace'
 import { SoundToggle } from '@/components/ui/SoundToggle'
 import { BattleScreen } from './BattleScreen'
@@ -111,8 +112,7 @@ function HowToPlay({ school }: { school: School | null }) {
         </li>
         <li>Every bias has one rule, written under its name. Philosophical problems change their rule once, at half Resolve, and say how in advance.</li>
         <li>
-          No single round can take a philosophical problem past half Resolve: the argument stops at the line and the problem changes. Nothing you put into it is
-          wasted, though. Every {PHASE_SPILL} damage past the line shakes it: 1 Unsettle, felt next round.
+          {PROBLEM_RULE} At half Resolve the argument stops at the line and the problem changes. Nothing you put into an argument is wasted.
         </li>
         <li>
           There is no turn limit, and a long argument never counts against you. From turn {TIRING.gentle} in Gentle pace ({TIRING.rigorous} in Rigorous) the
@@ -122,7 +122,10 @@ function HowToPlay({ school }: { school: School | null }) {
           Some cards reach across turns: <strong>Keep</strong> cards stay in your hand if you do not play them, <strong>Once</strong> cards are gone for the rest of the
           fight after you play them, and a few effects last the whole fight.
         </li>
-        <li>In Gentle pace, if an argument gets away from you, you may reconsider it once per run: back to its start, knowing what you know now.</li>
+        <li>
+          In Gentle pace, if an argument gets away from you, you may reconsider it once per run: back to its start with at least half your Resolve, knowing what
+          you know now.
+        </li>
       </ol>
       <p className="mt-3">
         Keys in a fight: <strong>1–9</strong> play a card, <strong>U</strong> undoes, <strong>E</strong> ends the turn, <strong>S</strong> skips the replay of a
@@ -195,7 +198,7 @@ function StatusBar({ run, onMenu, onDeck, onHelp }: { run: RunState; onMenu: () 
   return (
     <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-[var(--tp-text)] sm:mb-3 sm:gap-x-4">
       <p className="font-serif">
-        <span className="font-semibold">Floor {run.floor} of 3</span>
+        <span className="font-semibold">{run.length === 'short' ? 'Short walk' : `Floor ${run.floor} of ${RUN_FLOORS.long}`}</span>
         <span className="hidden text-[var(--tp-muted)] sm:inline"> · {FLOOR_NAMES[run.floor]}</span>
       </p>
       <p className="flex items-center gap-2" data-testid="player-resolve">

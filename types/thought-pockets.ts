@@ -2,10 +2,16 @@ export type School = 'empiricist' | 'pragmatist' | 'rationalist' | 'skeptic' | '
 
 export type Mode = 'gentle' | 'rigorous'
 
+/** A Short walk is the first floor and its problem; a Long walk is all three floors. */
+export type RunLength = 'short' | 'long'
+
+export type Difficulty = 'Easy' | 'Medium' | 'Hard'
+
 export interface SchoolDef {
   id: School
   name: string
-  difficulty: 'Easy' | 'Medium' | 'Hard'
+  /** How hard the school is at each pace, checked against the simulation. */
+  difficulty: Record<Mode, Difficulty>
   tagline: string
   passive: string
   deck: string[]
@@ -148,6 +154,10 @@ export interface EnemyDef {
   health: number
   rule: EnemyRule
   ruleText: string
+  /** Its rule in Gentle pace, where it is milder, when that differs. */
+  gentleRuleText?: string
+  /** How much its attacks grow each time it acts, under the grows rule. */
+  growth?: number
   /** A stubborn bias's extra rule at the higher Rigorous levels. */
   secondRule?: { rule: EnemyRule; ruleText: string }
   intro: string
@@ -200,8 +210,10 @@ export interface StepView {
 
 /** One thing that happens to the argument after Weight × Multiplier, in the order the engine applies it. */
 export interface DamageStep {
-  kind: 'answer' | 'induction' | 'pierce' | 'guard' | 'arrow' | 'cap' | 'half'
+  kind: 'answer' | 'induction' | 'pierce' | 'guard' | 'arrow' | 'cap' | 'half' | 'line'
   text: string
+  /** The same step in two or three words, for the End turn button. */
+  short: string
   /** The damage after this step. */
   after: number
 }
@@ -227,6 +239,8 @@ export interface ArgumentPreview {
   composure: number
   /** Focus left unspent that becomes Guard (Focus The Long View carries is not counted). */
   heldFocus: number
+  /** Unspent Focus The Long View carries to next turn instead. */
+  focusCarried: number
   unsettle: number
   /** What Unsettle takes before it acts, after this argument lands. */
   unsettleTick: number
@@ -289,6 +303,8 @@ export interface BattleCore {
   player: PlayerState
   relics: RelicId[]
   school: School
+  /** 0 in Gentle; the Rigorous level otherwise. */
+  rigor: number
   turn: number
   focus: number
   hand: CardInstance[]
@@ -390,11 +406,12 @@ export interface RunStats {
 }
 
 export interface RunState {
-  version: 6
+  version: 7
   seed: number
   rng: number
   school: School
   mode: Mode
+  length: RunLength
   /** 0 in Gentle; in Rigorous, the level from 1 to MAX_RIGOR, each adding one constraint. */
   rigor: number
   reconsiders: number

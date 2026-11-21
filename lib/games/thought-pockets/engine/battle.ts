@@ -22,12 +22,13 @@ import {
   BURIDAN_GUARD,
   INDUCTION_BONUS,
   MEANING_ANSWER,
-  PHASE_SPILL,
+  STOP_LINES,
   SORITES_CAP,
-  SORITES_GRAIN,
   STATUS_QUO_MAX_GUARD,
   TUTORIAL_ENEMY,
   getEnemyDef,
+  overflowUnsettle,
+  ruleTextAt,
 } from '../data/enemies'
 import { RIGOR, RIGOROUS_ATTACK, RIGOROUS_HEALTH, TIRING } from '../data/pace'
 import { roll, rollInt, shuffle } from './rng'
@@ -40,7 +41,6 @@ export const DOUBT_WEIGHT = 4
 const OVERCONFIDENT_BONUS = 4
 const SKEPTIC_BONUS = 2
 const MOTIVATED_CARDS = 3
-const GROWTH_PER_ACTION = 2
 const BANDWAGON_GROWTH = 1
 export const COMPOSURE_GUARD = 2
 export const WORRY_STONE_GUARD = 3
@@ -101,13 +101,20 @@ function hasRule(core: BattleCore, rule: EnemyRule): boolean {
 
 export function enemyRuleText(core: BattleCore): string {
   const def = getEnemyDef(core.enemy.id)
-  const main = inSecondPhase(core) && def.phase2 ? def.phase2.ruleText : def.ruleText
+  const main = inSecondPhase(core) && def.phase2 ? def.phase2.ruleText : ruleTextAt(def, core.rigor)
   return core.enemy.secondRule && def.secondRule ? `${main} ${def.secondRule.ruleText}` : main
 }
 
 /** Where a philosophical problem changes; until it has, no round can take it lower. */
 export function phaseThreshold(core: BattleCore): number | null {
   return getEnemyDef(core.enemy.id).phase2 && core.enemy.phase === 1 ? Math.floor(core.enemy.maxHealth / 2) : null
+}
+
+/** Where a philosophical problem stops this round: the next of its stop lines below where it stands. */
+export function stopLine(core: BattleCore): number | null {
+  if (!getEnemyDef(core.enemy.id).phase2) return null
+  const lines = STOP_LINES.map((share) => Math.floor(core.enemy.maxHealth * share)).filter((line) => line < core.enemy.health)
+  return lines.length > 0 ? Math.max(...lines) : null
 }
 
 function enemyMoves(core: BattleCore): EnemyMove[] {
@@ -236,6 +243,7 @@ export function createBattle(setup: BattleSetup): BattleState {
     player: { resolve: setup.resolve, maxResolve: setup.maxResolve, guard: 0 },
     relics: setup.relics,
     school: setup.school,
+    rigor: setup.rigor,
     turn: 0,
     focus: 0,
     hand: [],
@@ -462,14 +470,15 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   if (hasRule(core, 'meaning') && move.asks) {
     if (move.asks.every((type) => defs.some((d) => d.type === type))) {
       value += MEANING_ANSWER
-      chain.push({ kind: 'answer', text: `You answered its question: +${MEANING_ANSWER}`, after: value })
+      chain.push({ kind: 'answer', text: `You answered its question: +${MEANING_ANSWER}`, short: 'answered', after: value })
     } else {
-      chain.push({ kind: 'answer', text: `Not answered: include ${move.asks.map((type) => ASK_NAMES[type]).join(' and ')} for +${MEANING_ANSWER}`, after: value })
+      chain.push({ kind: 'answer', text: `Not answered: include ${move.asks.map((type) => ASK_NAMES[type]).join(' and ')} for +${MEANING_ANSWER}`, short: 'not answered', after: value })
     }
   }
   if (hasRule(core, 'induction') && conclusion >= 0 && core.lastConclusionType && defs[conclusion].type !== core.lastConclusionType) {
     value = Math.floor(value * INDUCTION_BONUS)
-    chain.push({ kind: 'induction', text: `A different Conclusion from last turn: +${Math.round((INDUCTION_BONUS - 1) * 100)}%`, after: value })
+    const bonus = `+${Math.round((INDUCTION_BONUS - 1) * 100)}%`
+    chain.push({ kind: 'induction', text: `A different Conclusion from last turn: ${bonus}`, short: bonus, after: value })
   }
   const raw = value
 
@@ -477,32 +486,36 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   const blocked = pierce ? 0 : Math.min(core.enemy.guard, value)
   if (blocked > 0) {
     value -= blocked
-    chain.push({ kind: 'guard', text: `Its Guard absorbs ${blocked}`, after: value })
+    chain.push({ kind: 'guard', text: `Its Guard absorbs ${blocked}`, short: 'its Guard', after: value })
   }
-  if (hasRule(core, 'arrow') && value > 0 && value < ARROW_MIN) {
+  const arrowMin = core.rigor === 0 ? ARROW_MIN.gentle : ARROW_MIN.rigorous
+  if (hasRule(core, 'arrow') && value > 0 && value < arrowMin) {
     value = 0
-    chain.push({ kind: 'arrow', text: `Under ${ARROW_MIN}: the arrow does not move`, after: value })
+    chain.push({ kind: 'arrow', text: `Under ${arrowMin}: the arrow does not move`, short: `under ${arrowMin}`, after: value })
   }
   let grains = 0
   if (hasRule(core, 'sorites') && value > SORITES_CAP) {
-    grains = Math.floor((value - SORITES_CAP) / SORITES_GRAIN)
+    grains = overflowUnsettle(value - SORITES_CAP)
     value = SORITES_CAP
-    chain.push({ kind: 'cap', text: `Capped at ${SORITES_CAP}${grains > 0 ? `: the rest becomes Unsettle ${grains}` : ''}`, after: value })
+    chain.push({ kind: 'cap', text: `Capped at ${SORITES_CAP}${grains > 0 ? `: the rest becomes Unsettle ${grains}` : ''}`, short: `cap ${SORITES_CAP}`, after: value })
   }
-  const threshold = phaseThreshold(core)
-  const room = threshold !== null && core.enemy.health > threshold ? core.enemy.health - threshold : null
+  const line = stopLine(core)
+  const room = line !== null ? core.enemy.health - line : null
   let spill = 0
-  if (room !== null && value > room) {
+  if (line !== null && room !== null && value > room) {
     const extra = value - room
-    spill = Math.floor(extra / PHASE_SPILL)
+    spill = overflowUnsettle(extra, grains)
     value = room
-    chain.push({ kind: 'half', text: `It stops at ${threshold} and changes. Your extra ${extra} shakes it${spill > 0 ? `: Unsettle +${spill}` : ''}`, after: value })
+    const shakes = `Your extra ${extra} shakes it${spill > 0 ? `: Unsettle +${spill}` : ''}`
+    if (line === phaseThreshold(core)) chain.push({ kind: 'half', text: `It stops at ${line} and changes. ${shakes}`, short: 'stops at half', after: value })
+    else chain.push({ kind: 'line', text: `It stops at ${line}, three quarters of its Resolve. ${shakes}`, short: 'stops at 3/4', after: value })
   }
   const damage = value
   const healedBack = hasRule(core, 'motivated') && defs.length < MOTIVATED_CARDS ? Math.floor(damage / 2) : 0
   const selfLoss = hasRule(core, 'backfire') && damage > 0 ? defs.length : 0
 
-  const heldFocus = core.focus - longViewCarry(core)
+  const focusCarried = longViewCarry(core)
+  const heldFocus = core.focus - focusCarried
   const composure = heldFocus * COMPOSURE_GUARD + (heldFocus > 0 && has(core, 'worry_stone') ? WORRY_STONE_GUARD : 0)
   const guard = steps.reduce((sum, s) => sum + s.guard, 0) + composure
   const unsettle = steps.reduce((sum, s) => sum + s.unsettle, 0) + grains
@@ -510,7 +523,7 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
 
   const healthAfterArgument = Math.max(0, core.enemy.health - damage + healedBack)
   const argumentFinishes = healthAfterArgument === 0
-  const unsettleRoom = room !== null && threshold !== null ? Math.max(0, healthAfterArgument - threshold) : healthAfterArgument
+  const unsettleRoom = line !== null ? Math.max(0, healthAfterArgument - line) : healthAfterArgument
   const unsettleTick = argumentFinishes ? 0 : Math.min(core.enemy.unsettle + unsettle, unsettleRoom)
   const enemyFalls = argumentFinishes ? 'argument' : healthAfterArgument - unsettleTick <= 0 ? 'unsettle' : null
   const acts = !postpone && enemyFalls === null
@@ -556,6 +569,7 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
     guard,
     composure,
     heldFocus,
+    focusCarried,
     unsettle,
     unsettleTick,
     enemyFalls,
@@ -689,7 +703,7 @@ export function endTurn(battle: BattleState): BattleState {
       report.gamble = gambled ? 'hit' : 'miss'
       actingEnemy.misses = gambled ? 0 : actingEnemy.misses + 1
     }
-    if (hasRule(core, 'grows')) actingEnemy.strength += GROWTH_PER_ACTION
+    if (hasRule(core, 'grows')) actingEnemy.strength += def.growth ?? 0
     actingEnemy.moveIndex += 1
     next = { ...next, enemy: actingEnemy, player: actingPlayer }
     if (move.addDoubt) {

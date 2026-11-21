@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { canPlay, createBattle, endTurn, playCard, previewArgument, tiringUnsettle } from '@/lib/games/thought-pockets/engine/battle'
+import { canPlay, createBattle, endTurn, playCard, tiringUnsettle } from '@/lib/games/thought-pockets/engine/battle'
 import { ENEMIES, STATUS_QUO_MAX_GUARD, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { TIRING } from '@/lib/games/thought-pockets/data/pace'
 import { resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { defeatLine } from '@/lib/games/thought-pockets/data/defeat'
 import { BattleState, CardInstance } from '@/types/thought-pockets'
 import { battleWith, card } from './helpers'
+import { newcomer } from './bots'
 
 const LONGEST_FIGHT = 40
 
@@ -17,24 +18,6 @@ function fight(enemyId: string, deck: CardInstance[], rigor = 0, rng = 1, resolv
 function onlyDefend(battle: BattleState): BattleState {
   let state = battle
   for (const c of battle.hand) if (resolveCard(c).type === 'guard' && canPlay(state, c.uid)) state = playCard(state, c.uid)
-  return endTurn(state)
-}
-
-/** The reviewer's newcomer: Rhetoric first, then Logic, then the lightest Evidence, with one Guard when told it will lose 6 or more. */
-function newcomer(battle: BattleState): BattleState {
-  let state = battle
-  let guarded = false
-  for (let k = 0; k < 7; k++) {
-    const p = previewArgument(state)
-    if (p.enemyFalls) break
-    const playable = state.hand.filter((c) => canPlay(state, c.uid))
-    const of = (type: string) => playable.filter((c) => resolveCard(c).type === type)
-    const evidence = of('evidence').sort((a, b) => (resolveCard(a).weight ?? 0) - (resolveCard(b).weight ?? 0))
-    const next = (p.incomingAfterGuard >= 6 && !guarded && of('guard')[0]) || of('rhetoric')[0] || of('logic')[0] || evidence[0] || of('guard')[0]
-    if (!next) break
-    if (resolveCard(next).type === 'guard') guarded = true
-    state = playCard(state, next.uid)
-  }
   return endTurn(state)
 }
 

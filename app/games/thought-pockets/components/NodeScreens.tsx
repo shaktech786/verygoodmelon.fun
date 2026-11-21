@@ -6,13 +6,14 @@ import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
 import { getEventDef } from '@/lib/games/thought-pockets/data/events'
 import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import {
-  FLOORS,
+  RUN_FLOORS,
   buyCard,
   buyRelic,
   buyTea,
   cancelPick,
   chooseEvent,
   eventChoiceAvailable,
+  isLastFloor,
   leaveEvent,
   leaveReward,
   leaveShop,
@@ -127,7 +128,8 @@ export function RewardScreen({ run }: { run: RunState }) {
   const act = useRunStore((s) => s.act)
   const reward = run.reward
   if (!reward) return null
-  const title = { battle: 'You made your point', elite: 'A hard argument, won', boss: 'Floor complete', treasure: 'Treasure' }[reward.source]
+  const last = reward.source === 'boss' && isLastFloor(run)
+  const title = last ? 'The last question, answered for now' : { battle: 'You made your point', elite: 'A hard argument, won', boss: 'Floor complete', treasure: 'Treasure' }[reward.source]
   const enemyId = reward.source === 'treasure' ? undefined : run.map.find((n) => n.id === run.position)?.enemyId
   const foe = enemyId ? getEnemyDef(enemyId) : null
   return (
@@ -188,13 +190,13 @@ export function RewardScreen({ run }: { run: RunState }) {
           )}
         </div>
       )}
-      {reward.source === 'boss' && run.floor < FLOORS && (
+      {reward.source === 'boss' && !last && (
         <p className="mt-4 text-sm text-[var(--tp-muted)]" data-testid="pause-note">
-          Floor {run.floor} of {FLOORS} complete. Your run is saved, so this is a good place to stop and come back another time.
+          Floor {run.floor} of {RUN_FLOORS[run.length]} complete. Your run is saved, so this is a good place to stop and come back another time.
         </p>
       )}
       <button type="button" className={`${primaryButton} mt-5`} onClick={() => act(leaveReward)} data-testid="continue">
-        {reward.source === 'boss' ? (run.floor === FLOORS ? 'Finish the run' : 'On to the next floor') : 'Continue'}
+        {last ? 'Finish the walk' : reward.source === 'boss' ? 'On to the next floor' : 'Continue'}
         {(!reward.cardTaken || !reward.relicTaken) && ' (leave the rest)'}
       </button>
     </section>

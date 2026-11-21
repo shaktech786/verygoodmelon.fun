@@ -1,8 +1,8 @@
 'use client'
 
 import { MapNode, RunState } from '@/types/thought-pockets'
-import { availableNodes, chooseNode, restAmount } from '@/lib/games/thought-pockets/engine/run'
-import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { availableNodes, chooseNode, fightWarning, restAmount } from '@/lib/games/thought-pockets/engine/run'
+import { getEnemyDef, ruleTextAt } from '@/lib/games/thought-pockets/data/enemies'
 import { FLOOR_ROWS } from '@/lib/games/thought-pockets/engine/map'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { NODE_LABELS, NodeGlyph } from './Glyphs'
@@ -58,11 +58,29 @@ export function MapScreen({ run }: { run: RunState }) {
     const next = node.next.map((id) => run.map.find((n) => n.id === id) as MapNode).map(name)
     return next.length === 0 ? '' : `, leads to ${next.length === 1 ? next[0] : `${next.slice(0, -1).join(', ')} or ${next.at(-1)}`}`
   }
+  const warnings = open.flatMap((node) => {
+    const warning = fightWarning(run, node)
+    return warning ? [{ node, ...warning }] : []
+  })
+  const warningText = (w: (typeof warnings)[number]) =>
+    `You would face ${getEnemyDef(w.node.enemyId as string).name} with ${w.resolve} Resolve${w.attack > 0 ? `, and it opens with an attack of ${w.attack}` : ''}.`
+  const calmAhead = open.some((n) => n.type === 'rest' || n.type === 'shop')
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
       <section aria-label="Map" className="rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3">
         <p className="mb-1 text-center text-sm text-[var(--tp-muted)]">Choose where to go next. Paths only lead forward.</p>
+        {warnings.length > 0 && (
+          <div className="mx-auto mb-2 max-w-[520px] rounded-md border-2 border-[var(--tp-warn)] bg-[var(--tp-ink)] px-3 py-2 text-sm text-[var(--tp-text)]" data-testid="fight-warning">
+            <p className="font-semibold text-[var(--tp-warn)]">Low Resolve</p>
+            {warnings.map((w) => (
+              <p key={w.node.id}>{warningText(w)}</p>
+            ))}
+            <p className="text-[var(--tp-muted)]">
+              {calmAhead ? 'A rest or the shop’s tea is one of your choices now.' : 'Unspent Focus becomes Guard, so holding back is a real defence.'}
+            </p>
+          </div>
+        )}
         <div className="relative mx-auto w-full max-w-[520px]" style={{ height }}>
           <svg viewBox={`0 0 ${WIDTH} ${height}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden="true">
             {run.map.flatMap((node) =>
@@ -99,7 +117,7 @@ export function MapScreen({ run }: { run: RunState }) {
                     type="button"
                     disabled={!available}
                     onClick={() => act((r) => chooseNode(r, node.id))}
-                    aria-label={`Step ${node.row + 1}: ${name(node)}, ${state}${past ? '' : leadsTo(node)}`}
+                    aria-label={`Step ${node.row + 1}: ${name(node)}, ${state}${past ? '' : leadsTo(node)}${warnings.some((w) => w.node.id === node.id) ? `. ${warningText(warnings.find((w) => w.node.id === node.id) as (typeof warnings)[number])}` : ''}`}
                     data-testid={`node-${node.type}`}
                     data-available={available || undefined}
                     data-focus-start={node.id === open[0]?.id || undefined}
@@ -139,7 +157,7 @@ export function MapScreen({ run }: { run: RunState }) {
           <div>
             <p className="text-xs uppercase tracking-wider text-[var(--tp-muted)]">Waiting at the end of this floor</p>
             <p className="font-serif text-lg font-semibold">{bossDef.name}</p>
-            <p className="mt-1 leading-snug">{bossDef.ruleText}</p>
+            <p className="mt-1 leading-snug">{ruleTextAt(bossDef, run.rigor)}</p>
           </div>
         </div>
         <section aria-labelledby="floor-biases" className="rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3">
@@ -156,7 +174,7 @@ export function MapScreen({ run }: { run: RunState }) {
                     <span className="font-semibold">
                       Step {node.row + 1}, {NODE_LABELS[node.type].toLowerCase()}: {foe.name}.
                     </span>{' '}
-                    {foe.ruleText}
+                    {ruleTextAt(foe, run.rigor)}
                     {!reachable.has(node.id) && <span className="text-[var(--tp-muted)]"> Not on your path.</span>}
                   </p>
                 </li>

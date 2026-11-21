@@ -24,7 +24,7 @@ import {
 } from '@/lib/games/thought-pockets/engine/run'
 import { canUpgrade, getCardDef, isDoubt, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
-import { BattleState, CardDef, CardInstance, CardType, MapNode, Mode, RunState, School } from '@/types/thought-pockets'
+import { BattleState, CardDef, CardInstance, CardType, MapNode, Mode, RunLength, RunState, School } from '@/types/thought-pockets'
 
 export type TurnPolicy = (battle: BattleState) => BattleState
 
@@ -204,6 +204,27 @@ export const careful: TurnPolicy = (battle) => {
   return endTurn(best)
 }
 
+/**
+ * The reviewers' newcomer, played through the UI: Rhetoric first, then Logic, then the lightest
+ * Evidence, with one Guard card when the screen says it will lose 6 or more. Slow, but honest.
+ */
+export const newcomer: TurnPolicy = (battle) => {
+  let state = battle
+  let guarded = false
+  for (let k = 0; k < 7; k++) {
+    const p = previewArgument(state)
+    if (p.enemyFalls) break
+    const playable = state.hand.filter((c) => canPlay(state, c.uid))
+    const of = (type: CardType) => playable.filter((c) => resolveCard(c).type === type)
+    const evidence = of('evidence').sort((a, b) => (resolveCard(a).weight ?? 0) - (resolveCard(b).weight ?? 0))
+    const next = (p.incomingAfterGuard >= 6 && !guarded && of('guard')[0]) || of('rhetoric')[0] || of('logic')[0] || evidence[0] || of('guard')[0]
+    if (!next) break
+    if (resolveCard(next).type === 'guard') guarded = true
+    state = playCard(state, next.uid)
+  }
+  return endTurn(state)
+}
+
 function faceValue(card: CardInstance): number {
   const def = resolveCard(card)
   return (def.weight ?? 0) + (def.multiplier ?? 0) * 8 + (def.unsettle ?? 0) * 2 + (def.restore ?? 0) / 2 + (def.draw ?? 0) * 3
@@ -348,8 +369,11 @@ function cardValue(def: CardDef, run: RunState): number {
   return value * DUPLICATE_DISCOUNT ** copies
 }
 
-/** naive: first option everywhere. casual: like the UI driver, rests when low, avoids hard fights when hurt. careful: plans the route and the shop. */
-export type RunHabits = 'naive' | 'casual' | 'careful'
+/**
+ * naive: first option everywhere. newcomer: the reviewers' newcomer, first option unless hurt, tea when low, the first card it can buy.
+ * casual: like the UI driver, rests when low, avoids hard fights when hurt. careful: plans the route and the shop.
+ */
+export type RunHabits = 'naive' | 'newcomer' | 'casual' | 'careful'
 
 export interface BotConfig {
   turn: TurnPolicy
@@ -359,6 +383,7 @@ export interface BotConfig {
 
 export interface FightRecord {
   enemyId: string
+  floor: number
   tier: string
   turns: number
   won: boolean
@@ -378,11 +403,16 @@ export interface RunRecord {
   longestFight: number
   reconsidered: boolean
   goldLeft: number
+  /** Every card offered as a reward, in a shop or at an encounter. */
+  offered: string[]
+  /** Turns across every fight, the measure of how long a run takes. */
+  turns: number
 }
 
 function chooseNextNode(run: RunState, options: MapNode[], habits: RunHabits): MapNode {
   if (habits === 'naive') return options[0]
   const health = run.resolve / run.maxResolve
+  if (habits === 'newcomer') return (health < 0.5 && options.find((n) => n.type === 'rest')) || options[0]
   if (habits === 'casual') {
     const rest = options.find((n) => n.type === 'rest')
     if (rest && health < 0.55) return rest
@@ -466,6 +496,11 @@ function copyTarget(run: RunState): CardInstance | undefined {
 function handleShop(run: RunState, habits: RunHabits): RunState {
   if (habits === 'naive') return leaveShop(run)
   let next = run
+  if (habits === 'newcomer') {
+    if (next.resolve < next.maxResolve * 0.6) next = buyTea(next)
+    const first = (next.shop?.cards ?? []).findIndex((c) => !c.sold && c.price <= next.gold)
+    return leaveShop(first >= 0 ? buyCard(next, first) : next)
+  }
   if (habits === 'casual') {
     if (next.resolve < next.maxResolve * 0.5) next = buyTea(next)
     const started = startShopRemoval(next)
@@ -493,10 +528,19 @@ function handleShop(run: RunState, habits: RunHabits): RunState {
 }
 
 /** Plays a whole run with the engine, reconsidering a lost fight whenever the run allows it. `observe` sees the run at the start of every battle turn. */
-export function playRun(school: School, seed: number, config: BotConfig, observe?: (run: RunState) => void, mode: Mode = 'gentle', rigor?: number): RunRecord {
+export function playRun(
+  school: School,
+  seed: number,
+  config: BotConfig,
+  observe?: (run: RunState) => void,
+  mode: Mode = 'gentle',
+  rigor?: number,
+  length: RunLength = 'long',
+): RunRecord {
   const habits = config.habits
-  let run = newRun(school, seed, mode, [], rigor)
+  let run = newRun(school, seed, mode, [], rigor, length)
   const fights: FightRecord[] = []
+  const offered: string[] = []
   let reconsidered = false
   for (let guard = 0; guard < 500; guard++) {
     if (run.screen === 'defeat' && run.reconsiders > 0) {
@@ -523,6 +567,7 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
         run = battleAction(run, () => finished)
         fights.push({
           enemyId,
+          floor: run.floor,
           tier: getEnemyDef(enemyId).tier,
           turns: last.turn,
           won: run.screen !== 'defeat',
@@ -533,13 +578,14 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
       }
       case 'reward': {
         const reward = run.reward
+        offered.push(...(reward?.cardChoices ?? []))
         if (reward && !reward.relicTaken) run = takeRelic(run, reward.relicChoices[0])
         run = leaveReward(draft(run, config.draft))
         break
       }
       case 'rest': {
         const healed = restHeal(run)
-        if (healed !== run && (habits === 'naive' || run.resolve < run.maxResolve * (habits === 'casual' ? 0.7 : 0.6))) run = healed
+        if (healed !== run && (habits === 'naive' || habits === 'newcomer' || run.resolve < run.maxResolve * (habits === 'casual' ? 0.7 : 0.6))) run = healed
         else if (habits === 'careful' && run.deck.some(isDoubt)) {
           const started = startRestRemoval(run)
           run = pickCard(started, (removalTarget(started) as CardInstance).uid)
@@ -551,9 +597,11 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
         break
       }
       case 'shop':
+        offered.push(...(run.shop?.cards.map((c) => c.cardId) ?? []))
         run = handleShop(run, habits)
         break
       case 'event':
+        offered.push(...(run.event?.cardOffer ?? []))
         run = handleEvent(run)
         break
     }
@@ -569,5 +617,7 @@ export function playRun(school: School, seed: number, config: BotConfig, observe
     longestFight: Math.max(0, ...fights.map((f) => f.turns)),
     reconsidered,
     goldLeft: run.gold,
+    offered,
+    turns: fights.reduce((sum, f) => sum + f.turns, 0),
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { endTurn, playCard, previewArgument } from '@/lib/games/thought-pockets/engine/battle'
-import { MEANING_ANSWER, PHASE_SPILL, SORITES_CAP, SORITES_GRAIN, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { MEANING_ANSWER, OVERFLOW, OVERFLOW_TEXT, SORITES_CAP, getEnemyDef, overflowUnsettle } from '@/lib/games/thought-pockets/data/enemies'
 import { BattleState } from '@/types/thought-pockets'
 import { battleWith } from './helpers'
 
@@ -17,11 +17,11 @@ describe('damage is shown in the order the engine applies it', () => {
     const raw = preview.product
     expect(preview.chain.map((s) => s.kind)).toEqual(['guard', 'cap', 'half'])
     const afterGuard = raw - 3
-    const grains = Math.floor((afterGuard - SORITES_CAP) / SORITES_GRAIN)
+    const grains = overflowUnsettle(afterGuard - SORITES_CAP)
     expect(preview.chain.map((s) => s.after)).toEqual([afterGuard, SORITES_CAP, 10])
     expect(preview.chain[1].text).toBe(`Capped at ${SORITES_CAP}: the rest becomes Unsettle ${grains}`)
     expect(preview.damage).toBe(10)
-    const spill = Math.floor((SORITES_CAP - 10) / PHASE_SPILL)
+    const spill = overflowUnsettle(SORITES_CAP - 10, grains)
     expect(preview.spill).toBe(spill)
     expect(preview.chain[2].text).toBe(`It stops at ${half} and changes. Your extra ${SORITES_CAP - 10} shakes it: Unsettle +${spill}`)
     expect(endTurn(battle).lastRound?.chain).toEqual(preview.chain)
@@ -47,14 +47,14 @@ describe('damage is shown in the order the engine applies it', () => {
 })
 
 describe('pushing a philosophical problem past half Resolve is not lost: it shakes it', () => {
-  it(`every ${PHASE_SPILL} past the line becomes 1 Unsettle, which takes its toll next round`, () => {
+  it(`every ${OVERFLOW.rate} past the line becomes 1 Unsettle, at most ${OVERFLOW.max}, which takes its toll next round`, () => {
     const start = battleWith({ enemyId: 'meaning_of_life', hand: ['smoking_gun'], school: 'skeptic', resolve: 999 })
     const half = Math.floor(start.enemy.maxHealth / 2)
     const battle = playCard({ ...start, focus: 3, enemy: { ...start.enemy, health: half + 2 } }, 100)
     const preview = previewArgument(battle)
     const overflow = preview.raw - 2
     expect(preview.damage).toBe(2)
-    expect(preview.spill).toBe(Math.floor(overflow / PHASE_SPILL))
+    expect(preview.spill).toBe(Math.min(OVERFLOW.max, Math.floor(overflow / OVERFLOW.rate)))
     const after = endTurn(battle)
     expect(after.enemy.health).toBe(half)
     expect(after.enemy.phase).toBe(2)
@@ -65,6 +65,6 @@ describe('pushing a philosophical problem past half Resolve is not lost: it shak
 
   it(`The Sorites Paradox caps one argument at ${SORITES_CAP}, and its rule says so`, () => {
     expect(getEnemyDef('sorites').ruleText).toContain(`${SORITES_CAP} damage`)
-    expect(getEnemyDef('sorites').ruleText).toContain(`Every ${SORITES_GRAIN}`)
+    expect(getEnemyDef('sorites').ruleText).toContain(OVERFLOW_TEXT)
   })
 })

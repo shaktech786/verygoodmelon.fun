@@ -8,16 +8,30 @@ export const MEANING_ANSWER = 10
 /** What varying your Conclusion does against The Problem of Induction. */
 export const INDUCTION_BONUS = 1.5
 export const SORITES_CAP = 20
-export const SORITES_GRAIN = 5
-/** Damage past a philosophical problem's half-Resolve line is not lost: every this much becomes 1 Unsettle. */
-export const PHASE_SPILL = 4
+/**
+ * Damage a rule stops (Sorites' cap, a problem's stop lines) is not lost: every `rate` of it becomes
+ * 1 Unsettle, at most `max` in one round, so a huge argument shakes a problem without skipping its second half.
+ */
+export const OVERFLOW = { rate: 2, max: 5 } as const
+export const OVERFLOW_TEXT = `Anything past it becomes Unsettle, 1 for every ${OVERFLOW.rate} (at most ${OVERFLOW.max} a round).`
+/** No single round takes a philosophical problem past the next of these shares of its Resolve, so even a huge deck needs three rounds. Half is where it changes. */
+export const STOP_LINES = [0.75, 0.5] as const
+export const PROBLEM_LINES = 'A philosophical problem gives ground slowly: no single round takes it past three quarters of its Resolve, or past half, where it changes.'
+export const PROBLEM_RULE = `${PROBLEM_LINES} ${OVERFLOW_TEXT}`
 export const STATUS_QUO_MAX_GUARD = 12
-/** Below this, an argument does not move Zeno's Arrow. */
-export const ARROW_MIN = 12
+/** Below this, an argument does not move Zeno's Arrow. Gentle pace lets smaller arguments through. */
+export const ARROW_MIN = { gentle: 8, rigorous: 12 } as const
 /** Guard Buridan's Ass gains for each card you leave in your hand. */
 export const BURIDAN_GUARD = 2
 /** Once it has chosen, how much stronger each of its hits is for each card you leave in your hand. */
 export const BURIDAN_CHARGE = 1
+export const SUNK_COST_GROWTH = 2
+/** Confirmation Bias only grows by its second rule, on the higher Rigorous levels, where a smaller step is enough. */
+export const CONFIRMATION_GROWTH = 1
+
+function arrowRule(min: number): string {
+  return `Motionless at every instant: an argument that would deal less than ${min} damage deals none. Unsettle still works.`
+}
 
 function percentMore(factor: number): string {
   return `+${Math.round((factor - 1) * 100)}%`
@@ -43,7 +57,8 @@ export const ENEMIES: EnemyDef[] = [
     floor: 1,
     health: 38,
     rule: 'grows',
-    ruleText: 'Its attacks grow by 2 every time it acts. End it quickly.',
+    growth: SUNK_COST_GROWTH,
+    ruleText: `Its attacks grow by ${SUNK_COST_GROWTH} every time it acts. End it quickly.`,
     intro: "You've come this far. Why stop now?",
     insight: 'What you have already spent is gone either way. Decide by what lies ahead.',
     moves: [{ attack: 4 }, { guard: 5 }, { attack: 7 }],
@@ -68,7 +83,8 @@ export const ENEMIES: EnemyDef[] = [
     health: 56,
     rule: 'confirmation',
     ruleText: 'Evidence it has already seen in an earlier turn gives only half Weight.',
-    secondRule: { rule: 'grows', ruleText: 'Each time it acts, its attacks grow by 2: it only hears what makes it surer.' },
+    growth: CONFIRMATION_GROWTH,
+    secondRule: { rule: 'grows', ruleText: `Each time it acts, its attacks grow by ${CONFIRMATION_GROWTH}: it only hears what makes it surer.` },
     intro: "I've seen all this before, and I was right.",
     insight: 'We notice what agrees with us. Look for the evidence that would change your mind.',
     moves: [{ guard: 10 }, { attack: 12 }, { attack: 5, hits: 2 }],
@@ -99,7 +115,8 @@ export const ENEMIES: EnemyDef[] = [
     floor: 1,
     health: 64,
     rule: 'arrow',
-    ruleText: `Motionless at every instant: an argument that would deal less than ${ARROW_MIN} damage deals none. Unsettle still works.`,
+    ruleText: arrowRule(ARROW_MIN.rigorous),
+    gentleRuleText: arrowRule(ARROW_MIN.gentle),
     intro: 'At every instant the arrow is exactly where it is. So when does it ever move?',
     insight: 'Moment by moment, nothing seems to change. Gather yourself for one real step, and you find you were moving all along.',
     moves: [{ attack: 7 }, { guard: 8 }, { attack: 11 }, { attack: 3, hits: 3 }],
@@ -167,7 +184,7 @@ export const ENEMIES: EnemyDef[] = [
     floor: 2,
     health: 76,
     rule: 'sorites',
-    ruleText: `One grain at a time: no single argument can deal more than ${SORITES_CAP} damage. Every ${SORITES_GRAIN} beyond that becomes 1 Unsettle instead.`,
+    ruleText: `One grain at a time: no single argument can deal more than ${SORITES_CAP} damage. ${OVERFLOW_TEXT}`,
     intro: 'Take one grain from a heap. Still a heap. So when does it stop being one?',
     insight: 'Vague words still mean something. Lots of small steps can add up to a real change.',
     moves: [{ attack: 9 }, { attack: 4, hits: 3 }, { guard: 12 }, { attack: 15 }],
@@ -301,6 +318,16 @@ export function getEnemyDef(enemyId: string): EnemyDef {
   const enemy = ENEMY_INDEX.get(enemyId)
   if (!enemy) throw new Error(`Unknown enemy: ${enemyId}`)
   return enemy
+}
+
+/** The rule as it plays at this pace: some problems are milder in Gentle. */
+export function ruleTextAt(def: EnemyDef, rigor: number): string {
+  return rigor === 0 && def.gentleRuleText ? def.gentleRuleText : def.ruleText
+}
+
+/** How much of the damage a rule stopped becomes Unsettle, when `already` has been made this round. */
+export function overflowUnsettle(stopped: number, already = 0): number {
+  return Math.max(0, Math.min(OVERFLOW.max - already, Math.floor(stopped / OVERFLOW.rate)))
 }
 
 export function enemiesFor(floor: number, tier: EnemyTier): EnemyDef[] {

@@ -5,8 +5,8 @@ import { SCHOOLS } from '@/lib/games/thought-pockets/data/schools'
 import { CARDS } from '@/lib/games/thought-pockets/data/cards'
 import { RELICS } from '@/lib/games/thought-pockets/data/relics'
 import { MAX_RIGOR } from '@/lib/games/thought-pockets/data/pace'
-import { Mode, School } from '@/types/thought-pockets'
-import { AWARE_HABITS, BotConfig, HABITS, RunRecord, careful, firstTimer, leftToRight, planning, playRun, uiDriver } from './bots'
+import { Difficulty, Mode, RunLength, School } from '@/types/thought-pockets'
+import { AWARE_HABITS, BotConfig, HABITS, RunRecord, careful, firstTimer, leftToRight, newcomer, planning, playRun, uiDriver } from './bots'
 
 // Seeded, so the numbers are exact for a given RUNS. Set TP_SIM_RUNS for a fuller report.
 const RUNS = Number(process.env.TP_SIM_RUNS ?? 100)
@@ -15,6 +15,7 @@ const LONGEST_FIGHT = 25
 
 const CONFIGS: Record<string, BotConfig> = {
   naive: { turn: leftToRight, draft: 'first', habits: 'naive' },
+  newcomer: { turn: newcomer, draft: 'first', habits: 'newcomer' },
   'first-timer': { turn: firstTimer, draft: 'first', habits: 'casual' },
   careful: { turn: careful, draft: 'first', habits: 'casual' },
   'old-ui-driver': { turn: uiDriver, draft: 'first', habits: 'casual' },
@@ -30,11 +31,21 @@ function avg(values: number[]): string {
   return values.length === 0 ? '-' : (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1)
 }
 
-function runMany(school: School, config: BotConfig, mode: Mode, rigor?: number): RunRecord[] {
-  return Array.from({ length: RUNS }, (_, i) => playRun(school, 1000 + i, config, undefined, mode, rigor))
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
-const RIGOROUS = ['first-timer', 'careful', 'planner', 'planner-skip-all']
+function runMany(school: School, config: BotConfig, mode: Mode, rigor?: number, length: RunLength = 'long'): RunRecord[] {
+  return Array.from({ length: RUNS }, (_, i) => playRun(school, 1000 + i, config, undefined, mode, rigor, length))
+}
+
+const RIGOROUS = ['naive', 'first-timer', 'careful', 'planner', 'planner-skip-all']
+const SHORT = ['newcomer', 'first-timer', 'careful', 'planner']
+/** The site's rule is a game finished in under ten minutes; a newcomer's Short walk is counted in turns of about 25 seconds. */
+const SHORT_WALK_TURNS = 25
+const DIFFICULTY_ORDER: Difficulty[] = ['Easy', 'Medium', 'Hard']
 /** The top of the ladder before levels 6 and 7 were added, kept in the report for comparison. */
 const OLD_TOP = 5
 
@@ -57,6 +68,7 @@ describe('simulation', () => {
   for (const school of SCHOOLS) {
     for (const [name, config] of Object.entries(CONFIGS)) {
       results.set(`${school.id}/${name}`, runMany(school.id, config, 'gentle'))
+      if (SHORT.includes(name)) results.set(`${school.id}/${name} short`, runMany(school.id, config, 'gentle', undefined, 'short'))
       if (RIGOROUS.includes(name)) {
         results.set(`${school.id}/${name} rigorous`, runMany(school.id, config, 'rigorous'))
         results.set(`${school.id}/${name} rigorous ${MAX_RIGOR}`, runMany(school.id, config, 'rigorous', MAX_RIGOR))
@@ -66,7 +78,7 @@ describe('simulation', () => {
   }
 
   it('reports school x policy outcomes and pacing', { timeout: SIM_TIMEOUT }, () => {
-    const lines = ['school/policy | win | reach floor 2 | avg turns per fight | turns n/e/b | full-health fights | gold left | top killer']
+    const lines = ['school/policy | win | reach floor 2 | avg turns per fight | median turns per fight | median run turns | turns n/e/b | median boss turns | full-health fights | gold left | top killer']
     for (const [key, runs] of results) {
       const fights = runs.flatMap((r) => r.fights)
       const byTier = (tier: string) => avg(fights.filter((f) => f.tier === tier && f.won).map((f) => f.turns))
@@ -74,7 +86,7 @@ describe('simulation', () => {
       runs.forEach((r) => r.defeatedBy && killers.set(r.defeatedBy, (killers.get(r.defeatedBy) ?? 0) + 1))
       const top = [...killers.entries()].sort((a, b) => b[1] - a[1])[0]
       lines.push(
-        `${key} | ${pct(runs.filter((r) => r.won).length, runs.length)} | ${pct(runs.filter((r) => r.won || r.floor > 1).length, runs.length)} | ${avg(fights.map((f) => f.turns))} | ${byTier('normal')}/${byTier('elite')}/${byTier('boss')} | ${pct(fights.filter((f) => f.fullHealth).length, fights.length)} | ${avg(runs.map((r) => r.goldLeft))} | ${top ? `${top[0]} (${top[1]})` : '-'}`,
+        `${key} | ${pct(runs.filter((r) => r.won).length, runs.length)} | ${pct(runs.filter((r) => r.won || r.floor > 1).length, runs.length)} | ${avg(fights.map((f) => f.turns))} | ${median(fights.map((f) => f.turns))} | ${median(runs.map((r) => r.turns))} | ${byTier('normal')}/${byTier('elite')}/${byTier('boss')} | ${median(fights.filter((f) => f.tier === 'boss' && f.won).map((f) => f.turns))} | ${pct(fights.filter((f) => f.fullHealth).length, fights.length)} | ${avg(runs.map((r) => r.goldLeft))} | ${top ? `${top[0]} (${top[1]})` : '-'}`,
       )
     }
     console.log(lines.join('\n'))
@@ -88,7 +100,7 @@ describe('simulation', () => {
   }
   const won = (r: RunRecord) => r.won
   const reachedFloorTwo = (r: RunRecord) => r.won || r.floor > 1
-  const easy = SCHOOLS.filter((s) => s.difficulty === 'Easy')
+  const easy = SCHOOLS.filter((s) => s.difficulty.gentle === 'Easy')
 
   it('lets a newcomer on an Easy school win often and almost always see floor 2', { timeout: SIM_TIMEOUT }, () => {
     expect(easy.length).toBeGreaterThan(0)
@@ -99,13 +111,17 @@ describe('simulation', () => {
     }
   })
 
-  it('keeps choices mattering: careful play and planning beat playing left to right by a wide margin', { timeout: SIM_TIMEOUT }, () => {
+  // Gentle forgives playing left to right (a rest before every problem, Reconsider at half Resolve), so there the gap shows in wins and in time; in Rigorous it must stay wide.
+  it('keeps choices mattering: careful play wins more, in far fewer turns, and in Rigorous by a wide margin', { timeout: SIM_TIMEOUT }, () => {
     const all = (policy: string) => SCHOOLS.map((s) => `${s.id}/${policy}`)
+    const turns = (policy: string) => median(all(policy).flatMap((key) => results.get(key) ?? []).map((r) => r.turns))
     console.log(
-      `win rates: naive ${pct(rate(all('naive'), won) * 100, 100)}, first-timer ${pct(rate(all('first-timer'), won) * 100, 100)}, careful ${pct(rate(all('careful'), won) * 100, 100)}, planner ${pct(rate(all('planner'), won) * 100, 100)}`,
+      `win rates: naive ${pct(rate(all('naive'), won) * 100, 100)}, first-timer ${pct(rate(all('first-timer'), won) * 100, 100)}, careful ${pct(rate(all('careful'), won) * 100, 100)}, planner ${pct(rate(all('planner'), won) * 100, 100)}; median run turns naive ${turns('naive')}, careful ${turns('careful')}; Rigorous naive ${pct(rate(all('naive rigorous'), won) * 100, 100)}, careful ${pct(rate(all('careful rigorous'), won) * 100, 100)}`,
     )
-    expect(rate(all('careful'), won) - rate(all('naive'), won)).toBeGreaterThan(0.3)
-    expect(rate(all('planner'), won) - rate(all('naive'), won)).toBeGreaterThan(0.3)
+    expect(rate(all('careful'), won) - rate(all('naive'), won)).toBeGreaterThan(0.1)
+    expect(rate(all('planner'), won) - rate(all('naive'), won)).toBeGreaterThan(0.1)
+    expect(turns('naive')).toBeGreaterThanOrEqual(1.3 * turns('careful'))
+    expect(rate(all('careful rigorous'), won) - rate(all('naive rigorous'), won)).toBeGreaterThan(0.3)
   })
 
   it('rigorous mode is a real test: planning beats careful play, which beats a newcomer', { timeout: SIM_TIMEOUT }, () => {
@@ -132,13 +148,51 @@ describe('simulation', () => {
     expect(top).toBeLessThanOrEqual(0.5)
   })
 
-  it('philosophical problems are real fights: a planning deck needs about four to six turns for each', { timeout: SIM_TIMEOUT }, () => {
-    const fights = SCHOOLS.flatMap((s) => results.get(`${s.id}/planner`) ?? []).flatMap((r) => r.fights)
-    for (const boss of ENEMIES.filter((e) => e.tier === 'boss')) {
-      const turns = fights.filter((f) => f.enemyId === boss.id && f.won).map((f) => f.turns)
-      const mean = turns.reduce((a, b) => a + b, 0) / turns.length
-      expect(mean, boss.id).toBeGreaterThanOrEqual(3.8)
-      expect(mean, boss.id).toBeLessThanOrEqual(6.5)
+  it('philosophical problems are real fights: a planning deck needs a median of four to six turns for each, in Gentle and at the top level', { timeout: SIM_TIMEOUT }, () => {
+    for (const policy of ['planner', `planner rigorous ${MAX_RIGOR}`]) {
+      const fights = SCHOOLS.flatMap((s) => results.get(`${s.id}/${policy}`) ?? []).flatMap((r) => r.fights)
+      for (const boss of ENEMIES.filter((e) => e.tier === 'boss')) {
+        const turns = median(fights.filter((f) => f.enemyId === boss.id && f.won).map((f) => f.turns))
+        expect(turns, `${policy}: ${boss.id}`).toBeGreaterThanOrEqual(4)
+        expect(turns, `${policy}: ${boss.id}`).toBeLessThanOrEqual(6)
+      }
+    }
+  })
+
+  it(`a Short walk fits one sitting: a Gentle newcomer needs a median of at most ${SHORT_WALK_TURNS} turns and almost always finishes`, { timeout: SIM_TIMEOUT }, () => {
+    for (const school of SCHOOLS) {
+      for (const policy of ['newcomer', 'first-timer']) {
+        const runs = results.get(`${school.id}/${policy} short`) ?? []
+        expect(median(runs.map((r) => r.turns)), `${school.id} ${policy}`).toBeLessThanOrEqual(SHORT_WALK_TURNS)
+        expect(rate([`${school.id}/${policy} short`], won), `${school.id} ${policy}`).toBeGreaterThanOrEqual(0.9)
+        expect(runs.every((r) => r.fights.every((f) => f.floor === 1))).toBe(true)
+      }
+    }
+  })
+
+  it('Gentle fights keep moving for a newcomer: a median of at most 7 turns a fight, and 7 for a philosophical problem', { timeout: SIM_TIMEOUT }, () => {
+    for (const school of SCHOOLS) {
+      const fights = (results.get(`${school.id}/newcomer`) ?? []).flatMap((r) => r.fights)
+      expect(median(fights.map((f) => f.turns)), school.id).toBeLessThanOrEqual(7)
+      expect(median(fights.filter((f) => f.tier === 'boss').map((f) => f.turns)), school.id).toBeLessThanOrEqual(7)
+    }
+  })
+
+  it('each school states its difficulty per pace, and the labels follow the win rates', { timeout: SIM_TIMEOUT }, () => {
+    const measures: Record<Mode, (school: School) => number> = {
+      gentle: (school) => rate([`${school}/newcomer`, `${school}/first-timer`], won),
+      rigorous: (school) => rate([`${school}/careful rigorous`, `${school}/planner rigorous ${MAX_RIGOR}`], won),
+    }
+    for (const mode of ['gentle', 'rigorous'] as Mode[]) {
+      const rows = SCHOOLS.map((s) => ({ id: s.id, label: s.difficulty[mode], win: measures[mode](s.id) }))
+      console.log(`${mode} difficulty: ${rows.map((r) => `${r.id} ${r.label} ${pct(r.win * 100, 100)}`).join(', ')}`)
+      for (const easier of rows) {
+        for (const harder of rows) {
+          if (DIFFICULTY_ORDER.indexOf(easier.label) < DIFFICULTY_ORDER.indexOf(harder.label)) {
+            expect(easier.win, `${mode}: ${easier.id} (${easier.label}) vs ${harder.id} (${harder.label})`).toBeGreaterThan(harder.win)
+          }
+        }
+      }
     }
   })
 
@@ -187,7 +241,7 @@ describe('simulation', () => {
   })
 
   it('reports archetype diversity: the card each winning planner deck took most', { timeout: SIM_TIMEOUT }, () => {
-    const lines = ['school | winning decks | distinct signature cards | most common signature (share) | decks with a rare']
+    const lines = ['school | winning decks | distinct signature cards | most common signature (share) | decks with a rare | runs offered each school rare']
     for (const school of SCHOOLS) {
       const winners = (results.get(`${school.id}/planner`) ?? []).filter((r) => r.won)
       const signatures = winners.map((r) => signatureCard(r.deck, school.deck)).filter((id): id is string => id !== null)
@@ -195,7 +249,9 @@ describe('simulation', () => {
       signatures.forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1))
       const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]
       const withRare = winners.filter((r) => r.deck.some((id) => CARDS.find((c) => c.id === id)?.rarity === 'rare')).length
-      lines.push(`${school.id} | ${winners.length} | ${counts.size} | ${top ? `${top[0]} (${pct(top[1], signatures.length)})` : '-'} | ${pct(withRare, winners.length)}`)
+      const runs = results.get(`${school.id}/planner`) ?? []
+      const rares = CARDS.filter((c) => c.rarity === 'rare' && c.school === school.id).map((c) => `${c.id} ${pct(runs.filter((r) => r.offered.includes(c.id)).length, runs.length)}`)
+      lines.push(`${school.id} | ${winners.length} | ${counts.size} | ${top ? `${top[0]} (${pct(top[1], signatures.length)})` : '-'} | ${pct(withRare, winners.length)} | ${rares.join(', ')}`)
     }
     console.log(lines.join('\n'))
     expect(lines.length).toBe(SCHOOLS.length + 1)

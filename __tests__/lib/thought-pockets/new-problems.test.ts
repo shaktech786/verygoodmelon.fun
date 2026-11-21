@@ -40,19 +40,19 @@ describe('each floor ends in one of two philosophical problems, drawn by seed', 
 })
 
 describe("Zeno's Arrow: an argument too small to move it does nothing", () => {
-  it(`below ${ARROW_MIN} the argument deals 0, says why, and Unsettle still works`, () => {
-    expect(getEnemyDef('zenos_arrow').ruleText).toContain(`${ARROW_MIN}`)
-    const start = battleWith({ enemyId: 'zenos_arrow', hand: ['observation', 'why'], school: 'skeptic' })
+  it(`below ${ARROW_MIN.rigorous} in Rigorous the argument deals 0, says why, and Unsettle still works`, () => {
+    expect(getEnemyDef('zenos_arrow').ruleText).toContain(`${ARROW_MIN.rigorous}`)
+    const start = { ...battleWith({ enemyId: 'zenos_arrow', hand: ['observation', 'why'], school: 'skeptic' }), rigor: 1 }
     const small = playAll(start, [101, 100])
     const preview = previewArgument(small)
     expect(preview.product).toBe(8)
     expect(preview.damage).toBe(0)
-    expect(preview.chain.at(-1)).toEqual({ kind: 'arrow', text: `Under ${ARROW_MIN}: the arrow does not move`, after: 0 })
+    expect(preview.chain.at(-1)).toEqual({ kind: 'arrow', text: `Under ${ARROW_MIN.rigorous}: the arrow does not move`, short: `under ${ARROW_MIN.rigorous}`, after: 0 })
     expect(preview.unsettleTick).toBe(3)
     expect(endTurn(small).enemy.health).toBe(start.enemy.health - 3)
   })
 
-  it(`at ${ARROW_MIN} or more it lands in full, and below half Resolve any argument lands`, () => {
+  it(`at ${ARROW_MIN.rigorous} or more it lands in full, and below half Resolve any argument lands`, () => {
     const big = playAll(battleWith({ enemyId: 'zenos_arrow', hand: ['observation', 'observation', 'therefore'], school: 'skeptic' }), [100, 101, 102])
     expect(previewArgument(big).damage).toBe(previewArgument(big).product)
     const later = playCard(phased(battleWith({ enemyId: 'zenos_arrow', hand: ['observation'], school: 'skeptic' })), 100)

@@ -178,7 +178,7 @@ describe('bosses change at half Resolve, after the round they were in', () => {
 
   it('The Sorites Paradox: below half, the cap is gone', () => {
     const start = battleWith({ enemyId: 'sorites', hand: ['smoking_gun'] })
-    const phased = { ...start, focus: 3, enemy: { ...start.enemy, phase: 2 as const, moveIndex: 0 } }
+    const phased = { ...start, focus: 3, enemy: { ...start.enemy, health: 150, maxHealth: 400, phase: 2 as const, moveIndex: 0 } }
     expect(previewArgument(playCard(phased, 100)).damage).toBe(24)
   })
 

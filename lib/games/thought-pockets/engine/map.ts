@@ -31,8 +31,11 @@ function connect(from: number, to: number, rng: number): { links: number[][]; rn
   return { links, rng: state }
 }
 
-/** One floor: a fight to open, three rows of three choices, then the boss. Paths never cross, and no bias appears twice on a floor. */
-export function generateFloor(floor: 1 | 2 | 3, rng: number): { nodes: MapNode[]; rng: number } {
+/**
+ * One floor: a fight to open, three rows of three choices, then the boss. Paths never cross, and no bias appears twice on a floor.
+ * A `calm` floor (Gentle pace) gathers every path at one rest before the boss, so nobody meets a problem without the chance to recover.
+ */
+export function generateFloor(floor: 1 | 2 | 3, rng: number, calm = false): { nodes: MapNode[]; rng: number } {
   let state = rng
   const normals = shuffle(enemiesFor(floor, 'normal').map((e) => e.id), state)
   state = normals.rng
@@ -55,6 +58,7 @@ export function generateFloor(floor: 1 | 2 | 3, rng: number): { nodes: MapNode[]
   const lane = rows[ELITE_ROW].indexOf('elite')
   recovery.splice(recovery.indexOf('rest'), 1)
   recovery.splice(lane, 0, 'rest')
+  if (calm) rows[ELITE_ROW + 1] = ['rest']
 
   const nodes: MapNode[] = []
   rows.forEach((types, row) => {

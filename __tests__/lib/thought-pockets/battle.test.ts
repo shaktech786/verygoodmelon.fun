@@ -12,7 +12,7 @@ import {
   undoPlay,
 } from '@/lib/games/thought-pockets/engine/battle'
 import { BattleState } from '@/types/thought-pockets'
-import { MEANING_ANSWER, SORITES_CAP, SORITES_GRAIN, STATUS_QUO_MAX_GUARD, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { MEANING_ANSWER, OVERFLOW, SORITES_CAP, STATUS_QUO_MAX_GUARD, getEnemyDef, overflowUnsettle } from '@/lib/games/thought-pockets/data/enemies'
 import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
 import { getSchoolDef } from '@/lib/games/thought-pockets/data/schools'
 import { battleWith, card, deepFreeze } from './helpers'
@@ -294,20 +294,22 @@ describe('enemy rules are real', () => {
   it('The Problem of Induction rewards a Conclusion of a different type from last turn with +50%', () => {
     const first = endTurn(playCard(battleWith({ enemyId: 'problem_of_induction', hand: ['observation'], school: 'skeptic' }), 100))
     const hand = [card('observation', 400), card('observation', 401), card('caveat', 402), card('therefore', 403)]
-    const repeat = playAll({ ...first, hand }, [400, 401])
+    const roomy = { ...first, hand, enemy: { ...first.enemy, health: 400, maxHealth: 400 } }
+    const repeat = playAll(roomy, [400, 401])
     expect(previewArgument(repeat).damage).toBe(12)
-    const varied = playAll({ ...first, hand }, [400, 401, 403])
+    const varied = playAll(roomy, [400, 401, 403])
     expect(previewArgument(varied).product).toBe(16)
     expect(previewArgument(varied).damage).toBe(24)
   })
 
-  it(`The Sorites Paradox caps one argument and turns every ${SORITES_GRAIN} beyond the cap into 1 Unsettle`, () => {
+  it(`The Sorites Paradox caps one argument and turns every ${OVERFLOW.rate} beyond the cap into 1 Unsettle`, () => {
     const start = battleWith({ enemyId: 'sorites', hand: ['smoking_gun', 'therefore'] })
-    const battle = playAll({ ...start, focus: 4 }, [101, 100])
+    const battle = playAll({ ...start, focus: 4, enemy: { ...start.enemy, health: 400, maxHealth: 400 } }, [101, 100])
     const preview = previewArgument(battle)
     expect(preview.raw).toBe(36)
     expect(preview.damage).toBe(SORITES_CAP)
-    expect(preview.unsettle).toBe(Math.floor((36 - SORITES_CAP) / SORITES_GRAIN))
+    expect(preview.unsettle).toBe(overflowUnsettle(36 - SORITES_CAP))
+    expect(preview.unsettle).toBe(OVERFLOW.max)
     expect(endTurn(battle).lastRound?.unsettleLoss).toBe(preview.unsettle)
   })
 

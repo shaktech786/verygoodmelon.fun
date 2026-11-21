@@ -21,7 +21,8 @@ import { battleAction } from '@/lib/games/thought-pockets/engine/run'
 import { tutorialHint } from '@/lib/games/thought-pockets/engine/tutorial'
 import { describeCard, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { timesWord } from '@/lib/games/thought-pockets/data/conclusion'
-import { TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { OVERFLOW_TEXT, PROBLEM_LINES, PROBLEM_RULE, TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
+import { argueLabel } from '@/lib/games/thought-pockets/data/turnText'
 import { TIRING } from '@/lib/games/thought-pockets/data/pace'
 import { keywordText } from '@/lib/games/thought-pockets/data/keywords'
 import { useInsightStore, useRunStore } from '@/lib/games/thought-pockets/store/runStore'
@@ -92,8 +93,9 @@ function incomingLine(preview: ArgumentPreview): string {
   if (preview.enemyFalls === 'argument') return 'Your argument will end this before it acts.'
   if (preview.enemyFalls === 'unsettle') return `Your argument, then Unsettle ${preview.unsettleTick}, will end this before it acts.`
   if (preview.postpone) return 'Postponed: it will not act this round.'
-  const held = `your ${preview.heldFocus} unspent Focus ${preview.heldFocus === 1 ? 'becomes' : 'become'} ${preview.composure} Guard`
-  const fromFocus = preview.composure > 0 ? `, ${preview.composure} of it from ${preview.heldFocus} unspent Focus` : ''
+  const carried = preview.focusCarried > 0 ? ` (The Long View carries ${preview.focusCarried} more to next turn)` : ''
+  const held = `your ${preview.heldFocus} unspent Focus ${preview.heldFocus === 1 ? 'becomes' : 'become'} ${preview.composure} Guard${carried}`
+  const fromFocus = preview.composure > 0 ? `, ${preview.composure} of it from ${preview.heldFocus} unspent Focus${carried}` : ''
   let usual: string
   if (preview.incoming === 0) usual = 'No attack this round.'
   else if (preview.steps.length === 0 && preview.composure > 0 && preview.guard === preview.composure)
@@ -148,7 +150,7 @@ function aftermathLines(report: RoundReport, shift: string | null): string[] {
   if (report.gamble === 'miss') lines.push('Its gamble did not come off. The odds next round are exactly the same.')
   const why = report.ruleGuardNote ? ` (${report.ruleGuardNote.charAt(0).toLowerCase()}${report.ruleGuardNote.slice(1)})` : ''
   if (report.enemyGuardGained > 0) lines.push(`It raised ${report.enemyGuardGained} Guard${why}.`)
-  if (report.spill > 0) lines.push(`What went past its half-Resolve line shook it: Unsettle ${report.spill}, felt next round.`)
+  if (report.spill > 0) lines.push(`What went past the line it stopped at shook it: Unsettle ${report.spill}, felt next round.`)
   if (report.doubtsAdded > 0) lines.push('A Doubt went into your draw pile.')
   if (report.restored > 0) lines.push(`You lost nothing this round, so you restored ${report.restored} Resolve.`)
   if (report.phaseChanged && shift) lines.push(shift)
@@ -259,9 +261,10 @@ function ThreatPanel({ battle: live, preview, known, show }: { battle: BattleSta
           <p className="mt-0.5 text-[0.8rem] leading-snug text-[var(--tp-text)] sm:text-sm" data-testid="enemy-rule">
             {enemyRuleText(battle)}
           </p>
-          {def.phase2 && threshold !== null && (
+          {def.phase2 && (
             <p className="mt-0.5 text-xs leading-snug text-[var(--tp-muted)]" data-testid="phase-warning">
-              At half Resolve ({threshold}) it changes, and no round can take it lower until it has. {def.phase2.ruleText}
+              {threshold !== null && `At half Resolve (${threshold}) it changes: ${def.phase2.ruleText} `}
+              {enemyRuleText(battle).includes(OVERFLOW_TEXT) ? PROBLEM_LINES : PROBLEM_RULE}
             </p>
           )}
           <TiringNote battle={live} />
@@ -368,14 +371,14 @@ function ArgumentPanel({ battle, preview, show, reduced }: { battle: BattleState
             ))}
             {empty && <li className="py-0.5 text-sm text-[var(--tp-muted)]">Play cards to build it. It lands when you end your turn.</li>}
           </ol>
-          <Equation preview={preview} focus={battle.focus} />
+          <Equation preview={preview} />
         </>
       )}
     </section>
   )
 }
 
-function Equation({ preview, focus }: { preview: ArgumentPreview; focus: number }) {
+function Equation({ preview }: { preview: ArgumentPreview }) {
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--tp-text)]" data-testid="equation">
       <span>
@@ -420,7 +423,7 @@ function Equation({ preview, focus }: { preview: ArgumentPreview; focus: number 
       {preview.guard > 0 && (
         <Chip tone="guard">
           Your Guard {preview.guard}
-          {preview.composure > 0 && <span className="font-normal">({preview.composure} from {focus} unspent Focus)</span>}
+          {preview.composure > 0 && <span className="font-normal">({preview.composure} from {preview.heldFocus} unspent Focus)</span>}
         </Chip>
       )}
       {preview.unsettle > 0 && <Chip tone="good">Unsettle +{preview.unsettle}</Chip>}
@@ -514,8 +517,7 @@ export function BattleScreen({ run }: { run: RunState }) {
 
   const inspectedCard = battle.hand.find((c) => c.uid === inspected)
   const inspectedDef = inspectedCard ? resolveCard(inspectedCard) : null
-  const nothingPlayed = preview.steps.length === 0 && preview.carriedWeight + preview.doubtWeight === 0
-  const action = nothingPlayed ? (preview.composure > 0 ? `Hold: ${preview.composure} Guard` : 'No argument') : `Argue for ${preview.damage}`
+  const action = argueLabel(preview)
   const danger = lethal(battle, preview)
 
   return (

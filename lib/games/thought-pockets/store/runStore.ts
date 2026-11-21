@@ -1,11 +1,11 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
-import { Mode, RunState, School } from '@/types/thought-pockets'
-import { RUN_VERSION, migrateRun, newRun } from '../engine/run'
+import { Mode, RunLength, RunState, School } from '@/types/thought-pockets'
+import { RUN_VERSION, migrateRun, newRun, opensNextLevel } from '../engine/run'
 
 interface RunStore {
   run: RunState | null
-  start: (school: School, seed: number, mode: Mode, rigor: number) => void
+  start: (school: School, seed: number, mode: Mode, rigor: number, length: RunLength) => void
   abandon: () => void
   act: (action: (run: RunState) => RunState) => void
 }
@@ -18,7 +18,7 @@ export const useRunStore = create<RunStore>()(
   persist(
     (set) => ({
       run: null,
-      start: (school, seed, mode, rigor) => set({ run: newRun(school, seed, mode, useInsightStore.getState().beaten, rigor) }),
+      start: (school, seed, mode, rigor, length) => set({ run: newRun(school, seed, mode, useInsightStore.getState().beaten, rigor, length) }),
       abandon: () => set({ run: null }),
       act: (action) =>
         set((state) => {
@@ -45,7 +45,7 @@ interface InsightStore {
   beaten: string[]
   finishedWith: School[]
   tutorialDone: boolean
-  /** The highest Rigorous level won; the next one up is open. */
+  /** The highest Rigorous level won on a Long walk; the next one up is open. */
   rigorWon: number
   record: (run: RunState) => void
 }
@@ -64,7 +64,7 @@ export const useInsightStore = create<InsightStore>()(
           const victory = run.screen === 'victory'
           const finished = victory && !state.finishedWith.includes(run.school)
           const tutorialDone = state.tutorialDone || run.beaten.length > 0
-          const rigorWon = victory ? Math.max(state.rigorWon, run.rigor) : state.rigorWon
+          const rigorWon = opensNextLevel(run) ? Math.max(state.rigorWon, run.rigor) : state.rigorWon
           if (fresh.length === 0 && !finished && tutorialDone === state.tutorialDone && rigorWon === state.rigorWon) return state
           return {
             beaten: [...state.beaten, ...fresh],

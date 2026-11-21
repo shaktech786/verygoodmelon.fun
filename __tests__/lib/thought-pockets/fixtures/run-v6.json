@@ -1,0 +1,503 @@
+{
+ "state": {
+  "run": {
+   "version": 6,
+   "seed": 6161,
+   "rng": 2526547214,
+   "school": "skeptic",
+   "mode": "gentle",
+   "rigor": 0,
+   "reconsiders": 1,
+   "known": [],
+   "floor": 1,
+   "map": [
+    {
+     "id": "f1-r0-l0",
+     "type": "battle",
+     "row": 0,
+     "lane": 0,
+     "lanes": 1,
+     "next": [
+      "f1-r1-l0",
+      "f1-r1-l1",
+      "f1-r1-l2"
+     ],
+     "enemyId": "jumping_to_conclusions"
+    },
+    {
+     "id": "f1-r1-l0",
+     "type": "shop",
+     "row": 1,
+     "lane": 0,
+     "lanes": 3,
+     "next": [
+      "f1-r2-l0"
+     ]
+    },
+    {
+     "id": "f1-r1-l1",
+     "type": "battle",
+     "row": 1,
+     "lane": 1,
+     "lanes": 3,
+     "next": [
+      "f1-r2-l1",
+      "f1-r2-l2"
+     ],
+     "enemyId": "dunning_kruger"
+    },
+    {
+     "id": "f1-r1-l2",
+     "type": "event",
+     "row": 1,
+     "lane": 2,
+     "lanes": 3,
+     "next": [
+      "f1-r2-l2"
+     ]
+    },
+    {
+     "id": "f1-r2-l0",
+     "type": "treasure",
+     "row": 2,
+     "lane": 0,
+     "lanes": 3,
+     "next": [
+      "f1-r3-l0"
+     ]
+    },
+    {
+     "id": "f1-r2-l1",
+     "type": "elite",
+     "row": 2,
+     "lane": 1,
+     "lanes": 3,
+     "next": [
+      "f1-r3-l1",
+      "f1-r3-l2"
+     ],
+     "enemyId": "confirmation_bias"
+    },
+    {
+     "id": "f1-r2-l2",
+     "type": "battle",
+     "row": 2,
+     "lane": 2,
+     "lanes": 3,
+     "next": [
+      "f1-r3-l2"
+     ],
+     "enemyId": "sunk_cost"
+    },
+    {
+     "id": "f1-r3-l0",
+     "type": "shop",
+     "row": 3,
+     "lane": 0,
+     "lanes": 3,
+     "next": [
+      "f1-r4-l0"
+     ]
+    },
+    {
+     "id": "f1-r3-l1",
+     "type": "rest",
+     "row": 3,
+     "lane": 1,
+     "lanes": 3,
+     "next": [
+      "f1-r4-l0"
+     ]
+    },
+    {
+     "id": "f1-r3-l2",
+     "type": "event",
+     "row": 3,
+     "lane": 2,
+     "lanes": 3,
+     "next": [
+      "f1-r4-l0"
+     ]
+    },
+    {
+     "id": "f1-r4-l0",
+     "type": "boss",
+     "row": 4,
+     "lane": 0,
+     "lanes": 1,
+     "next": [],
+     "enemyId": "problem_of_induction"
+    }
+   ],
+   "position": "f1-r0-l0",
+   "visited": [
+    "f1-r0-l0"
+   ],
+   "resolve": 60,
+   "maxResolve": 60,
+   "gold": 40,
+   "deck": [
+    {
+     "uid": 1,
+     "cardId": "observation",
+     "upgraded": false
+    },
+    {
+     "uid": 2,
+     "cardId": "observation",
+     "upgraded": false
+    },
+    {
+     "uid": 3,
+     "cardId": "observation",
+     "upgraded": false
+    },
+    {
+     "uid": 4,
+     "cardId": "observation",
+     "upgraded": false
+    },
+    {
+     "uid": 5,
+     "cardId": "caveat",
+     "upgraded": false
+    },
+    {
+     "uid": 6,
+     "cardId": "caveat",
+     "upgraded": false
+    },
+    {
+     "uid": 7,
+     "cardId": "caveat",
+     "upgraded": false
+    },
+    {
+     "uid": 8,
+     "cardId": "therefore",
+     "upgraded": false
+    },
+    {
+     "uid": 9,
+     "cardId": "why",
+     "upgraded": false
+    },
+    {
+     "uid": 10,
+     "cardId": "probing_question",
+     "upgraded": false
+    }
+   ],
+   "nextUid": 11,
+   "relics": [],
+   "removals": 0,
+   "screen": "battle",
+   "battle": {
+    "enemy": {
+     "id": "jumping_to_conclusions",
+     "health": 18,
+     "maxHealth": 26,
+     "guard": 0,
+     "strength": 0,
+     "unsettle": 0,
+     "moveIndex": 1,
+     "seen": [
+      "observation"
+     ],
+     "phase": 1,
+     "gambleHit": false,
+     "misses": 0,
+     "secondRule": false
+    },
+    "player": {
+     "resolve": 58,
+     "maxResolve": 60,
+     "guard": 0
+    },
+    "relics": [],
+    "school": "skeptic",
+    "turn": 2,
+    "focus": 2,
+    "hand": [
+     {
+      "uid": 1,
+      "cardId": "observation",
+      "upgraded": false
+     },
+     {
+      "uid": 4,
+      "cardId": "observation",
+      "upgraded": false
+     },
+     {
+      "uid": 6,
+      "cardId": "caveat",
+      "upgraded": false
+     },
+     {
+      "uid": 2,
+      "cardId": "observation",
+      "upgraded": false
+     },
+     {
+      "uid": 5,
+      "cardId": "caveat",
+      "upgraded": false
+     }
+    ],
+    "drawPile": [
+     {
+      "uid": 3,
+      "cardId": "observation",
+      "upgraded": false
+     },
+     {
+      "uid": 9,
+      "cardId": "why",
+      "upgraded": false
+     },
+     {
+      "uid": 8,
+      "cardId": "therefore",
+      "upgraded": false
+     },
+     {
+      "uid": 7,
+      "cardId": "caveat",
+      "upgraded": false
+     }
+    ],
+    "discardPile": [],
+    "played": [
+     {
+      "uid": 10,
+      "cardId": "probing_question",
+      "upgraded": false
+     }
+    ],
+    "exhausted": [],
+    "lastingMultiplier": 0,
+    "evidencePlayed": 1,
+    "lastingRestore": 0,
+    "unsettleLasts": false,
+    "firstLogicDiscountUsed": false,
+    "carriedWeight": 0,
+    "carriedFocus": 0,
+    "lastConclusionType": "evidence",
+    "piercedOnce": true,
+    "tiresFrom": 10,
+    "nextUid": 11,
+    "rng": 2844317879,
+    "outcome": "ongoing",
+    "lastRound": {
+     "turn": 1,
+     "steps": [
+      {
+       "uid": 3,
+       "name": "Observation",
+       "type": "evidence",
+       "weight": 8,
+       "multiplier": 0,
+       "guard": 0,
+       "unsettle": 0,
+       "conclusion": true,
+       "times": 2,
+       "notes": [
+        "Conclusion: counts twice"
+       ]
+      }
+     ],
+     "carriedWeight": 0,
+     "doubtWeight": 0,
+     "lastingMultiplier": 0,
+     "weight": 8,
+     "multiplier": 1,
+     "product": 8,
+     "modifiers": [],
+     "chain": [],
+     "raw": 8,
+     "guardBroken": false,
+     "blocked": 0,
+     "damage": 8,
+     "healedBack": 0,
+     "selfLoss": 0,
+     "postponed": false,
+     "enemyAttack": 6,
+     "enemyBlocked": 4,
+     "playerLoss": 2,
+     "enemyGuardGained": 0,
+     "unsettleLoss": 0,
+     "doubtsAdded": 0,
+     "growth": 0,
+     "phaseChanged": false,
+     "gamble": null,
+     "restored": 0,
+     "spill": 0,
+     "ruleGuard": 0,
+     "ruleGuardNote": null
+    },
+    "undo": [
+     {
+      "enemy": {
+       "id": "jumping_to_conclusions",
+       "health": 18,
+       "maxHealth": 26,
+       "guard": 0,
+       "strength": 0,
+       "unsettle": 0,
+       "moveIndex": 1,
+       "seen": [
+        "observation"
+       ],
+       "phase": 1,
+       "gambleHit": false,
+       "misses": 0,
+       "secondRule": false
+      },
+      "player": {
+       "resolve": 58,
+       "maxResolve": 60,
+       "guard": 0
+      },
+      "relics": [],
+      "school": "skeptic",
+      "turn": 2,
+      "focus": 3,
+      "hand": [
+       {
+        "uid": 10,
+        "cardId": "probing_question",
+        "upgraded": false
+       },
+       {
+        "uid": 1,
+        "cardId": "observation",
+        "upgraded": false
+       },
+       {
+        "uid": 4,
+        "cardId": "observation",
+        "upgraded": false
+       },
+       {
+        "uid": 6,
+        "cardId": "caveat",
+        "upgraded": false
+       },
+       {
+        "uid": 2,
+        "cardId": "observation",
+        "upgraded": false
+       }
+      ],
+      "drawPile": [],
+      "discardPile": [
+       {
+        "uid": 8,
+        "cardId": "therefore",
+        "upgraded": false
+       },
+       {
+        "uid": 5,
+        "cardId": "caveat",
+        "upgraded": false
+       },
+       {
+        "uid": 9,
+        "cardId": "why",
+        "upgraded": false
+       },
+       {
+        "uid": 7,
+        "cardId": "caveat",
+        "upgraded": false
+       },
+       {
+        "uid": 3,
+        "cardId": "observation",
+        "upgraded": false
+       }
+      ],
+      "played": [],
+      "exhausted": [],
+      "lastingMultiplier": 0,
+      "evidencePlayed": 1,
+      "lastingRestore": 0,
+      "unsettleLasts": false,
+      "firstLogicDiscountUsed": false,
+      "carriedWeight": 0,
+      "carriedFocus": 0,
+      "lastConclusionType": "evidence",
+      "piercedOnce": true,
+      "tiresFrom": 10,
+      "nextUid": 11,
+      "rng": 4107989219,
+      "outcome": "ongoing",
+      "lastRound": {
+       "turn": 1,
+       "steps": [
+        {
+         "uid": 3,
+         "name": "Observation",
+         "type": "evidence",
+         "weight": 8,
+         "multiplier": 0,
+         "guard": 0,
+         "unsettle": 0,
+         "conclusion": true,
+         "times": 2,
+         "notes": [
+          "Conclusion: counts twice"
+         ]
+        }
+       ],
+       "carriedWeight": 0,
+       "doubtWeight": 0,
+       "lastingMultiplier": 0,
+       "weight": 8,
+       "multiplier": 1,
+       "product": 8,
+       "modifiers": [],
+       "chain": [],
+       "raw": 8,
+       "guardBroken": false,
+       "blocked": 0,
+       "damage": 8,
+       "healedBack": 0,
+       "selfLoss": 0,
+       "postponed": false,
+       "enemyAttack": 6,
+       "enemyBlocked": 4,
+       "playerLoss": 2,
+       "enemyGuardGained": 0,
+       "unsettleLoss": 0,
+       "doubtsAdded": 0,
+       "growth": 0,
+       "phaseChanged": false,
+       "gamble": null,
+       "restored": 0,
+       "spill": 0,
+       "ruleGuard": 0,
+       "ruleGuardNote": null
+      }
+     }
+    ]
+   },
+   "reward": null,
+   "shop": null,
+   "event": null,
+   "eventsSeen": [],
+   "pick": null,
+   "defeatedBy": null,
+   "defeatRound": null,
+   "beaten": [],
+   "stats": {
+    "turns": 0,
+    "fights": 1,
+    "nodes": 1,
+    "best": 8
+   }
+  }
+ },
+ "version": 6
+}

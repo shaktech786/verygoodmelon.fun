@@ -9,6 +9,7 @@ import {
   RelicId,
   RewardState,
   RoundReport,
+  RunLength,
   RunState,
   School,
   ShopState,
@@ -38,7 +39,7 @@ import {
   TEACH_GOLD,
   getEventDef,
 } from '../data/events'
-import { createBattle } from './battle'
+import { createBattle, incomingDamage } from './battle'
 import {
   CARD_PRICES,
   FIGHT_GOLD,
@@ -55,9 +56,11 @@ import {
 import { generateFloor } from './map'
 import { pick, roll, rollInt, seedRng, shuffle } from './rng'
 
-export const RUN_VERSION = 6
+export const RUN_VERSION = 7
 export const START_RESOLVE = 60
-export const FLOORS = 3
+export const RUN_FLOORS: Record<RunLength, number> = { short: 1, long: 3 }
+/** Below this share of your Resolve, the map warns before any fight. */
+const LOW_RESOLVE_SHARE = 0.25
 const DEFAULT_RIGOR = RIGOR.harder
 const CARD_CHOICES = 3
 const RELIC_CHOICES = 2
@@ -71,13 +74,13 @@ function instances(cardIds: string[], firstUid: number): CardInstance[] {
 }
 
 /**
- * `known` lists the opponents beaten in earlier runs. In Rigorous, `rigor` is the level from 1 to 5;
+ * `known` lists the opponents beaten in earlier runs. In Rigorous, `rigor` is the level from 1 to MAX_RIGOR;
  * left out, a Rigorous run plays at level 3, the old single Rigorous setting.
  */
-export function newRun(school: School, seed: number, mode: Mode = 'gentle', known: string[] = [], rigor?: number): RunState {
+export function newRun(school: School, seed: number, mode: Mode = 'gentle', known: string[] = [], rigor?: number, length: RunLength = 'long'): RunState {
   const level = mode === 'gentle' ? 0 : rigor ?? DEFAULT_RIGOR
   const rng = seedRng(seed)
-  const floor = generateFloor(1, rng)
+  const floor = generateFloor(1, rng, mode === 'gentle')
   const deck = instances([...getSchoolDef(school).deck, ...(level >= RIGOR.doubt ? ['doubt'] : [])], 1)
   return {
     version: RUN_VERSION,
@@ -85,6 +88,7 @@ export function newRun(school: School, seed: number, mode: Mode = 'gentle', know
     rng: floor.rng,
     school,
     mode,
+    length,
     rigor: level,
     reconsiders: level >= RIGOR.noMercy ? 0 : 1,
     known,
@@ -141,9 +145,17 @@ function rollRarity(rng: number, source: RewardState['source'] | 'shop'): { rari
   return { rarity, rng: r.rng }
 }
 
+/** A rare to build around: one of your school's you do not have yet, when there is one. */
+function buildAroundRare(run: RunState, taken: string[], rng: number): { cardId: string; rng: number } {
+  const open = CARDS.filter((c) => c.rarity === 'rare' && !taken.includes(c.id) && !run.deck.some((d) => d.cardId === c.id))
+  const own = open.filter((c) => c.school === run.school)
+  const choice = pick(own.length > 0 ? own : open.length > 0 ? open : CARDS.filter((c) => c.rarity === 'rare' && !taken.includes(c.id)), rng)
+  return { cardId: choice.item.id, rng: choice.rng }
+}
+
 /**
  * On the first floor the first offer leans toward your school so a build can start, and the first
- * problem always offers one of your school's rares; after that every offer comes from everything.
+ * problem always offers one of your school's rares you lack; after that every offer comes from everything.
  */
 function rollCards(run: RunState, count: number, source: RewardState['source'] | 'shop'): { cards: string[]; rng: number } {
   let state = run.rng
@@ -151,8 +163,13 @@ function rollCards(run: RunState, count: number, source: RewardState['source'] |
   for (let i = 0; i < count; i++) {
     const rarity = rollRarity(state, source)
     state = rarity.rng
-    const wanted = i === 0 && run.floor === 1 && source === 'boss' ? 'rare' : rarity.rarity
-    let pool = cardPool(run, wanted).filter((c) => !cards.includes(c.id))
+    if (i === 0 && run.floor === 1 && source === 'boss') {
+      const rare = buildAroundRare(run, cards, state)
+      state = rare.rng
+      cards.push(rare.cardId)
+      continue
+    }
+    let pool = cardPool(run, rarity.rarity).filter((c) => !cards.includes(c.id))
     const ownSchool = pool.filter((c) => c.school === run.school)
     if (i === 0 && run.floor === 1 && ownSchool.length > 0) pool = ownSchool
     if (pool.length === 0) pool = CARDS.filter((c) => c.rarity === 'common' && !cards.includes(c.id))
@@ -173,7 +190,16 @@ function choiceCount(run: RunState): number {
   return CARD_CHOICES + (run.relics.includes('pocket_notebook') ? 1 : 0)
 }
 
+export function isLastFloor(run: RunState): boolean {
+  return run.floor === RUN_FLOORS[run.length]
+}
+
+/** The last problem of a run gives nothing to choose: the run is over, so only the winning argument and what it taught remain. */
 function makeReward(run: RunState, source: RewardState['source'], finalRound: RoundReport | null = null): RunState {
+  if (source === 'boss' && isLastFloor(run)) {
+    const reward: RewardState = { source, gold: 0, cardChoices: [], cardTaken: true, relicChoices: [], relicTaken: true, finalRound }
+    return { ...run, reward, screen: 'reward' }
+  }
   let next = run
   let gold = 0
   if (source !== 'treasure') {
@@ -209,10 +235,19 @@ function priced(run: RunState, base: number): number {
   return shopPrice(base, run.floor, run.relics)
 }
 
+/** Every shop keeps one rare on the shelf, so a build-around card can be bought, not only hoped for. */
 function makeShop(run: RunState): RunState {
   const rolledCards = rollCards(run, SHOP_CARDS, 'shop')
   let next = { ...run, rng: rolledCards.rng }
-  const cards = rolledCards.cards.map((cardId) => {
+  let stock = rolledCards.cards
+  const rare = (id: string) => getCardDef(id).rarity === 'rare'
+  const lacking = CARDS.some((c) => rare(c.id) && c.school === run.school && !run.deck.some((d) => d.cardId === c.id))
+  if (!stock.some((id) => rare(id) && (!lacking || getCardDef(id).school === run.school))) {
+    const extra = buildAroundRare(next, stock, next.rng)
+    next = { ...next, rng: extra.rng }
+    stock = [...stock.slice(0, -1), extra.cardId]
+  }
+  const cards = stock.map((cardId) => {
     const jitter = rollInt(next.rng, 0, 10)
     next = { ...next, rng: jitter.rng }
     const rarity = getCardDef(cardId).rarity as Rarity
@@ -336,11 +371,30 @@ export function battleAction(run: RunState, action: (battle: BattleState) => Bat
   return { ...tracked, battle }
 }
 
-/** Once per gentle run: go back to the start of the fight you just lost, with the Resolve you had then and a fresh shuffle. */
+/** The Resolve Reconsider gives back: what you entered with, and never less than half. */
+export function reconsiderResolve(run: RunState): number {
+  return Math.max(run.resolve, Math.ceil(run.maxResolve / 2))
+}
+
+/** Once per gentle run: go back to the start of the fight you just lost, with at least half your Resolve and a fresh shuffle. */
 export function reconsider(run: RunState): RunState {
   const enemyId = run.defeatedBy
   if (run.screen !== 'defeat' || run.reconsiders === 0 || !enemyId) return run
-  return startFight({ ...run, reconsiders: run.reconsiders - 1, defeatedBy: null, defeatRound: null }, enemyId)
+  return startFight({ ...run, resolve: reconsiderResolve(run), reconsiders: run.reconsiders - 1, defeatedBy: null, defeatRound: null }, enemyId)
+}
+
+/** Whether to warn before a fight: you would enter it with no more Resolve than its opening attack, or with a quarter or less. */
+export function fightWarning(run: RunState, node: MapNode): { resolve: number; attack: number } | null {
+  if (!node.enemyId) return null
+  const battle = startFight(run, node.enemyId).battle as BattleState
+  const attack = incomingDamage(battle, 0).total
+  if (run.resolve > attack && run.resolve > run.maxResolve * LOW_RESOLVE_SHARE) return null
+  return { resolve: run.resolve, attack }
+}
+
+/** A Rigorous level is earned on the Long walk; a Short walk at that level is practice for it. */
+export function opensNextLevel(run: RunState): boolean {
+  return run.screen === 'victory' && run.mode === 'rigorous' && run.length === 'long'
 }
 
 export function takeCard(run: RunState, cardId: string): RunState {
@@ -361,9 +415,9 @@ export function takeRelic(run: RunState, relicId: RelicId): RunState {
 }
 
 function advanceFloor(run: RunState): RunState {
-  if (run.floor === FLOORS) return { ...run, reward: null, screen: 'victory' }
+  if (isLastFloor(run)) return { ...run, reward: null, screen: 'victory' }
   const floor = (run.floor + 1) as 2 | 3
-  const generated = generateFloor(floor, run.rng)
+  const generated = generateFloor(floor, run.rng, run.mode === 'gentle')
   return {
     ...run,
     floor,
@@ -651,6 +705,13 @@ function fromVersion5(saved: Saved): Saved {
   return { ...saved, battle, defeatRound: null, reward: isRecord(saved.reward) ? { ...saved.reward, finalRound: null } : null }
 }
 
+/** Version 7 added run lengths (every earlier run was the Long walk) and the pace inside each battle; damage steps gained a short form, so round summaries are dropped. */
+function fromVersion6(saved: Saved): Saved {
+  const rigor = typeof saved.rigor === 'number' ? saved.rigor : 0
+  const battle = isRecord(saved.battle) ? eachCore(saved.battle, (core) => ({ ...core, rigor, lastRound: null })) : null
+  return { ...saved, length: 'long', battle, defeatRound: null, reward: isRecord(saved.reward) ? { ...saved.reward, finalRound: null } : null }
+}
+
 /** Loads a saved run from any earlier version this game shipped, or returns null if it cannot be read. */
 export function migrateRun(saved: unknown, version: number): RunState | null {
   if (!isRecord(saved)) return null
@@ -658,5 +719,6 @@ export function migrateRun(saved: unknown, version: number): RunState | null {
   if (version < 3 || version > RUN_VERSION) return null
   const v4 = version === 3 ? fromVersion3(saved) : saved
   const v5 = version <= 4 ? fromVersion4(v4) : v4
-  return { ...fromVersion5(v5), version: RUN_VERSION } as unknown as RunState
+  const v6 = version <= 5 ? fromVersion5(v5) : v5
+  return { ...fromVersion6(v6), version: RUN_VERSION } as unknown as RunState
 }

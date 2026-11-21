@@ -8,7 +8,7 @@ export const SCHOOLS: SchoolDef[] = [
   {
     id: 'empiricist',
     name: 'Empiricist',
-    difficulty: 'Easy',
+    difficulty: { gentle: 'Easy', rigorous: 'Medium' },
     tagline: 'Pile up Evidence until the Weight is undeniable.',
     passive: `When your Conclusion is Evidence, it counts ${timesWord(EMPIRICIST_EVIDENCE_TIMES)} instead of ${timesWord(CONCLUSION_TIMES)}.`,
     deck: [...CORE, 'therefore', 'statistic', 'corroboration'],
@@ -16,7 +16,7 @@ export const SCHOOLS: SchoolDef[] = [
   {
     id: 'pragmatist',
     name: 'Pragmatist',
-    difficulty: 'Easy',
+    difficulty: { gentle: 'Easy', rigorous: 'Medium' },
     tagline: 'Defend well, then turn the defence into a point.',
     passive: 'Guard you still have after the enemy acts becomes Weight in your next argument.',
     deck: [...CORE, 'steelman', 'measured_reply', 'measured_reply'],
@@ -24,7 +24,7 @@ export const SCHOOLS: SchoolDef[] = [
   {
     id: 'rationalist',
     name: 'Rationalist',
-    difficulty: 'Hard',
+    difficulty: { gentle: 'Easy', rigorous: 'Medium' },
     tagline: 'Few facts, many inferences. Stack the Multiplier.',
     passive: 'The first Logic card you play each turn costs 0 Focus.',
     deck: [...CORE, 'therefore', 'modus_ponens', 'anecdote'],
@@ -32,7 +32,7 @@ export const SCHOOLS: SchoolDef[] = [
   {
     id: 'absurdist',
     name: 'Absurdist',
-    difficulty: 'Easy',
+    difficulty: { gentle: 'Medium', rigorous: 'Hard' },
     tagline: 'Your deck starts with Doubt. Carry it anyway.',
     passive: `Each Doubt in your hand adds ${DOUBT_WEIGHT} Weight to your argument.`,
     deck: ['observation', 'observation', 'observation', 'observation', 'caveat', 'caveat', 'therefore', 'therefore', 'amor_fati', 'doubt', 'doubt'],
@@ -40,7 +40,7 @@ export const SCHOOLS: SchoolDef[] = [
   {
     id: 'skeptic',
     name: 'Skeptic',
-    difficulty: 'Medium',
+    difficulty: { gentle: 'Easy', rigorous: 'Hard' },
     tagline: 'Keep asking questions and let the doubt do the work.',
     passive: 'Whenever you Unsettle, Unsettle 2 more.',
     deck: [...CORE, 'therefore', 'why', 'probing_question'],

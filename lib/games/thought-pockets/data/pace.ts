@@ -4,7 +4,7 @@ export const RIGOROUS_HEALTH = 1.25
 export const RIGOROUS_ATTACK = 2
 export const MAX_RIGOR = 7
 /** A fight has no turn limit. From this turn the bias tires instead, Unsettled `step` more each turn, so a long fight always ends. */
-export const TIRING = { gentle: 10, rigorous: 16, step: 2 } as const
+export const TIRING = { gentle: 7, rigorous: 16, step: 2 } as const
 
 /** The level at which each Rigorous constraint begins. Every level adds exactly one. */
 export const RIGOR = {
