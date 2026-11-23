@@ -10,11 +10,10 @@ import { conclusionLine } from '@/lib/games/thought-pockets/data/conclusion'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { COMPOSURE_GUARD } from '@/lib/games/thought-pockets/engine/battle'
 import { PROBLEM_RULE, slowGroundText } from '@/lib/games/thought-pockets/data/enemies'
-import { RUN_FLOORS } from '@/lib/games/thought-pockets/engine/run'
 import { TIRING } from '@/lib/games/thought-pockets/data/pace'
 import { AmbientSoundscape } from '@/components/ui/AmbientSoundscape'
 import { BattleScreen, PlayerResolve, PlayerShown, PlayerShownContext } from './BattleScreen'
-import { MapScreen, FLOOR_NAMES } from './MapScreen'
+import { MapScreen, FLOOR_NAMES, WALK_STRETCH } from './MapScreen'
 import { EventScreen, RestScreen, RewardScreen, ShopScreen, quietButton } from './NodeScreens'
 import { EndScreen, MenuScreen, paceName, runInProgress } from './MenuScreens'
 import { TYPE_COLORS } from './CardFace'
@@ -215,7 +214,7 @@ function StatusBar({ run, shown, onMenu, onDeck, onHelp }: { run: RunState; show
   return (
     <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-[var(--tp-text)] sm:mb-3 sm:gap-x-4">
       <p className="font-serif">
-        <span className="font-semibold">{run.length === 'short' ? 'Short walk' : `Floor ${run.floor} of ${RUN_FLOORS.long}`}</span>
+        <span className="font-semibold">{run.length === 'short' ? 'Short walk' : WALK_STRETCH[run.floor]}</span>
         <span className="hidden text-[var(--tp-muted)] sm:inline"> · {FLOOR_NAMES[run.floor]}</span>
       </p>
       <p className="flex items-center gap-2" data-testid="player-resolve">

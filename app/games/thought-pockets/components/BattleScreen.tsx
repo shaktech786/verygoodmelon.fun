@@ -895,7 +895,7 @@ export function BattleScreen({ run }: { run: RunState }) {
         data-testid="hand-dock"
       >
         {hint && (
-          <p role="status" className={`${replaying ? 'max-sm:hidden' : ''} rounded-md border border-[var(--tp-accent)] bg-[var(--tp-ink-2)] px-3 py-1.5 text-sm text-[var(--tp-text)]`} data-testid="hint">
+          <p role="status" className={`${replaying ? 'max-sm:hidden' : ''} rounded-md border border-[var(--tp-good)] bg-[var(--tp-ink-2)] px-3 py-1.5 text-sm text-[var(--tp-text)]`} data-testid="hint">
             {hint}
           </p>
         )}
@@ -960,7 +960,7 @@ export function BattleScreen({ run }: { run: RunState }) {
             <Term word="Focus" />
             <span className="flex gap-1" aria-hidden="true">
               {Array.from({ length: Math.max(battle.focus, 3) }, (_, i) => (
-                <span key={i} className={`h-3.5 w-3.5 border-2 border-[var(--tp-accent)] ${i < battle.focus ? 'bg-[var(--tp-accent)]' : ''}`} />
+                <span key={i} className={`h-3.5 w-3.5 border-2 border-[var(--tp-good)] ${i < battle.focus ? 'bg-[var(--tp-good)]' : ''}`} />
               ))}
             </span>
             <span>{battle.focus} left</span>

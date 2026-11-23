@@ -153,7 +153,7 @@ test.describe('The Arena', () => {
       await openArena(page)
       await setUp(page, 'Ada Lovelace', 'Alan Turing', 'Can machines dream?')
       await page.getByRole('button', { name: 'Begin' }).click()
-      await expect(page.getByText('Round 1/6')).toBeVisible()
+      await expect(page.getByRole('img', { name: 'Near the start' })).toBeVisible()
       await expect(transcript(page).getByText(/makes point 1/)).toBeVisible()
       await expect(closing(page).getByText(CLOSING.question, { exact: true })).toBeVisible({ timeout: 45_000 })
     })

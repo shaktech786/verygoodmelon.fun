@@ -43,6 +43,15 @@ const ACTION = 'flex items-center gap-2'
 const FIELD =
   'w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring transition-colors'
 
+/** Where the debate stands, in words, so nothing on screen or in a screen reader counts rounds. */
+function debateInWords(finished: number, currentRound: number): string {
+  if (finished >= TOTAL_ROUNDS) return 'Every turn has been heard'
+  if (currentRound >= TOTAL_ROUNDS) return 'Last round'
+  if (finished < 2) return 'Near the start'
+  if (finished >= TOTAL_ROUNDS - 2) return 'Nearing the end'
+  return 'Midway through'
+}
+
 const DECLINE_LINES: Record<'voice' | 'topic' | 'unknown', string> = {
   voice: 'The Arena will not give voice to one of these speakers. The question can stay: try it with someone else.',
   topic: 'This is a question The Arena will not hold, whoever is asking. The voices can stay: try them on a different question.',
@@ -574,17 +583,12 @@ export default function MindDebate() {
       </section>
 
       {(phase === 'debating' || phase === 'stopped') && (
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <span className="text-sm font-medium text-foreground/80">
-            Round {currentRound}/{TOTAL_ROUNDS}
-          </span>
+        <div className="flex items-center justify-center mb-3">
           <div
-            className="flex gap-1"
-            role="progressbar"
-            aria-valuenow={history.length}
-            aria-valuemin={0}
-            aria-valuemax={TOTAL_ROUNDS}
-            aria-label={`${history.length} of ${TOTAL_ROUNDS} rounds finished`}
+            className="flex gap-1.5"
+            role="img"
+            data-testid="debate-dots"
+            aria-label={debateInWords(history.length, currentRound)}
           >
             {Array.from({ length: TOTAL_ROUNDS }, (_, i) => (
               <div

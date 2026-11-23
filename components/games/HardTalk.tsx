@@ -380,9 +380,11 @@ function HardTalkGame() {
                     ? 'In… and tap again as you let it go, slowly.'
                     : done
                       ? 'That’s three. Carry on whenever you like.'
-                      : counted > 0
-                        ? `${counted} of ${BREATHS_OFFERED}`
-                        : ''}
+                      : counted === BREATHS_OFFERED - 1
+                        ? 'One more, if you like.'
+                        : counted > 0
+                          ? 'Good. Another, whenever you’re ready.'
+                          : ''}
                 </p>
               </div>
             </>

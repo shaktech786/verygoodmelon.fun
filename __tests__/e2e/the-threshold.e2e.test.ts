@@ -123,7 +123,7 @@ test.describe('The Plain Speaker', () => {
     for (const n of [1, 2, 3]) {
       await button(page, 'I’m breathing in').click()
       await button(page, 'I’m breathing out').click()
-      if (n < 3) await expect(page.getByText(`${n} of 3`)).toBeVisible()
+      if (n < 3) await expect(page.getByText(n === 1 ? 'Good. Another, whenever you’re ready.' : 'One more, if you like.')).toBeVisible()
     }
     await expect(page.getByText('That’s three. Carry on whenever you like.')).toBeVisible()
     await next(page)
@@ -220,7 +220,7 @@ test.describe('The Plain Speaker', () => {
     await page.keyboard.press('Space')
     await expect(button(page, 'I’m breathing out')).toBeFocused()
     await page.keyboard.press('Space')
-    await expect(page.getByText('1 of 3')).toBeVisible()
+    await expect(page.getByText('Good. Another, whenever you’re ready.')).toBeVisible()
     await tabTo(button(page, 'Next'))
     await page.keyboard.press('Enter')
 

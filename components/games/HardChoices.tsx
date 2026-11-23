@@ -137,6 +137,14 @@ function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index:
   )
 }
 
+/** Where the player is in the set, in words, so no card counts dilemmas at them. */
+function dilemmaInWords(index: number, total: number): string {
+  if (index === total - 1) return 'The last one'
+  if (index < 2) return 'Near the start'
+  if (index >= total - 4) return 'Nearly there'
+  return 'Partway through'
+}
+
 export default function HardChoices() {
   const [currentDilemmaIndex, setCurrentDilemmaIndex] = useState(0)
   const [answers, setAnswers] = useState<Answers>({})
@@ -368,10 +376,8 @@ export default function HardChoices() {
           <div className="mb-8">
             <div className="flex items-center justify-between text-sm text-foreground/70 mb-2">
               <div className="flex items-center gap-2">
-                <span>
-                  {finished
-                    ? `All ${DILEMMAS.length} dilemmas`
-                    : `Dilemma ${currentDilemmaIndex + 1} of ${DILEMMAS.length}`}
+                <span data-dilemma-at={finished ? 'end' : currentDilemmaIndex + 1}>
+                  {finished ? 'The whole set' : dilemmaInWords(currentDilemmaIndex, DILEMMAS.length)}
                 </span>
                 {isRealtimeConnected && showResults && !finished && (
                   <span className="inline-flex items-center gap-1 text-xs">

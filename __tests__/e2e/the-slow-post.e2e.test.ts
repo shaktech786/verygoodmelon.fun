@@ -271,11 +271,11 @@ test.describe('The Keeper', () => {
     await expect(jars).toHaveCount(3)
     const names = await jars.evaluateAll((buttons) => buttons.map((b) => b.getAttribute('aria-label')))
     expect(new Set(names).size).toBe(3)
-    expect(names).toEqual(expect.arrayContaining([expect.stringMatching(/, 1 of 3$/), expect.stringMatching(/, 2 of 3$/), expect.stringMatching(/, 3 of 3$/)]))
+    expect(names).toEqual(expect.arrayContaining([expect.stringMatching(/, the first that day$/), expect.stringMatching(/, the second that day$/), expect.stringMatching(/, the third that day$/)]))
     for (const name of names) expect(name).not.toMatch(/Worry number/)
     // And by eye: each jar shows its place in the day, never its words
     const shown = await jars.evaluateAll((buttons) => buttons.map((b) => (b as HTMLElement).innerText.replace(/\s+/g, ' ')))
-    expect(shown).toEqual(expect.arrayContaining([expect.stringMatching(/1 of 3/), expect.stringMatching(/2 of 3/), expect.stringMatching(/3 of 3/)]))
+    expect(shown).toEqual(expect.arrayContaining([expect.stringMatching(/first that day/), expect.stringMatching(/second that day/), expect.stringMatching(/third that day/)]))
     for (const text of shown) expect(text).not.toMatch(/worry/i)
   })
 

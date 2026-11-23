@@ -78,7 +78,7 @@ describe('HardChoices', () => {
 
     render(<HardChoices />)
 
-    await waitFor(() => expect(screen.getByText('Dilemma 2 of 12')).toBeInTheDocument())
+    await waitFor(() => expect(document.querySelector('[data-dilemma-at="2"]')).not.toBeNull())
     expect(JSON.parse(mockLocalStorage.getItem('hardChoicesVotes') ?? '{}')).toEqual({ 'happiness-vs-meaning': 'A' })
     expect(JSON.parse(mockLocalStorage.getItem('hardChoicesCounted') ?? '[]')).toEqual(['happiness-vs-meaning'])
   })
@@ -86,7 +86,7 @@ describe('HardChoices', () => {
   it('starts cleanly from saved answers that cannot be read', async () => {
     mockLocalStorage.setItem('hardChoicesVotes', '{not json')
     render(<HardChoices />)
-    await waitFor(() => expect(screen.getByText('Dilemma 1 of 12')).toBeInTheDocument())
+    await waitFor(() => expect(document.querySelector('[data-dilemma-at="1"]')).not.toBeNull())
     expect(screen.getByRole('button', { name: /Choice A/i })).toHaveAttribute('aria-pressed', 'false')
   })
 
@@ -179,7 +179,7 @@ describe('HardChoices', () => {
 
     // The game resumes at the first unanswered dilemma; step back to the answered one
     await waitFor(() => {
-      expect(screen.getByText('Dilemma 2 of 12')).toBeInTheDocument()
+      expect(document.querySelector('[data-dilemma-at="2"]')).not.toBeNull()
     })
     fireEvent.click(screen.getByRole('button', { name: /Previous/i }))
 
@@ -244,7 +244,7 @@ describe('HardChoices', () => {
     render(<HardChoices />)
     fireEvent.click(screen.getByRole('button', { name: 'Let this one pass' }))
 
-    await waitFor(() => expect(screen.getByText('Dilemma 2 of 12')).toBeInTheDocument())
+    await waitFor(() => expect(document.querySelector('[data-dilemma-at="2"]')).not.toBeNull())
     expect(mockFetch).not.toHaveBeenCalledWith('/api/hard-choices/vote', expect.anything())
     expect(mockLocalStorage.setItem).toHaveBeenCalledWith('hardChoicesVotes', JSON.stringify({ 'happiness-vs-meaning': 'skip' }))
   })

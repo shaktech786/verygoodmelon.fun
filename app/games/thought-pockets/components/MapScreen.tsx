@@ -14,6 +14,9 @@ import { primaryButton } from './NodeScreens'
 
 export const FLOOR_NAMES = { 1: 'First Impressions', 2: 'Habits of Mind', 3: 'The Big Questions' } as const
 
+/** Where a Long walk has reached, in words rather than a floor count. */
+export const WALK_STRETCH = { 1: 'Early in the walk', 2: 'Deep in the walk', 3: 'The last stretch' } as const
+
 /** What the problem at the end of a Short walk adds, stated from the same constants the engine uses. */
 export const SHORT_WALK_BOSS_TEXT = `It ends the Short walk, so it holds nothing back: its attacks +${SHORT_WALK_BOSS.attack} and ${Math.round((SHORT_WALK_BOSS.health - 1) * 100)}% more Resolve.`
 

@@ -172,8 +172,8 @@ function momentContent(record: MomentRecord): { ops: KeepsakeOp[]; words: string
     case 'appreciate': {
       if (record.things.length === 0) {
         return {
-          ops: [text(700, 'Fifty seconds given to what is good today.', 44, { italic: true, lineHeight: 58, maxLines: 3 })],
-          words: ['Fifty seconds given to what is good today.'],
+          ops: [text(700, 'A little while given to what is good today.', 44, { italic: true, lineHeight: 58, maxLines: 3 })],
+          words: ['A little while given to what is good today.'],
         }
       }
       const gap = 150

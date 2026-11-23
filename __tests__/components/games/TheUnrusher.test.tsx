@@ -47,7 +47,7 @@ describe('TheUnrusher', () => {
   it('shows the seeds field while watching the seeds', () => {
     render(<TheUnrusher />)
     fireEvent.click(screen.getByText('Watch the Seeds'))
-    expect(screen.getByRole('img', { name: '0 of 8 seeds settled' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Seeds drifting, none settled yet' })).toBeInTheDocument()
   })
 
   it('returns to the moments when stopped', () => {

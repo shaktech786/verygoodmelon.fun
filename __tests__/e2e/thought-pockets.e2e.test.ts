@@ -35,6 +35,8 @@ async function fresh(page: Page, seed: number, tutorialDone = false, beaten: str
   )
   await page.reload()
   await expect(page.getByTestId('screen-menu')).toBeVisible()
+  // A first-timer's menu folds the full choices away; these tests drive them directly.
+  if (!tutorialDone && rigorWon === 0) await page.getByText('More choices').click()
 }
 
 async function load(page: Page, run: RunState | unknown, version = RUN_VERSION) {
@@ -769,9 +771,40 @@ test.describe('The Philosopher', () => {
     expect(await axeViolations(page)).toEqual([])
     await page.getByTestId('take-long').click()
     await expect(page.getByTestId('player-resolve')).toContainText(`Resolve ${START_RESOLVE}/${START_RESOLVE}`)
-    await expect(page.getByText('Floor 1 of 3', { exact: true })).toBeVisible()
+    await expect(page.getByText('Early in the walk', { exact: true })).toBeVisible()
     const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).state.run as RunState, RUN_KEY)
     expect(saved.length).toBe('long')
+  })
+
+  test('a first-timer sees one clear way in, with walk length, pace and school folded under More choices', async ({ page }) => {
+    await page.goto(`${URL}?seed=171`)
+    await page.evaluate((keys) => keys.forEach((key) => localStorage.removeItem(key)), [RUN_KEY, INSIGHT_KEY])
+    await page.reload()
+    const begin = page.getByRole('button', { name: 'Begin a short, gentle walk' })
+    await expect(begin).toBeVisible()
+    await expect(page.getByTestId('school-empiricist')).toBeHidden()
+    await expect(page.getByTestId('insights')).toHaveCount(0)
+    const more = page.getByText('More choices')
+    await more.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('length-short')).toBeChecked()
+    await expect(page.getByTestId('mode-gentle')).toBeChecked()
+    await expect(page.getByTestId('school-pragmatist')).toBeVisible()
+    expect(await axeViolations(page)).toEqual([])
+    await begin.click()
+    await expect(page.getByTestId('screen-map')).toBeVisible()
+    const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).state.run as RunState, RUN_KEY)
+    expect([saved.school, saved.mode, saved.length]).toEqual(['empiricist', 'gentle', 'short'])
+  })
+
+  test('a returning player keeps the full menu: length, pace, schools and insights, with no first-walk shortcut', async ({ page }) => {
+    await fresh(page, 172, true)
+    await expect(page.getByTestId('first-walk')).toHaveCount(0)
+    await expect(page.getByTestId('more-choices')).toHaveCount(0)
+    await expect(page.getByTestId('lengths')).toBeVisible()
+    await expect(page.getByTestId('mode-gentle')).toBeVisible()
+    await expect(page.getByTestId('school-skeptic')).toBeVisible()
+    await expect(page.getByTestId('insights')).toBeVisible()
   })
 
   test('after a finished run the Long walk is the default, and school difficulty is shown for the chosen pace', async ({ page }) => {
@@ -844,7 +877,7 @@ test.describe('The Philosopher', () => {
     await fresh(page, 155, true)
     await load(page, saved.state.run, saved.version)
     await expect(page.getByTestId('screen-battle')).toBeVisible()
-    await expect(page.getByText('Floor 1 of 3', { exact: true })).toBeVisible()
+    await expect(page.getByText('Early in the walk', { exact: true })).toBeVisible()
     await expect(page.getByTestId('argument').locator('li')).toHaveCount(saved.state.run.battle.played.length)
     await page.getByTestId('end-turn').click()
     await expect(page.getByTestId('last-round')).toBeVisible()

@@ -27,7 +27,7 @@ const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/
 const choiceA = (page: Page) => page.getByRole('button', { name: /^Choice A:/ })
 const choiceB = (page: Page) => page.getByRole('button', { name: /^Choice B:/ })
 const nextButton = (page: Page) => page.getByRole('button', { name: 'Next Dilemma' })
-const progress = (page: Page, n: number) => page.getByText(`Dilemma ${n} of ${DILEMMA_COUNT}`)
+const progress = (page: Page, n: number) => page.locator(`[data-dilemma-at="${n}"]`)
 const answerList = (page: Page) => page.getByRole('list', { name: 'The two answers' })
 /** The card around a choice: its button, then the perspective and counts shown after choosing. */
 // The keepsake's heading names it once; the picture inside is described rather than titled again
@@ -330,7 +330,7 @@ test.describe('reading it with a screen reader, and how it looks', () => {
 
     const title = page.getByRole('heading', { level: 1, name: 'The Dilemma' })
     await expect(title).toHaveCSS('text-align', 'center')
-    await expect(page.locator('main')).toMatchAriaSnapshot('- text: Dilemma 1 of 12 Meaning')
+    await expect(page.locator('main')).toMatchAriaSnapshot('- text: Near the start Meaning')
   })
 
   test('answers saved by the earlier set of dilemmas are kept where they still apply and the rest dropped', async ({ page }) => {

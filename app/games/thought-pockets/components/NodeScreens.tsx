@@ -9,7 +9,6 @@ import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { fitsLabel } from '@/lib/games/thought-pockets/data/synergy'
 import { finalRoundWords } from '@/lib/games/thought-pockets/data/turnText'
 import {
-  RUN_FLOORS,
   buyCard,
   buyRelic,
   buyTea,
@@ -270,7 +269,7 @@ export function RewardScreen({ run }: { run: RunState }) {
       )}
       {reward.source === 'boss' && !last && (
         <p className="mt-4 text-sm text-[var(--tp-muted)]" data-testid="pause-note">
-          Floor {run.floor} of {RUN_FLOORS[run.length]} complete. Your run is saved, so this is a good place to stop and come back another time.
+          This stretch of the walk is done. Your walk is saved, so this is a good place to stop and come back another day.
         </p>
       )}
       <button type="button" className={`${primaryButton} mt-5`} onClick={() => act(leaveReward)} data-testid="continue">

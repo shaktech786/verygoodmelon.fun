@@ -77,6 +77,12 @@ function copyFileName(today: DateKey): string {
 
 /** Jars shown on the shelf strip, and those already there when a new one joins them. */
 const SHELF_JARS = 4
+const PLACES_IN_DAY = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth']
+
+/** Jars sealed on one day are told apart by their order, said as a word rather than a tally. */
+function placeInDay(position: number): string {
+  return `${PLACES_IN_DAY[position - 1] ?? 'next'} that day`
+}
 const CEREMONY_NEIGHBOURS = 3
 
 const panel = 'bg-card-bg border border-card-border rounded-lg px-5 py-8 sm:px-10 sm:py-10'
@@ -348,7 +354,7 @@ export default function WorryCapsule() {
             {waiting.map((capsule) => {
               const ready = capsuleStatus(capsule, nowDate) === 'ready'
               const place = sameDay.get(capsule.id)
-              const sealedOn = `${sealedDay(capsule, today)}${place && place.of > 1 ? `, ${place.position} of ${place.of}` : ''}`
+              const sealedOn = `${sealedDay(capsule, today)}${place && place.of > 1 ? `, the ${placeInDay(place.position)}` : ''}`
               return (
                 <li key={capsule.id} className="border-b-4 border-melon-green/40 px-1 pt-2">
                   <button
@@ -364,7 +370,7 @@ export default function WorryCapsule() {
                     <span className="block text-xs text-foreground/75">
                       sealed {sealedDay(capsule, today, 'short')}
                       {/* The words stay sealed until it opens, so jars from one day are told apart by their order alone */}
-                      {place && place.of > 1 && <span className="block">{place.position} of {place.of}</span>}
+                      {place && place.of > 1 && <span className="block">{placeInDay(place.position)}</span>}
                     </span>
                   </button>
                 </li>

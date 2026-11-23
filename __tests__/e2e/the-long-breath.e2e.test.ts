@@ -34,11 +34,11 @@ async function axeViolations(page: Page): Promise<string[]> {
 }
 
 const MOMENTS: { title: string; description: string; seconds: number; label: string; reflection: string }[] = [
-  { title: 'Watch the Seeds', description: 'They settle only while you stay still.', seconds: 40, label: '40 still seconds', reflection: 'All eight seeds settled, and you did not move once.' },
-  { title: 'Listen to Silence', description: 'Listen to what is already here.', seconds: 60, label: '60 seconds', reflection: 'What did you hear?' },
-  { title: 'Look at One Thing', description: 'Give one thing near you a whole minute.', seconds: 60, label: '60 seconds', reflection: 'You gave one thing a whole minute. Most things get a glance.' },
-  { title: 'Notice This Moment', description: 'How are you, right now?', seconds: 45, label: '45 seconds', reflection: 'You stayed with this moment for 45 seconds without needing to name it. That counts.' },
-  { title: 'Count Three Things', description: 'Three things you appreciate today.', seconds: 50, label: '50 seconds', reflection: 'You gave fifty seconds to what is good today, written down or not.' },
+  { title: 'Watch the Seeds', description: 'They settle only while you stay still.', seconds: 40, label: 'A short, still sit', reflection: 'All eight seeds settled, and you did not move once.' },
+  { title: 'Listen to Silence', description: 'Listen to what is already here.', seconds: 60, label: 'A longer sit', reflection: 'What did you hear?' },
+  { title: 'Look at One Thing', description: 'Give one thing near you a whole minute.', seconds: 60, label: 'A longer sit', reflection: 'You gave one thing a whole minute. Most things get a glance.' },
+  { title: 'Notice This Moment', description: 'How are you, right now?', seconds: 45, label: 'A short sit', reflection: 'You stayed with this moment without needing to name it. That counts.' },
+  { title: 'Count Three Things', description: 'Three things you appreciate today.', seconds: 50, label: 'A little while', reflection: 'You gave a little while to what is good today, written down or not.' },
 ]
 
 function collectPageErrors(page: Page): string[] {
@@ -86,7 +86,7 @@ async function turnSoundOn(page: Page) {
 
 const taskButton = (page: Page, title: string) => page.getByRole('button', { name: new RegExp(`^${title}:`) })
 // The moment's progress is a ring with no numbers; its data-progress lets the suite check it exactly
-const ring = (page: Page) => page.getByTestId('moment-ring')
+const ring = (page: Page) => page.getByTestId('moment-bloom')
 const todayStrip = (page: Page) => page.getByRole('list', { name: 'Moments from today' })
 const STRIP_NOTE = 'Each moment you finish rests here until midnight.'
 
@@ -145,12 +145,12 @@ test.describe('The Patient One', () => {
   test('the seeds settle only while you stay still, and moving never undoes them', async ({ page }) => {
     await openGame(page)
     await taskButton(page, 'Watch the Seeds').click()
-    const field = page.getByRole('img', { name: /seeds settled/ })
+    const field = page.getByRole('img', { name: /settled/ })
 
     await advance(page, 20_000)
     await expect(ring(page)).toHaveAttribute('data-progress', '0.50')
     await expect(ring(page)).toHaveAccessibleName('About halfway through the moment')
-    await expect(field).toHaveAccessibleName('4 of 8 seeds settled')
+    await expect(field).toHaveAccessibleName('Seeds drifting, most settled')
     await expect(field.locator('[data-settled="true"]')).toHaveCount(4)
 
     // Five seconds of fidgeting: the clock and the seeds wait, nothing is lost.
@@ -160,7 +160,7 @@ test.describe('The Patient One', () => {
     }
     await expect(page.getByText('The seeds wait while you move.')).toBeVisible()
     await expect(ring(page)).toHaveAttribute('data-progress', '0.50')
-    await expect(field).toHaveAccessibleName('4 of 8 seeds settled')
+    await expect(field).toHaveAccessibleName('Seeds drifting, most settled')
 
     // A key press stirs them too, as a separate moment of movement.
     await advance(page, 3000)
@@ -236,7 +236,7 @@ test.describe('The Patient One', () => {
     await taskButton(page, 'Watch the Seeds').click()
     await advance(page, 40_000)
     await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeFocused()
-    const bed = page.getByRole('img', { name: '8 of 8 seeds settled' })
+    const bed = page.getByRole('img', { name: 'Every seed has settled' })
     await expect(bed).toBeVisible()
     await expect(bed.locator('[data-settled="true"]')).toHaveCount(8)
     await expect(bed.locator('.animate-fade')).toHaveCount(1)
@@ -519,7 +519,7 @@ test.describe('The Patient One on a phone with reduced motion', () => {
   test('the seeds rest still, settle into the bed, and the moment still completes', async ({ page }) => {
     await openGame(page)
     await taskButton(page, 'Watch the Seeds').tap()
-    const field = page.getByRole('img', { name: /seeds settled/ })
+    const field = page.getByRole('img', { name: /settled/ })
     await expect(field).toBeVisible()
     await expect(field.locator('.animate-float-seed')).toHaveCount(0)
     await expect(field.locator('div')).toHaveCount(8)
@@ -537,7 +537,7 @@ test.describe('The Patient One on a phone with reduced motion', () => {
     await expect(page.locator('html')).toHaveAttribute('data-text-size', 'larger')
     await taskButton(page, 'Watch the Seeds').tap()
     await advance(page, 3000)
-    for (const target of [page.getByRole('img', { name: /seeds settled/ }), ring(page), page.getByRole('button', { name: 'Leave early' })]) {
+    for (const target of [page.getByRole('img', { name: /settled/ }), ring(page), page.getByRole('button', { name: 'Leave early' })]) {
       const box = await target.boundingBox()
       expect(box).not.toBeNull()
       expect(box!.y).toBeGreaterThanOrEqual(0)

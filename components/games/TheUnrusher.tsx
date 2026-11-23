@@ -42,7 +42,7 @@ const MOMENTS: Moment[] = [
     title: MOMENT_TITLES.watch,
     description: 'They settle only while you stay still.',
     duration: 40,
-    durationLabel: '40 still seconds',
+    durationLabel: 'A short, still sit',
     guidance: [
       'Let your eyes soften...',
       'Follow one seed down...',
@@ -55,7 +55,7 @@ const MOMENTS: Moment[] = [
     title: MOMENT_TITLES.listen,
     description: 'Listen to what is already here.',
     duration: 60,
-    durationLabel: '60 seconds',
+    durationLabel: 'A longer sit',
     guidance: [
       'Let the sounds come to you...',
       'What is the farthest sound?',
@@ -68,7 +68,7 @@ const MOMENTS: Moment[] = [
     title: MOMENT_TITLES.look,
     description: 'Give one thing near you a whole minute.',
     duration: 60,
-    durationLabel: '60 seconds',
+    durationLabel: 'A longer sit',
     guidance: [
       'Its colours, then its shadow...',
       'Where is it worn, or smooth?',
@@ -81,7 +81,7 @@ const MOMENTS: Moment[] = [
     title: MOMENT_TITLES.reflect,
     description: 'How are you, right now?',
     duration: 45,
-    durationLabel: '45 seconds',
+    durationLabel: 'A short sit',
     guidance: [
       'Start with your shoulders...',
       'Then your hands and your jaw...',
@@ -94,7 +94,7 @@ const MOMENTS: Moment[] = [
     title: MOMENT_TITLES.appreciate,
     description: 'Three things you appreciate today.',
     duration: 50,
-    durationLabel: '50 seconds',
+    durationLabel: 'A little while',
     guidance: [
       'Think of something small...',
       'Something you overlooked...',
@@ -235,12 +235,20 @@ interface SeedFieldProps {
   className: string
 }
 
+/** How the seeds are resting, in words, so the field never counts at the player. */
+function seedsInWords(settled: number): string {
+  if (settled >= SEED_COUNT) return 'Every seed has settled'
+  if (settled === 0) return 'Seeds drifting, none settled yet'
+  if (settled < SEED_COUNT / 2) return 'Seeds drifting, a few settled'
+  return 'Seeds drifting, most settled'
+}
+
 function SeedField({ settled: settledSeeds, fadeFrom, reducedMotion, className }: SeedFieldProps) {
   return (
     <div
       className={cn('relative overflow-hidden rounded-xl bg-gradient-to-b from-transparent to-accent/10', className)}
       role="img"
-      aria-label={`${settledSeeds} of ${SEED_COUNT} seeds settled`}
+      aria-label={seedsInWords(settledSeeds)}
     >
       {FLOATING_SEEDS.map((seed) => {
         const settled = seed.id < settledSeeds
@@ -285,8 +293,46 @@ function toggleIn<T>(list: T[], item: T): T[] {
   return list.includes(item) ? list.filter((x) => x !== item) : [...list, item]
 }
 
-const RING_RADIUS = 26
-const RING_LENGTH = 2 * Math.PI * RING_RADIUS
+const PETAL_ANGLES = [0, 60, 120, 180, 240, 300]
+
+/** A bud that opens as the moment ripens: it only ever grows, so nothing reads as time running out. */
+function MomentBloom({ progress, reducedMotion }: { progress: number; reducedMotion: boolean }) {
+  const open = 0.3 + 0.7 * progress
+  return (
+    <svg
+      viewBox="0 0 60 60"
+      className="w-12 h-12"
+      role="img"
+      aria-label={momentInWords(progress)}
+      data-testid="moment-bloom"
+      data-progress={(Math.floor(progress * 100) / 100).toFixed(2)}
+    >
+      <circle cx="30" cy="30" r="27" className="fill-success/10" />
+      <g
+        style={{
+          transform: `scale(${open})`,
+          transformOrigin: '30px 30px',
+          transition: reducedMotion ? undefined : 'transform 400ms ease-out',
+        }}
+      >
+        {PETAL_ANGLES.map((angle) => (
+          <ellipse
+            key={angle}
+            cx="30"
+            cy="15"
+            rx="7"
+            ry="13"
+            transform={`rotate(${angle} 30 30)`}
+            className="fill-success/60 stroke-melon-green/40"
+            strokeWidth="1"
+            style={{ opacity: 0.35 + 0.65 * progress }}
+          />
+        ))}
+        <circle cx="30" cy="30" r="6" className="fill-warm" />
+      </g>
+    </svg>
+  )
+}
 
 export default function TheUnrusher() {
   const [currentTask, setCurrentTask] = useState<Moment | null>(null)
@@ -372,7 +418,7 @@ export default function TheUnrusher() {
 
   // Time is counted in small slices of wall-clock time, and a slice only counts while
   // the moment is on screen (and, for the seeds, while nothing has moved). Everything
-  // on screen derives from that one count, so the ring, the clock and the guidance agree.
+  // on screen derives from that one count, so the bloom and the guidance agree.
   useEffect(() => {
     if (!isActive || !currentTask) return
     const needsStillness = currentTask.id === 'watch'
@@ -709,21 +755,9 @@ export default function TheUnrusher() {
                 </p>
               )}
 
-              {/* Progress is a slow ripening ring with no numbers; a screen reader can ask how far along it is, and is never told. */}
+              {/* Progress is a flower slowly opening, with no numbers; a screen reader can ask how far along it is, and is never told. */}
               <div className={cn('flex flex-wrap items-center justify-center gap-3', !compact && 'mb-2')}>
-                <svg viewBox="0 0 60 60" className="w-12 h-12 -rotate-90" role="img" aria-label={momentInWords(progress)} data-testid="moment-ring" data-progress={(Math.floor(progress * 100) / 100).toFixed(2)}>
-                  <circle cx="30" cy="30" r={RING_RADIUS} className="fill-none stroke-foreground/10" strokeWidth="5" />
-                  <circle
-                    cx="30"
-                    cy="30"
-                    r={RING_RADIUS}
-                    className="fill-none stroke-melon-green"
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    strokeDasharray={RING_LENGTH}
-                    strokeDashoffset={RING_LENGTH * (1 - progress)}
-                  />
-                </svg>
+                <MomentBloom progress={progress} reducedMotion={reducedMotion} />
                 {compact && (
                   timeUp ? (
                     <Button variant="ghost" onClick={() => finishMoment(currentTask)}>
@@ -820,7 +854,7 @@ export default function TheUnrusher() {
               {currentTask.id === 'reflect' && (
                 <p className="text-lg text-foreground/80 mb-6 max-w-md mx-auto">
                   {feelings.length === 0
-                    ? 'You stayed with this moment for 45 seconds without needing to name it. That counts.'
+                    ? 'You stayed with this moment without needing to name it. That counts.'
                     : `Right now: ${joinNaturally(feelings.map((w) => w.toLowerCase()))}. ${
                       feelings.some((w) => UNEASY_WORDS.includes(w))
                         ? 'Naming a feeling often loosens it a little.'
@@ -841,7 +875,7 @@ export default function TheUnrusher() {
                   </div>
                 ) : (
                   <p className="text-lg text-foreground/80 mb-6 max-w-md mx-auto">
-                    You gave fifty seconds to what is good today, written down or not.
+                    You gave a little while to what is good today, written down or not.
                   </p>
                 )
               )}

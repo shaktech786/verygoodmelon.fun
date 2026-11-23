@@ -15,7 +15,7 @@ import { useInsightStore, useRunStore } from '@/lib/games/thought-pockets/store/
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { primaryButton, quietButton } from './NodeScreens'
 import { BiasPortrait } from './Sprites'
-import { FLOOR_NAMES } from './MapScreen'
+import { FLOOR_NAMES, WALK_STRETCH } from './MapScreen'
 import { WalkArgument } from './WalkArgument'
 
 const GENTLE_TEXT = `Recommended. A rest waits before every philosophical problem, rests heal ${REST_HEAL_PERCENT.gentle}%, you recover fully between floors, and once per run you may reconsider a lost argument with at least half your Resolve.`
@@ -66,10 +66,10 @@ function LengthPicker({ length, onLength, firstTime, disabled }: { length: RunLe
         <label
           key={id}
           className={`flex cursor-pointer gap-2 rounded-md border-2 p-3 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--tp-focus)] ${
-            length === id ? 'border-[var(--tp-accent)] bg-[var(--tp-ink-2)]' : 'border-[var(--tp-line)]'
+            length === id ? 'border-[var(--tp-good)] bg-[var(--tp-ink-2)]' : 'border-[var(--tp-line)]'
           }`}
         >
-          <input type="radio" name="tp-length" value={id} checked={length === id} onChange={() => onLength(id)} className="mt-1 accent-[var(--tp-accent)]" data-testid={`length-${id}`} />
+          <input type="radio" name="tp-length" value={id} checked={length === id} onChange={() => onLength(id)} className="mt-1 accent-[var(--tp-good)]" data-testid={`length-${id}`} />
           <span>
             <span className="block font-semibold">
               {name}
@@ -93,7 +93,7 @@ function Insights() {
   return (
     <section aria-labelledby="insights-title" className="rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-4">
       <h2 id="insights-title" className="font-serif text-xl font-semibold">
-        Insights <span className="text-sm font-normal text-[var(--tp-muted)]">{beaten.length} of {ENEMIES.length}</span>
+        Insights <span className="text-sm font-normal text-[var(--tp-muted)]">{beaten.length === 0 ? 'none yet' : beaten.length === ENEMIES.length ? 'all gathered' : 'a few gathered'}</span>
       </h2>
       <p className="text-sm text-[var(--tp-muted)]">
         Win an argument against a bias and you keep what it taught you. A bias you have named before starts every later fight Unsettled {KNOWN_UNSETTLE}.
@@ -132,10 +132,10 @@ function PacePicker({ mode, level, open, onMode, onLevel, disabled }: PaceProps)
     <label
       key={id}
       className={`flex cursor-pointer gap-2 rounded-md border-2 p-3 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--tp-focus)] ${
-        mode === id ? 'border-[var(--tp-accent)] bg-[var(--tp-ink-2)]' : 'border-[var(--tp-line)]'
+        mode === id ? 'border-[var(--tp-good)] bg-[var(--tp-ink-2)]' : 'border-[var(--tp-line)]'
       }`}
     >
-      <input type="radio" name="tp-mode" value={id} checked={mode === id} onChange={() => onMode(id)} className="mt-1 accent-[var(--tp-accent)]" data-testid={`mode-${id}`} />
+      <input type="radio" name="tp-mode" value={id} checked={mode === id} onChange={() => onMode(id)} className="mt-1 accent-[var(--tp-good)]" data-testid={`mode-${id}`} />
       <span>
         <span className="block font-semibold">{name}</span>
         <span className="block text-[var(--tp-muted)]">{text}</span>
@@ -155,7 +155,7 @@ function PacePicker({ mode, level, open, onMode, onLevel, disabled }: PaceProps)
               <label
                 key={n}
                 className={`flex min-w-11 cursor-pointer items-center justify-center gap-1 rounded-md border-2 px-3 py-1.5 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--tp-focus)] ${
-                  level === n ? 'border-[var(--tp-accent)]' : 'border-[var(--tp-line)]'
+                  level === n ? 'border-[var(--tp-good)]' : 'border-[var(--tp-line)]'
                 }`}
               >
                 <input
@@ -165,7 +165,7 @@ function PacePicker({ mode, level, open, onMode, onLevel, disabled }: PaceProps)
                   checked={level === n}
                   disabled={n > open}
                   onChange={() => onLevel(n)}
-                  className="accent-[var(--tp-accent)]"
+                  className="accent-[var(--tp-good)]"
                   data-testid={`rigor-${n}`}
                 />
                 {n}
@@ -190,6 +190,7 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
   const abandon = useRunStore((s) => s.abandon)
   const finishedWith = useInsightStore((s) => s.finishedWith)
   const rigorWon = useInsightStore((s) => s.rigorWon)
+  const tutorialDone = useInsightStore((s) => s.tutorialDone)
   const [confirming, setConfirming] = useState(false)
   const [mode, setMode] = useState<Mode>('gentle')
   const firstTime = finishedWith.length === 0
@@ -198,10 +199,87 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
   const [chosenLevel, setLevel] = useState(open)
   const level = Math.min(chosenLevel, open)
   const inProgress = runInProgress(run)
+  // Someone who has never won a fight gets one clear way in; every choice is still a click away.
+  const firstRun = !inProgress && !tutorialDone && firstTime && rigorWon === 0
 
   const begin = (school: School) => {
     start(school, seedFromUrl(), mode, mode === 'rigorous' ? level : 0, length)
     onResume()
+  }
+
+  const beginGently = () => {
+    start(SCHOOLS[0].id, seedFromUrl(), 'gentle', 0, 'short')
+    onResume()
+  }
+
+  const choices = (
+    <>
+      <LengthPicker length={length} onLength={setLength} firstTime={firstTime} disabled={inProgress} />
+      <PacePicker mode={mode} level={level} open={open} onMode={setMode} onLevel={setLevel} disabled={inProgress} />
+      <p className="mx-auto mt-4 max-w-3xl text-xs font-semibold uppercase tracking-wider text-[var(--tp-muted)]">Then choose a school of thought</p>
+      <ul className="mt-1 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {SCHOOLS.map((school, i) => (
+          <li key={school.id}>
+            <button
+              type="button"
+              onClick={() => begin(school.id)}
+              disabled={inProgress}
+              data-testid={`school-${school.id}`}
+              className="flex h-full w-full flex-col gap-1 rounded-md border-2 border-[var(--tp-line)] bg-[var(--tp-paper)] p-4 text-left text-[var(--tp-paper-ink)] shadow-[3px_3px_0_0_var(--tp-shadow)] hover:border-[var(--tp-accent)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]"
+            >
+              <span className="flex items-baseline justify-between gap-2">
+                <span className="font-serif text-lg font-semibold">{school.name}</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-[var(--tp-paper-muted)]" data-testid="school-difficulty">
+                  {i === 0 && mode === 'gentle' ? 'Start here · ' : ''}
+                  {mode === 'rigorous' ? `Rigorous ${level}: ` : ''}
+                  {schoolDifficulty(school, mode, level)}
+                  {finishedWith.includes(school.id) && ' · finished'}
+                </span>
+              </span>
+              <span className="text-sm">{school.tagline}</span>
+              <span className="text-sm">
+                <strong>Passive:</strong> {school.passive}
+              </span>
+              <span className="text-xs text-[var(--tp-paper-muted)]">Starts with {deckSummary(school.deck)}.</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+
+  if (firstRun) {
+    return (
+      <div className="space-y-5 text-[var(--tp-text)]">
+        <header className="text-center">
+          <h2 className="font-serif text-3xl font-semibold sm:text-4xl">The Philosopher</h2>
+          <p className="mx-auto mt-2 max-w-xl">Each turn you build one argument from cards. Each opponent is a bias with one rule. Out-think it, and keep what it teaches.</p>
+        </header>
+        <section aria-labelledby="first-walk-title" className="mx-auto max-w-xl rounded-lg border border-[var(--tp-good)] bg-[var(--tp-ink-2)] p-5 text-center" data-testid="first-walk">
+          <h2 id="first-walk-title" className="font-serif text-xl font-semibold">
+            Start here
+          </h2>
+          <p className="mt-2 text-sm text-[var(--tp-muted)]">
+            A Short walk at a Gentle pace, thinking as the {SCHOOLS[0].name}: {SCHOOLS[0].tagline} The first fight explains itself as you go, and the walk saves as you play.
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <button type="button" className={primaryButton} onClick={beginGently} data-testid="begin-gentle">
+              Begin a short, gentle walk
+            </button>
+            <button type="button" className={quietButton} onClick={onHelp}>
+              How to play
+            </button>
+          </div>
+        </section>
+        <details className="group mx-auto max-w-5xl" data-testid="more-choices">
+          <summary className="mx-auto w-fit cursor-pointer rounded-md px-3 py-1.5 text-sm font-semibold text-[var(--tp-text)] underline decoration-dotted underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]">
+            More choices
+            <span className="font-normal text-[var(--tp-muted)]"> · walk length, pace and school</span>
+          </summary>
+          {choices}
+        </details>
+      </div>
+    )
   }
 
   return (
@@ -221,7 +299,7 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
         <section className="flex flex-wrap items-center justify-center gap-3 rounded-lg border border-[var(--tp-accent)] bg-[var(--tp-ink-2)] p-4" aria-label="Run in progress">
           <p className="w-full text-center text-sm">
             {SCHOOLS.find((s) => s.id === run.school)?.name}, {paceName(run)}, {lengthName(run.length)}
-            {run.length === 'long' && `, floor ${run.floor} of ${RUN_FLOORS.long}`}
+            {run.length === 'long' && `, ${WALK_STRETCH[run.floor].toLowerCase()}`}
             {run.screen === 'defeat' ? ', a lost argument you can still reconsider' : `, Resolve ${run.battle?.player.resolve ?? run.resolve}/${run.maxResolve}`}
           </p>
           <button type="button" className={primaryButton} onClick={onResume} data-testid="continue-run">
@@ -251,37 +329,7 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
         <h2 id="schools-title" className="text-center font-serif text-xl font-semibold">
           {inProgress ? 'Or start again' : 'Start a walk'}
         </h2>
-        <LengthPicker length={length} onLength={setLength} firstTime={firstTime} disabled={inProgress} />
-        <PacePicker mode={mode} level={level} open={open} onMode={setMode} onLevel={setLevel} disabled={inProgress} />
-        <p className="mx-auto mt-4 max-w-3xl text-xs font-semibold uppercase tracking-wider text-[var(--tp-muted)]">Then choose a school of thought</p>
-        <ul className="mt-1 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {SCHOOLS.map((school, i) => (
-            <li key={school.id}>
-              <button
-                type="button"
-                onClick={() => begin(school.id)}
-                disabled={inProgress}
-                data-testid={`school-${school.id}`}
-                className="flex h-full w-full flex-col gap-1 rounded-md border-2 border-[var(--tp-line)] bg-[var(--tp-paper)] p-4 text-left text-[var(--tp-paper-ink)] shadow-[3px_3px_0_0_var(--tp-shadow)] hover:border-[var(--tp-accent)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]"
-              >
-                <span className="flex items-baseline justify-between gap-2">
-                  <span className="font-serif text-lg font-semibold">{school.name}</span>
-                  <span className="text-xs font-semibold uppercase tracking-wide text-[var(--tp-paper-muted)]" data-testid="school-difficulty">
-                    {i === 0 && mode === 'gentle' ? 'Start here · ' : ''}
-                    {mode === 'rigorous' ? `Rigorous ${level}: ` : ''}
-                    {schoolDifficulty(school, mode, level)}
-                    {finishedWith.includes(school.id) && ' · finished'}
-                  </span>
-                </span>
-                <span className="text-sm">{school.tagline}</span>
-                <span className="text-sm">
-                  <strong>Passive:</strong> {school.passive}
-                </span>
-                <span className="text-xs text-[var(--tp-paper-muted)]">Starts with {deckSummary(school.deck)}.</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        {choices}
         {inProgress && <p className="mt-2 text-center text-sm text-[var(--tp-muted)]">Abandon the current run to start a new one.</p>}
       </section>
 
