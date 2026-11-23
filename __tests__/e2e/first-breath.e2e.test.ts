@@ -24,7 +24,8 @@ test.describe('The Awakening', () => {
     firstPrompt: 'Who do you hope is there?',
     secondPrompt: 'What do you notice first?',
     closingButton: 'Wake up',
-    closingNeedsJudgement: false,
+    closingNeedsJudgement: true,
+    holdingLine: 'The quiet listens…',
     closingLine: /^Good morning$/,
     othersLine: /300 others have stood here and come back/,
     firstLine: /^You are the first to stand here and come back\.$/,
@@ -51,7 +52,7 @@ test.describe('The Awakening', () => {
   }
 
   test('the words become one small thing for tomorrow, and the player wakes with it', async ({ page }) => {
-    await offline(page, { reflection: 'Dancing sounds like joy you can still reach.', intention: INTENTION })
+    await offline(page, { reflection: 'Dancing sounds like joy you can still reach.', intention: INTENTION, safe: true })
     await page.goto('/games/first-breath')
     await expect(page.getByText(OPENING_LINE)).toBeVisible()
     await expect(page.getByText(/nothing hurts/)).toHaveCount(0)
@@ -71,7 +72,7 @@ test.describe('The Awakening', () => {
   })
 
   test('the plan for tomorrow is left as a handwritten note on the kitchen table, and the morning can be kept', async ({ page }) => {
-    await offline(page, { reflection: 'Dancing sounds like joy you can still reach.', intention: INTENTION })
+    await offline(page, { reflection: 'Dancing sounds like joy you can still reach.', intention: INTENTION, safe: true })
     await page.goto('/games/first-breath')
     await speak(page, 'I wish I had danced more.')
     await intentionBox(page).fill('Dance with Sam after dinner.')
@@ -91,7 +92,7 @@ test.describe('The Awakening', () => {
   })
 
   test('waking with no plan leaves no note and no card to keep', async ({ page }) => {
-    await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+    await offline(page, { reflection: 'Carry it home.', intention: INTENTION, safe: true })
     await page.goto('/games/first-breath')
     await speak(page, 'Where is everyone?')
     await intentionBox(page).fill('')
@@ -105,7 +106,7 @@ test.describe('The Awakening', () => {
     test.use({ reducedMotion: 'reduce' })
 
     test('waking goes straight to the still morning: day sky, the note set down, the card ready', async ({ page }) => {
-      await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+      await offline(page, { reflection: 'Carry it home.', intention: INTENTION, safe: true })
       await page.goto('/games/first-breath')
       await speak(page, 'It is so quiet here.')
       await page.getByRole('button', { name: 'Wake up' }).click()
@@ -122,7 +123,7 @@ test.describe('The Awakening', () => {
   for (const colorScheme of ['light', 'dark'] as const) {
     test(`the morning, with its note and card, has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
       await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
-      await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+      await offline(page, { reflection: 'Carry it home.', intention: INTENTION, safe: true })
       await page.goto('/games/first-breath')
       await speak(page, 'I wish I had danced more.')
       await page.getByRole('button', { name: 'Wake up' }).click()
@@ -135,7 +136,7 @@ test.describe('The Awakening', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
     test('a long plan for tomorrow is shown whole, growing past two rows, and Enter still wakes', async ({ page }) => {
-      await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+      await offline(page, { reflection: 'Carry it home.', intention: INTENTION, safe: true })
       await page.goto('/games/first-breath')
       await speak(page, 'I wish I had called more often.')
 
@@ -158,7 +159,7 @@ test.describe('The Awakening', () => {
     const replied = new Promise<void>((resolve) => (answer = resolve))
     await page.route('**/api/first-words/reflect', async (route) => {
       await replied
-      await route.fulfill({ json: { reflection: 'Carry it home.', intention: INTENTION } })
+      await route.fulfill({ json: { reflection: 'Carry it home.', intention: INTENTION, safe: true } })
     })
     await page.goto('/games/first-breath')
 
@@ -170,7 +171,7 @@ test.describe('The Awakening', () => {
   })
 
   test('waking with nothing chosen still links back to what was said', async ({ page }) => {
-    await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+    await offline(page, { reflection: 'Carry it home.', intention: INTENTION, safe: true })
     await page.goto('/games/first-breath')
 
     await speak(page, 'Where is everyone?')
@@ -209,7 +210,7 @@ test.describe('The Awakening', () => {
     // Coming back to the game later in the visit
     await page.unroute('**/api/first-words/reflect')
     await page.route('**/api/first-words/reflect', (route) =>
-      route.fulfill({ json: { reflection: 'Carry it home.', intention: INTENTION } })
+      route.fulfill({ json: { reflection: 'Carry it home.', intention: INTENTION, safe: true } })
     )
     await page.reload()
     await expect(page.getByRole('complementary', { name: 'Support' })).toBeVisible()
@@ -225,7 +226,7 @@ test.describe('The Awakening', () => {
   })
 
   test('regression: in care mode the premise and the form wait behind a choice, and a gentle note comes first', async ({ page }) => {
-    await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+    await offline(page, { reflection: 'Carry it home.', intention: INTENTION, safe: true })
     await page.goto('/')
     await page.evaluate(() => localStorage.setItem('verygoodmelon:care', JSON.stringify({ until: Date.now() + 60 * 60 * 1000 })))
     await page.goto('/games/first-breath')
@@ -242,7 +243,7 @@ test.describe('The Awakening', () => {
   })
 
   test('the plan for tomorrow says plainly that it goes nowhere', async ({ page }) => {
-    await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+    await offline(page, { reflection: 'Carry it home.', intention: INTENTION, safe: true })
     await page.goto('/games/first-breath')
     await speak(page, 'It is so quiet here.')
     await expect(page.getByText(/never sent or saved anywhere/)).toBeVisible()
@@ -250,7 +251,7 @@ test.describe('The Awakening', () => {
   })
 
   test('regression: a plan for tomorrow that sounds like danger brings care instead of being shown back', async ({ page }) => {
-    await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+    await offline(page, { reflection: 'Carry it home.', intention: INTENTION, safe: true })
     await page.goto('/games/first-breath')
 
     await speak(page, 'It is so quiet here.')
@@ -268,7 +269,7 @@ test.describe('The Awakening', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
     test('regression: after speaking, the dawn sky is on screen below the header', async ({ page }) => {
-      await offline(page, { reflection: 'Carry it home.', intention: INTENTION })
+      await offline(page, { reflection: 'Carry it home.', intention: INTENTION, safe: true })
       await page.goto('/games/first-breath')
       await expect(async () => {
         await page.getByRole('textbox', { name: 'Your first words on arriving' }).fill('Oh. Mum? I was so scared of this part and it was just quiet.')
@@ -289,7 +290,7 @@ test.describe('The Awakening', () => {
     })
 
     test('regression: the sky turning to morning happens on screen, beside the greeting', async ({ page }) => {
-      await offline(page, { reflection: 'Dancing sounds like joy you can still reach.', intention: INTENTION })
+      await offline(page, { reflection: 'Dancing sounds like joy you can still reach.', intention: INTENTION, safe: true })
       await page.goto('/games/first-breath')
 
       await speak(page, 'Oh. Mum? I was so scared of this part and it was just quiet. I wish I had danced more.')

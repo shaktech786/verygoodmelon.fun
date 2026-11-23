@@ -1,7 +1,9 @@
 'use client'
 
 import { useId, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent, type RefObject } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
+import { CARE_GAMES } from '@/components/games/CrossGameSuggestions'
 import { CommunityWordCloud } from '@/components/games/CommunityWordCloud'
 import { clearDraft, readDraft, saveDraft } from '@/lib/games/community-words/draft'
 import { MAX_SUBMISSION_LENGTH } from '@/lib/games/community-words/moderation'
@@ -149,6 +151,27 @@ export function CarePanel() {
         and Ireland, call <a href="tel:116123" className={HELPLINE_LINK}>116 123</a>.
       </p>
     </aside>
+  )
+}
+
+/** In place of writing again, while the words are not known to be safe: somewhere calm to go next. */
+export function GentleExit() {
+  return (
+    <nav aria-label="Somewhere calm to go next" className="text-center">
+      <p className="text-foreground/85">When you are ready, somewhere calm:</p>
+      <ul className="mt-3 flex flex-wrap justify-center gap-3">
+        {CARE_GAMES.map((game) => (
+          <li key={game.id}>
+            <Link
+              href={`/games/${game.slug}`}
+              className="inline-flex items-center min-h-11 px-5 rounded-lg border border-card-border bg-card-bg text-foreground font-medium hover:bg-hover-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            >
+              {game.title}: {game.description}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
   )
 }
 

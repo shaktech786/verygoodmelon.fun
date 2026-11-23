@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCareMode } from '@/components/games/CareMode'
 import type { WordFrequency } from '@/lib/games/wordFrequency'
+import { isUnsettled, judgementOf, verdictOf, type ReflectReply, type Verdict } from './judgement'
 import { MAX_SUBMISSION_LENGTH, soundsLikeDistress } from './moderation'
 
 export type CommunityWordsGame = 'last-words' | 'first-words'
@@ -11,40 +12,41 @@ export type CloudState =
   | { status: 'hidden' }
   | { status: 'ready'; words: WordFrequency[]; total: number }
 
+const HIDDEN_CLOUD: CloudState = { status: 'hidden' }
+
+const REFLECT_TIMEOUT_MS = 20_000
+
 interface Reflection {
   text: string
-  pending: boolean
   /** A small thing to carry back into tomorrow, for a game that offers one. */
   intention: string
-  /** No one could judge whether the words carry danger, so support is offered quietly. */
-  unjudged: boolean
+  /** Null until a reply has come back (or failed to). */
+  verdict: Verdict | null
 }
 
-const NO_REFLECTION: Reflection = { text: '', pending: false, intention: '', unjudged: false }
+const NO_REFLECTION: Reflection = { text: '', intention: '', verdict: null }
 
 /**
  * Everything a writing game does with the player's words: shows them back at
- * once, asks for a reflection, and then offers them to the shared cloud
- * through the server. Neither is ever waited on, so the player's moment is the
- * same whether or not the store can be reached. Words that may come from
- * someone in danger, and anything written once care mode has begun, are never
- * offered to the cloud.
+ * once, asks for a reflection, and only once that reply has judged them safe
+ * offers them to the shared cloud through the server. The returned judgement is
+ * the one gate every game uses: nothing that celebrates, keeps, quotes back or
+ * shares the words may appear before it is "safe".
  */
 export function useCommunityWords(game: CommunityWordsGame) {
   const [submitted, setSubmitted] = useState<string | null>(null)
   const [stored, setStored] = useState(false)
-  const [cloud, setCloud] = useState<CloudState>({ status: 'hidden' })
+  const [cloud, setCloud] = useState<CloudState>(HIDDEN_CLOUD)
   const [reflection, setReflection] = useState<Reflection>(NO_REFLECTION)
   const [wordsNeedCare, setWordsNeedCare] = useState(false)
   const { care: visitNeedsCare, enterCareMode, setAwaitingJudgement } = useCareMode()
   const care = wordsNeedCare || visitNeedsCare
-  /** Nothing that celebrates or keeps the words may appear before they have been heard and judged safe. */
-  const judgedSafe = submitted !== null && !care && !reflection.pending && !reflection.unjudged
-  const awaitingJudgement = submitted !== null && !care && !judgedSafe
+  const judgement = judgementOf({ submitted: submitted !== null, care, verdict: reflection.verdict })
+  const unsettled = isUnsettled(judgement)
 
   useEffect(() => {
-    setAwaitingJudgement(awaitingJudgement)
-  }, [awaitingJudgement, setAwaitingJudgement])
+    setAwaitingJudgement(unsettled)
+  }, [unsettled, setAwaitingJudgement])
   useEffect(() => () => setAwaitingJudgement(false), [setAwaitingJudgement])
   const session = useRef(0)
   // A double click lands before the first click's render, so state alone cannot guard it
@@ -73,40 +75,39 @@ export function useCommunityWords(game: CommunityWordsGame) {
     }
   }
 
-  /** Resolves to whether the reply judged the words to need care, even if the player has moved on. */
-  async function reflect(words: string, id: number): Promise<boolean> {
-    setReflection({ ...NO_REFLECTION, pending: true })
+  /** Resolves to the reply's verdict on the words, even if the player has moved on. */
+  async function reflect(words: string, id: number): Promise<Verdict> {
+    let reply: ReflectReply | null = null
     try {
       const response = await fetch(`/api/${game}/reflect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: words }),
+        // A reply that never comes must still end in the gentle exit, not an endless wait
+        signal: AbortSignal.timeout(REFLECT_TIMEOUT_MS),
       })
-      const data: { reflection?: string; intention?: string; care?: boolean; unjudged?: boolean } = response.ok
-        ? await response.json()
-        : { unjudged: true }
-      if (data.care) enterCareMode()
-      if (isCurrent(id)) {
-        if (data.care) setWordsNeedCare(true)
-        setReflection({
-          text: data.reflection ?? '',
-          pending: false,
-          intention: data.intention ?? '',
-          unjudged: data.unjudged === true,
-        })
-      }
-      return data.care === true
+      if (response.ok) reply = await response.json()
     } catch {
-      if (isCurrent(id)) setReflection({ ...NO_REFLECTION, unjudged: true })
-      return false
+      // No reply is no verdict, never a safe one
     }
+    const verdict = verdictOf(reply)
+    if (verdict === 'care') enterCareMode()
+    if (isCurrent(id)) {
+      if (verdict === 'care') setWordsNeedCare(true)
+      setReflection({
+        text: reply?.reflection ?? '',
+        intention: verdict === 'safe' ? reply?.intention ?? '' : '',
+        verdict,
+      })
+    }
+    return verdict
   }
 
   async function respond(words: string, id: number, distressed: boolean) {
     // Someone already in care is not asked to picture endings again by a fresh reflection
     if (visitNeedsCare && !distressed) return
-    const judgedCare = await reflect(words, id)
-    if (!distressed && !judgedCare) await share(words, id)
+    const verdict = await reflect(words, id)
+    if (!distressed && verdict === 'safe') await share(words, id)
   }
 
   function submit(text: string) {
@@ -115,6 +116,7 @@ export function useCommunityWords(game: CommunityWordsGame) {
     hasSubmitted.current = true
     const id = ++session.current
     setSubmitted(words)
+    setReflection(NO_REFLECTION)
     const distressed = soundsLikeDistress(words)
     setWordsNeedCare(distressed)
     if (distressed) enterCareMode()
@@ -126,7 +128,7 @@ export function useCommunityWords(game: CommunityWordsGame) {
     hasSubmitted.current = false
     setSubmitted(null)
     setStored(false)
-    setCloud({ status: 'hidden' })
+    setCloud(HIDDEN_CLOUD)
     setReflection(NO_REFLECTION)
     setWordsNeedCare(false)
   }
@@ -139,5 +141,17 @@ export function useCommunityWords(game: CommunityWordsGame) {
     return true
   }
 
-  return { submitted, stored, cloud, reflection, care, judgedSafe, submit, reset, noticeDistress }
+  const safe = judgement === 'safe'
+  return {
+    submitted,
+    // What others wrote, and that these words joined them, only ever follows a safe verdict
+    stored: safe && stored,
+    cloud: safe ? cloud : HIDDEN_CLOUD,
+    reflection: { text: reflection.text, intention: reflection.intention },
+    care,
+    judgement,
+    submit,
+    reset,
+    noticeDistress,
+  }
 }

@@ -4,7 +4,7 @@ import { expectKeepsakeSaves } from './helpers/keepsake'
 
 async function leaveWords(page: Page, words: string) {
   await page.route('**/api/last-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
-  await page.route('**/api/last-words/reflect', (route) => route.fulfill({ json: { reflection: 'Say it soon.' } }))
+  await page.route('**/api/last-words/reflect', (route) => route.fulfill({ json: { reflection: 'Say it soon.', safe: true } }))
   await page.goto('/games/final-breath')
   await expect(async () => {
     await page.getByRole('textbox', { name: 'Your final words' }).fill(words)
@@ -38,6 +38,7 @@ test.describe('The Final Word', () => {
     secondPrompt: 'What took you too long to learn?',
     closingButton: 'Blow out the candle',
     closingNeedsJudgement: true,
+    holdingLine: 'Sitting with your words…',
     closingLine: /^The candle is out\./,
     othersLine: /It joins what 300 others would say/,
     firstLine: /^Yours are the first words here\.$/,
@@ -100,7 +101,7 @@ test.describe('The Final Word', () => {
 
   test('the card is written to whoever the question was about', async ({ page }) => {
     await page.route('**/api/last-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
-    await page.route('**/api/last-words/reflect', (route) => route.fulfill({ json: { reflection: 'Say it soon.' } }))
+    await page.route('**/api/last-words/reflect', (route) => route.fulfill({ json: { reflection: 'Say it soon.', safe: true } }))
     await page.goto('/games/final-breath')
     // Clicks before hydration do nothing, so ask until the question arrives
     await expect(async () => {
@@ -124,7 +125,7 @@ test.describe('The Final Word', () => {
 
   test('with no one named or asked about, the card goes to whoever needs it', async ({ page }) => {
     await page.route('**/api/last-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
-    await page.route('**/api/last-words/reflect', (route) => route.fulfill({ json: { reflection: 'Say it soon.' } }))
+    await page.route('**/api/last-words/reflect', (route) => route.fulfill({ json: { reflection: 'Say it soon.', safe: true } }))
     await page.goto('/games/final-breath')
     await expect(async () => {
       await page.getByRole('button', { name: 'Another question' }).click()
@@ -168,7 +169,7 @@ test.describe('The Final Word', () => {
     test.skip(browserName !== 'chromium', 'clipboard permissions are Chromium-only')
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.route('**/api/last-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
-    await page.route('**/api/last-words/reflect', (route) => route.fulfill({ json: { reflection: 'Say it soon.' } }))
+    await page.route('**/api/last-words/reflect', (route) => route.fulfill({ json: { reflection: 'Say it soon.', safe: true } }))
     await page.goto('/games/final-breath')
 
     await expect(async () => {
@@ -186,7 +187,7 @@ test.describe('The Final Word', () => {
   test('when the count cannot load nothing stands in for it, and "today" is said once at most', async ({ page }) => {
     await page.route('**/api/last-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
     await page.route('**/api/last-words/reflect', (route) =>
-      route.fulfill({ json: { reflection: 'This is about your sister. Someone could hear it from you today.' } })
+      route.fulfill({ json: { reflection: 'This is about your sister. Someone could hear it from you today.', safe: true } })
     )
     await page.goto('/games/final-breath')
     await expect(async () => {
@@ -276,7 +277,7 @@ test.describe('The Final Word', () => {
     let answer: (() => void) | null = null
     await page.route('**/api/last-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
     await page.route('**/api/last-words/reflect', (route) => {
-      answer = () => void route.fulfill({ json: { reflection: 'This is about your sister.' } })
+      answer = () => void route.fulfill({ json: { reflection: 'This is about your sister.', safe: true } })
     })
     await page.goto('/games/final-breath')
 

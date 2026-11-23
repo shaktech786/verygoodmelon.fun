@@ -35,7 +35,7 @@ describe('reflection routes', () => {
     const { status, body } = await reflect(lastWordsReflect, 'Thank you for the ordinary days.')
 
     expect(status).toBe(200)
-    expect(body).toEqual({ reflection: 'You chose gratitude over regret.' })
+    expect(body).toEqual({ reflection: 'You chose gratitude over regret.', safe: true })
     expect(generateContent.mock.calls[0][0].contents).toContain('Thank you for the ordinary days.')
   })
 
@@ -88,6 +88,7 @@ describe('reflection routes', () => {
     expect(body).toEqual({
       reflection: 'That quiet sounds like rest you have been missing.',
       intention: 'Take ten quiet minutes tomorrow morning.',
+      safe: true,
     })
     expect(String(generateContent.mock.calls[0][0].contents)).toMatch(/"intention"/)
   })
@@ -112,6 +113,7 @@ describe('reflection routes', () => {
     expect(body.reflection).toBeTruthy()
     expect(body).not.toHaveProperty('intention')
     expect(body).not.toHaveProperty('care')
+    expect(body).not.toHaveProperty('safe')
     // Nothing that would read as a push back toward the ending, or as an alarm
     expect(body.reflection).not.toMatch(/wait|sooner|today|tomorrow|while you are here|danger|crisis|help/i)
   })
@@ -122,6 +124,7 @@ describe('reflection routes', () => {
 
     expect(body.unjudged).toBe(true)
     expect(body.reflection).not.toBe('You chose gratitude over regret.')
+    expect(body).not.toHaveProperty('safe')
   })
 
   it('treats a rate-limited visitor as unjudged too', async () => {
@@ -152,7 +155,7 @@ describe('reflection routes', () => {
     expect((await reflect(firstWordsReflect, 'I am so tired')).body).toEqual({ reflection: CARE_REFLECTION, care: true })
 
     generateContent.mockResolvedValue({ text: JSON.stringify({ risk: false, reply: 'Say it soon.', intention: 'Call her.' }) })
-    expect((await reflect(lastWordsReflect, 'Love you, sis')).body).toEqual({ reflection: 'Say it soon.' })
+    expect((await reflect(lastWordsReflect, 'Love you, sis')).body).toEqual({ reflection: 'Say it soon.', safe: true })
     expect(String(generateContent.mock.calls.at(-1)?.[0].contents)).not.toMatch(/"intention"/)
   })
 

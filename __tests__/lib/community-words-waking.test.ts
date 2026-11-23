@@ -18,22 +18,34 @@ describe('excerpt', () => {
 
 describe('wakingLine', () => {
   it('links what they said over there to what they bring back', () => {
-    expect(wakingLine({ words: 'I wish I had danced more.', intention: 'Put on one song and dance', care: false })).toBe(
+    expect(wakingLine({ words: 'I wish I had danced more.', intention: 'Put on one song and dance', judgement: 'safe' })).toBe(
       'Over there, you said “I wish I had danced more.” You woke up with this:'
     )
   })
 
   it('still links back when they chose nothing to carry', () => {
-    expect(wakingLine({ words: 'Where is everyone?', intention: '  ', care: false })).toBe(
+    expect(wakingLine({ words: 'Where is everyone?', intention: '  ', judgement: 'safe' })).toBe(
       'Over there, you said “Where is everyone?” Whatever you reached for there is within reach here, too.'
     )
   })
 
   it('never repeats words that sounded like someone in danger', () => {
-    const line = wakingLine({ words: 'I never want to go back', intention: '', care: true })
+    const line = wakingLine({ words: 'I never want to go back', intention: '', judgement: 'care' })
     expect(line).not.toContain('go back')
     expect(line).toMatch(/good to have you here/i)
   })
+
+  it.each(['awaiting', 'unjudged', 'unwritten', 'care'] as const)(
+    'never quotes the words or calls anything within reach unless they were judged safe: %s',
+    (judgement) => {
+      const words = "I was hoping I wouldn't open my eyes again. I'm so tired of trying."
+      for (const intention of ['', 'Drink a glass of water slowly.']) {
+        const line = wakingLine({ words, intention, judgement })
+        expect(line).not.toContain('“')
+        expect(line).not.toMatch(/within reach|open my eyes|you said/i)
+      }
+    }
+  )
 })
 
 describe('what is quoted back at dawn', () => {
@@ -49,7 +61,7 @@ describe('what is quoted back at dawn', () => {
     'Everything hurts and I am scared.',
   ])('never quotes tiredness or distress back: %j', (words) => {
     expect(excerpt(words)).toBeNull()
-    const line = wakingLine({ words, intention: 'Drink a glass of water slowly.', care: false })
+    const line = wakingLine({ words, intention: 'Drink a glass of water slowly.', judgement: 'safe' })
     expect(line).not.toMatch(/tired|exhausted|hurts|scared|anymore/i)
     expect(line).not.toContain('“')
   })

@@ -1,11 +1,9 @@
 'use client'
 
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
-import { CARE_GAMES } from '@/components/games/CrossGameSuggestions'
 import { Keepsake } from '@/components/games/Keepsake'
-import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, QuietSupport, WritingForm } from '@/components/games/community-words/WritingParts'
+import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, GentleExit, QuietSupport, WritingForm } from '@/components/games/community-words/WritingParts'
 import { useArrival } from '@/components/games/community-words/arrival'
 import { draftKey } from '@/lib/games/community-words/draft'
 import { useCommunityWords } from '@/lib/games/community-words/useCommunityWords'
@@ -163,30 +161,13 @@ function MorningCard({ note }: { note: string }) {
   )
 }
 
-/** In place of imagining it again, once someone may be in danger: somewhere calm, with support already on screen. */
-function GentleExit() {
-  return (
-    <nav aria-label="Somewhere calm to go next" className="text-center">
-      <p className="text-foreground/85">When you are ready, somewhere calm:</p>
-      <ul className="mt-3 flex flex-wrap justify-center gap-3">
-        {CARE_GAMES.map((game) => (
-          <li key={game.id}>
-            <Link
-              href={`/games/${game.slug}`}
-              className="inline-flex items-center min-h-11 px-5 rounded-lg border border-card-border bg-card-bg text-foreground font-medium hover:bg-hover-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-            >
-              {game.title}: {game.description}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  )
-}
-
 export default function FirstWords() {
   // Care lasts for the visit, so every later arrival is met the gentle way too
-  const { submitted, stored, cloud, reflection, care, judgedSafe, submit, reset, noticeDistress } = useCommunityWords('first-words')
+  const { submitted, stored, cloud, reflection, care, judgement, submit, reset, noticeDistress } = useCommunityWords('first-words')
+  const safe = judgement === 'safe'
+  const unjudged = judgement === 'unjudged'
+  // Waking is a ceremony over the words, so it waits for them to be judged safe; care has its own gentle morning
+  const mayWake = safe || care
   const [typedIntention, setTypedIntention] = useState<string | null>(null)
   const [carried, setCarried] = useState<string | null>(null)
   // In care mode the premise waits until someone chooses it, rather than meeting them on arrival
@@ -239,6 +220,8 @@ export default function FirstWords() {
 
   const wake = (event: FormEvent) => {
     event.preventDefault()
+    // Enter in the plan box submits the form even while the button is held back
+    if (!mayWake) return
     const chosen = care ? '' : intention.trim()
     if (chosen) noticeDistress(chosen)
     setCarried(chosen)
@@ -301,9 +284,9 @@ export default function FirstWords() {
                 Good morning
               </h2>
               <p className="mt-3 text-foreground/85 leading-relaxed break-words">
-                {wakingLine({ words: submitted, intention: carried, care })}
+                {wakingLine({ words: submitted, intention: carried, judgement })}
               </p>
-              {carried && !care && (
+              {carried && safe && (
                 <>
                   <TableNote note={carried} />
                   <div className="mt-5">
@@ -313,7 +296,7 @@ export default function FirstWords() {
                       copiedMessage="Copied. Put it somewhere you will see it tomorrow."
                     />
                   </div>
-                  {judgedSafe && <MorningCard note={carried} />}
+                  <MorningCard note={carried} />
                 </>
               )}
             </div>
@@ -334,7 +317,7 @@ export default function FirstWords() {
               </blockquote>
 
               <div aria-live="polite" className="mt-5">
-                {reflection.pending && <p className="text-sm text-primary-light">The quiet listens…</p>}
+                {judgement === 'awaiting' && <p className="text-sm text-primary-light">The quiet listens…</p>}
                 {reflection.text && (
                   <p className="animate-fade text-foreground/85 italic leading-relaxed text-base sm:text-lg">
                     {reflection.text}
@@ -345,46 +328,50 @@ export default function FirstWords() {
                 )}
               </div>
 
-              <form onSubmit={wake} className="mt-6 text-left">
-                {!care && (
-                  <>
-                    <label htmlFor={intentionId} className="block text-sm sm:text-base font-medium text-foreground">
-                      One small thing to bring back into tomorrow
-                    </label>
-                    <textarea
-                      ref={intentionRef}
-                      id={intentionId}
-                      rows={2}
-                      value={intention}
-                      onChange={(e) => setTypedIntention(e.target.value.replace(/\s*\n\s*/g, ' '))}
-                      onKeyDown={(e) => {
-                        // One line of intention: Enter wakes, as it did before the box could grow
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault()
-                          e.currentTarget.form?.requestSubmit()
-                        }
-                      }}
-                      maxLength={MAX_INTENTION_LENGTH}
-                      placeholder="Something small you could do tomorrow…"
-                      className="mt-2 w-full resize-none overflow-hidden px-4 py-3 border border-card-border rounded-lg bg-background text-foreground text-base sm:text-lg placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                    />
-                    <p className="mt-1 text-xs sm:text-sm text-primary-light">
-                      Change it, or leave it empty. It is never sent or saved anywhere; you can copy it once you wake.
-                    </p>
-                  </>
-                )}
-                <div className="mt-4 text-center">
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    className="px-8 py-3 text-lg"
-                    // The second click of a double click on Speak can land here; waking should be a choice
-                    onClick={(event) => event.detail > 1 && event.preventDefault()}
-                  >
-                    Wake up
-                  </Button>
-                </div>
-              </form>
+              {!unjudged && (
+                <form onSubmit={wake} className="mt-6 text-left">
+                  {!care && (
+                    <>
+                      <label htmlFor={intentionId} className="block text-sm sm:text-base font-medium text-foreground">
+                        One small thing to bring back into tomorrow
+                      </label>
+                      <textarea
+                        ref={intentionRef}
+                        id={intentionId}
+                        rows={2}
+                        value={intention}
+                        onChange={(e) => setTypedIntention(e.target.value.replace(/\s*\n\s*/g, ' '))}
+                        onKeyDown={(e) => {
+                          // One line of intention: Enter wakes, as it did before the box could grow
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault()
+                            e.currentTarget.form?.requestSubmit()
+                          }
+                        }}
+                        maxLength={MAX_INTENTION_LENGTH}
+                        placeholder="Something small you could do tomorrow…"
+                        className="mt-2 w-full resize-none overflow-hidden px-4 py-3 border border-card-border rounded-lg bg-background text-foreground text-base sm:text-lg placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                      />
+                      <p className="mt-1 text-xs sm:text-sm text-primary-light">
+                        Change it, or leave it empty. It is never sent or saved anywhere; you can copy it once you wake.
+                      </p>
+                    </>
+                  )}
+                  {mayWake && (
+                    <div className="mt-4 text-center">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        className="px-8 py-3 text-lg"
+                        // The second click of a double click on Speak can land here; waking should be a choice
+                        onClick={(event) => event.detail > 1 && event.preventDefault()}
+                      >
+                        Wake up
+                      </Button>
+                    </div>
+                  )}
+                </form>
+              )}
             </div>
           )}
         </div>
@@ -393,7 +380,7 @@ export default function FirstWords() {
       {submitted !== null && (
         <>
           {care && <CarePanel />}
-          {reflection.unjudged && !care && <QuietSupport />}
+          {unjudged && <QuietSupport />}
 
           <CloudSection
             cloud={cloud}
@@ -402,10 +389,9 @@ export default function FirstWords() {
             source={(total) => `From ${total.toLocaleString()} ${total === 1 ? 'visit' : 'visits'}.`}
           />
 
-          {/* Someone who may be in danger is not invited to picture their death again */}
-          {care ? (
-            <GentleExit />
-          ) : (
+          {/* Words not known to be safe never come with an invitation to picture a death again */}
+          {(care || unjudged) && <GentleExit />}
+          {safe && (
             <div className="text-center">
               <Button variant="secondary" onClick={imagineAgain}>
                 Imagine it again

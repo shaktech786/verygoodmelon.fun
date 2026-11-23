@@ -114,9 +114,12 @@ export function createReflectHandler(voice: ReflectionVoice) {
     if (soundsLikeDistress(words)) {
       return NextResponse.json({ reflection: CARE_REFLECTION, care: true })
     }
+    // "safe" is said outright: the page treats a reply without it as unjudged
     const written = (reflection: string, intention: string | null) =>
       NextResponse.json(
-        voice.intention ? { reflection, intention: intention ?? pick(voice.intention.fallbacks) } : { reflection }
+        voice.intention
+          ? { reflection, intention: intention ?? pick(voice.intention.fallbacks), safe: true }
+          : { reflection, safe: true }
       )
     // Without a verdict the words may still be danger said sideways: no plan to carry, no nudge
     // toward the ending, and the page quietly offers support

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Keepsake } from '@/components/games/Keepsake'
-import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, QuietSupport, WritingForm } from '@/components/games/community-words/WritingParts'
+import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, GentleExit, QuietSupport, WritingForm } from '@/components/games/community-words/WritingParts'
 import { useArrival } from '@/components/games/community-words/arrival'
 import { draftKey } from '@/lib/games/community-words/draft'
 import { useCommunityWords } from '@/lib/games/community-words/useCommunityWords'
@@ -145,7 +145,9 @@ function Goodnight({ words, prompt, lineRef }: GoodnightProps) {
 
 export default function LastWords() {
   // Care lasts for the visit, so the flame stays away even for the next words
-  const { submitted, stored, cloud, reflection, care, judgedSafe, submit, reset } = useCommunityWords('last-words')
+  const { submitted, stored, cloud, reflection, care, judgement, submit, reset } = useCommunityWords('last-words')
+  const safe = judgement === 'safe'
+  const unjudged = judgement === 'unjudged'
   const [candleOut, setCandleOut] = useState(false)
   const [prompt, setPrompt] = useState('')
   const reduceMotion = useReducedMotion()
@@ -232,12 +234,12 @@ export default function LastWords() {
             <blockquote className="mt-5 text-lg sm:text-xl text-foreground whitespace-pre-wrap break-words leading-relaxed">
               &ldquo;{submitted}&rdquo;
             </blockquote>
-            {judgedSafe && !candleOut && (
+            {safe && !candleOut && (
               <Button variant="primary" onClick={() => setCandleOut(true)} className="mt-6">
                 Blow out the candle
               </Button>
             )}
-            {candleOut && judgedSafe && <Goodnight words={submitted} prompt={prompt} lineRef={goodnightRef} />}
+            {candleOut && safe && <Goodnight words={submitted} prompt={prompt} lineRef={goodnightRef} />}
           </div>
         )}
       </div>
@@ -247,7 +249,7 @@ export default function LastWords() {
           {care && <CarePanel />}
 
           <div aria-live="polite">
-            {reflection.pending && (
+            {judgement === 'awaiting' && (
               <p className="text-center text-sm text-primary-light py-2">Sitting with your words…</p>
             )}
             {reflection.text && (
@@ -257,7 +259,7 @@ export default function LastWords() {
             )}
           </div>
 
-          {reflection.unjudged && !care && <QuietSupport />}
+          {unjudged && <QuietSupport />}
 
           <CloudSection
             cloud={cloud}
@@ -267,7 +269,7 @@ export default function LastWords() {
           />
 
           {/* Urging words out into the world is only safe once they have been heard as an imagined ending */}
-          {!care && !reflection.unjudged && !reflection.pending && (
+          {safe && (
             <section aria-labelledby="final-word-now" className="bg-card-bg border border-card-border rounded-lg p-5 sm:p-6 text-center">
               <h3 id="final-word-now" className="text-lg font-semibold text-foreground">These don&apos;t have to wait</h3>
               <p className="mt-2 text-foreground/80 leading-relaxed">
@@ -279,11 +281,15 @@ export default function LastWords() {
             </section>
           )}
 
-          <div className="text-center">
-            <Button variant="secondary" onClick={writeAnother}>
-              Write another
-            </Button>
-          </div>
+          {/* Words not known to be safe are not met with an invitation to write about an ending again */}
+          {unjudged && <GentleExit />}
+          {(safe || care) && (
+            <div className="text-center">
+              <Button variant="secondary" onClick={writeAnother}>
+                Write another
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>

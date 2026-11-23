@@ -1,3 +1,4 @@
+import type { Judgement } from './judgement'
 import { soundsLikeDistress } from './moderation'
 
 const EXCERPT_LENGTH = 60
@@ -29,12 +30,15 @@ export function excerpt(words: string): string | null {
 interface Waking {
   words: string
   intention: string
-  care: boolean
+  judgement: Judgement
 }
 
-/** The line at dawn that ties what the player said on the other side to what they came back with. */
-export function wakingLine({ words, intention, care }: Waking): string {
-  if (care) return 'You came back. It is good to have you here, today.'
+/**
+ * The line at dawn that ties what the player said on the other side to what they came back with.
+ * Unless the words were judged safe it never repeats them or calls anything "within reach".
+ */
+export function wakingLine({ words, intention, judgement }: Waking): string {
+  if (judgement !== 'safe') return 'You came back. It is good to have you here, today.'
   const quoted = excerpt(words)
   const said = quoted ? `Over there, you said “${quoted}”` : 'You came back.'
   return intention.trim()

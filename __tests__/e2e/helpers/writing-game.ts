@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs'
 import path from 'path'
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page, type Route } from '@playwright/test'
 
 const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
 
@@ -41,6 +41,8 @@ export interface WritingGameConfig {
   closingLine: RegExp
   /** Whether the closing waits until the words have been heard and judged safe, as a ceremony over them should. */
   closingNeedsJudgement: boolean
+  /** The calm line shown while the reply is on its way. */
+  holdingLine: string
   /** How the thank-you line counts the others whose words are in the cloud. */
   othersLine: RegExp
   firstLine: RegExp
@@ -68,7 +70,7 @@ interface Mocks {
 async function mockReflection(page: Page, config: WritingGameConfig, status = 200) {
   await page.route(`**/api/${config.game}/reflect`, (route) =>
     status === 200
-      ? route.fulfill({ json: { reflection: REFLECTION } })
+      ? route.fulfill({ json: { reflection: REFLECTION, safe: true } })
       : route.fulfill({ status, json: { error: 'Server error' } })
   )
 }
@@ -138,6 +140,11 @@ async function write(page: Page, config: WritingGameConfig, words: string, headi
 
 const QUIET_SUPPORT = /If any of this is close to home/
 
+// A death wish said sideways, which the phrase list does not catch: only a reply could judge it
+const INDIRECT_WISH = "I was hoping I wouldn't open my eyes again. I'm so tired of trying."
+const CELEBRATION = /Good morning|candle is out|within reach|Over there, you said|others would say|first words here|stood here and come back|first to stand here/
+const MACHINE_TALK = /\bAI\b|generat|powered by|language model|machine|loading/i
+
 // The cloud waits for the reflection (words judged to need care are never shared), then loads its drawing on demand
 const CLOUD_WAIT = 15_000
 
@@ -185,8 +192,11 @@ export function describeWritingGame(config: WritingGameConfig) {
 
       await write(page, config, 'I was here and it mattered.')
       await expect(page.locator('blockquote')).toContainText('I was here and it mattered.')
+      await expect(page.getByText(QUIET_SUPPORT)).toBeVisible()
       await expect(page.getByRole('button', { name: config.closingButton })).toHaveCount(config.closingNeedsJudgement ? 0 : 1)
-      await expect(page.getByRole('button', { name: config.againLabel })).toBeVisible()
+      // Unheard words are met with a calm way on, not an invitation to write about an ending again
+      await expect(page.getByRole('button', { name: config.againLabel })).toHaveCount(0)
+      await expect(page.getByRole('navigation', { name: 'Somewhere calm to go next' }).locator('a[href="/games/the-still-point"]')).toBeVisible()
       await expectNoErrorPanel(page)
       await expect(page.locator('main')).not.toContainText(/\bAI\b|generat|powered by/i)
       // Unheard words may still be danger said sideways, so support is within reach, softly
@@ -209,7 +219,7 @@ export function describeWritingGame(config: WritingGameConfig) {
       await expect(support(page)).toHaveCount(0)
       await expect(page.getByRole('heading', { name: "These don't have to wait" })).toHaveCount(0)
       if (config.game === 'first-words') {
-        await expect(page.getByRole('textbox', { name: 'One small thing to bring back into tomorrow' })).toHaveValue('')
+        await expect(page.getByRole('textbox', { name: 'One small thing to bring back into tomorrow' })).toHaveCount(0)
       }
       await expect(page.locator('main')).not.toContainText(/danger|crisis|worried about you/i)
     })
@@ -297,6 +307,95 @@ export function describeWritingGame(config: WritingGameConfig) {
       await expect(related).toBeVisible()
       await expect(related.locator('a[href="/games/the-still-point"]')).toBeVisible()
       await expect(related.locator('a[href="/games/first-breath"], a[href="/games/final-breath"]')).toHaveCount(0)
+    })
+  })
+
+  test.describe('until the words are judged safe', () => {
+    const intentionBox = (page: Page) => page.getByRole('textbox', { name: 'One small thing to bring back into tomorrow' })
+
+    async function expectNothingCelebratedOrShared(page: Page, db: Mocks) {
+      await expect(page.getByRole('button', { name: config.closingButton })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: config.againLabel })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Save image' })).toHaveCount(0)
+      await expect(page.getByTestId('keepsake-canvas')).toHaveCount(0)
+      await expect(page.getByRole('heading', { name: "These don't have to wait" })).toHaveCount(0)
+      await expect(page.getByRole('heading', { name: 'Continue your journey' })).toHaveCount(0)
+      await expect(cloud(page)).toHaveCount(0)
+      await expect(page.locator('main')).not.toContainText(CELEBRATION)
+      await expect(page.locator('main')).not.toContainText(MACHINE_TALK)
+      expect(db.posts).toEqual([])
+      expect(db.reads()).toBe(0)
+    }
+
+    test('while the reply is held for ten seconds, nothing is celebrated, shared or quoted back', async ({ page }) => {
+      test.slow()
+      const db = await databaseUp(page, config, SAMPLE_WORDS)
+      let held = false
+      await page.route(`**/api/${config.game}/reflect`, () => {
+        held = true
+      })
+      await page.goto(`/games/${config.slug}`)
+
+      await write(page, config, INDIRECT_WISH)
+      await expect.poll(() => held).toBe(true)
+      await expect(page.getByText(config.holdingLine)).toBeVisible()
+      await expectNothingCelebratedOrShared(page, db)
+      if (config.game === 'first-words') {
+        // Enter in the plan box would otherwise wake without the button
+        await intentionBox(page).fill('Sleep in.')
+        await intentionBox(page).press('Enter')
+      }
+
+      await page.waitForTimeout(10_000)
+      await expect(page.getByText(config.holdingLine)).toBeVisible()
+      await expectNothingCelebratedOrShared(page, db)
+    })
+
+    for (const [failure, answer] of [
+      ['fails', (route: Route) => route.fulfill({ status: 500, json: { error: 'Server error' } })],
+      ['never arrives', (route: Route) => route.abort()],
+      ['comes back without a verdict', (route: Route) => route.fulfill({ json: { reflection: REFLECTION } })],
+    ] as const) {
+      test(`when the reply ${failure}, the way out is gentle with support at hand, for good`, async ({ page }) => {
+        const db = await databaseUp(page, config, SAMPLE_WORDS)
+        await page.route(`**/api/${config.game}/reflect`, answer)
+        await page.goto(`/games/${config.slug}`)
+
+        await write(page, config, INDIRECT_WISH)
+        await expect(page.getByText(QUIET_SUPPORT)).toBeVisible()
+        await expect(page.getByText(QUIET_SUPPORT).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+        const exit = page.getByRole('navigation', { name: 'Somewhere calm to go next' })
+        await expect(exit.locator('a[href="/games/the-still-point"]')).toBeVisible()
+        await expect(page.getByText(config.holdingLine)).toHaveCount(0)
+        await expect(intentionBox(page)).toHaveCount(0)
+        await expectNothingCelebratedOrShared(page, db)
+
+        await page.waitForTimeout(3000)
+        await expect(exit).toBeVisible()
+        await expectNothingCelebratedOrShared(page, db)
+      })
+    }
+
+    test('a reply that judges the words safe still brings the whole ceremony, the cloud and the count', async ({ page }) => {
+      const existing = Array.from({ length: 300 }, (_, i) => SAMPLE_WORDS[i % SAMPLE_WORDS.length])
+      const db = await databaseUp(page, config, existing)
+      await page.route(`**/api/${config.game}/reflect`, (route) =>
+        route.fulfill({ json: { reflection: REFLECTION, intention: 'Put on one song and dance in the kitchen.', safe: true } })
+      )
+      await page.goto(`/games/${config.slug}`)
+
+      await write(page, config, 'Love each other loudly.')
+      await expect(page.getByText(REFLECTION)).toBeVisible()
+      await expect(cloud(page)).toBeVisible({ timeout: CLOUD_WAIT })
+      await expect(page.getByText(config.othersLine)).toBeVisible()
+      expect(db.posts).toEqual(['Love each other loudly.'])
+      await expect(page.getByText(QUIET_SUPPORT)).toHaveCount(0)
+      await expect(page.getByRole('navigation', { name: 'Somewhere calm to go next' })).toHaveCount(0)
+
+      await page.getByRole('button', { name: config.closingButton }).click()
+      await expect(page.getByText(config.closingLine)).toBeFocused()
+      await expect(page.getByRole('button', { name: 'Save image' })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('button', { name: config.againLabel })).toBeVisible()
     })
   })
 
