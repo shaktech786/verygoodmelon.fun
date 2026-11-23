@@ -321,6 +321,10 @@ test.describe('The Shapeshifter', () => {
     await page.keyboard.press('Escape')
     const paused = page.getByRole('dialog', { name: 'Paused' })
     await expect(paused).toBeVisible()
+    // The pause keys stay folded behind a small Keys toggle until asked for
+    await expect(paused.getByText('Esc or P pauses and resumes.')).toBeHidden()
+    await paused.getByText('Keys', { exact: true }).click()
+    await expect(paused.getByText('Esc or P pauses and resumes.')).toBeVisible()
     const frozen = (await engine(page)).waveTime
     await page.waitForTimeout(400)
     expect((await engine(page)).waveTime).toBe(frozen)

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Undo2, Trash2, Sunset } from 'lucide-react'
 import { Button, buttonClassName } from '@/components/ui/Button'
+import { KeyHints } from '@/components/ui/KeyHints'
 import { cn } from '@/lib/utils/cn'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import {
@@ -1014,9 +1015,9 @@ export default function CalmGarden() {
           ))}
         </details>
 
-        <p className="mt-3 hidden text-xs text-foreground/70 pointer-fine:block">
-          Keys: Tab to the garden, arrows move, Enter plants, Ctrl+Z undoes.
-        </p>
+        <KeyHints className="mt-3 text-foreground/70">
+          Tab to the garden, arrows move, Enter plants, Ctrl+Z undoes.
+        </KeyHints>
       </section>
     </div>
   )

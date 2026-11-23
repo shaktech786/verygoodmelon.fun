@@ -10,6 +10,7 @@ import { fallbackName, fallbackTagline, reflection } from './engine/naming'
 import { planRun, planOrder, type PlanStep } from './engine/plan'
 import { fallbackRule } from './engine/rules'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { KeyHints } from '@/components/ui/KeyHints'
 import GameCanvas from './components/GameCanvas'
 import TitleScreen from './components/TitleScreen'
 import MutationScreen from './components/MutationScreen'
@@ -369,7 +370,7 @@ export default function CascadeGame() {
             >
               Start over
             </button>
-            {!isTouch && <p className="text-xs text-foreground/70">Esc or P to pause and resume</p>}
+            {!isTouch && <KeyHints>Esc or P pauses and resumes.</KeyHints>}
           </div>
         )}
 
@@ -417,7 +418,7 @@ export default function CascadeGame() {
               <Pause size={16} aria-hidden="true" />
               Pause
             </button>
-            {!isTouch && <p className="text-xs text-foreground/70">Esc or P also pauses</p>}
+            {!isTouch && <KeyHints>Esc or P also pauses.</KeyHints>}
           </>
         )}
       </div>

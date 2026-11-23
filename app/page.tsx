@@ -5,10 +5,8 @@ import { useCareMode } from '@/components/games/CareMode'
 import { GentleGames } from '@/components/games/CrossGameSuggestions'
 import { AllGames } from '@/components/games/GameDirectory'
 import { MoodDoors } from '@/components/home/MoodDoors'
-import { PersonalizedSuggestions } from '@/components/home/PersonalizedSuggestions'
 import { TodaysPick } from '@/components/home/TodaysPick'
 import { dailyPick } from '@/lib/games/daily-pick'
-import { usePresence } from '@/lib/hooks/usePresence'
 
 const fadeIn = (mounted: boolean, delayMs: number) => ({
   className: `transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`,
@@ -20,7 +18,6 @@ const fadeIn = (mounted: boolean, delayMs: number) => ({
  */
 export default function Home() {
   const [mounted, setMounted] = useState(false)
-  const { count: presenceCount, isLoaded: presenceLoaded } = usePresence()
   const { care } = useCareMode()
   // Picked after mount so the server's date can never disagree with the visitor's
   const pick = mounted ? dailyPick(new Date()) : undefined
@@ -62,15 +59,6 @@ export default function Home() {
           <AllGames />
         </div>
       </div>
-
-      {presenceLoaded && presenceCount > 0 && (
-        <p className="mt-8 text-primary-light text-xs sm:text-sm flex items-center justify-center gap-2" aria-live="polite">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse-slow" aria-hidden="true" />
-          {presenceCount === 1 ? 'Someone else is here too' : `${presenceCount} others exploring right now`}
-        </p>
-      )}
-
-      <PersonalizedSuggestions />
     </div>
   )
 }

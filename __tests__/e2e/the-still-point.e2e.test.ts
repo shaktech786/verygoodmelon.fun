@@ -366,6 +366,11 @@ test.describe('The Harmonist', () => {
 
   test('keyboard only: arrows choose a rhythm and a length, Enter begins, Space pauses, Escape ends', async ({ page }) => {
     await openGame(page)
+    // The keyboard help waits, folded, behind one small Keys toggle
+    const keys = page.getByText('Keys', { exact: true })
+    await expect(keys).toBeVisible()
+    await expect(page.getByText('Arrow keys choose. Enter begins.')).toBeHidden()
+    await keys.click()
     await expect(page.getByText('Arrow keys choose. Enter begins.')).toBeVisible()
 
     await page.locator('h1').click()
@@ -388,7 +393,8 @@ test.describe('The Harmonist', () => {
     await expect(guide(page)).toContainText('Coherent Breathing')
     await expect(sessionTime(page)).toHaveText('0:00')
     await expect(phase(page)).toHaveText('Inhale')
-    await expect(page.getByText('Space pauses. Escape ends.')).toBeVisible()
+    await expect(keys).toBeVisible()
+    await expect(page.getByText('Space pauses. Escape ends.')).toBeHidden()
 
     await page.keyboard.press(' ')
     await expect(phase(page)).toHaveText('Paused')
@@ -659,11 +665,13 @@ test.describe('The Harmonist on a phone with reduced motion', () => {
 
   test('keyboard hints stay hidden on a touch screen until a key is pressed', async ({ page }) => {
     await openGame(page)
-    const hint = page.getByText('Arrow keys choose. Enter begins.')
-    await expect(hint).toBeHidden()
+    const keys = page.getByText('Keys', { exact: true })
+    await expect(keys).toBeHidden()
     await page.getByRole('button', { name: 'Begin breathing' }).tap()
-    await expect(page.getByText('Space pauses. Escape ends.')).toBeHidden()
+    await expect(keys).toBeHidden()
     await page.keyboard.press('Tab')
+    await expect(keys).toBeVisible()
+    await keys.tap()
     await expect(page.getByText('Space pauses. Escape ends.')).toBeVisible()
   })
 

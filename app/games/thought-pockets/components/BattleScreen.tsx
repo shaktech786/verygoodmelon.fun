@@ -28,6 +28,7 @@ import { keywordText } from '@/lib/games/thought-pockets/data/keywords'
 import { useInsightStore, useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { wakeTones } from '@/components/games/gentleCues'
+import { KeyHints } from '@/components/ui/KeyHints'
 import { CardFace, TYPE_COLORS, keywordsOnCard } from './CardFace'
 import { BiasPortrait, Mood, crackCount, impactLines } from './Sprites'
 import { Term } from './Term'
@@ -861,23 +862,25 @@ export function BattleScreen({ run }: { run: RunState }) {
             })}
             {battle.hand.length === 0 && <p className="col-span-3 py-6 text-sm text-[var(--tp-muted)]">Your hand is empty.</p>}
           </div>
-          <p className="mt-1.5 min-h-[1.25rem] text-center text-xs text-[var(--tp-muted)] max-sm:line-clamp-3">
+          <div className="mt-1.5 min-h-[1.25rem] text-center text-xs text-[var(--tp-muted)]">
             {inspectedDef ? (
-              <>
+              <p className="max-sm:line-clamp-3">
                 <span className="sm:hidden">
                   <strong>{inspectedDef.name}:</strong> {describeCard(inspectedDef).join(' ')}{' '}
                 </span>
                 {keywordsOnCard(inspectedDef)
                   .map((word) => `${word}: ${keywordText(word, run.school)}`)
                   .join('  ')}
-              </>
+              </p>
             ) : (
               <>
-                <span className="hidden sm:inline">Keys: 1–9 play a card, U undoes, E ends the turn, S skips the replay.</span>
-                <span className="sm:hidden">Tap a card to play it. Hold a card to read all of it.</span>
+                <div className="hidden sm:block">
+                  <KeyHints className="text-[var(--tp-muted)]">1–9 play a card, U undoes, E ends the turn, S skips the replay.</KeyHints>
+                </div>
+                <p className="sm:hidden">Tap a card to play it. Hold a card to read all of it.</p>
               </>
             )}
-          </p>
+          </div>
         </section>
 
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 bg-[var(--tp-ink)] pb-2 pr-16 sm:sticky sm:bottom-0 sm:z-10 sm:rounded-lg sm:border sm:border-[var(--tp-line)] sm:py-3 sm:pl-4 sm:pr-4">

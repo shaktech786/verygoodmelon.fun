@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react'
 import { Button } from '@/components/ui/Button'
+import { KeyHints } from '@/components/ui/KeyHints'
 import { cn } from '@/lib/utils/cn'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { buzz, playTones, useCanBuzz, useSoundAudible, wakeTones, type Tone } from '@/components/games/gentleCues'
@@ -119,8 +120,6 @@ const PHASE_TONES: Record<PhaseKind, Tone[]> = {
 const MARK_TONE: Tone[] = [{ hz: 523.25, seconds: 1.2 }]
 const TONE_LOUDNESS = 0.05
 const PHASE_BUZZ: Record<PhaseKind, number[]> = { in: [40], hold: [], out: [40, 100, 40] }
-
-const KEYBOARD_HINT = 'hidden [@media(hover:hover)_and_(pointer:fine)]:block'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -651,7 +650,6 @@ export default function BreathingPatterns() {
   const [checkIn, setCheckIn] = useState<CheckIn | null>(null)
   const [buzzWithBreath, setBuzzWithBreath] = useState(false)
   const [tonesOn, setTonesOn] = useState(false)
-  const [keysSeen, setKeysSeen] = useState(false)
   const prefersReducedMotion = useReducedMotion()
   const audible = useSoundAudible()
   const canBuzz = useCanBuzz()
@@ -945,21 +943,14 @@ export default function BreathingPatterns() {
   // Keyboard controls
   // ---------------------------------------------------------------------------
 
-  // Keyboard hints show on desktops, and on any device once a key has been pressed.
-  useEffect(() => {
-    const onKey = () => setKeysSeen(true)
-    window.addEventListener('keydown', onKey, { once: true })
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.ctrlKey || e.metaKey || e.altKey) return
 
-      // A focused button or link already acts on Space; handling it here as well
+      // A focused button, link or disclosure already acts on Space; handling it here as well
       // would do the action twice (pause, then immediately resume).
-      const onControl = e.target instanceof HTMLButtonElement || e.target instanceof HTMLAnchorElement
+      const onControl = e.target instanceof Element && e.target.closest('button, a, summary') !== null
 
       switch (e.key) {
         case ' ': {
@@ -995,7 +986,6 @@ export default function BreathingPatterns() {
   const shownMelon: { breaths: Breath[]; at: string | null } | null = breaths.length > 0 ? { breaths, at: null } : lastMelon
   const patternIndex = PATTERNS.findIndex((p) => p.id === selectedPatternId)
   const lengthIndex = LENGTHS.findIndex((l) => l.minutes === lengthMinutes)
-  const keyboardHint = cn('text-xs text-foreground/70', keysSeen ? 'block' : KEYBOARD_HINT)
 
   // ---------------------------------------------------------------------------
   // Render: Complete state
@@ -1205,13 +1195,13 @@ export default function BreathingPatterns() {
                 Change rhythm
               </Button>
             )}
-            <p className={cn(keyboardHint, 'mt-3')}>
+            <KeyHints className="mt-3 text-foreground/70">
               {sessionState === 'paused'
                 ? 'Choose a rhythm, then Resume. Escape ends.'
                 : isFreeMode
                   ? 'Space marks a breath. P pauses. Escape ends.'
                   : 'Space pauses. Escape ends.'}
-            </p>
+            </KeyHints>
           </div>
         </div>
       </section>
@@ -1321,9 +1311,7 @@ export default function BreathingPatterns() {
         <Button variant="primary" size="lg" onClick={() => startSession()}>
           Begin breathing
         </Button>
-        <p className={cn(keyboardHint, 'mt-3')}>
-          Arrow keys choose. Enter begins.
-        </p>
+        <KeyHints className="mt-3 text-foreground/70">Arrow keys choose. Enter begins.</KeyHints>
       </div>
       <div className="flex flex-wrap justify-center gap-2 mt-6 mb-2">
         <Chip pressed={tonesOn} onToggle={() => setTonesOn((on) => !on)}>Breath tones</Chip>

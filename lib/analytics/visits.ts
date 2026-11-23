@@ -3,8 +3,7 @@ const COUNTED_KEY = 'hasVisited'
 let visit: Promise<number | null> | null = null
 
 /**
- * The visit total for this page load. The footer and the homepage both want it; sharing one
- * request keeps it to a single call per load, and a visit is counted once per tab.
+ * The visit total for this page load, fetched once per load; a visit is counted once per tab.
  */
 export function siteVisitCount(): Promise<number | null> {
   visit ??= countVisit()

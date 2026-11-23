@@ -142,9 +142,8 @@ export default function PrivacyPage() {
             <Term>No analytics or advertising cookies.</Term> None, ever.
           </li>
           <li>
-            <Term>Local storage.</Term> Your accessibility settings, game progress, play history
-            (used for the suggestions on the homepage), and some cached content are saved in your
-            browser. This stays on your device and is not sent to us. Clearing your browser data
+            <Term>Local storage.</Term> Your accessibility settings, game progress, and some cached
+            content are saved in your browser. This stays on your device and is not sent to us. Clearing your browser data
             removes it, and the accessibility panel has a reset button. If something you write
             suggests you are going through something very hard, a small flag that clears itself
             after four hours keeps the suggestions gentle and support numbers in view.

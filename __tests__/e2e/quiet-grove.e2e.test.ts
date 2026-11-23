@@ -648,7 +648,11 @@ test.describe('The Gardener', () => {
     // Only the canvas itself takes keys directly; the rest of the game reads normally.
     await expect(page.getByRole('application')).toHaveCount(1)
     await expect(page.getByRole('application').getByRole('radiogroup')).toHaveCount(0)
-    await expect(page.getByText(/^Keys: Tab to the garden/)).toBeVisible()
+    const keys = page.getByText('Keys', { exact: true })
+    await expect(keys).toBeVisible()
+    await expect(page.getByText(/^Tab to the garden/)).toBeHidden()
+    await keys.click()
+    await expect(page.getByText(/^Tab to the garden/)).toBeVisible()
   })
 })
 
@@ -670,7 +674,7 @@ test.describe('The Gardener on a touch screen', () => {
     await expect(page.getByRole('radio')).toHaveCount(15)
     for (const radio of await page.getByRole('radio').all()) await expect(radio).toBeInViewport({ ratio: 0 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
-    await expect(page.getByText(/^Keys: Tab to the garden/)).toBeHidden()
+    await expect(page.getByText('Keys', { exact: true })).toBeHidden()
 
     await page.getByRole('radio', { name: 'Pine Tree' }).tap()
     await expect(page.getByRole('radio', { name: 'Pine Tree' })).toHaveAttribute('aria-checked', 'true')
