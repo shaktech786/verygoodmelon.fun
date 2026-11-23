@@ -29,6 +29,10 @@ export function lineSize(line: string, room: number): number {
   return 28
 }
 
+const MELON_TOP = SCENE_FLOOR - 102
+/** The corners lift above the middle, so it reads as a smile at the picture's coarse pixel size. */
+const SMILE: ReadonlyArray<readonly [number, number]> = [[-15, 27], [-7, 34], [7, 34], [15, 27]]
+
 function envoyAndDoor(): KeepsakeOp[] {
   const floor = SCENE_FLOOR
   const melonX = CARD.left + 150
@@ -36,16 +40,18 @@ function envoyAndDoor(): KeepsakeOp[] {
   const doorTop = floor - 118
   return [
     { kind: 'rect', x: CARD.left + 60, y: floor, w: CARD_W - 120, h: 6, ink: 'line' },
-    { kind: 'rect', x: melonX - 16, y: floor - 36, w: 6, h: 36, ink: 'ink' },
-    { kind: 'rect', x: melonX + 10, y: floor - 36, w: 6, h: 36, ink: 'ink' },
-    { kind: 'poly', points: semicircle(melonX, floor - 78, 42), ink: 'rind' },
-    { kind: 'poly', points: semicircle(melonX, floor - 78, 36), ink: 'rindLight' },
-    { kind: 'poly', points: semicircle(melonX, floor - 78, 30), ink: 'flesh' },
-    { kind: 'disc', x: melonX - 12, y: floor - 64, r: 3, ink: 'seed' },
-    { kind: 'disc', x: melonX + 12, y: floor - 64, r: 3, ink: 'seed' },
-    { kind: 'rect', x: melonX + 40, y: floor - 70, w: 30, h: 24, ink: 'paper' },
-    { kind: 'rect', x: melonX + 46, y: floor - 63, w: 18, h: 3, ink: 'inkSoft' },
-    { kind: 'rect', x: melonX + 46, y: floor - 55, w: 12, h: 3, ink: 'inkSoft' },
+    { kind: 'rect', x: melonX - 22, y: floor - 42, w: 8, h: 42, ink: 'ink' },
+    { kind: 'rect', x: melonX + 14, y: floor - 42, w: 8, h: 42, ink: 'ink' },
+    { kind: 'poly', points: semicircle(melonX, MELON_TOP, 60), ink: 'rind' },
+    { kind: 'poly', points: semicircle(melonX, MELON_TOP, 52), ink: 'rindLight' },
+    { kind: 'poly', points: semicircle(melonX, MELON_TOP, 44), ink: 'flesh' },
+    // A kind face, as on the page: two upright eyes and a small smile
+    { kind: 'rect', x: melonX - 20, y: MELON_TOP + 8, w: 8, h: 14, ink: 'seed' },
+    { kind: 'rect', x: melonX + 12, y: MELON_TOP + 8, w: 8, h: 14, ink: 'seed' },
+    { kind: 'line', points: SMILE.map(([dx, dy]) => [melonX + dx, MELON_TOP + dy] as const), ink: 'seed', width: 6 },
+    { kind: 'rect', x: melonX + 56, y: MELON_TOP + 6, w: 36, h: 28, ink: 'paper' },
+    { kind: 'rect', x: melonX + 63, y: MELON_TOP + 14, w: 22, h: 4, ink: 'inkSoft' },
+    { kind: 'rect', x: melonX + 63, y: MELON_TOP + 23, w: 14, h: 4, ink: 'inkSoft' },
     // A door left just ajar, warm light at the gap.
     { kind: 'rect', x: doorX - 8, y: doorTop - 8, w: 92, h: 126, ink: 'rind' },
     { kind: 'rect', x: doorX, y: doorTop, w: 76, h: 118, ink: 'gold' },

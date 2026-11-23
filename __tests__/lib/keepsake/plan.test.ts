@@ -27,6 +27,10 @@ describe('framedKeepsake: the paper every keepsake is drawn on', () => {
     expect(plan.text).toBe(`One star tonight.\n\nThe Dilemma · ${SITE_NAME}`)
     expect(plan.alt).toBe('A single star.')
   })
+
+  it('keeps the game’s name, so the picture can be named after it', () => {
+    expect(plan.title).toBe('The Dilemma')
+  })
 })
 
 describe('keepsake names and days', () => {
@@ -62,5 +66,12 @@ describe('drawing helpers', () => {
   it('follows the theme for named inks and keeps a fixed colour as it is', () => {
     expect(inkColour('paper', 'light')).not.toBe(inkColour('paper', 'dark'))
     expect(inkColour('#17223b', 'dark')).toBe('#17223b')
+  })
+
+  it('keeps the watermelon one set of colours in both themes', () => {
+    for (const ink of ['rind', 'rindLight', 'flesh', 'seed', 'gold'] as const) {
+      expect(inkColour(ink, 'dark')).toBe(inkColour(ink, 'light'))
+    }
+    expect(inkColour('rind', 'dark')).toBe('#1a4d2e')
   })
 })

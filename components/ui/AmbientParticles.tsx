@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useAccessibility } from '@/lib/hooks/useAccessibility'
 
 interface Star {
   x: number
@@ -24,16 +25,19 @@ export function AmbientParticles() {
   const mouseRef = useRef({ x: -1000, y: -1000 })
   const animationRef = useRef<number | null>(null)
   const animateFnRef = useRef<((time: number) => void) | null>(null)
-  const [reducedMotion, setReducedMotion] = useState(false)
+  const [deviceReducesMotion, setDeviceReducesMotion] = useState(false)
+  const { settings } = useAccessibility()
+  // Either the device or the settings panel asking for less motion keeps the sky away entirely
+  const reducedMotion = deviceReducesMotion || settings.reduceMotion
   const [isSavingPower, setIsSavingPower] = useState(false)
   const [isDark, setIsDark] = useState(true)
 
-  // Initialize stars (reduced for subtlety)
+  // A sparse, faint sky: it should be noticed on a second look, never on the first
   const initStars = useCallback((width: number, height: number) => {
-    const count = Math.floor((width * height) / 50000) // Much lower density
+    const count = Math.floor((width * height) / 90000)
     const stars: Star[] = []
 
-    for (let i = 0; i < Math.min(count, 20); i++) { // Max 20 stars (was 50)
+    for (let i = 0; i < Math.min(count, 12); i++) {
       stars.push({
         x: Math.random() * width,
         y: Math.random() * height,
@@ -159,8 +163,8 @@ export function AmbientParticles() {
   useEffect(() => {
     // Check reduced motion
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
-    queueMicrotask(() => setReducedMotion(motionQuery.matches))
-    const motionHandler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
+    queueMicrotask(() => setDeviceReducesMotion(motionQuery.matches))
+    const motionHandler = (e: MediaQueryListEvent) => setDeviceReducesMotion(e.matches)
     motionQuery.addEventListener('change', motionHandler)
 
     // Check battery status — disable on low battery or power saver
@@ -243,7 +247,7 @@ export function AmbientParticles() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-0"
+      className="fixed inset-0 pointer-events-none z-0 opacity-60"
       aria-hidden="true"
     />
   )

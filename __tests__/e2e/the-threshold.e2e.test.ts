@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { test, expect, type Locator, type Page } from '@playwright/test'
-import { expectKeepsakeSaves } from './helpers/keepsake'
 
 /**
  * The Plain Speaker (/games/the-threshold): a player-paced minute before a hard conversation.
@@ -437,7 +437,6 @@ test.describe('The Plain Speaker', () => {
     await next(page)
     await expectStep(page, 'One line to carry in')
     await expect(page.locator('blockquote')).toHaveText('When plans change last minute I feel like an afterthought.')
-    await page.getByText('Save the card as a picture').click()
     await button(page, 'Copy as text').click()
     await expect(page.getByRole('status').filter({ hasText: 'Copied.' })).toBeVisible()
     // Some systems store line breaks on the clipboard as \r\n.
@@ -461,16 +460,14 @@ test.describe('The Plain Speaker', () => {
     await next(page)
     await expectStep(page, 'One line to carry in')
 
-    await page.getByText('Save the card as a picture').click()
-    const card = page.locator('#hard-talk details')
-    await expect(card.getByRole('heading', { name: 'A pocket card to keep' })).toBeAttached()
-    await expectKeepsakeSaves(page, {
-      within: card,
-      fileName: /^the-plain-speaker-\d{4}-\d{2}-\d{2}\.png$/,
-      describedAs: /pocket card.*Could we have ten minutes\?.*I have grown into this role\./,
-    })
-    // The card is a picture to keep; it never names who the talk is with
-    await expect(card.getByTestId('keepsake-canvas')).not.toHaveAccessibleDescription(/Ana/)
+    // The card on the page is the only card; saving draws that same card as a picture
+    await expect(page.locator('#hard-talk figure')).toHaveCount(1)
+    await expect(page.getByTestId('keepsake-canvas')).toHaveCount(0)
+    const [download] = await Promise.all([page.waitForEvent('download'), button(page, 'Save the card as a picture').click()])
+    expect(download.suggestedFilename()).toMatch(/^the-plain-speaker-\d{4}-\d{2}-\d{2}\.png$/)
+    const file = await readFile(await download.path())
+    expect([...file.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    await expect(page.getByRole('status').filter({ hasText: 'Saved to your device.' })).toBeVisible()
 
     await button(page, 'I’m going in').click()
     await expectStep(page, 'Go in when you’re ready.')
@@ -527,7 +524,7 @@ test.describe('The Plain Speaker', () => {
       await expect(page.locator('#hard-talk svg[viewBox="0 0 160 100"]')).toHaveCount(1)
       await expect(card.locator('svg[viewBox="0 0 160 100"]')).toHaveCount(1)
       await expect(page.locator('#hard-talk').getByText('I have grown into this role.', { exact: true })).toHaveCount(1)
-      await expect(page.getByTestId('keepsake-canvas')).toBeHidden()
+      await expect(page.getByTestId('keepsake-canvas')).toHaveCount(0)
       await expect(page.locator('#hard-talk button.bg-accent')).toHaveCount(1)
       await expect(page.locator('#hard-talk button.bg-accent')).toHaveText('Keep this on screen')
       await expect(page.locator('#hard-talk button.text-lg')).toHaveCount(1)

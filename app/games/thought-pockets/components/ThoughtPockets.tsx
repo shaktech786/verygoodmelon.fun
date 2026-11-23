@@ -12,7 +12,7 @@ import { COMPOSURE_GUARD } from '@/lib/games/thought-pockets/engine/battle'
 import { PROBLEM_RULE, slowGroundText } from '@/lib/games/thought-pockets/data/enemies'
 import { RUN_FLOORS } from '@/lib/games/thought-pockets/engine/run'
 import { TIRING } from '@/lib/games/thought-pockets/data/pace'
-import { SoundToggle } from '@/components/ui/SoundToggle'
+import { AmbientSoundscape } from '@/components/ui/AmbientSoundscape'
 import { BattleScreen, PlayerResolve, PlayerShown, PlayerShownContext } from './BattleScreen'
 import { MapScreen, FLOOR_NAMES } from './MapScreen'
 import { EventScreen, RestScreen, RewardScreen, ShopScreen, quietButton } from './NodeScreens'
@@ -299,7 +299,7 @@ export function ThoughtPockets() {
       <Modal open={dialog === 'deck' && Boolean(run)} onClose={() => setDialog(null)} title="Your deck">
         {run && <DeckList run={run} />}
       </Modal>
-      <SoundToggle gameId="thought-pockets" />
+      <AmbientSoundscape gameId="thought-pockets" />
     </div>
   )
 }

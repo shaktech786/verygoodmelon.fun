@@ -72,7 +72,7 @@ describe('patientOneKeepsake', () => {
     expect(words(plan)).toEqual(expect.arrayContaining(['Birds', 'Traffic']))
     expect(words(plan)).not.toContain('Voices')
     expect(plan.ops.some((op) => op.kind === 'line' && op.ink === 'ink')).toBe(true) // the birds
-    expect(plan.ops.filter((op) => op.kind === 'rect' && op.ink === 'blue')).toHaveLength(1) // the car
+    expect(plan.ops.filter((op) => op.kind === 'rect' && op.ink === 'rind')).toHaveLength(1) // the car
     expect(plan.text).toContain('I heard birds and traffic.')
   })
 

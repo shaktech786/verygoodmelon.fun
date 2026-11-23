@@ -1018,6 +1018,10 @@ export default function BreathingPatterns() {
       <section ref={endingRef} className="max-w-2xl mx-auto scroll-mt-20" aria-label="Breathing guide">
         <div className="bg-card-bg border border-card-border rounded-lg px-4 py-6 sm:p-12 text-center min-h-[400px] flex flex-col justify-center">
           <div className="animate-fade">
+            {/* The heading comes first, so the keepsake's own heading sits beneath it rather than before it */}
+            <h2 className="text-2xl sm:text-3xl font-semibold mb-4 text-foreground">
+              {seeds > 0 ? 'Your breaths, gathered' : 'A short pause'}
+            </h2>
             {seeds > 0 ? (
               <MelonEnding breaths={breaths} still={prefersReducedMotion} />
             ) : (
@@ -1025,9 +1029,6 @@ export default function BreathingPatterns() {
                 <MelonSvg c={100} r={92} breaths={breaths} />
               </svg>
             )}
-            <h2 className="text-2xl sm:text-3xl font-semibold mb-4 text-foreground">
-              {seeds > 0 ? 'Your breaths, gathered' : 'A short pause'}
-            </h2>
             <p className="text-lg text-foreground/80 mb-2">
               You spent {timeStr} breathing.
             </p>

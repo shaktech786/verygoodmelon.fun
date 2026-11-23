@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Button, buttonClassName } from '@/components/ui/Button'
-import { Keepsake } from '@/components/games/Keepsake'
+import { KeepsakeSave } from '@/components/games/Keepsake'
 import { CarryScreen } from '@/components/games/hard-talk/CarryScreen'
 import { BreathMelon, StepOutArt, ThresholdArt } from '@/components/games/hard-talk/ThresholdArt'
 import { plainSpeakerKeepsake } from '@/lib/keepsake/plain-speaker'
@@ -522,7 +522,7 @@ function HardTalkGame() {
             <>
               {heading('One line to carry in')}
               {notes.ownWords && sub('In your own words.')}
-              {/* The pocket card itself, the same one the saved picture shows: what to say first, the line, and the door */}
+              {/* The only pocket card: what to say first, the line, and the door. Save draws the same card as a picture. */}
               <figure className="mt-5 overflow-hidden rounded-lg border-2 border-card-border bg-background text-center soft-shadow">
                 {notes.begin ? (
                   <div className="bg-melon-green px-5 py-4 text-background">
@@ -544,12 +544,7 @@ function HardTalkGame() {
               <Button variant="secondary" onClick={stepOut} className="mt-3 w-full">
                 I’m going in
               </Button>
-              <details className="mt-4 text-left">
-                <summary className="mx-auto w-fit cursor-pointer rounded px-2 py-2 text-base text-foreground/80 underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
-                  Save the card as a picture
-                </summary>
-                <Keepsake plan={pocketCard} label="A pocket card to keep" hideLabel className="mt-4" />
-              </details>
+              <KeepsakeSave plan={pocketCard} saveLabel="Save the card as a picture" className="mt-4" />
             </>
           ),
         }

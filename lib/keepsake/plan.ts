@@ -17,11 +17,8 @@ export type Ink =
   | 'flesh'
   | 'seed'
   | 'gold'
-  | 'sky'
-  | 'blue'
-  | 'purple'
-  | 'teal'
-  | 'orange'
+  | 'voiceA'
+  | 'voiceB'
   | `#${string}`
 
 export type Font = 'sans' | 'serif' | 'hand'
@@ -52,6 +49,8 @@ export type KeepsakeOp =
     }
 
 export interface KeepsakePlan {
+  /** The game's name, which also names the picture for screen readers. */
+  title: string
   width: number
   height: number
   ops: KeepsakeOp[]
@@ -123,7 +122,7 @@ export function framedKeepsake({ title, subtitle, art, alt, text, fileName, heig
     ops.push({ kind: 'text', x: width / 2, y: MARGIN + 86, text: subtitle, size: 28, ink: 'inkSoft', font: 'serif', align: 'center', italic: true })
   }
   ops.push(...signature(width, height))
-  return { width, height, ops, alt, text: `${text}\n\n${title} · ${SITE_NAME}`, fileName }
+  return { title, width, height, ops, alt, text: `${text}\n\n${title} · ${SITE_NAME}`, fileName }
 }
 
 /** A stable small number from a string, so the same words always draw the same way. */

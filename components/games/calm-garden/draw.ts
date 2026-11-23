@@ -1,10 +1,10 @@
 import { GROUND_TOP, categoryOf, type Plant, type PlantCategory, type PlantType, type Season, type TimeOfDay } from '@/lib/games/calm-garden/garden'
 import { depthFactor, sizeFactor } from '@/lib/games/calm-garden/geometry'
+import { PETALS, pickBySeed } from '@/lib/games/calm-garden/colours'
 
 type Ctx = CanvasRenderingContext2D
 
 const GREENS = ['#74c69d', '#52b788', '#40916c', '#2d6a4f', '#1f5c3a']
-const PETALS = ['#e63946', '#f4845f', '#f7b267', '#d4a5f5', '#f9c6d3']
 const BROWNS = ['#8b6f47', '#a0855b', '#6b4f36', '#5c3d2e']
 const GREYS = ['#9e9e9e', '#b3b3b3', '#8a8a8a', '#7a7a7a']
 
@@ -45,7 +45,7 @@ const GROUND: Record<Season, [string, string, string]> = {
 }
 const NIGHT_GROUND: [string, string, string] = ['#3f6b4a', '#335c3e', '#24452e']
 
-const pick = <T,>(list: readonly T[], seed: number) => list[Math.min(list.length - 1, Math.floor(seed * list.length))]
+const pick = pickBySeed
 
 /** Lighten (amount > 0) or darken (amount < 0) a #rrggbb colour. */
 function shade(hex: string, amount: number): string {

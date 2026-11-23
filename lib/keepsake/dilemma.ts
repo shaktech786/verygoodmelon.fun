@@ -11,6 +11,10 @@ const LABEL = '#ece6d6'
 const HEADING = '#aeb9d1'
 
 const SKY = { top: 220, bottom: 960 }
+// A sans letter averages a little over half its size wide
+const LETTER_WIDTH = 0.55
+const MAX_LABEL = 44
+const MIN_LABEL = 24
 const STARS = { top: 360, bottom: 900 }
 
 export interface DilemmaStar {
@@ -19,7 +23,8 @@ export interface DilemmaStar {
   x: number
   y: number
   r: number
-  /** Where the value's name sits, under its star. */
+  /** Where the value's name sits: centred in its column, just under its star, so it has the column's whole width. */
+  labelX: number
   labelY: number
   labelSize: number
 }
@@ -44,8 +49,12 @@ export function dilemmaConstellation(chosen: readonly ChosenValue[]): DilemmaClu
     const span = STARS.bottom - STARS.top
     const step = values.length > 1 ? Math.min(118, span / (values.length - 1)) : 0
     const start = STARS.top + (span - step * (values.length - 1)) / 2
-    const sway = Math.min(column * 0.2, 130)
-    const labelSize = step > 0 && step < 78 ? 22 : 26
+    const sway = Math.min(column * 0.15, 110)
+    // As large as the column and the spacing allow, so the names stay readable when the picture is phone-sized
+    const longest = Math.max(...values.map((v) => v.length))
+    const fitsColumn = Math.floor((column - 12) / (longest * LETTER_WIDTH))
+    const fitsStep = step > 0 ? Math.floor(step * 0.55) : MAX_LABEL
+    const labelSize = Math.max(MIN_LABEL, Math.min(MAX_LABEL, fitsColumn, fitsStep))
     const stars = values.map((value, j) => {
       const side = values.length === 1 ? 0 : j % 2 === 0 ? -1 : 1
       const y = start + step * j + (random() - 0.5) * Math.min(14, step * 0.2)
@@ -55,6 +64,7 @@ export function dilemmaConstellation(chosen: readonly ChosenValue[]): DilemmaClu
         x: x + side * sway * (0.55 + 0.45 * random()),
         y,
         r: 6 + 3 * random(),
+        labelX: x,
         labelY: y + labelSize + 12,
         labelSize,
       }
@@ -110,7 +120,7 @@ export function dilemmaKeepsake({ chosen, day }: DilemmaKeepsakeInput): Keepsake
         { kind: 'rect', x: star.x - star.r * 2, y: star.y - 3, w: star.r * 4, h: 6, ink: STAR, alpha: 0.7 },
         { kind: 'rect', x: star.x - 3, y: star.y - star.r * 2, w: 6, h: star.r * 4, ink: STAR, alpha: 0.7 },
         { kind: 'disc', x: star.x, y: star.y, r: star.r, ink: STAR },
-        { kind: 'text', x: star.x, y: star.labelY, text: star.value, size: star.labelSize, ink: LABEL, font: 'sans', align: 'center', weight: 500 },
+        { kind: 'text', x: star.labelX, y: star.labelY, text: star.value, size: star.labelSize, ink: LABEL, font: 'sans', align: 'center', weight: 500 },
       )
     }
   }

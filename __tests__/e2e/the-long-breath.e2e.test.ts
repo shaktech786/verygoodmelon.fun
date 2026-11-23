@@ -2,6 +2,7 @@ import { readFileSync } from 'fs'
 import path from 'path'
 import { test, expect, type Page } from '@playwright/test'
 import { expectKeepsakeSaves } from './helpers/keepsake'
+import { ambientSoundIsOn, setAmbientSound } from './helpers/ambient-sound'
 
 /**
  * The Patient One (/games/the-long-breath): five moments of unhurried noticing, each ending
@@ -80,14 +81,12 @@ async function advance(page: Page, ms: number) {
 }
 
 async function turnSoundOn(page: Page) {
-  await advance(page, 2500) // the sound button fades in after two seconds
-  const toggle = page.getByRole('button', { name: 'Ambient sound' })
-  await toggle.click()
-  await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  await setAmbientSound(page, true)
 }
 
 const taskButton = (page: Page, title: string) => page.getByRole('button', { name: new RegExp(`^${title}:`) })
-const timer = (page: Page) => page.getByRole('timer')
+// The moment's progress is a ring with no numbers; its data-progress lets the suite check it exactly
+const ring = (page: Page) => page.getByTestId('moment-ring')
 const todayStrip = (page: Page) => page.getByRole('list', { name: 'Moments from today' })
 const STRIP_NOTE = 'Each moment you finish rests here until midnight.'
 
@@ -100,12 +99,14 @@ test.describe('The Patient One', () => {
       await expect(taskButton(page, moment.title)).toContainText(moment.label)
       await taskButton(page, moment.title).click()
       await expect(page.getByRole('heading', { name: moment.title })).toBeFocused()
-      const m = Math.floor(moment.seconds / 60)
-      await expect(timer(page)).toHaveText(`${m}:${String(moment.seconds % 60).padStart(2, '0')}`)
+      await expect(ring(page)).toHaveAttribute('data-progress', '0.00')
+      await expect(ring(page)).toHaveAccessibleName('The moment has just begun')
+      // Nothing counts down on screen
+      await expect(page.getByText(/^\d+:\d{2}$/)).toHaveCount(0)
 
       // Not a moment early: with under a second left the moment is still running.
       await advance(page, moment.seconds * 1000 - 900)
-      await expect(timer(page)).toHaveText('0:01')
+      await expect(ring(page)).toHaveAccessibleName('Most of the way through the moment')
       await advance(page, 900)
 
       await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeFocused()
@@ -147,7 +148,8 @@ test.describe('The Patient One', () => {
     const field = page.getByRole('img', { name: /seeds settled/ })
 
     await advance(page, 20_000)
-    await expect(timer(page)).toHaveText('0:20')
+    await expect(ring(page)).toHaveAttribute('data-progress', '0.50')
+    await expect(ring(page)).toHaveAccessibleName('About halfway through the moment')
     await expect(field).toHaveAccessibleName('4 of 8 seeds settled')
     await expect(field.locator('[data-settled="true"]')).toHaveCount(4)
 
@@ -157,7 +159,7 @@ test.describe('The Patient One', () => {
       await advance(page, 1000)
     }
     await expect(page.getByText('The seeds wait while you move.')).toBeVisible()
-    await expect(timer(page)).toHaveText('0:20')
+    await expect(ring(page)).toHaveAttribute('data-progress', '0.50')
     await expect(field).toHaveAccessibleName('4 of 8 seeds settled')
 
     // A key press stirs them too, as a separate moment of movement.
@@ -224,7 +226,7 @@ test.describe('The Patient One', () => {
     await advance(page, 59_000)
     await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeVisible()
     expect(await ramps()).toEqual(expect.arrayContaining([0.25, 0.1]))
-    await expect(page.getByRole('button', { name: 'Ambient sound' })).toHaveAttribute('aria-pressed', 'true')
+    expect(await ambientSoundIsOn(page)).toBe(true)
   })
 
   test('the last seed settles in view: the reward shows the full bed', async ({ page }) => {
@@ -303,7 +305,7 @@ test.describe('The Patient One', () => {
       await advance(page, 4000)
     }
     await expect(page.getByText('The time waits while you write.')).toBeVisible()
-    await expect(timer(page)).toHaveText(/^0:(4|5)\d$/)
+    await expect(ring(page)).toHaveAttribute('data-progress', /^0\.(0|1)\d$/)
   })
 
   test('three things noted while counting are shown back and kept only on this device until midnight', async ({ page }) => {
@@ -341,18 +343,18 @@ test.describe('The Patient One', () => {
 
     // Starting again begins from the full time.
     await taskButton(page, 'Look at One Thing').click()
-    await expect(timer(page)).toHaveText('1:00')
-    // Read out in plain words: "1 minute", never "1 minutes 0 seconds"
-    await expect(timer(page)).toHaveAccessibleName('1 minute remaining')
+    await expect(ring(page)).toHaveAttribute('data-progress', '0.00')
+    // Read out in calm words, never as seconds left
+    await expect(ring(page)).toHaveAccessibleName('The moment has just begun')
     await advance(page, 5000)
-    await expect(timer(page)).toHaveAccessibleName('55 seconds remaining')
+    await expect(ring(page)).toHaveAttribute('data-progress', '0.08')
   })
 
   test('time away from the tab does not count: the moment waits and welcomes you back', async ({ page }) => {
     await openGame(page)
     await taskButton(page, 'Listen to Silence').click()
     await advance(page, 10_000)
-    await expect(timer(page)).toHaveText('0:50')
+    await expect(ring(page)).toHaveAttribute('data-progress', '0.17')
 
     await page.evaluate(() => {
       Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
@@ -363,12 +365,13 @@ test.describe('The Patient One', () => {
       Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
       document.dispatchEvent(new Event('visibilitychange'))
     })
-    await expect(timer(page)).toHaveText('0:50')
+    await expect(ring(page)).toHaveAttribute('data-progress', '0.17')
     await expect(page.getByText('Welcome back. The moment waited for you.')).toBeVisible()
     await expect(page.getByRole('heading', { name: REWARD_HEADING })).toHaveCount(0)
 
     await advance(page, 49_000)
-    await expect(timer(page)).toHaveText('0:01')
+    await expect(ring(page)).toHaveAttribute('data-progress', /^0\.9\d$/)
+    await expect(ring(page)).toHaveAccessibleName('Most of the way through the moment')
     await advance(page, 1_000)
     await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeVisible()
   })
@@ -379,7 +382,7 @@ test.describe('The Patient One', () => {
     await advance(page, 60_000)
     await page.getByRole('button', { name: 'Stay a little longer' }).click()
     await expect(page.getByRole('heading', { name: 'Look at One Thing' })).toBeFocused()
-    await expect(timer(page)).toHaveText('1:00')
+    await expect(ring(page)).toHaveAttribute('data-progress', '0.00')
     await advance(page, 60_000)
     await page.getByRole('button', { name: 'Continue slowing down' }).click()
     await expect(todayStrip(page).getByRole('listitem')).toHaveCount(2)
@@ -532,7 +535,7 @@ test.describe('The Patient One on a phone with reduced motion', () => {
     await expect(page.locator('html')).toHaveAttribute('data-text-size', 'larger')
     await taskButton(page, 'Watch the Seeds').tap()
     await advance(page, 3000)
-    for (const target of [page.getByRole('img', { name: /seeds settled/ }), timer(page), page.getByRole('button', { name: 'Leave early' })]) {
+    for (const target of [page.getByRole('img', { name: /seeds settled/ }), ring(page), page.getByRole('button', { name: 'Leave early' })]) {
       const box = await target.boundingBox()
       expect(box).not.toBeNull()
       expect(box!.y).toBeGreaterThanOrEqual(0)
@@ -540,7 +543,7 @@ test.describe('The Patient One on a phone with reduced motion', () => {
     }
     // Bringing the moment on screen is not counted as the player moving.
     await expect(page.getByText('The seeds wait while you move.')).toHaveCount(0)
-    await expect(timer(page)).toHaveText('0:37')
+    await expect(ring(page)).toHaveAttribute('data-progress', '0.08')
   })
 
   test('the keepsake ending is still, fits the phone, and the strip scrolls inside itself', async ({ page }) => {

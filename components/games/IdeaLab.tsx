@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Trash2, RotateCcw, FlaskConical } from 'lucide-react'
 import { BASE_CONCEPTS, findKnownCombination, type Concept } from '@/lib/games/idea-lab/concepts'
@@ -10,7 +9,7 @@ import {
   DEFAULT_PROGRESS, afterCombination, beginNextWork, parseCombinations, parseDiscoveries, parseProgress, type LabProgress,
 } from '@/lib/games/idea-lab/progress'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
-import { GoldShelf } from '@/components/games/idea-lab/GoldShelf'
+import { FRESH_GOLD_ID, GoldShelf } from '@/components/games/idea-lab/GoldShelf'
 import { LetterScene } from '@/components/games/idea-lab/LetterScene'
 import { IdeaCabinet } from '@/components/games/idea-lab/IdeaCabinet'
 
@@ -331,6 +330,13 @@ export default function IdeaLab() {
     pendingFocus.current = 'concepts'
   }
 
+  /** On a phone the page stays put when a gold is found; this brings it into view only when asked. */
+  const seeFreshGold = () => {
+    const card = document.getElementById(FRESH_GOLD_ID)
+    card?.focus({ preventScroll: true })
+    card?.scrollIntoView({ block: 'center', behavior: reducedMotion ? 'auto' : 'smooth' })
+  }
+
   const skipToRiddles = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault()
     const heading = shelfHeadingRef.current
@@ -571,6 +577,16 @@ export default function IdeaLab() {
                             ? <>&ldquo;{lastResult.description}&rdquo;</>
                             : !hasBench && 'Choose two concepts to combine them.'}
                     </p>
+                    {resultIsGold && !isCombining && (
+                      <button
+                        type="button"
+                        onClick={seeFreshGold}
+                        aria-label="See it on the shelf"
+                        className="shrink-0 min-h-[44px] px-2 rounded-lg text-sm font-medium text-foreground underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                      >
+                        See it
+                      </button>
+                    )}
                     {clearButton}
                   </div>
                   {currentRiddle !== undefined && (
@@ -695,15 +711,6 @@ export default function IdeaLab() {
                 />
               </div>
             </div>
-          </div>
-
-          <div className="mt-8 text-center">
-            <Link
-              href="/"
-              className="inline-block px-6 py-3 bg-card-bg text-foreground border border-card-border rounded-lg font-medium hover:bg-hover-bg transition-colors"
-            >
-              ← Back Home
-            </Link>
           </div>
         </div>
       </div>

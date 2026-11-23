@@ -38,6 +38,22 @@ describe('dilemmaConstellation: one star per value, gathered by theme', () => {
     expect(Math.max(...cluster.stars.map((s) => s.labelY))).toBeLessThan(960)
   })
 
+  it('sets the names large enough to read when the picture is phone-sized, and never wider than their column', () => {
+    // About 22rem wide on a phone: 352 of the picture's 1080 units
+    const onPhone = (size: number) => (size * 352) / 1080
+    for (const star of dilemmaConstellation(CHOSEN).flatMap((c) => c.stars)) {
+      expect(onPhone(star.labelSize)).toBeGreaterThanOrEqual(10)
+    }
+    expect(onPhone(dilemmaConstellation([{ value: 'Rest', theme: 'ease' }])[0].stars[0].labelSize)).toBeGreaterThanOrEqual(13)
+    const all = [
+      { value: 'Encouragement', theme: 'others' as const }, { value: 'Self-kindness', theme: 'self' as const },
+      { value: 'Contentment', theme: 'ease' as const }, { value: 'Challenge', theme: 'growth' as const },
+    ]
+    for (const star of dilemmaConstellation(all).flatMap((c) => c.stars)) {
+      expect(star.value.length * star.labelSize * 0.55).toBeLessThanOrEqual((1080 - 168) / 4)
+    }
+  })
+
   it('draws the same sky for the same answers', () => {
     expect(dilemmaKeepsake({ chosen: CHOSEN, day: DAY })).toEqual(dilemmaKeepsake({ chosen: CHOSEN, day: DAY }))
   })

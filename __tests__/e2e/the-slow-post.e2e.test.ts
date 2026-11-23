@@ -429,7 +429,7 @@ test.describe('The Keeper', () => {
     expect(errors).toEqual([])
   })
 
-  test('the tally speaks plainly across many capsules', async ({ page }) => {
+  test('the tally speaks plainly across many capsules, with no count that reads as a score', async ({ page }) => {
     await openKeeper(page)
     const opened = (outcome: string) => ({ at: new Date(T0 - DAY).toISOString(), outcome, note: '' })
     await seed(page, [
@@ -440,8 +440,8 @@ test.describe('The Keeper', () => {
     ])
     await expect(page.getByText('2 capsules are ready to open, whenever you like.')).toBeVisible()
     await expect(page.getByRole('list', { name: 'Sealed capsules' }).getByRole('button')).toHaveCount(25)
-    await expect(page.getByText('You’ve looked back on 5 worries: 3 didn’t happen, 1 partly happened and 1 happened.')).toBeVisible()
-    await expect(page.getByText('Most of what you feared never arrived.')).toBeVisible()
+    await expect(page.getByText('These are the worries you came back to look at. Some didn’t happen, some partly happened and some happened.')).toBeVisible()
+    await expect(page.getByText('Whatever came of each one, it is set down here now.')).toBeVisible()
   })
 
   test('save a copy, clear the browser, restore it; a second restore adds nothing', async ({ page }) => {

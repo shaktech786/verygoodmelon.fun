@@ -121,10 +121,10 @@ describe('The Alchemist letter', () => {
     expect(letter.lines[6].text).toMatch(/^And last, you found Virtue/)
   })
 
-  it('remembers the first thing the player made and how many discoveries it took', () => {
-    const letter = composeLetter(0, firstWork)
-    expect(letter.closing.join(' ')).toContain('Jealousy')
-    expect(letter.closing.join(' ')).toContain('18 discoveries')
+  it('remembers the first thing the player made, without counting the tries or claiming everything began there', () => {
+    const closing = composeLetter(0, firstWork).closing.join(' ')
+    expect(closing).toContain('The very first thing you made here was Jealousy.')
+    expect(closing).not.toMatch(/\d|discoveries|everything after/)
   })
 
   it('reads differently for a different journey', () => {

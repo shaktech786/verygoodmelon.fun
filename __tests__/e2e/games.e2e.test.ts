@@ -54,13 +54,15 @@ async function axeViolations(page: Page): Promise<string[]> {
 }
 
 test.describe('Homepage and games page', () => {
-  test('the homepage offers one game and three moods, and the games page lists every showcase game once', async ({ page }) => {
+  test('the homepage offers one game, three moods and every game once, as does the games page', async ({ page }) => {
     await page.goto('/')
     await expect(page).toHaveTitle(/VeryGoodMelon/)
     await expect(page.getByRole('heading', { level: 1 })).toContainText('lighter')
-    await expect(page.locator('main a[href^="/games/"]')).toHaveCount(1)
+    await expect(page.getByRole('region', { name: "Today's pick" }).locator('a[href^="/games/"]')).toHaveCount(1)
     await expect(page.locator('main a[href^="/games?mood="]')).toHaveCount(3)
-    await expect(page.locator('main a[href="/games"]')).toHaveCount(1)
+    for (const game of SHOWCASE_GAMES) {
+      await expect(page.getByRole('region', { name: 'Every game' }).locator(`a[href="/games/${game.slug}"]`)).toHaveCount(1)
+    }
 
     await page.goto('/games')
     for (const game of SHOWCASE_GAMES) {

@@ -47,8 +47,8 @@ export function soundIcon(sound: Heard, x: number, y: number): KeepsakeOp[] {
   switch (sound) {
     case 'Traffic':
       return [
-        { kind: 'poly', points: [[x - 26, y - 8], [x - 14, y - 30], [x + 16, y - 30], [x + 30, y - 8]], ink: 'blue' },
-        { kind: 'rect', x: x - 46, y: y - 10, w: 92, h: 30, ink: 'blue' },
+        { kind: 'poly', points: [[x - 26, y - 8], [x - 14, y - 30], [x + 16, y - 30], [x + 30, y - 8]], ink: 'rind' },
+        { kind: 'rect', x: x - 46, y: y - 10, w: 92, h: 30, ink: 'rind' },
         { kind: 'disc', x: x - 24, y: y + 22, r: 12, ink: 'ink' },
         { kind: 'disc', x: x + 24, y: y + 22, r: 12, ink: 'ink' },
       ]
@@ -59,12 +59,12 @@ export function soundIcon(sound: Heard, x: number, y: number): KeepsakeOp[] {
       ]
     case 'Wind or rain':
       return [-30, -4, 22].flatMap((dx, i): KeepsakeOp[] => [
-        { kind: 'line', points: [[x + dx + 12, y - 36 + i * 8], [x + dx - 8, y + 30 + i * 8]], ink: 'blue', width: 7, alpha: 0.8 },
+        { kind: 'line', points: [[x + dx + 12, y - 36 + i * 8], [x + dx - 8, y + 30 + i * 8]], ink: 'rindLight', width: 7, alpha: 0.8 },
       ])
     case 'Voices':
       return [
-        { kind: 'disc', x: x - 16, y: y - 8, r: 28, ink: 'teal' },
-        { kind: 'poly', points: [[x - 34, y + 10], [x - 40, y + 34], [x - 16, y + 18]], ink: 'teal' },
+        { kind: 'disc', x: x - 16, y: y - 8, r: 28, ink: 'rindLight' },
+        { kind: 'poly', points: [[x - 34, y + 10], [x - 40, y + 34], [x - 16, y + 18]], ink: 'rindLight' },
         { kind: 'disc', x: x + 26, y: y + 14, r: 22, ink: 'gold' },
         { kind: 'poly', points: [[x + 38, y + 26], [x + 46, y + 44], [x + 26, y + 34]], ink: 'gold' },
       ]
@@ -72,7 +72,7 @@ export function soundIcon(sound: Heard, x: number, y: number): KeepsakeOp[] {
       return [
         ...[0, 1, 2].map((k): KeepsakeOp => {
           const a = (k * 2 * Math.PI) / 3 - Math.PI / 2
-          return { kind: 'ellipse', x: x + Math.cos(a) * 22, y: y + Math.sin(a) * 22, rx: 12, ry: 24, angle: a + Math.PI / 2, ink: 'purple' }
+          return { kind: 'ellipse', x: x + Math.cos(a) * 22, y: y + Math.sin(a) * 22, rx: 12, ry: 24, angle: a + Math.PI / 2, ink: 'flesh' }
         }),
         { kind: 'disc', x, y, r: 10, ink: 'ink' },
       ]
@@ -260,7 +260,7 @@ function lookPicture(): KeepsakeOp[] {
   return [
     { kind: 'poly', points: [...lid(66, 1), ...lid(66, -1).reverse()], ink: 'inkSoft' },
     { kind: 'poly', points: [...lid(56, 1), ...lid(56, -1).reverse()], ink: EYE_WHITE },
-    { kind: 'disc', x: MID, y: PICTURE_Y, r: 38, ink: 'blue' },
+    { kind: 'disc', x: MID, y: PICTURE_Y, r: 38, ink: 'rind' },
     { kind: 'disc', x: MID, y: PICTURE_Y, r: 17, ink: PUPIL },
     { kind: 'disc', x: MID + 12, y: PICTURE_Y - 12, r: 6, ink: EYE_WHITE },
   ]

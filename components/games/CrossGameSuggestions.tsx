@@ -5,22 +5,22 @@ import { useCareMode } from '@/components/games/CareMode'
 import { GameCardShowcase } from '@/components/games/GameCardShowcase'
 import { HelplineSentence } from '@/components/games/HelplineSentence'
 
-/** Thematic neighbours: every game suggests two others and is suggested by at least one. */
-const RELATED_GAMES: Record<string, [string, string]> = {
-  'last-words': ['first-words', 'timeless-minds'],
-  'first-words': ['last-words', 'the-unrusher'],
-  'timeless-minds': ['mind-debate', 'hard-choices'],
-  'mind-debate': ['timeless-minds', 'hard-choices'],
-  'hard-choices': ['thought-pockets', 'mind-debate'],
-  'the-unrusher': ['breathing-patterns', 'hard-talk'],
-  'hope-daily': ['idea-lab', 'worry-capsule'],
-  'idea-lab': ['cascade', 'timeless-minds'],
-  'thought-pockets': ['hard-choices', 'idea-lab'],
-  'cascade': ['thought-pockets', 'idea-lab'],
-  'breathing-patterns': ['the-unrusher', 'calm-garden'],
-  'calm-garden': ['breathing-patterns', 'hope-daily'],
-  'worry-capsule': ['the-unrusher', 'hope-daily'],
-  'hard-talk': ['breathing-patterns', 'worry-capsule'],
+/** Each game's closest neighbour, offered once at the foot of its page. */
+const RELATED_GAME: Record<string, string> = {
+  'last-words': 'first-words',
+  'first-words': 'last-words',
+  'timeless-minds': 'mind-debate',
+  'mind-debate': 'timeless-minds',
+  'hard-choices': 'thought-pockets',
+  'the-unrusher': 'breathing-patterns',
+  'hope-daily': 'idea-lab',
+  'idea-lab': 'cascade',
+  'thought-pockets': 'hard-choices',
+  'cascade': 'thought-pockets',
+  'breathing-patterns': 'the-unrusher',
+  'calm-garden': 'breathing-patterns',
+  'worry-capsule': 'the-unrusher',
+  'hard-talk': 'breathing-patterns',
 }
 
 /** The games about death, never pushed toward someone who may be in danger. */
@@ -59,7 +59,7 @@ function SuggestionRow({ heading, games, className, helplines = false }: Suggest
           <HelplineSentence lead="If things feel too heavy right now, you can talk to someone." />
         </p>
       )}
-      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      <ul className={`grid grid-cols-1 gap-3 sm:gap-4 ${games.length > 1 ? 'sm:grid-cols-2' : 'sm:max-w-sm'}`}>
         {games.map((game) => (
           <li key={game.id}>
             <GameCardShowcase game={game} showCategory={false} />
@@ -71,9 +71,12 @@ function SuggestionRow({ heading, games, className, helplines = false }: Suggest
 }
 
 /** Leads the game lists while care mode lasts, with the helplines beside it. */
-export function GentleGames({ className = '' }: { className?: string }) {
-  return <SuggestionRow heading={GENTLE_HEADING} games={CARE_GAMES} className={className} helplines />
+export function GentleGames({ className = '', helplines = true }: { className?: string; helplines?: boolean }) {
+  return <SuggestionRow heading={GENTLE_HEADING} games={CARE_GAMES} className={className} helplines={helplines} />
 }
+
+/** Games whose own care panel already carries the helplines, so the row does not repeat them. */
+const OWN_HELPLINES: ReadonlySet<string> = new Set(['timeless-minds'])
 
 interface CrossGameSuggestionsProps {
   currentGameId: string
@@ -83,10 +86,11 @@ export function CrossGameSuggestions({ currentGameId }: CrossGameSuggestionsProp
   const { care, awaitingJudgement } = useCareMode()
   const className = 'mt-12 pt-8 border-t border-card-border'
 
-  if (care) return <GentleGames className={className} />
+  if (care) return <GentleGames className={className} helplines={!OWN_HELPLINES.has(currentGameId)} />
   if (awaitingJudgement) return null
 
-  const suggestions = findGames(RELATED_GAMES[currentGameId] ?? [])
+  const related = RELATED_GAME[currentGameId]
+  const suggestions = findGames(related ? [related] : [])
   if (suggestions.length === 0) return null
   return <SuggestionRow heading="Continue your journey" games={suggestions} className={className} />
 }

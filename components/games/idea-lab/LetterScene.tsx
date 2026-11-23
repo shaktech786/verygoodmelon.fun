@@ -1,7 +1,9 @@
-import { forwardRef } from 'react'
+import { forwardRef, useMemo, useState } from 'react'
 import { FlaskConical } from 'lucide-react'
+import { Keepsake } from '@/components/games/Keepsake'
 import type { Concept } from '@/lib/games/idea-lab/concepts'
 import { composeLetter } from '@/lib/games/idea-lab/golds'
+import { alchemistKeepsake } from '@/lib/keepsake/alchemist'
 
 interface LetterSceneProps {
   work: number
@@ -17,7 +19,9 @@ export const LetterScene = forwardRef<HTMLHeadingElement, LetterSceneProps>(func
   { work, discoveries, canBeginNextWork, reducedMotion, onBeginNextWork, onClose },
   headingRef,
 ) {
-  const letter = composeLetter(work, discoveries)
+  const letter = useMemo(() => composeLetter(work, discoveries), [work, discoveries])
+  const [day] = useState(() => new Date())
+  const plan = useMemo(() => alchemistKeepsake({ letter, day }), [letter, day])
   const emojiFor = (gold: string) => discoveries.find(c => c.name.toLowerCase() === gold.toLowerCase())?.emoji ?? '✨'
 
   return (
@@ -46,6 +50,7 @@ export const LetterScene = forwardRef<HTMLHeadingElement, LetterSceneProps>(func
         </ol>
         {letter.closing.map(line => <p key={line} className="mb-2 text-foreground/85">{line}</p>)}
       </div>
+      <Keepsake plan={plan} label="Keep this letter" className="mt-6" />
       <div className="flex flex-wrap justify-center gap-3 mt-6">
         {canBeginNextWork && (
           <button

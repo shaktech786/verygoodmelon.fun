@@ -8,7 +8,7 @@ import { axeViolations } from './helpers/writing-game'
 
 /**
  * The shared shell every page sits in: accessibility settings, the feedback
- * dialog, navigation and the two game listings.
+ * dialog, the header, the footer and the two game listings.
  */
 
 const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
@@ -58,9 +58,12 @@ async function horizontalOverflow(page: Page): Promise<number> {
 }
 
 async function openSettings(page: Page) {
-  await page.getByRole('button', { name: 'Open accessibility settings' }).click()
   const panel = page.getByRole('dialog', { name: 'Accessibility settings' })
-  await expect(panel).toBeVisible()
+  // A tap that lands before the page has hydrated does nothing, so it is tried again
+  await expect(async () => {
+    if (!(await panel.isVisible())) await page.getByRole('button', { name: 'Open accessibility settings' }).click()
+    await expect(panel).toBeVisible({ timeout: 1000 })
+  }).toPass()
   return panel
 }
 
@@ -219,9 +222,7 @@ test.describe('Text size', () => {
     test.setTimeout(90_000)
     await page.setViewportSize(PHONE)
     await page.goto('/about')
-    await page.getByRole('button', { name: 'Open menu' }).click()
-    await page.getByRole('button', { name: 'Accessibility settings' }).click()
-    const panel = page.getByRole('dialog', { name: 'Accessibility settings' })
+    const panel = await openSettings(page)
     await panel.getByText('Larger').click()
     await panel.getByRole('button', { name: 'Close accessibility settings' }).click()
 
@@ -295,19 +296,18 @@ test.describe('Hydration', () => {
     })
   }
 
-  test('the homepage loads, then reloads with today\'s line remembered, without hydration or console errors', async ({ page }) => {
+  test('the homepage loads and reloads without hydration or console errors', async ({ page }) => {
     const problems: string[] = []
     page.on('console', (msg) => {
       if (msg.type() === 'error' || /hydrat|script tag/i.test(msg.text())) problems.push(msg.text().slice(0, 300))
     })
     page.on('pageerror', (error) => problems.push(error.message.slice(0, 300)))
     await page.route(/\/api\/(game-events|site-visits)/, (route) => route.fulfill({ json: {} }))
-    await page.route('**/api/daily-wisdom', (route) => route.fulfill({ json: { wisdom: 'Rest is part of the work.' } }))
 
     await page.goto('/')
-    await expect(page.getByText('Rest is part of the work.')).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Every game' })).toBeVisible()
     await page.reload()
-    await expect(page.getByText('Rest is part of the work.')).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Every game' })).toBeVisible()
     await page.waitForLoadState('networkidle')
     expect(problems).toEqual([])
   })
@@ -321,18 +321,77 @@ test.describe('Finding your way', () => {
     await expect(page).toHaveURL(/\/games$/)
   })
 
-  test('the phone menu closes on Escape and returns focus to its button', async ({ page }) => {
-    await page.setViewportSize(PHONE)
-    await page.goto('/about')
-    await page.getByRole('button', { name: 'Open menu' }).click()
-    const toggle = page.getByRole('button', { name: 'Close menu' })
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    await expect(page.locator('#mobile-menu').getByRole('link', { name: 'Games' })).toBeVisible()
+  for (const viewport of [DESKTOP, PHONE]) {
+    test(`at ${viewport.width}px the header holds only the name, Games and the settings gear, and nothing floats over the page`, async ({ page }) => {
+      await page.setViewportSize(viewport)
+      await page.goto('/games/the-threshold')
+      const nav = page.getByRole('navigation', { name: 'Main navigation' })
+      await expect(nav.getByRole('link')).toHaveText(['VeryGoodMelon.Fun', 'Games'])
+      await expect(nav.getByRole('button')).toHaveCount(1)
+      const gear = nav.getByRole('button', { name: 'Open accessibility settings' })
+      await expect(gear).toBeVisible()
+      const box = await gear.boundingBox()
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+      expect(box?.width ?? 0).toBeGreaterThanOrEqual(44)
+      expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0)
 
-    await page.keyboard.press('Escape')
-    const reopened = page.getByRole('button', { name: 'Open menu' })
-    await expect(reopened).toHaveAttribute('aria-expanded', 'false')
-    await expect(reopened).toBeFocused()
+      // Settings and feedback open from the header and the footer, so no control floats over a game
+      const floating = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('button, a'))
+          .filter((el) => getComputedStyle(el).position === 'fixed' && el.getClientRects().length > 0)
+          .map((el) => el.outerHTML.slice(0, 80))
+      )
+      expect(floating).toEqual([])
+      await expect(page.getByRole('link', { name: /Back Home/ })).toHaveCount(0)
+    })
+  }
+
+  test('the footer offers support first, then the site links, with no stray separators', async ({ page }) => {
+    for (const viewport of [PHONE, DESKTOP]) {
+      await page.setViewportSize(viewport)
+      await page.goto('/games')
+      const footer = page.getByRole('contentinfo')
+      await expect(footer.getByRole('list', { name: 'Support' }).getByRole('link')).toHaveText(['Need to talk?'])
+      await expect(footer.getByRole('list', { name: 'Site' }).getByRole('listitem')).toHaveText([
+        'Privacy',
+        'Terms',
+        'Feedback',
+        'Thoughts',
+        'About',
+        'GitHub (opens in a new tab)',
+      ])
+      await expect(footer).not.toContainText('|')
+      await expect(footer).not.toContainText('Made with purpose')
+      await expect(footer.getByText(/^©/)).toHaveCount(1)
+      expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0)
+    }
+  })
+
+  test('the old analytics address sends visitors, permanently, to the numbers on the privacy page', async ({ page, request }) => {
+    const response = await request.get('/analytics', { maxRedirects: 0 })
+    expect(response.status()).toBe(308)
+    expect(response.headers().location).toMatch(/\/privacy#analytics$/)
+
+    await page.goto('/analytics')
+    await expect(page).toHaveURL(/\/privacy#analytics$/)
+    await expect(page.getByRole('heading', { level: 2, name: 'The Numbers, in Public' })).toBeVisible()
+    await expect(page.getByText('Total visits')).toBeVisible()
+  })
+
+  test('ambient sound is one switch in the settings panel on a game page, off until chosen, and absent elsewhere', async ({ page }) => {
+    await page.setViewportSize(DESKTOP)
+    await page.goto('/about')
+    await expect((await openSettings(page)).getByRole('switch', { name: 'Ambient sound' })).toHaveCount(0)
+
+    await page.goto('/games/the-threshold')
+    await expect(page.getByRole('button', { name: 'Ambient sound' })).toHaveCount(0)
+    const panel = await openSettings(page)
+    const ambient = panel.getByRole('switch', { name: 'Ambient sound' })
+    await expect(ambient).toHaveAttribute('aria-checked', 'false')
+    await ambient.click()
+    await expect(ambient).toHaveAttribute('aria-checked', 'true')
+    await ambient.click()
+    await expect(ambient).toHaveAttribute('aria-checked', 'false')
   })
 
   test("the homepage says what this is and offers one calm game for today, with a reason, the same all day", async ({ page }) => {
@@ -340,6 +399,12 @@ test.describe('Finding your way', () => {
     await page.clock.setFixedTime(noon)
     await page.goto('/')
     await expect(page.getByRole('main')).toContainText('quiet games for a busy mind')
+    await expect(page.getByRole('main')).not.toContainText(/think deeply|see every game/i)
+    const everyGame = await page
+      .getByRole('region', { name: 'Every game' })
+      .locator('a[href^="/games/"]')
+      .evaluateAll((links) => links.map((a) => a.getAttribute('href')))
+    expect(everyGame).toEqual(SHOWCASE_GROUPS.flatMap((group) => group.games.map((game) => `/games/${game.slug}`)))
 
     const expected = dailyPick(noon)
     if (!expected) throw new Error('no calm games to pick from')
@@ -445,10 +510,6 @@ test.describe('Care and support', () => {
     await page.goto('/')
     await page.evaluate(() => localStorage.setItem('verygoodmelon:care', JSON.stringify({ until: Date.now() + 60 * 60 * 1000 })))
   }
-  const wisdom = async (page: Page, line: string) => {
-    await page.route('**/api/daily-wisdom', (route) => route.fulfill({ json: { wisdom: line } }))
-    await page.addInitScript(() => localStorage.removeItem('verygoodmelon:daily-wisdom'))
-  }
 
   test('every page offers a quiet "Need to talk?" link that leads by keyboard to calm support lines', async ({ page }) => {
     for (const path of ['/', '/games/quiet-grove', '/privacy', '/no-such-page']) {
@@ -485,30 +546,6 @@ test.describe('Care and support', () => {
     await page.goto('/no-such-page')
     await expect(page.getByRole('region', { name: 'Or slow down for a minute' })).toBeVisible()
     await expect(page.locator('main').getByRole('link', { name: '988' })).toHaveCount(0)
-  })
-
-  test("in care mode the homepage's daily line steps aside when it touches loss, surrender or endings", async ({ page }) => {
-    const heavy = 'Surrender is not defeat; it is the river finally trusting the sea.'
-    await wisdom(page, heavy)
-    await enterCare(page)
-    await page.goto('/')
-    await expect(page.getByText('There is no hurry here. You are welcome to rest a while, just as you are.')).toBeVisible()
-    await expect(page.getByText(heavy)).toHaveCount(0)
-  })
-
-  test('in care mode a light daily line is kept, and outside care any line is shown as written', async ({ page }) => {
-    const light = 'The kindest thing you can do for your future self is to rest without guilt right now.'
-    await wisdom(page, light)
-    await enterCare(page)
-    await page.goto('/')
-    await expect(page.getByText(light)).toBeVisible()
-
-    await page.evaluate(() => localStorage.removeItem('verygoodmelon:care'))
-    const heavy = 'Every ending is a door you have not walked through yet.'
-    await page.unroute('**/api/daily-wisdom')
-    await wisdom(page, heavy)
-    await page.goto('/')
-    await expect(page.getByText(heavy)).toBeVisible()
   })
 })
 

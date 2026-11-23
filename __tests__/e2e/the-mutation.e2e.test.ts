@@ -201,6 +201,8 @@ test.describe('The Shapeshifter', () => {
     expect((await engine(page)).activeMechanics).toEqual(['arrow_keys'])
     // The counter on the field and the card agree.
     await expect(page.getByText('Rule 1 of 6', { exact: true })).toBeVisible()
+    // A screen reader hears what the rule does, not only its number
+    await expect(page.getByRole('status')).toHaveText('Rule 1 of 6: WAVE 1 ARROW_KEYS. The movement rule arrives.')
 
     const before = await engine(page)
     await page.keyboard.down('ArrowRight')

@@ -6,6 +6,7 @@ import { puzzleFor, revealFor } from '../../lib/games/hope-daily/daily'
 import { fallbackCommentary } from '../../lib/games/hope-daily/commentary'
 import { buildLadder, lettersInPlace, nextLetter, storyText } from '../../lib/games/hope-daily/puzzle'
 import { expectKeepsakeSaves } from './helpers/keepsake'
+import { setAmbientSound } from './helpers/ambient-sound'
 
 /**
  * The Optimist: a true piece of good news with one word missing. The story unfolds a part
@@ -273,7 +274,7 @@ test('typing while focus is on a link never fills the game, and Enter belongs to
   const seen = await pinDailyWord(page)
   await openGame(page)
 
-  await page.getByRole('link', { name: /Back Home/ }).focus()
+  await page.getByRole('link', { name: 'VeryGoodMelon.Fun home' }).focus()
   await page.keyboard.type('solar')
   await expect(input(page)).toHaveValue('')
 
@@ -473,10 +474,7 @@ test('the found word stays silent unless the page sound was turned on, then ring
   await page.evaluate(() => localStorage.removeItem('hope-daily-state'))
   await page.reload()
   await expect(input(page)).toBeVisible()
-  const soundButton = page.getByRole('button', { name: 'Ambient sound' })
-  await expect(soundButton).toHaveCSS('opacity', '1')
-  await soundButton.click()
-  await expect(soundButton).toHaveAttribute('aria-pressed', 'true')
+  await setAmbientSound(page, true)
   await guess(page, 'solar')
   await expect(page.getByTestId('solved-word')).toHaveText('SOLAR')
   await expect.poll(() => chimes(page)).toBe(1)
@@ -561,8 +559,9 @@ test.describe('on a phone', () => {
     await pinDailyWord(page)
     await openGame(page)
     const hint = await page.getByText('5 letters. No limit on guesses.').boundingBox()
-    const back = await page.getByRole('link', { name: /Back Home/ }).boundingBox()
-    expect((back?.y ?? 0) - ((hint?.y ?? 0) + (hint?.height ?? 0))).toBeLessThanOrEqual(48)
+    const game = await page.locator('main > div').first().boundingBox()
+    const gameBottom = (game?.y ?? 0) + (game?.height ?? 0)
+    expect(gameBottom - ((hint?.y ?? 0) + (hint?.height ?? 0))).toBeLessThanOrEqual(48)
   })
 
   test('the instructions, the story and the guess box are all on the first screen', async ({ page }) => {

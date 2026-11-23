@@ -27,9 +27,11 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   emotion?: AvatarEmotion
+  /** A message that never reached the thinker, or the apology for it: kept on screen, left out of the talk itself. */
+  unanswered?: boolean
 }
 
-const REPLY_TROUBLE = 'Forgive me, my thoughts drifted for a moment. Could you say that again?'
+const REPLY_TROUBLE = 'Forgive me, my thoughts drifted for a moment. Your words are back in the box below, if you would send them again.'
 const VOICE_INPUT_UNAVAILABLE = 'Speaking is not available here, so please type your message instead.'
 const IMAGINED_NOTE = 'Imagined conversations, not real quotes from the person.'
 const CARE_FAREWELL = 'Thank you for staying with me. Please let one of the people below hear you too; you deserve that kind of company.'
@@ -396,6 +398,14 @@ export default function TimelessMinds() {
     }
 
     const conversation = conversationRef.current
+    // Nothing they wrote is lost: the words go back in the box to send again, and neither side of the hiccup counts as talk
+    const replyFailed = () => {
+      setMessages(prev => [
+        ...prev.map(m => (m === userMessage ? { ...m, unanswered: true } : m)),
+        { role: 'assistant', content: REPLY_TROUBLE, emotion: 'concerned', unanswered: true },
+      ])
+      setInputMessage(current => (current.trim() ? current : textToSend))
+    }
     setMessages(prev => [...prev, userMessage])
     setInputMessage('')
     setInterimTranscript('')
@@ -410,7 +420,7 @@ export default function TimelessMinds() {
         body: JSON.stringify({
           thinkerId: thinker.id,
           message: textToSend,
-          conversationHistory: messages.map(m => ({
+          conversationHistory: messages.filter(m => !m.unanswered).map(m => ({
             role: m.role,
             content: m.content
           }))
@@ -423,7 +433,7 @@ export default function TimelessMinds() {
       const reply = typeof data?.response === 'string' ? data.response.trim() : ''
       if (!response.ok || !reply) {
         console.error('Chat reply unavailable:', response.status, data?.error)
-        setMessages(prev => [...prev, { role: 'assistant', content: REPLY_TROUBLE, emotion: 'concerned' }])
+        replyFailed()
         return
       }
 
@@ -439,7 +449,7 @@ export default function TimelessMinds() {
     } catch (error) {
       console.error('Failed to send message:', error)
       if (conversation !== conversationRef.current) return
-      setMessages(prev => [...prev, { role: 'assistant', content: REPLY_TROUBLE, emotion: 'concerned' }])
+      replyFailed()
     } finally {
       if (conversation === conversationRef.current) {
         setIsLoading(false)
@@ -499,7 +509,7 @@ export default function TimelessMinds() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           thinkerId: leaving.id,
-          conversationHistory: messages.map(m => ({ role: m.role, content: m.content }))
+          conversationHistory: messages.filter(m => !m.unanswered).map(m => ({ role: m.role, content: m.content }))
         })
       })
       const data = await response.json().catch(() => null)
@@ -692,7 +702,7 @@ export default function TimelessMinds() {
   const menuItem = 'w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-left text-sm sage-ink hover:bg-[var(--sage-paper)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
   const menuIcon = 'shrink-0 sage-ink-soft'
   const userHasSpoken = messages.some((m) => m.role === 'user')
-  const offerGoodbye = messages.filter((m) => m.role === 'user').length >= GOODBYE_AFTER_EXCHANGES && !farewell
+  const offerGoodbye = messages.filter((m) => m.role === 'user' && !m.unanswered).length >= GOODBYE_AFTER_EXCHANGES && !farewell
 
   return (
     <div className="sage-room sage-wall max-w-[1024px] mx-auto h-[calc(100dvh-12rem)] min-h-[36rem] sm:h-[calc(100dvh-10rem)] flex flex-col rounded-2xl border sage-line shadow-sm">
@@ -846,6 +856,9 @@ export default function TimelessMinds() {
                       {message.role === 'assistant' ? plainText(message.content) : message.content}
                     </p>
                   </div>
+                  {message.role === 'user' && message.unanswered && (
+                    <p className="mt-1 px-1 text-right text-xs sage-ink-soft">Not answered yet</p>
+                  )}
                 </div>
               </div>
             ))}

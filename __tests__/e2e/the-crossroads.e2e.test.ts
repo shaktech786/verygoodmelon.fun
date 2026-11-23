@@ -31,7 +31,7 @@ const progress = (page: Page, n: number) => page.getByText(`Dilemma ${n} of ${DI
 const answerList = (page: Page) => page.getByRole('list', { name: 'The two answers' })
 /** The card around a choice: its button, then the perspective and counts shown after choosing. */
 // The keepsake's heading names it once; the picture inside is described rather than titled again
-const sky = (page: Page) => page.locator('section').filter({ has: page.getByRole('heading', { name: SKY }) }).getByRole('img', { name: 'Picture' })
+const sky = (page: Page) => page.locator('section').filter({ has: page.getByRole('heading', { name: SKY }) }).getByRole('img', { name: 'The Dilemma, a picture to keep' })
 const card = (page: Page, choice: Locator) => page.getByRole('listitem').filter({ has: choice })
 
 async function axeViolations(page: Page): Promise<string[]> {

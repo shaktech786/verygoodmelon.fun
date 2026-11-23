@@ -19,7 +19,7 @@ const SOCRATES_OPENING = opening('socrates')
 const PLATO_OPENING = opening('plato')
 const CURIE_OPENING = opening('marie-curie')
 const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
-const REPLY_TROUBLE = 'Forgive me, my thoughts drifted for a moment. Could you say that again?'
+const REPLY_TROUBLE = 'Forgive me, my thoughts drifted for a moment. Your words are back in the box below, if you would send them again.'
 
 interface ChatRequest {
   thinkerId: string
@@ -211,27 +211,41 @@ test('the directory filters by a few broad shelves, with no near-duplicates, and
   await expect(bubbles(page)).toHaveText([SOCRATES_OPENING])
 })
 
-test('when a reply cannot be fetched, the thinker asks again calmly and the next message works', async ({ page }) => {
+test('when a reply cannot be fetched, the thinker asks again calmly, the words come back to resend, and the next message works', async ({ page }) => {
   await setUpBrowser(page)
   let failing = true
-  await page.route('**/api/timeless-minds/chat', route =>
-    failing
+  const histories: unknown[][] = []
+  await page.route('**/api/timeless-minds/chat', route => {
+    histories.push(route.request().postDataJSON().conversationHistory)
+    return failing
       ? route.fulfill({ status: 500, json: { error: 'AI model unavailable' } })
       : route.fulfill({ json: { response: 'Then let us begin again.', emotion: 'neutral' } })
-  )
+  })
   await openGame(page)
 
   await send(page, 'Are you there?')
   await expect(bubbles(page).nth(2)).toHaveText(REPLY_TROUBLE)
   await expect(bubbles(page).filter({ hasText: /model|unavailable|error|AI/ })).toHaveCount(0)
+  // Nothing has to be typed twice: the words are back in the box
+  await expect(input(page)).toHaveValue('Are you there?')
+  await expect(page.getByText('Not answered yet')).toBeVisible()
 
   failing = false
-  await send(page, 'Let us try again')
+  await page.getByRole('button', { name: 'Send message' }).click()
   await expect(bubbles(page).nth(4)).toHaveText('Then let us begin again.')
+  // The hiccup is not part of the talk the thinker hears
+  expect(JSON.stringify(histories[1])).not.toContain('drifted')
+  expect(JSON.stringify(histories[1])).not.toContain('Are you there?')
+
+  await send(page, 'Let us try again')
+  await expect(bubbles(page).nth(6)).toHaveText('Then let us begin again.')
 
   await page.route('**/api/timeless-minds/chat', route => route.abort('internetdisconnected'))
   await send(page, 'Offline now')
-  await expect(bubbles(page).nth(6)).toHaveText(REPLY_TROUBLE)
+  await expect(bubbles(page).nth(8)).toHaveText(REPLY_TROUBLE)
+  await expect(input(page)).toHaveValue('Offline now')
+  // Only answered messages count toward the goodbye shortcut
+  await expect(page.getByRole('button', { name: 'Say goodbye to Socrates' })).toHaveCount(0)
   await expect(input(page)).toBeEnabled()
 })
 
@@ -719,8 +733,6 @@ test.describe('on a laptop screen with Larger text', () => {
     await openGame(page)
     await page.evaluate(() => document.documentElement.setAttribute('data-text-size', 'larger'))
     await input(page).fill('Hello')
-    // The sound button fades in after a moment; wait until it can be hit
-    await expect(page.getByRole('button', { name: 'Ambient sound' })).toHaveCSS('opacity', '1')
 
     const sendButton = page.getByRole('button', { name: 'Send message' })
     await sendButton.scrollIntoViewIfNeeded()

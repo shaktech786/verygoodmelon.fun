@@ -1,5 +1,6 @@
 import { GROUND_TOP, categoryOf, growthFactor, type Plant, type PlantType, type Season, type TimeOfDay } from '@/lib/games/calm-garden/garden'
-import { gardenSummary } from '@/lib/games/calm-garden/describe'
+import { gardenSummary, numberWord } from '@/lib/games/calm-garden/describe'
+import { petalColour } from '@/lib/games/calm-garden/colours'
 import type { VisitorKind } from '@/lib/games/calm-garden/moments'
 import { KEEPSAKE_WIDTH, PIXEL, framedKeepsake, hashString, keepsakeDay, keepsakeFileName, seededRandom, type KeepsakeOp, type KeepsakePlan } from './plan'
 
@@ -23,7 +24,8 @@ const GROUND: Record<TimeOfDay, [Hex, Hex, Hex]> = {
   night: ['#35604a', '#2a5040', '#1c3a2c'],
 }
 const CANOPY: Record<Season, Hex> = { spring: '#5fbf8a', summer: '#40916c', autumn: '#d98e3b', winter: '#6f8f7a' }
-const PETAL: Partial<Record<PlantType, Hex>> = { daisy: '#f4f1ea', tulip: '#e63946', poppy: '#d62828', lavender: '#c792ea', sunflower: '#f2a83b' }
+// Tulips and poppies take the colour the garden gave them; the rest are always the same colour there too
+const PETAL: Partial<Record<PlantType, Hex>> = { daisy: '#f4f1ea', lavender: '#c792ea', sunflower: '#f2a83b' }
 
 const LIGHT_WORDS: Record<TimeOfDay, string> = {
   morning: 'morning light',
@@ -76,7 +78,8 @@ function land(timeOfDay: TimeOfDay): KeepsakeOp[] {
 }
 
 function plantOps(plant: Plant, season: Season, now: number): KeepsakeOp[] {
-  const x = VIEW.left + (0.06 + plant.x * 0.88) * VIEW.width
+  // The same place across the picture as in the garden itself
+  const x = VIEW.left + plant.x * VIEW.width
   const y = VIEW.top + plant.y * VIEW.height
   const depth = (plant.y - GROUND_TOP) / (1 - GROUND_TOP)
   const s = (1.2 + depth * 1.2) * Math.max(0.6, plant.scale) * growthFactor(plant, now)
@@ -85,7 +88,7 @@ function plantOps(plant: Plant, season: Season, now: number): KeepsakeOp[] {
     case 'flower':
       return [
         { kind: 'rect', x: x - 3 * s, y: y - 40 * s, w: 6 * s, h: 40 * s, ink: stem },
-        { kind: 'disc', x, y: y - 44 * s, r: 14 * s, ink: PETAL[plant.type] ?? '#f4845f' },
+        { kind: 'disc', x, y: y - 44 * s, r: 14 * s, ink: PETAL[plant.type] ?? petalColour(plant.colorSeed) },
         { kind: 'disc', x, y: y - 44 * s, r: 5 * s, ink: plant.type === 'sunflower' ? '#5c3d2e' : '#f7d35c' },
       ]
     case 'tree': {
@@ -183,7 +186,7 @@ export function gardenerKeepsake({ plants, season, timeOfDay, visitors, visitorK
     },
   ]
 
-  const who = visitors === 0 ? 'no visitors, only quiet' : `${visitors === 1 ? 'a' : visitors} ${visitorKind === 'butterfly' ? (visitors === 1 ? 'butterfly' : 'butterflies') : visitors === 1 ? 'firefly' : 'fireflies'} among the plants`
+  const who = visitors === 0 ? 'no visitors, only quiet' : `${visitors === 1 ? 'a' : numberWord(visitors)} ${visitorKind === 'butterfly' ? (visitors === 1 ? 'butterfly' : 'butterflies') : visitors === 1 ? 'firefly' : 'fireflies'} among the plants`
   const alt = `A postcard of your ${season} garden in ${LIGHT_WORDS[timeOfDay]}: ${gardenSummary(plants)}, with ${who}. A stamp in the corner says ${season}. Written beneath: “${line}”`
 
   return framedKeepsake({

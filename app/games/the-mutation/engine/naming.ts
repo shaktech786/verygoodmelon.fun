@@ -57,8 +57,6 @@ export function fallbackTagline({ mechanicIds, style, transformed }: RunPicture)
   return `A game for someone who ${deed}${scene ? ` ${scene}` : ''}.`
 }
 
-const times = (n: number) => (n === 1 ? 'once' : `${n} times`)
-
 export interface RunEvents {
   transformed: number
   /** Times a shadow bumped the orb. */
@@ -67,12 +65,12 @@ export interface RunEvents {
   carries: number
 }
 
-/** The closing thought: the game changed six times without asking, and the player kept playing. Only what happened is told. */
+/** The closing thought: the game changed six times without asking, and the player kept playing. Only what happened is told, never how often, so nothing reads as a score. */
 export function reflection({ transformed, bumps, carries }: RunEvents): string {
   const lines = ['Six rules arrived without asking.']
-  if (transformed > 0) lines.push(`You turned ${transformed} ${transformed === 1 ? 'shadow into a star' : 'shadows into stars'}.`)
-  if (bumps > 0) lines.push(`A shadow bumped you ${times(bumps)}, and nothing was lost.`)
-  if (carries > 0) lines.push(`A tide carried you ${times(carries)}.`)
+  if (transformed > 0) lines.push(transformed === 1 ? 'You turned a shadow into a star.' : 'You turned shadows into stars.')
+  if (bumps > 0) lines.push('A shadow bumped into you, and nothing was lost.')
+  if (carries > 0) lines.push('A tide carried you along.')
   if (lines.length === 1) lines.push('You met each one as it came.')
   else if (transformed === 0) lines.push('You kept going.')
   return lines.join(' ')

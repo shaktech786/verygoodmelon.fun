@@ -187,7 +187,7 @@ export function isGolden(name: string, work: number): boolean {
 export interface Letter {
   title: string
   opening: string
-  lines: { gold: string; text: string }[]
+  lines: { gold: string; text: string; /** What the gold is, as the letter puts it: "which is wisdom brave enough to act." */ meaning: string }[]
   closing: string[]
 }
 
@@ -201,12 +201,13 @@ export function composeLetter(work: number, discoveries: Concept[]): Letter {
   const lines = ordered.map((gold, i) => {
     const ordinal = i === ordered.length - 1 ? ORDINALS[ORDINALS.length - 1] : ORDINALS[i]
     const joiner = gold.letter.startsWith('and ') ? ' ' : ', '
-    return { gold: gold.name, text: `${ordinal}, you found ${gold.name}${joiner}${gold.letter}` }
+    return { gold: gold.name, text: `${ordinal}, you found ${gold.name}${joiner}${gold.letter}`, meaning: gold.letter }
   })
 
+  // True of every path through the lab, and never a count of how many tries it took
   const first = discoveries[0]
   const closing = [
-    `It took ${discoveries.length} discoveries.${first ? ` The very first thing you made here was ${first.name}, and everything after began there.` : ''}`,
+    `Each of these you made yourself, by bringing two ideas together.${first ? ` The very first thing you made here was ${first.name}.` : ''}`,
     FAREWELLS[work] ?? FAREWELLS[0],
   ]
 

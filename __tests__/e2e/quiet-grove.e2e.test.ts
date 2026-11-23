@@ -230,7 +230,7 @@ test.describe('The Gardener', () => {
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
     expect(await stored(page)).toHaveLength(0)
 
-    await page.getByRole('link', { name: /Back Home/ }).focus()
+    await page.getByRole('link', { name: 'VeryGoodMelon.Fun home' }).focus()
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/\/$/)
   })
@@ -502,10 +502,12 @@ test.describe('The Gardener', () => {
     await expect(postcard).toBeFocused()
     await expect(postcard.getByRole('heading', { name: 'A postcard of your garden' })).toBeVisible()
     await expect(announcer(page)).toContainText('a postcard of it is ready to keep')
+    // An older suggestion never sits above the postcard at the ending
+    await expect(page.getByRole('button', { name: 'Not now' })).toHaveCount(0)
     await expectKeepsakeSaves(page, {
       within: postcard,
       fileName: /^the-gardener-2026-11-21\.png$/,
-      describedAs: /^A postcard of your autumn garden in late afternoon gold: three round stones, two poppies and a willow, with 2 butterflies among the plants\. A stamp in the corner says autumn\. Written beneath: “An autumn garden: two flowers/,
+      describedAs: /^A postcard of your autumn garden in late afternoon gold: three round stones, two poppies and a willow, with two butterflies among the plants\. A stamp in the corner says autumn\. Written beneath: “An autumn garden: two flowers/,
     })
     expect(await stored(page)).toHaveLength(6)
 
@@ -530,7 +532,7 @@ test.describe('The Gardener', () => {
     await page.getByRole('button', { name: 'Stand up' }).click()
     const postcard = page.getByTestId('garden-postcard')
     await expect(postcard).toBeFocused()
-    await expect(postcard.getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/garden in moonlight: .+, with \d fireflies among the plants/)
+    await expect(postcard.getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/garden in moonlight: .+, with (two|three|four|five) fireflies among the plants/)
     await expect(postcard.getByTestId('keepsake-canvas')).toBeInViewport({ ratio: 1 })
     expect(parseFloat(await postcard.getByRole('button', { name: 'Save image' }).evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(14)
   })

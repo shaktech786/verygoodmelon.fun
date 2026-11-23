@@ -2,18 +2,16 @@
 
 import { useRef } from 'react'
 import { Check, PenLine } from 'lucide-react'
-import { EMBLEM_ROWS, PAIRINGS, deckStep, type EmblemId } from '@/lib/games/arena-pairings'
+import { ARENA_VOICE_COLOURS, EMBLEM_ROWS, PAIRINGS, deckStep, type EmblemId } from '@/lib/games/arena-pairings'
 
-/**
- * The two speakers' colours: calm, told apart by more than hue (side, name, a round or a
- * diamond marker), neither red nor green so neither side ever reads as right or wrong.
- * Both pass 4.5:1 as text on the card background in light and dark.
- */
+const { light, dark } = ARENA_VOICE_COLOURS
+
+/** The two speakers' colours, told apart by more than hue too: side, name, and a round or a diamond marker. */
 export const ARENA_VOICES_CSS = `
-.arena-voices { --voice-a: #35577f; --voice-b: #80541c; }
-html[data-theme="dark"] .arena-voices { --voice-a: #a8c2e8; --voice-b: #e6bd80; }
+.arena-voices { --voice-a: ${light.a}; --voice-b: ${light.b}; }
+html[data-theme="dark"] .arena-voices { --voice-a: ${dark.a}; --voice-b: ${dark.b}; }
 @media (prefers-color-scheme: dark) {
-  html[data-theme="auto"] .arena-voices { --voice-a: #a8c2e8; --voice-b: #e6bd80; }
+  html[data-theme="auto"] .arena-voices { --voice-a: ${dark.a}; --voice-b: ${dark.b}; }
 }
 `
 

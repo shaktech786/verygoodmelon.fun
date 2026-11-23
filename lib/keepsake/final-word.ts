@@ -14,6 +14,28 @@ const KIN =
   'mum|mom|mummy|mommy|mama|dad|daddy|papa|mother|father|nan|nana|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|sister|brother|son|daughter|kids|children|darling|sweetheart|friends?|everyone|everybody|world'
 // "Love" on its own is more often a sign-off ("Love, always") than a name, so only "my love" counts
 const KIN_OPENING = new RegExp(String.raw`^\s*((?:my\s+)?(?:${KIN})|my\s+love)\s*[,!:]\s*`, 'i')
+// "To my brother: …", "To Sam, …": a greeting written as the card's own opening
+const TO_OPENING = /^\s*to\s+([^,.!?;:\n]{1,40}?)\s*[,:]\s*/i
+// The ways a written "To …" names who it is for, rather than starting a phrase like "To be honest,"
+const PEOPLE_LEADS = new RegExp(String.raw`^(?:my|our|all|everyone|everybody|anyone|whoever|you|${KIN})$`, 'i')
+const THE_PEOPLE = /^(?:people|person|one|ones|kids|children|family|friends?|world|reader|readers|future|future me|stranger|strangers|grandchildren)\b/i
+// Capitalised words that still open a phrase, not a name: "To Be honest,", "To This day,"
+const NOT_NAMES = /^(?:be|me|this|that|start|begin|end|sum|put|tell|say|think|cut|make|conclude|each|some|many|most|a|an|i|whom)$/i
+
+/** Whether the words after "To" name someone: "my brother", "Sam", "the people I love", but not "be honest" or "the end". */
+function namesSomeone(name: string): boolean {
+  const [first, ...rest] = name.split(/\s+/)
+  if (PEOPLE_LEADS.test(first)) return true
+  if (/^the$/i.test(first)) return THE_PEOPLE.test(rest.join(' '))
+  return /^\p{Lu}/u.test(first) && !NOT_NAMES.test(first)
+}
+
+/** Who a "To …" greeting names, if it names anyone and words follow it. */
+function toOpening(text: string): RegExpMatchArray | null {
+  const match = text.match(TO_OPENING)
+  return match && namesSomeone(match[1].trim()) ? match : null
+}
+
 // Words that carry on a list rather than start a sentence: "My kids, and the sea at dawn."
 const CARRIES_ON = /^(?:and|or|but|nor|plus|with|the|a|an|too|also|always|forever|then|&)(?=\s|$)/i
 
@@ -30,17 +52,17 @@ export interface Letter {
 }
 
 /**
- * Who the words are written to: a greeting the player wrote themselves ("Mum, you were…", "Dear Sam,"),
+ * Who the words are written to: a greeting the player wrote themselves ("Mum, you were…", "Dear Sam,", "To my brother:"),
  * else the person the question asked about, else anyone who might need them.
  */
 export function letterOf({ words, prompt }: { words: string; prompt: string }): Letter {
   const text = words.trim()
-  const named = text.match(NAMED_OPENING)
+  const named = text.match(NAMED_OPENING) ?? toOpening(text)
   const opening = named ?? text.match(KIN_OPENING)
   const rest = opening ? text.slice(opening[0].length).trim() : ''
   if (opening && rest && (named || isSentence(rest))) {
     const name = opening[1].trim().replace(/\s+/g, ' ')
-    const addressee = /^my\s/i.test(name) ? name.toLowerCase() : `${name.charAt(0).toUpperCase()}${name.slice(1)}`
+    const addressee = /^(?:my|our|the|all|everyone|everybody|anyone|whoever|you)\b/i.test(name) ? name : `${name.charAt(0).toUpperCase()}${name.slice(1)}`
     return { to: `To ${addressee},`, body: `${rest.charAt(0).toUpperCase()}${rest.slice(1)}` }
   }
   return { to: `To ${ADDRESSEE_BY_PROMPT[prompt] ?? FALLBACK_ADDRESSEE},`, body: text }

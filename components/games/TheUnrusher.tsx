@@ -169,15 +169,13 @@ function timesWord(n: number): string {
   return `${n} times`
 }
 
-/** "1 minute 5 seconds", "2 minutes", "40 seconds": what a screen reader hears for the timer. */
-function timeInWords(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  const parts = [
-    minutes > 0 && `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`,
-    (seconds > 0 || minutes === 0) && `${seconds} ${seconds === 1 ? 'second' : 'seconds'}`,
-  ].filter(Boolean)
-  return parts.join(' ')
+/** How far along the moment is, in words rather than a number, so nothing counts down at the listener. */
+function momentInWords(progress: number): string {
+  if (progress >= 1) return 'The moment is whole'
+  if (progress < 0.1) return 'The moment has just begun'
+  if (progress < 0.4) return 'The moment is under way'
+  if (progress < 0.6) return 'About halfway through the moment'
+  return 'Most of the way through the moment'
 }
 
 function timeOfDay(iso: string): string {
@@ -569,7 +567,6 @@ export default function TheUnrusher() {
   }
 
   if (currentTask) {
-    const timeRemaining = Math.max(0, currentTask.duration - Math.floor(elapsedMs / 1000))
     const progress = Math.min(1, elapsedMs / (currentTask.duration * 1000))
     const guidanceIndex = Math.min(currentTask.guidance.length - 1, Math.floor(progress * currentTask.guidance.length))
     const settledSeeds = Math.min(SEED_COUNT, Math.floor(progress * SEED_COUNT))
@@ -718,29 +715,21 @@ export default function TheUnrusher() {
                 </p>
               )}
 
-              {/* Progress is shown as a ripening ring, with the time beside it kept quiet. */}
+              {/* Progress is a slow ripening ring with no numbers; a screen reader can ask how far along it is, and is never told. */}
               <div className={cn('flex flex-wrap items-center justify-center gap-3', !compact && 'mb-2')}>
-                <svg viewBox="0 0 60 60" className="w-10 h-10 -rotate-90" aria-hidden="true">
+                <svg viewBox="0 0 60 60" className="w-12 h-12 -rotate-90" role="img" aria-label={momentInWords(progress)} data-testid="moment-ring" data-progress={(Math.floor(progress * 100) / 100).toFixed(2)}>
                   <circle cx="30" cy="30" r={RING_RADIUS} className="fill-none stroke-foreground/10" strokeWidth="5" />
                   <circle
                     cx="30"
                     cy="30"
                     r={RING_RADIUS}
-                    className="fill-none stroke-success"
+                    className="fill-none stroke-melon-green"
                     strokeWidth="5"
                     strokeLinecap="round"
                     strokeDasharray={RING_LENGTH}
                     strokeDashoffset={RING_LENGTH * (1 - progress)}
                   />
                 </svg>
-                <div
-                  className="text-base text-foreground/70 tabular-nums"
-                  role="timer"
-                  aria-live="off"
-                  aria-label={`${timeInWords(timeRemaining)} remaining`}
-                >
-                  {Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, '0')}
-                </div>
                 {compact && (
                   timeUp ? (
                     <Button variant="ghost" onClick={() => finishMoment(currentTask)}>

@@ -431,6 +431,8 @@ export default function CalmGarden() {
     setSitDone(false)
     if (sitDone && sitAt !== null) {
       showPostcardRef.current = true
+      // The visit ends on the postcard; an older suggestion would sit above it, out of date
+      setSuggestion(null)
       setPostcard(gardenerKeepsake({ plants, season: clock.season, timeOfDay: clock.tod, visitors: sitVisitors, visitorKind: sitKind, line: closingLine, day: new Date(sitAt) }))
       setAnnouncement('You stand up. The garden is still here, and a postcard of it is ready to keep.')
       return

@@ -7,7 +7,7 @@ import { AccessibilityControls } from "@/components/accessibility/AccessibilityC
 import { ToastContainer } from "@/components/ui/Toast";
 import { SiteAnalytics } from "@/components/SiteAnalytics";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { FeedbackButton } from "@/components/FeedbackButton";
+import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { AmbientParticles } from "@/components/ui/AmbientParticles";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { CareModeProvider } from "@/components/games/CareMode";
@@ -103,7 +103,7 @@ export default function RootLayout({
         </CareModeProvider>
         <Footer />
         <AccessibilityControls />
-        <FeedbackButton />
+        <FeedbackDialog />
         <ToastContainer />
         <SiteAnalytics />
         <ServiceWorkerRegistration />

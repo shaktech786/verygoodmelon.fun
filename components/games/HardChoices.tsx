@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { StickyActionBar } from '@/components/ui/StickyActionBar'
@@ -559,15 +558,6 @@ export default function HardChoices() {
               </div>
             </>
           )}
-
-          <div className="mt-6 text-center">
-            <Link
-              href="/"
-              className="inline-block px-4 py-2 sm:px-6 sm:py-3 bg-card-bg text-foreground border border-card-border rounded-lg font-medium hover:bg-hover-bg transition-colors text-sm sm:text-base"
-            >
-              ← Back Home
-            </Link>
-          </div>
         </div>
       </div>
     </div>

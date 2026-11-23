@@ -1,10 +1,8 @@
 'use client'
 
 import { useSyncExternalStore } from 'react'
+import { ambientOn, subscribeToAmbient } from '@/lib/audio/ambient-choice'
 
-// The ambient SoundToggle keeps its on/off state inside its own hook, so its pressed
-// state is the one public signal that the player chose sound on this page.
-const SOUND_TOGGLE = 'button[aria-label="Ambient sound"]'
 const DEFAULT_VOLUME = 70
 
 function volumeFraction(): number {
@@ -14,19 +12,19 @@ function volumeFraction(): number {
   return Number.isFinite(volume) ? Math.min(1, Math.max(0, volume / 100)) : DEFAULT_VOLUME / 100
 }
 
-/** True only when the player turned the page's sound on and has not muted it in the accessibility panel. */
+/** True only when the player turned the page's ambient sound on and has not muted it in the settings panel. */
 export function soundChosen(): boolean {
-  return document.querySelector(SOUND_TOGGLE)?.getAttribute('aria-pressed') === 'true' && volumeFraction() > 0
+  return ambientOn() && volumeFraction() > 0
 }
 
 function subscribeToSoundChoice(onChange: () => void): () => void {
   const observer = new MutationObserver(onChange)
-  observer.observe(document.documentElement, {
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['aria-pressed', 'data-muted', 'data-volume'],
-  })
-  return () => observer.disconnect()
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-muted', 'data-volume'] })
+  const leave = subscribeToAmbient(onChange)
+  return () => {
+    observer.disconnect()
+    leave()
+  }
 }
 
 export function useSoundChosen(): boolean {

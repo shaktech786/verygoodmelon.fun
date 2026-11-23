@@ -1,21 +1,16 @@
-/**
- * AccessibilityControls
- * Wrapper component that manages the button and panel
- */
-
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AccessibilityButton } from './AccessibilityButton'
 import { AccessibilityPanel } from './AccessibilityPanel'
 
 const OPEN_ACCESSIBILITY_EVENT = 'verygoodmelon:open-accessibility'
 
-/** Opens the settings panel from elsewhere, such as the phone menu where the floating button is hidden. */
+/** Opens the settings panel; the header's gear calls this. */
 export function openAccessibilitySettings(): void {
   window.dispatchEvent(new Event(OPEN_ACCESSIBILITY_EVENT))
 }
 
+// The panel is mounted at the body, outside the header, whose backdrop blur would trap a fixed panel inside it
 export function AccessibilityControls() {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
 
@@ -25,16 +20,5 @@ export function AccessibilityControls() {
     return () => window.removeEventListener(OPEN_ACCESSIBILITY_EVENT, open)
   }, [])
 
-  return (
-    <>
-      <AccessibilityButton
-        onClick={() => setIsPanelOpen(true)}
-        aria-expanded={isPanelOpen}
-      />
-      <AccessibilityPanel
-        isOpen={isPanelOpen}
-        onClose={() => setIsPanelOpen(false)}
-      />
-    </>
-  )
+  return <AccessibilityPanel isOpen={isPanelOpen} onClose={() => setIsPanelOpen(false)} />
 }

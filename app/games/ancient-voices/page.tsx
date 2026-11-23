@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
 import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 
 const TimelessMinds = dynamic(() => import('@/components/games/TimelessMinds'), {
@@ -27,15 +26,6 @@ export default function TheSagePage() {
           </div>
 
           <TimelessMinds />
-
-          <div className="mt-4 sm:mt-6 text-center">
-            <Link
-              href="/"
-              className="inline-block px-4 py-2 sm:px-6 sm:py-3 bg-card-bg text-foreground border border-card-border rounded-lg font-medium hover:bg-hover-bg transition-colors text-sm sm:text-base"
-            >
-              &larr; Back Home
-            </Link>
-          </div>
         </div>
       </div>
     </GamePageWrapper>

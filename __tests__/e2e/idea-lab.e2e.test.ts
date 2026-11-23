@@ -1,3 +1,4 @@
+import { expectKeepsakeSaves } from './helpers/keepsake'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Page, type Route } from '@playwright/test'
@@ -58,7 +59,8 @@ const asDiscoveries = (names: string[]) =>
   names.map(name => ({ id: name.toLowerCase(), name, emoji: '✨', description: `${name}, found earlier.` }))
 
 const concept = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
-const announcement = (page: Page) => page.getByRole('status')
+// The lab's own live region; the letter's keepsake has a quiet status line of its own
+const announcement = (page: Page) => page.locator('div[role="status"].sr-only')
 const BASE_CONCEPTS = 16
 // The lab shows no tally; what the player owns is the concepts row itself.
 const owned = (page: Page) => page.getByRole('toolbar', { name: 'Your Concepts' }).getByRole('button')
@@ -352,7 +354,7 @@ test('damaged saved data does not stop the lab from opening', async ({ page }) =
   await combine(page, 'Love', 'Fear')
   await expect(announcement(page)).toContainText('New discovery: Jealousy.')
   await expect(owned(page)).toHaveCount(BASE_CONCEPTS + 1)
-  await expect(shelf(page)).toContainText('0 of 7 found')
+  await expect(shelf(page).getByText('Not yet found. Riddle:', { exact: false })).toHaveCount(7)
 })
 
 test('discoveries saved before the riddles existed keep loading, golds included', async ({ page }) => {
@@ -363,7 +365,7 @@ test('discoveries saved before the riddles existed keep loading, golds included'
   })
   await page.goto('/games/idea-lab')
   await expect(concept(page, 'Grief')).toBeVisible()
-  await expect(shelf(page)).toContainText('1 of 7 found')
+  await expect(shelf(page).getByText('Not yet found. Riddle:', { exact: false })).toHaveCount(6)
   await expect(shelf(page)).toContainText('Acting despite fear.')
 })
 
@@ -384,7 +386,8 @@ test('a gold is celebrated with the riddle it answers, and the shelf keeps the r
   await startLab(page)
 
   const golds = shelf(page)
-  await expect(golds).toContainText('0 of 7 found')
+  // No running count of golds: the shelf shows riddles, not a score
+  await expect(golds).not.toContainText(/\d+ of \d+/)
   await expect(golds).toContainText('A trembling that keeps walking toward the morning.')
   await expect(golds.getByText('Not yet found. Riddle:', { exact: false })).toHaveCount(7)
   // The riddles point at the ideas without naming them.
@@ -394,9 +397,7 @@ test('a gold is celebrated with the riddle it answers, and the shelf keeps the r
   await combine(page, 'Hope', 'Fear')
   await expect(announcement(page)).toHaveText('Gold: Courage. It answers: A trembling that keeps walking toward the morning. Acting despite fear because something matters more.')
   await expect(page.locator('[aria-hidden="true"]').getByText('It answers:', { exact: false }).filter({ visible: true })).toBeVisible()
-  // The shelf alone keeps the tally; the bench does not repeat it.
-  await expect(page.getByText(/One of the seven golds|Gold, \d+ of \d+/)).toHaveCount(0)
-  await expect(golds).toContainText('1 of 7 found')
+  await expect(page.getByText(/One of the seven golds|\d+ of \d+/)).toHaveCount(0)
   await expect(golds).toContainText('Acting despite fear because something matters more.')
   await expect(golds.getByText('Not yet found. Riddle:', { exact: false })).toHaveCount(6)
 })
@@ -460,7 +461,7 @@ test('the seventh gold ends the Work with a letter that takes focus, then the Se
     'Compassion', 'Mortality', 'Legacy', 'Meaning', 'Vulnerability', 'Trust', 'Intimacy', 'Wisdom']
   await seed(page, { ideaLab_discoveries: asDiscoveries(found) })
   await page.goto('/games/idea-lab')
-  await expect(shelf(page)).toContainText('6 of 7 found')
+  await expect(shelf(page).getByText('Not yet found. Riddle:', { exact: false })).toHaveCount(1)
 
   await combine(page, 'Wisdom', 'Courage')
   await expect(announcement(page)).toContainText('The Great Work is complete. A letter has been written for you.')
@@ -471,7 +472,9 @@ test('the seventh gold ends the Work with a letter that takes focus, then the Se
   await expect(lines.first()).toContainText('First, you found Courage, which was only ever fear with somewhere to go.')
   await expect(lines.last()).toContainText('And last, you found Virtue')
   await expect(scene).toContainText('The very first thing you made here was Jealousy')
-  await expect(scene).toContainText('It took 18 discoveries.')
+  await expect(scene).not.toContainText(/\d+ discoveries|everything after began there/)
+  // The letter is a keepsake to save
+  await expectKeepsakeSaves(page, { within: scene, fileName: /^the-alchemist-\d{4}-\d{2}-\d{2}\.png$/, describedAs: /The Great Work.*Courage, Healing/ })
   await expect(shelf(page).getByRole('heading', { name: 'The Great Work is complete' })).toBeVisible()
 
   await scene.getByRole('button', { name: 'Keep wandering' }).click()
@@ -485,7 +488,7 @@ test('the seventh gold ends the Work with a letter that takes focus, then the Se
 
   await expect(announcement(page)).toHaveText('The Second Work begins. Seven new riddles are on the shelf.')
   await expect(page.getByRole('heading', { name: 'The Second Work: seven new golds' })).toBeFocused()
-  await expect(shelf(page)).toContainText('0 of 7 found')
+  await expect(shelf(page).getByText('Not yet found. Riddle:', { exact: false })).toHaveCount(7)
   await expect(shelf(page)).toContainText('The owl, looking in a mirror.')
 
   // Golds of the second Work are made from what the player already knows.
@@ -643,14 +646,20 @@ test.describe('on a phone', () => {
     await expect(bench).toContainText('Plainer: Let love meet its ending, then let the dawn sit beside it.')
   })
 
-  test('a gold found on a phone brings its riddle on the shelf into view', async ({ page }) => {
+  test('a gold found on a phone leaves the bench in place, and a tap on the note shows it on the shelf', async ({ page }) => {
     await mockCombine(page)
     await startLab(page)
     await concept(page, 'Hope').tap()
     await concept(page, 'Fear').tap()
     await expect(announcement(page)).toContainText('Gold: Courage.')
+    const bench = page.getByTestId('phone-bench')
     const turning = shelf(page).getByRole('listitem').filter({ hasText: 'Just found. Riddle:' })
+    // Nothing moves on its own: the bench and the concepts stay where the player was
+    await expect(bench).toBeInViewport()
+    await expect(turning).not.toBeInViewport()
+    await bench.getByRole('button', { name: 'See it on the shelf' }).tap()
     await expect(turning).toBeInViewport({ ratio: 1 })
+    await expect(turning).toBeFocused()
   })
 
   test('the lab fits without sideways scrolling and concepts are easy to tap', async ({ page }) => {

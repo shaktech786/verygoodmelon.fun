@@ -45,7 +45,7 @@ function inkedWord(word: string, top: number): KeepsakeOp[] {
     const x = x0 + i * slot
     ops.push(
       { kind: 'rect', x: x + gap / 2, y: top + size + 12, w: slot - gap, h: 6, ink: 'rind' },
-      { kind: 'text', x: x + slot / 2, y: top + size, text: letter, size, ink: 'blue', font: 'hand', align: 'center', weight: 700 },
+      { kind: 'text', x: x + slot / 2, y: top + size, text: letter, size, ink: 'rind', font: 'hand', align: 'center', weight: 700 },
     )
   })
   return ops

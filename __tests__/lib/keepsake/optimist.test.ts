@@ -20,7 +20,7 @@ describe('optimistKeepsake', () => {
   it('inks the found word into its slots by hand, one letter to a slot', () => {
     const letters = texts(plan.ops).filter((op) => op.font === 'hand')
     expect(letters.map((op) => op.text).join('')).toBe('TOPSOIL')
-    expect(new Set(letters.map((op) => op.ink))).toEqual(new Set(['blue']))
+    expect(new Set(letters.map((op) => op.ink))).toEqual(new Set(['rind']))
     const xs = letters.map((op) => op.x)
     expect(xs).toEqual([...xs].sort((a, b) => a - b))
     expect(Math.min(...xs)).toBeGreaterThan(CLIPPING.left)

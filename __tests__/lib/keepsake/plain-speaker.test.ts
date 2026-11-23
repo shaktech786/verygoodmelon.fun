@@ -53,6 +53,16 @@ describe('plainSpeakerKeepsake', () => {
     expect(plan.ops.some((op) => op.kind === 'rect' && op.ink === 'gold')).toBe(true)
   })
 
+  it('gives the little melon a kind face: upright eyes and a smile whose corners lift', () => {
+    const eyes = plan.ops.filter((op) => op.kind === 'rect' && op.ink === 'seed')
+    expect(eyes).toHaveLength(2)
+    for (const eye of eyes) if (eye.kind === 'rect') expect(eye.h).toBeGreaterThan(eye.w)
+    const smile = plan.ops.find((op) => op.kind === 'line' && op.ink === 'seed')
+    if (smile?.kind !== 'line') throw new Error('no smile')
+    const ys = smile.points.map(([, y]) => y)
+    expect(Math.max(...ys.slice(1, -1))).toBeGreaterThan(Math.max(ys[0], ys[ys.length - 1]))
+  })
+
   it('names the file after the game and the day', () => {
     expect(plan.fileName).toBe('the-plain-speaker-2026-11-21.png')
   })

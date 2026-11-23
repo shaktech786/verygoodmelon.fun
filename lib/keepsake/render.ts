@@ -1,8 +1,18 @@
+import { ARENA_VOICE_COLOURS } from '@/lib/games/arena-pairings'
 import { PIXEL, type Font, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
 
 export type KeepsakeTheme = 'light' | 'dark'
 
 type NamedInk = Exclude<Ink, `#${string}`>
+
+// The watermelon itself is one set of colours on every keepsake in both themes, so a melon never turns mint on dark paper.
+const MELON = {
+  rind: '#1a4d2e',
+  rindLight: '#74c69d',
+  flesh: '#e63946',
+  seed: '#2a211c',
+  gold: '#c98a1b',
+} as const
 
 // Warm paper rather than the page's grey, so a saved keepsake reads as a thing, not a screenshot.
 const PALETTES: Record<KeepsakeTheme, Record<NamedInk, string>> = {
@@ -12,16 +22,9 @@ const PALETTES: Record<KeepsakeTheme, Record<NamedInk, string>> = {
     ink: '#1a1a1a',
     inkSoft: '#5b6470',
     line: '#e4dccd',
-    rind: '#1a4d2e',
-    rindLight: '#74c69d',
-    flesh: '#e63946',
-    seed: '#2a211c',
-    gold: '#c98a1b',
-    sky: '#dce8ef',
-    blue: '#3b82f6',
-    purple: '#8b5cf6',
-    teal: '#14b8a6',
-    orange: '#f97316',
+    ...MELON,
+    voiceA: ARENA_VOICE_COLOURS.light.a,
+    voiceB: ARENA_VOICE_COLOURS.light.b,
   },
   dark: {
     paper: '#1f1d1b',
@@ -29,16 +32,9 @@ const PALETTES: Record<KeepsakeTheme, Record<NamedInk, string>> = {
     ink: '#f2eee8',
     inkSoft: '#b9b2a8',
     line: '#3d3934',
-    rind: '#74c69d',
-    rindLight: '#a8dcc0',
-    flesh: '#ff6b7a',
-    seed: '#120f0d',
-    gold: '#fbbf24',
-    sky: '#24323b',
-    blue: '#60a5fa',
-    purple: '#a78bfa',
-    teal: '#2dd4bf',
-    orange: '#fb923c',
+    ...MELON,
+    voiceA: ARENA_VOICE_COLOURS.dark.a,
+    voiceB: ARENA_VOICE_COLOURS.dark.b,
   },
 }
 

@@ -20,6 +20,9 @@ interface GoldShelfProps {
   onBeginNextWork: () => void
 }
 
+/** The gold just found, for the phone bench's "See it on the shelf". */
+export const FRESH_GOLD_ID = 'alchemist-fresh-gold'
+
 const LETTER_BUTTON_LABELS = ['Read the letter from the Great Work', 'Read the letter from the Second Work']
 
 export const GoldShelf = forwardRef<HTMLHeadingElement, GoldShelfProps>(function GoldShelf(
@@ -29,16 +32,11 @@ export const GoldShelf = forwardRef<HTMLHeadingElement, GoldShelfProps>(function
   const freshRef = useRef<HTMLLIElement>(null)
 
   // In the wide layout the riddles scroll in their own column; bring the one turning gold into view there.
-  // On a phone the shelf sits below the concepts, so the page itself scrolls down to the gold.
+  // On a phone the page is left where it is: the bench offers a note to tap instead.
   useEffect(() => {
     const card = freshRef.current
     const column = card?.closest<HTMLElement>('[data-shelf-scroll]')
-    if (!card || !column) return
-    if (column.scrollHeight <= column.clientHeight) {
-      const box = card.getBoundingClientRect()
-      if (box.top < 0 || box.bottom > window.innerHeight) card.scrollIntoView({ block: 'center', behavior: reducedMotion ? 'auto' : 'smooth' })
-      return
-    }
+    if (!card || !column || column.scrollHeight <= column.clientHeight) return
     const cardBox = card.getBoundingClientRect()
     const columnBox = column.getBoundingClientRect()
     // The column can reach past the bottom of the window while the page is still scrolled to the top.
@@ -50,8 +48,7 @@ export const GoldShelf = forwardRef<HTMLHeadingElement, GoldShelfProps>(function
   }, [freshGold, reducedMotion])
 
   const golds = goldsFor(work)
-  const count = found.filter(Boolean).length
-  const done = count === golds.length
+  const done = found.filter(Boolean).length === golds.length
   const title = done ? `${WORK_TITLES[work]} is complete` : work === 0 ? 'The seven golds' : 'The Second Work: seven new golds'
   const note = done
     ? 'Every heavy thing you started with became part of something kinder. The lab stays open whenever you want to wander.'
@@ -66,12 +63,9 @@ export const GoldShelf = forwardRef<HTMLHeadingElement, GoldShelfProps>(function
 
   return (
     <section className="bg-card-bg border border-card-border rounded-xl p-4 sm:p-5" aria-labelledby="great-work-title">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
-        <h2 id="great-work-title" ref={headingRef} tabIndex={-1} className="scroll-mt-24 font-medium text-foreground/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded">
-          {title}
-        </h2>
-        <span className="text-sm text-foreground/70">{count} of {golds.length} found</span>
-      </div>
+      <h2 id="great-work-title" ref={headingRef} tabIndex={-1} className="mb-1 scroll-mt-24 font-medium text-foreground/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded">
+        {title}
+      </h2>
       <p className="text-sm text-foreground/70 mb-3">{note}</p>
 
       {unsolved.length > 0 && (
@@ -85,7 +79,9 @@ export const GoldShelf = forwardRef<HTMLHeadingElement, GoldShelfProps>(function
                 <li
                   key={gold.name}
                   ref={freshRef}
-                  className={`rounded-lg border border-dashed px-3 py-2.5 alchemist-gold-settled ${reducedMotion ? '' : 'alchemist-gold-turn'}`}
+                  id={FRESH_GOLD_ID}
+                  tabIndex={-1}
+                  className={`scroll-mt-48 rounded-lg border border-dashed px-3 py-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring alchemist-gold-settled ${reducedMotion ? '' : 'alchemist-gold-turn'}`}
                 >
                   <p className="text-sm font-medium text-foreground/80 italic">
                     <span className="sr-only">Just found. Riddle: </span>

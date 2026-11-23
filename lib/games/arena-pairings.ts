@@ -3,6 +3,16 @@ export type EmblemId =
   | 'quill' | 'lens' | 'drop' | 'kite' | 'tortoise' | 'hare' | 'gear' | 'bolt'
   | 'honey' | 'scroll' | 'oak' | 'mayfly' | 'star' | 'planet' | 'grapes' | 'mug'
 
+/**
+ * The two speakers' colours, the same on the cards, the stage and the keepsake: calm, neither
+ * red nor green so neither side ever reads as right or wrong. Both pass 4.5:1 as text on the
+ * card background in light and dark.
+ */
+export const ARENA_VOICE_COLOURS = {
+  light: { a: '#35577f', b: '#80541c' },
+  dark: { a: '#a8c2e8', b: '#e6bd80' },
+} as const
+
 export interface Pairing {
   first: string
   second: string

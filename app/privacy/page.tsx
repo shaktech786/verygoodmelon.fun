@@ -1,5 +1,10 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { LegalLink, LegalList, LegalPage, LegalSection, Term } from '@/components/ui/LegalPage'
+import { SiteNumbers } from './SiteNumbers'
+
+// The public numbers are live counts: render per request instead of freezing them at build time
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | VeryGoodMelon.Fun',
@@ -11,7 +16,7 @@ const CONTACT_EMAIL = 'hello@verygoodmelon.fun'
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="November 21, 2026">
+    <LegalPage title="Privacy Policy" lastUpdated="November 22, 2026">
       <p className="text-lg">
         VeryGoodMelon.Fun exists to help you feel a little lighter. Watching you closely would
         defeat the point. This page explains, in plain language, exactly what the site learns
@@ -62,9 +67,19 @@ export default function PrivacyPage() {
           </li>
         </LegalList>
         <p>
-          These numbers are public. You can see the same totals we see on the{' '}
-          <LegalLink href="/analytics">analytics page</LegalLink>.
+          These numbers are public. You can see the same totals we see in{' '}
+          <LegalLink href="#analytics">the numbers below</LegalLink>.
         </p>
+      </LegalSection>
+
+      <LegalSection id="analytics" title="The Numbers, in Public">
+        <p>
+          Every number here is an anonymous count. Nothing in this section, or behind it, can be
+          traced back to a person.
+        </p>
+        <Suspense fallback={<p>Counting…</p>}>
+          <SiteNumbers />
+        </Suspense>
       </LegalSection>
 
       <LegalSection id="what-you-share" title="What You Choose to Share">

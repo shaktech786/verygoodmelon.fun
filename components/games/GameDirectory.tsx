@@ -9,11 +9,8 @@ import { MoodGlyph } from '@/components/home/MoodDoors'
 import { SHOWCASE_GROUPS, type GameConfig } from '@/lib/games/config'
 import { MOODS, gamesForMood, getMood, moodHref, type MoodId } from '@/lib/games/moods'
 
-const ABOVE_THE_FOLD = new Set(
-  SHOWCASE_GROUPS.flatMap((group) => group.games)
-    .slice(0, 4)
-    .map((game) => game.id)
-)
+const EVERY_GAME = SHOWCASE_GROUPS.flatMap((group) => group.games)
+const ABOVE_THE_FOLD = new Set(EVERY_GAME.slice(0, 4).map((game) => game.id))
 
 const CHIP = `
   inline-flex items-center gap-2 min-h-11 px-4 rounded-full border text-sm sm:text-base
@@ -44,12 +41,25 @@ function MoodFilter({ mood }: { mood: MoodId | undefined }) {
   )
 }
 
-function GameList({ games }: { games: readonly GameConfig[] }) {
+/** Every game in one grid, for the homepage. While care mode lasts the games about death step aside. */
+export function AllGames() {
+  const { care } = useCareMode()
+  return (
+    <section aria-labelledby="all-games-heading">
+      <h2 id="all-games-heading" className="text-sm font-semibold uppercase tracking-wider text-foreground mb-4 sm:mb-5">
+        Every game
+      </h2>
+      <GameList games={EVERY_GAME.filter((game) => !(care && stepsAsideInCare(game.id)))} priority={false} />
+    </section>
+  )
+}
+
+function GameList({ games, priority = true }: { games: readonly GameConfig[]; priority?: boolean }) {
   return (
     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
       {games.map((game) => (
         <li key={game.id}>
-          <GameCardShowcase game={game} priority={ABOVE_THE_FOLD.has(game.id)} showCategory={false} />
+          <GameCardShowcase game={game} priority={priority && ABOVE_THE_FOLD.has(game.id)} showCategory={false} />
         </li>
       ))}
     </ul>

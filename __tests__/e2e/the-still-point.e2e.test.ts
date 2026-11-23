@@ -2,6 +2,7 @@ import { readFileSync } from 'fs'
 import path from 'path'
 import { test, expect, type Page } from '@playwright/test'
 import { expectKeepsakeSaves } from './helpers/keepsake'
+import { ambientSoundIsOn, setAmbientSound } from './helpers/ambient-sound'
 
 /**
  * The Harmonist (/games/the-still-point): guided breathing drawn on a canvas, where every
@@ -81,10 +82,7 @@ async function advance(page: Page, ms: number) {
 }
 
 async function turnSoundOn(page: Page) {
-  await advance(page, 2500) // the sound button fades in after two seconds
-  const toggle = page.getByRole('button', { name: 'Ambient sound' })
-  await toggle.click()
-  await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  await setAmbientSound(page, true)
 }
 
 const guide = (page: Page) => page.getByRole('region', { name: 'Breathing guide' })
@@ -138,6 +136,8 @@ test.describe('The Harmonist', () => {
 
     await page.keyboard.press('Escape')
     await expect(guide(page).getByRole('heading', { name: 'Your breaths, gathered' })).toBeVisible()
+    // Headings never skip a level: the ending's h2 comes before the keepsake's h3
+    expect(await guide(page).getByRole('heading').evaluateAll((hs) => hs.map((h) => h.tagName))).toEqual(['H2', 'H3'])
     await expect(guide(page)).toContainText('You spent 28 seconds breathing.')
     await expect(guide(page)).toContainText('Each seed is a breath you finished. Its shape comes from the rhythm')
     await expect(guide(page)).toContainText('Pattern: Box Breathing')
@@ -423,7 +423,7 @@ test.describe('The Harmonist', () => {
     await openGame(page)
     await page.getByRole('button', { name: 'Breath tones' }).click()
     await expect(page.getByText(/A rising note means breathe in, a falling one means breathe out\./)).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Ambient sound' })).toHaveAttribute('aria-pressed', 'false')
+    expect(await ambientSoundIsOn(page)).toBe(false)
     await startPattern(page, /Box Breathing/)
     await advance(page, 100)
     expect(await cues(page)).toEqual([IN_HZ])
@@ -566,7 +566,7 @@ test.describe('The Harmonist', () => {
     await openGame(page)
     await startPattern(page, /Box Breathing/)
     await advance(page, 3000)
-    await page.getByRole('link', { name: /Back Home/ }).click()
+    await page.getByRole('link', { name: 'VeryGoodMelon.Fun home' }).click()
     await expect(page).toHaveURL(/\/$/)
     await advance(page, 5000)
     expect(errors).toEqual([])

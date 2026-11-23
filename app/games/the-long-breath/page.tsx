@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import TheUnrusher from '@/components/games/TheUnrusher'
 import { GamePageWrapper } from '@/components/games/GamePageWrapper'
 
@@ -23,15 +22,6 @@ export default function TheUnrusherPage() {
           </div>
 
           <TheUnrusher />
-
-          <div className="mt-6 text-center">
-            <Link
-              href="/"
-              className="inline-block px-4 py-2 sm:px-6 sm:py-3 bg-card-bg text-foreground border border-card-border rounded-lg font-medium hover:bg-hover-bg transition-colors text-sm sm:text-base"
-            >
-              &larr; Back Home
-            </Link>
-          </div>
         </div>
       </div>
     </GamePageWrapper>

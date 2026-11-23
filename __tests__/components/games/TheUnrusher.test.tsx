@@ -26,12 +26,15 @@ describe('TheUnrusher', () => {
     expect(screen.getByText(/anti-game about noticing/i)).toBeInTheDocument()
   })
 
-  it('shows the moment, its guidance and a timer once started', () => {
+  it('shows the moment, its guidance and a wordless ring of progress once started', () => {
     render(<TheUnrusher />)
     fireEvent.click(screen.getByText('Look at One Thing'))
     expect(screen.getByRole('heading', { name: 'Look at One Thing' })).toBeInTheDocument()
     expect(screen.getByText('Its colours, then its shadow...')).toBeInTheDocument()
-    expect(screen.getByText('1:00')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'The moment has just begun' })).toBeInTheDocument()
+    // No countdown is shown or read out
+    expect(screen.queryByText(/^\d+:\d{2}$/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('timer')).not.toBeInTheDocument()
   })
 
   it('without sound, Listen to Silence keeps eyes open', () => {

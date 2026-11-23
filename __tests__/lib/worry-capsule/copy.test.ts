@@ -20,6 +20,11 @@ describe('pickLine', () => {
     }
   })
 
+  it('never weighs a fear: not its size, its likelihood or whether it was worth having', () => {
+    const every = Object.values(OUTCOME_RESPONSES).flat().join(' ')
+    expect(every).not.toMatch(/small|big|half|weight|never needed|louder|convincing|rarely|imagine|real thing|handled|worth/i)
+  })
+
   it('never calls a worry that came true simply a real thing and leaves it there', () => {
     expect(OUTCOME_RESPONSES.yes.join(' ')).not.toMatch(/This one was\./)
   })
@@ -62,17 +67,23 @@ describe('tallySummary', () => {
   })
 
   it('speaks plainly about a single capsule', () => {
-    expect(tallySummary({ no: 1, partly: 0, yes: 0, total: 1 })).toBe('You’ve looked back on 1 worry. It didn’t happen.')
-    expect(tallySummary({ no: 0, partly: 1, yes: 0, total: 1 })).toBe('You’ve looked back on 1 worry. It partly happened.')
-    expect(tallySummary({ no: 0, partly: 0, yes: 1, total: 1 })).toBe('You’ve looked back on 1 worry. It happened.')
+    expect(tallySummary({ no: 1, partly: 0, yes: 0, total: 1 })).toBe('This is the worry you came back to look at. It didn’t happen.')
+    expect(tallySummary({ no: 0, partly: 1, yes: 0, total: 1 })).toBe('This is the worry you came back to look at. It partly happened.')
+    expect(tallySummary({ no: 0, partly: 0, yes: 1, total: 1 })).toBe('This is the worry you came back to look at. It happened.')
   })
 
-  it('lists only the answers that occurred', () => {
+  it('tells only the answers that occurred, without counting them', () => {
     expect(tallySummary({ no: 3, partly: 1, yes: 1, total: 5 })).toBe(
-      'You’ve looked back on 5 worries: 3 didn’t happen, 1 partly happened and 1 happened.',
+      'These are the worries you came back to look at. Some didn’t happen, some partly happened and some happened.',
     )
-    expect(tallySummary({ no: 2, partly: 0, yes: 0, total: 2 })).toBe('You’ve looked back on 2 worries: 2 didn’t happen.')
-    expect(tallySummary({ no: 0, partly: 2, yes: 1, total: 3 })).toBe('You’ve looked back on 3 worries: 2 partly happened and 1 happened.')
+    expect(tallySummary({ no: 2, partly: 0, yes: 0, total: 2 })).toBe('These are the worries you came back to look at. None of them happened.')
+    expect(tallySummary({ no: 0, partly: 2, yes: 1, total: 3 })).toBe('These are the worries you came back to look at. Some partly happened and some happened.')
+  })
+
+  it('never reads as a score: no numbers at all', () => {
+    for (const no of [0, 1, 4]) for (const partly of [0, 2]) for (const yes of [0, 3]) {
+      expect(tallySummary({ no, partly, yes, total: no + partly + yes })).not.toMatch(/\d/)
+    }
   })
 })
 
@@ -81,19 +92,10 @@ describe('tallyReflection', () => {
     expect(tallyReflection({ no: 1, partly: 0, yes: 0, total: 1 })).toBe('')
   })
 
-  it('notices when most fears never arrived', () => {
-    expect(tallyReflection({ no: 3, partly: 1, yes: 0, total: 4 })).toBe('Most of what you feared never arrived.')
-    expect(tallyReflection({ no: 1, partly: 0, yes: 1, total: 2 })).toBe('Half of what you feared never arrived.')
-  })
-
-  it('notices when worries came smaller than feared', () => {
-    expect(tallyReflection({ no: 1, partly: 2, yes: 1, total: 4 })).toBe('Most of them turned out smaller than they felt.')
-  })
-
-  it('stays kind when worries came true', () => {
-    expect(tallyReflection({ no: 0, partly: 1, yes: 2, total: 3 })).toBe(
-      'Some worries are about real things. You came back to look at each one.',
-    )
+  it('holds every mix of answers the same way, never weighing the fears', () => {
+    const line = 'Whatever came of each one, it is set down here now.'
+    expect(tallyReflection({ no: 3, partly: 1, yes: 0, total: 4 })).toBe(line)
+    expect(tallyReflection({ no: 0, partly: 1, yes: 2, total: 3 })).toBe(line)
   })
 })
 

@@ -2,7 +2,12 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async redirects() {
+    return [
+      // The public numbers now live in a section of the privacy policy
+      { source: "/analytics", destination: "/privacy#analytics", permanent: true },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {

@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { Moon, Sun, SunMoon, X } from 'lucide-react'
 import { useAccessibility } from '@/lib/hooks/useAccessibility'
 import { useModalDialog } from '@/components/accessibility/useModalDialog'
+import { useAmbientControl } from '@/lib/audio/ambient-choice'
 import {
   ACCESSIBILITY_PRESETS,
   type AccessibilityPreset,
@@ -147,6 +148,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [announcement, setAnnouncement] = useState('')
   const volumeId = useId()
+  const ambient = useAmbientControl()
 
   const close = () => {
     setConfirmingReset(false)
@@ -250,6 +252,14 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
             <h3 id="a11y-sound" className={SECTION_HEADING}>
               Sound
             </h3>
+            {ambient && (
+              <Switch
+                label="Ambient sound"
+                description="A soft soundscape for this game. It stays off until you turn it on."
+                checked={ambient.isPlaying}
+                onChange={ambient.toggle}
+              />
+            )}
             <Switch
               label="Mute all sound"
               description="Games only play sound after you turn it on, and this silences it everywhere."
@@ -324,7 +334,7 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
                     Esc
                   </kbd>
                 </dt>
-                <dd>Closes this panel, the feedback form or the menu</dd>
+                <dd>Closes this panel or the feedback form</dd>
               </div>
             </dl>
             <p className="text-xs text-primary-light mt-3">Each game explains its own keys on its page.</p>

@@ -1,21 +1,26 @@
 import type { Outcome, Tally } from './capsules'
 
+/**
+ * What is said once an answer is chosen. None of these weigh the worry: not how big it was, how
+ * likely, or whether it was worth having. Some are about illness or loss, so they only say what
+ * happened and that it can be set down.
+ */
 export const OUTCOME_RESPONSES: Record<Outcome, readonly string[]> = {
   no: [
-    'It didn’t happen. The worry was louder than the days turned out to be.',
-    'Not this time. Worth remembering the next time that voice speaks up.',
-    'It stayed a thought. Thoughts can be very convincing.',
-    'It never came. You carried it for a while, and now you can set it down.',
+    'It didn’t happen. You can set this one down.',
+    'Not this time. It’s yours to put down now.',
+    'It never came. You carried it for a while, and now you can rest it here.',
+    'It didn’t happen. Thank you for coming back to look.',
   ],
   partly: [
-    'Some of it came. Usually the real thing is smaller than the one we imagine.',
-    'Partly. And the part that came, you handled.',
-    'Half true, which means half of the weight was never needed.',
-    'Some of it, not all of it. Fears rarely arrive in full.',
+    'Some of it came. Thank you for coming back to look at it.',
+    'Partly. Some of it happened, and it is kept here now, as it was.',
+    'Some of it happened. You don’t have to make sense of it today.',
+    'Part of it came. Whatever it asked of you, you can set it down here.',
   ],
   yes: [
     'It happened. Thank you for coming back to look at it.',
-    'Some worries are about real things, and this one was.',
+    'It happened. Be gentle with yourself today.',
     'It happened. It is kept here now, with the others.',
     'It came true. You don’t have to make sense of it today.',
   ],
@@ -79,28 +84,33 @@ export function outcomeResponse(outcome: Outcome, seed: string): string {
   return outcome === 'yes' ? `${first} ${pickLine(CARRIED_LINES, `${seed}:carried`)}` : first
 }
 
-function joinWithAnd(items: string[]): string {
-  if (items.length <= 1) return items.join('')
-  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+const SOME: Record<keyof Omit<Tally, 'total'>, string> = {
+  no: 'some didn’t happen',
+  partly: 'some partly happened',
+  yes: 'some happened',
 }
 
+const EVERY: Record<keyof Omit<Tally, 'total'>, string> = {
+  no: 'None of them happened.',
+  partly: 'Each of them partly happened.',
+  yes: 'Each of them happened.',
+}
+
+/** What became of the worries, told without a number, so it never reads as a score. */
 export function tallySummary({ no, partly, yes, total }: Tally): string {
   if (total === 0) return ''
   if (total === 1) {
     const it = no ? 'It didn’t happen.' : partly ? 'It partly happened.' : 'It happened.'
-    return `You’ve looked back on 1 worry. ${it}`
+    return `This is the worry you came back to look at. ${it}`
   }
-  const parts: string[] = []
-  if (no) parts.push(`${no} didn’t happen`)
-  if (partly) parts.push(`${partly} partly happened`)
-  if (yes) parts.push(`${yes} happened`)
-  return `You’ve looked back on ${total} worries: ${joinWithAnd(parts)}.`
+  const kinds = (['no', 'partly', 'yes'] as const).filter((kind) => ({ no, partly, yes })[kind] > 0)
+  const told = kinds.length === 1
+    ? EVERY[kinds[0]]
+    : `${kinds.slice(0, -1).map((kind) => SOME[kind]).join(', ')} and ${SOME[kinds[kinds.length - 1]]}.`
+  return `These are the worries you came back to look at. ${told.charAt(0).toUpperCase()}${told.slice(1)}`
 }
 
-export function tallyReflection({ no, partly, total }: Tally): string {
-  if (total < 2) return ''
-  if (no * 2 > total) return 'Most of what you feared never arrived.'
-  if (no * 2 === total) return 'Half of what you feared never arrived.'
-  if ((no + partly) * 2 > total) return 'Most of them turned out smaller than they felt.'
-  return 'Some worries are about real things. You came back to look at each one.'
+/** A closing thought for the shelf that holds every answer the same way, whatever came of them. */
+export function tallyReflection({ total }: Tally): string {
+  return total < 2 ? '' : 'Whatever came of each one, it is set down here now.'
 }

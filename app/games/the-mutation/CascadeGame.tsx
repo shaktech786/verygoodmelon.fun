@@ -302,6 +302,9 @@ export default function CascadeGame() {
   const showHud = phase === 'playing' || phase === 'paused' || phase === 'mutating'
   const blooming = activeMechanics.some(m => m.id === 'score_rush')
   const hudLabel = rulesLabel(currentWave)
+  const latestRule = allMutations[allMutations.length - 1]
+  // A screen reader hears what the newest rule does, not only which number it is
+  const playingStatus = latestRule ? `${hudLabel}: ${latestRule.title}. ${latestRule.description}` : `${hudLabel}.`
 
   return (
     // The finished game takes the page's width, so its map and legend are drawn large enough to read
@@ -420,7 +423,7 @@ export default function CascadeGame() {
       </div>
 
       <div className="sr-only" role="status" aria-live="polite">
-        {phase === 'playing' && `${hudLabel}.`}
+        {phase === 'playing' && playingStatus}
         {phase === 'paused' && 'Paused.'}
         {phase === 'finale' && 'Your game is finished.'}
       </div>

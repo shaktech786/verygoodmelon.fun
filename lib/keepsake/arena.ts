@@ -1,8 +1,8 @@
 import { EMBLEM_NAMES, EMBLEM_ROWS, type EmblemId } from '@/lib/games/arena-pairings'
 import { KEEPSAKE_WIDTH, framedKeepsake, keepsakeDay, keepsakeFileName, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
 
-// The two voices keep the stage's sides: a cool blue on the left and a warm gold on the right, neither red nor green.
-const VOICE_INKS: readonly [Ink, Ink] = ['blue', 'gold']
+// The two voices keep the stage's own colours and sides, so the picture matches the page it came from.
+const VOICE_INKS: readonly [Ink, Ink] = ['voiceA', 'voiceB']
 const PANEL = { top: 230, size: 300, gap: 120 }
 const CELL = 24
 

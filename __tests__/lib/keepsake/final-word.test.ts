@@ -43,6 +43,32 @@ describe('letterOf', () => {
     expect(letterOf({ words: 'Love, always. Dad', prompt: 'Who would you thank?' }).to).toBe(`To ${FALLBACK_ADDRESSEE},`)
   })
 
+  it('takes "To X:" and "To X," as the greeting, so the card never greets twice', () => {
+    const prompt = 'What do you want the people you love to know?'
+    expect(letterOf({ words: 'To my brother: you were always the brave one.', prompt })).toEqual({
+      to: 'To my brother,',
+      body: 'You were always the brave one.',
+    })
+    expect(letterOf({ words: 'To Sam, keep the dog.', prompt })).toEqual({ to: 'To Sam,', body: 'Keep the dog.' })
+    expect(letterOf({ words: 'to the people I love: thank you for every ordinary day.', prompt })).toEqual({
+      to: 'To the people I love,',
+      body: 'Thank you for every ordinary day.',
+    })
+    expect(letterOf({ words: 'To everyone who stayed, you made it easy.', prompt }).to).toBe('To everyone who stayed,')
+    expect(letterOf({ words: 'To you: it was worth it.', prompt }).to).toBe('To you,')
+  })
+
+  it('never reads a phrase that only starts with "To" as a greeting', () => {
+    const prompt = 'What do you want the people you love to know?'
+    for (const words of ['To be honest, I loved it.', 'To this day, I miss you.', 'To the end, I loved you.', 'To me, it was worth it.', 'To Be honest, I loved it.']) {
+      expect(letterOf({ words, prompt })).toEqual({ to: 'To the people I love,', body: words })
+    }
+  })
+
+  it('keeps a lone "To X:" as the words rather than leaving the card empty', () => {
+    expect(letterOf({ words: 'To my brother:', prompt: '' })).toEqual({ to: `To ${FALLBACK_ADDRESSEE},`, body: 'To my brother:' })
+  })
+
   it('keeps a lone greeting as the words rather than leaving the card empty', () => {
     expect(letterOf({ words: 'Dear Sam,', prompt: '' })).toEqual({ to: `To ${FALLBACK_ADDRESSEE},`, body: 'Dear Sam,' })
   })
