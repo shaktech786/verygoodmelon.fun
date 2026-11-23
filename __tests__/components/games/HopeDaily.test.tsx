@@ -43,7 +43,7 @@ describe('HopeDaily', () => {
     expect(await screen.findByText('The first practical silicon')).toBeInTheDocument()
     expect(screen.getByText('(missing word)')).toBeInTheDocument()
     expect(screen.queryByText(/Bell Labs/)).not.toBeInTheDocument()
-    expect(screen.getByText('2 more parts of the story are still folded.')).toBeInTheDocument()
+    expect(screen.getByText('More of the story is still folded.')).toBeInTheDocument()
     expect(screen.queryByText(/nearest star/)).not.toBeInTheDocument()
   })
 

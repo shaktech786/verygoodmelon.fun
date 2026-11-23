@@ -8,6 +8,12 @@ export const COUNTER_PATTERNS: RegExp[] = [
   /\bseconds\b/i,
   /\bminutes\b/i,
   /\btimes\b/i,
+  // Round 1, Round 3: numbering the turns of a conversation
+  /\bround \d+/i,
+  // 19 turns, 48,213 visits, 5 places, 27 damage: a tally of what was done
+  /\b\d[\d,]* (?:turns?|visits?|places?|damage)\b/i,
+  // 2 more: what is left to get through
+  /\b\d+ more\b/i,
 ]
 
 export function readsAsCounter(text: string): boolean {

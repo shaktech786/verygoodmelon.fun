@@ -434,7 +434,7 @@ export default function HopeDaily() {
           </div>
           {remainingParts > 0 && (
             <p className="sr-only">
-              {remainingParts === 1 ? 'One more part of the story is still folded.' : `${remainingParts} more parts of the story are still folded.`}
+              {remainingParts === 1 ? 'One more part of the story is still folded.' : 'More of the story is still folded.'}
             </p>
           )}
 

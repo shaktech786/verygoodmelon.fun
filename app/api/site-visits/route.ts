@@ -7,7 +7,7 @@ function isSupabaseConfigured(): boolean {
   return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 }
 
-/** No count to show: the footer simply leaves the counter out. A 2xx keeps the visitor's console clean. */
+/** Nothing recorded: the visitor's tab tries again on its next page load. A 2xx keeps their console clean. */
 function noCount(cause: unknown) {
   noteDatabaseUnavailable('Site visits', cause)
   return new NextResponse(null, { status: 204 })

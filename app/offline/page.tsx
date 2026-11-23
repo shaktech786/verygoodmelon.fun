@@ -13,7 +13,7 @@ export default function OfflinePage() {
         <p className="text-foreground/70 mb-6">
           It looks like you&apos;ve lost your internet connection. Some games need a connection to work their magic.
         </p>
-        <p className="text-sm text-foreground/50">
+        <p className="text-sm text-foreground/75">
           Try reconnecting and refreshing the page.
         </p>
       </div>

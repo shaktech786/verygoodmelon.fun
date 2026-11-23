@@ -338,6 +338,32 @@ test.describe('The Awakening', () => {
       await expect(support.getByRole('link', { name: '988' })).toBeInViewport()
     })
 
+    test('regression: when the reply never comes, support leads on screen, with no sky and no promise of morning', async ({ page }) => {
+      // The reply is held until the game's own twenty-second wait gives up on it
+      test.slow()
+      await page.route('**/api/first-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
+      await page.route('**/api/first-words/reflect', () => {})
+      await page.goto('/games/first-breath')
+      // Indirect enough that only a reply could judge it
+      await speak(page, "I was hoping I wouldn't open my eyes again. I'm so tired of trying.")
+
+      const quietSupport = page.getByText(/If any of this is close to home/)
+      await expect(quietSupport).toBeVisible({ timeout: 30_000 })
+      await expect(async () => {
+        const helpline = await quietSupport.getByRole('link', { name: '988' }).boundingBox()
+        const header = await page.locator('header').first().boundingBox()
+        const scene = await page.getByRole('heading', { name: 'Before you wake' }).boundingBox()
+        expect(helpline!.y).toBeGreaterThanOrEqual(header!.y + header!.height - 1)
+        expect(helpline!.y + helpline!.height).toBeLessThanOrEqual(844)
+        expect(helpline!.y).toBeLessThan(scene!.y)
+      }).toPass()
+      await expect(page.locator('[data-sky]')).toHaveCount(0)
+      await expect(page.getByTestId('sunrise-glow')).toHaveCount(0)
+      await expect(page.getByText('Morning is close.')).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Wake up' })).toHaveCount(0)
+      await expect(page.getByRole('navigation', { name: 'Somewhere calm to go next' }).locator('a[href="/games/the-still-point"]')).toBeVisible()
+    })
+
     test('regression: the sky turning to morning happens on screen, beside the greeting', async ({ page }) => {
       await offline(page, { reflection: 'Dancing sounds like joy you can still reach.', intention: INTENTION, safe: true })
       await page.goto('/games/first-breath')

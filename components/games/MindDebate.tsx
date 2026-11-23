@@ -923,7 +923,6 @@ function DebateBubble({ entry, side, typing = false }: { entry: DebateEntry; sid
           <span className="text-sm font-semibold break-words min-w-0" style={{ color: voice }}>
             {entry.speaker}
           </span>
-          <span className="text-xs text-foreground/75 shrink-0">Round {entry.round}</span>
         </div>
         <p className="text-[15px] sm:text-base text-foreground/90 leading-relaxed break-words">
           {entry.argument}

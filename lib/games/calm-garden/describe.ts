@@ -135,7 +135,7 @@ function visitorsLine({ visitors, visitorKind, before, kindBefore }: SitMoment):
     return `${earlier} gave way to ${some(visitors, visitorKind)} as the light went.`
   }
   if (visitors <= before) return `${capitalize(some(visitors, visitorKind))} stayed the whole time.`
-  return `${capitalize(some(before, visitorKind))} ${before === 1 ? 'was' : 'were'} here when you sat down, and ${numberWord(visitors - before)} more came.`
+  return `${capitalize(some(before, visitorKind))} ${before === 1 ? 'was' : 'were'} here when you sat down, and ${visitors - before === 1 ? 'another' : 'others'} came to join ${before === 1 ? 'it' : 'them'}.`
 }
 
 /** The single line someone is left with after sitting with their garden. */

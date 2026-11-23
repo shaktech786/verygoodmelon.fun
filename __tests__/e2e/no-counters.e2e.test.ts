@@ -16,6 +16,15 @@ const ALLOWED: RegExp[] = [
   /^\d+\/\d+ characters$/,
 ]
 
+test('the footer on every page reads without counting, even when the visit total is known', async ({ page }) => {
+  await page.route('**/api/site-visits', (route) => route.fulfill({ json: { count: 48213 } }))
+  await page.goto('/games')
+  const footer = page.getByRole('contentinfo')
+  await expect(footer).toBeVisible()
+  const lines = (await footer.innerText()).split('\n').map((line) => line.trim()).filter(Boolean)
+  expect(lines.filter(readsAsCounter)).toEqual([])
+})
+
 for (const game of SHOWCASE_GAMES) {
   test(`${game.title} opens without counting at the player`, async ({ page }) => {
     await page.goto(`/games/${game.slug}`)

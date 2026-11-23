@@ -298,6 +298,8 @@ test.describe('The Arena', () => {
     await page.getByRole('button', { name: 'Try again' }).click()
     await expect(closing(page)).toBeVisible()
     await expect(transcript(page).getByText(/makes point/)).toHaveCount(6)
+    // Speech bubbles name the speaker only; nothing counts the rounds
+    await expect(transcript(page).getByText(/\bRound \d/)).toHaveCount(0)
   })
 
   test('an empty reply counts as a pause instead of an empty speech bubble', async ({ page }) => {

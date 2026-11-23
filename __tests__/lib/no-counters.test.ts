@@ -11,7 +11,7 @@ import { readsAsCounter } from '../e2e/helpers/counters'
  */
 
 const ROOT = process.cwd()
-const SCANNED_DIRS = ['components/games', 'app/games', 'lib/games', 'lib/keepsake']
+const SCANNED_DIRS = ['components/games', 'components/ui', 'app/games', 'lib/games', 'lib/keepsake']
 
 /** Text that matches a pattern but is content, not a counter. Each entry says why. */
 const ALLOWED: { file: RegExp; text: RegExp; why: string }[] = [
@@ -23,6 +23,16 @@ const ALLOWED: { file: RegExp; text: RegExp; why: string }[] = [
   { file: /thought-pockets\/components\/MenuScreens\.tsx$/, text: /Resolve 9\/9/, why: 'a health stat in a saved walk, not progress' },
   { file: /thought-pockets\/data\/(cards|conclusion)\.ts$/, text: /\btimes\b/, why: 'card rules: how many times a Conclusion counts' },
   { file: /thought-pockets\/engine\/battle\.ts$/, text: /^stops at 3\/4$/, why: 'a short combat note: three quarters of Resolve' },
+  {
+    file: /thought-pockets\/(data\/(cards|enemies|relics|schools)\.ts|engine\/battle\.ts|components\/(BattleScreen|RoundShow|ThoughtPockets)\.tsx)$/,
+    text: /\d+ (?:more|damage|turns?)\b|\bturn \d/i,
+    why: 'combat rules in play: damage dealt, extra Weight, Focus or Unsettle, and the turn a bias tires',
+  },
+  {
+    file: /thought-pockets\/(data\/walkArgument\.ts|components\/WalkArgument\.tsx)$/,
+    text: /^9 damage$/,
+    why: "the argument card's equation, Weight × Multiplier = damage, kept as the combat rule it is; the end summary retells the walk in words",
+  },
   { file: /community-words\/WritingParts\.tsx$/, text: /^9\/9 characters$/, why: 'a length limit beside a text box, owned by The Awakening and The Final Word' },
   { file: /keepsake\/render\.ts$/, text: /Times New Roman/, why: 'a font name' },
 ]

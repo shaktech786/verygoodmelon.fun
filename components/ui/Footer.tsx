@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { openFeedback } from '@/components/FeedbackDialog'
-import { siteVisitCount } from '@/lib/analytics/visits'
+import { recordVisit } from '@/lib/analytics/visits'
 
 // Phones get a 44px-tall tap target; the row stays compact on larger screens
 const LINK_BASE =
@@ -23,16 +23,8 @@ const ABOUT_LINKS = [
 ] as const
 
 export function Footer() {
-  const [visitCount, setVisitCount] = useState<number | null>(null)
-
   useEffect(() => {
-    let mounted = true
-    siteVisitCount().then((count) => {
-      if (mounted) setVisitCount(count)
-    })
-    return () => {
-      mounted = false
-    }
+    recordVisit()
   }, [])
 
   return (
@@ -81,12 +73,6 @@ export function Footer() {
           <a href="https://shak-tech.com" target="_blank" rel="noopener" className="underline hover:text-foreground transition-colors">
             ShakTech Labs
           </a>
-          {visitCount !== null && (
-            <>
-              {' · '}
-              <span className="font-mono">{visitCount.toLocaleString()}</span> visits
-            </>
-          )}
         </p>
       </div>
     </footer>

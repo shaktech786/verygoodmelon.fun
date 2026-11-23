@@ -144,7 +144,7 @@ const QUIET_SUPPORT = /If any of this is close to home/
 
 // A death wish said sideways, which the phrase list does not catch: only a reply could judge it
 const INDIRECT_WISH = "I was hoping I wouldn't open my eyes again. I'm so tired of trying."
-const CELEBRATION = /Good morning|candle is out|within reach|Over there, you said|others would say|first words here|stood here and come back|first to stand here/
+const CELEBRATION = /Good morning|Morning is close|candle is out|within reach|Over there, you said|others would say|first words here|stood here and come back|first to stand here/
 const MACHINE_TALK = /\bAI\b|generat|powered by|language model|machine|loading/i
 
 // The cloud waits for the reflection (words judged to need care are never shared), then loads its drawing on demand
@@ -393,6 +393,13 @@ export function describeWritingGame(config: WritingGameConfig) {
         await expect(page.getByText(config.holdingLine)).toHaveCount(0)
         await expect(intentionBox(page)).toHaveCount(0)
         await expectNothingCelebratedOrShared(page, db)
+        if (config.game === 'first-words') {
+          // As in The Awakening's care: no sky turning to morning, and the soft support comes before the scene
+          await expect(page.locator('[data-sky]')).toHaveCount(0)
+          const supportBox = await page.getByText(QUIET_SUPPORT).boundingBox()
+          const headingBox = await page.getByRole('heading', { name: config.thanksHeading }).boundingBox()
+          expect(supportBox!.y).toBeLessThan(headingBox!.y)
+        }
 
         await page.waitForTimeout(3000)
         await expect(exit).toBeVisible()

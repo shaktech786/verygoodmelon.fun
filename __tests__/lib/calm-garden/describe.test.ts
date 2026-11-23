@@ -79,8 +79,8 @@ describe('the line you are left with after sitting', () => {
     const visitorsPart = (line: string) => line.split('. ').slice(1, -1).join('. ')
 
     it('one was visiting before, more came while sitting', () => {
-      expect(visitorsPart(sitLine({ ...base, plants, before: 1, visitors: 3 }))).toBe('A butterfly was here when you sat down, and two more came')
-      expect(visitorsPart(sitLine({ ...base, plants, before: 2, visitors: 3 }))).toBe('Two butterflies were here when you sat down, and one more came')
+      expect(visitorsPart(sitLine({ ...base, plants, before: 1, visitors: 3 }))).toBe('A butterfly was here when you sat down, and others came to join it')
+      expect(visitorsPart(sitLine({ ...base, plants, before: 2, visitors: 3 }))).toBe('Two butterflies were here when you sat down, and another came to join them')
     })
 
     it('none before, some came', () => {

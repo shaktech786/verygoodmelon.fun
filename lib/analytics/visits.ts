@@ -1,26 +1,24 @@
 const COUNTED_KEY = 'hasVisited'
 
-let visit: Promise<number | null> | null = null
+let recorded = false
 
 /**
- * The visit total for this page load, fetched once per load; a visit is counted once per tab.
+ * Adds this tab's visit to the anonymous total, once per tab. The total is never shown on the
+ * page; it appears only in the public numbers on /privacy.
  */
-export function siteVisitCount(): Promise<number | null> {
-  visit ??= countVisit()
-  return visit
+export function recordVisit(): void {
+  if (recorded) return
+  recorded = true
+  void sendVisit()
 }
 
-async function countVisit(): Promise<number | null> {
+async function sendVisit(): Promise<void> {
   try {
-    const counted = sessionStorage.getItem(COUNTED_KEY) === 'true'
-    const response = await fetch('/api/site-visits', counted ? undefined : { method: 'POST' })
-    // 204 means the counter is resting; the page simply goes without it
-    if (response.status !== 200) return null
-    const data: unknown = await response.json()
-    if (!counted) sessionStorage.setItem(COUNTED_KEY, 'true')
-    const count = (data as { count?: unknown }).count
-    return typeof count === 'number' ? count : null
+    if (sessionStorage.getItem(COUNTED_KEY) === 'true') return
+    const response = await fetch('/api/site-visits', { method: 'POST' })
+    // 204 means the database is resting and nothing was recorded, so the next page load tries again
+    if (response.status === 200) sessionStorage.setItem(COUNTED_KEY, 'true')
   } catch {
-    return null
+    // A visit that cannot be recorded is simply not counted
   }
 }

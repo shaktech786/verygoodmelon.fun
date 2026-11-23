@@ -367,6 +367,19 @@ test.describe('Finding your way', () => {
     }
   })
 
+  test('the footer records the visit anonymously but never shows a count', async ({ page }) => {
+    const posts: string[] = []
+    await page.route('**/api/site-visits', (route) => {
+      posts.push(route.request().method())
+      return route.fulfill({ json: { count: 48213 } })
+    })
+    await page.goto('/games')
+    await expect.poll(() => posts).toEqual(['POST'])
+    const footer = page.getByRole('contentinfo')
+    await expect(footer).not.toContainText(/visit/i)
+    await expect(footer).not.toContainText(/48,?213/)
+  })
+
   test('the old analytics address sends visitors, permanently, to the numbers on the privacy page', async ({ page, request }) => {
     const response = await request.get('/analytics', { maxRedirects: 0 })
     expect(response.status()).toBe(308)

@@ -59,7 +59,8 @@ export default function PrivacyPage() {
             &ldquo;opened&rdquo; record cannot even be matched to its &ldquo;closed&rdquo; record.
           </li>
           <li>
-            <Term>Visit counter.</Term> A running total of visits, shown in the footer.
+            <Term>Visit total.</Term> Each visit adds one to an anonymous running total. It is
+            not shown anywhere on the site except in the numbers below.
           </li>
           <li>
             <Term>Performance (Vercel Speed Insights).</Term> Anonymous page-speed measurements
@@ -164,7 +165,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             <Term>Session storage.</Term> A single flag, erased when you close the tab, stops the
-            visit counter from counting you twice.
+            visit total from counting you twice.
           </li>
         </LegalList>
       </LegalSection>

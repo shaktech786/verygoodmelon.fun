@@ -7,7 +7,11 @@ async function freshModule() {
   return import('@/lib/analytics/visits')
 }
 
-describe('siteVisitCount', () => {
+async function settle() {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+describe('recordVisit', () => {
   beforeEach(() => {
     sessionStorage.clear()
     fetchMock.mockReset()
@@ -18,39 +22,45 @@ describe('siteVisitCount', () => {
     vi.unstubAllGlobals()
   })
 
-  it('asks the server once per page load, however many parts of the page want the count', async () => {
+  it('records the visit once per page load, however many parts of the page ask', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ count: 7 }), { status: 200 }))
-    const { siteVisitCount } = await freshModule()
+    const { recordVisit } = await freshModule()
 
-    const counts = await Promise.all([siteVisitCount(), siteVisitCount(), siteVisitCount()])
+    recordVisit()
+    recordVisit()
+    recordVisit()
+    await settle()
 
-    expect(counts).toEqual([7, 7, 7])
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0][1]).toEqual({ method: 'POST' })
   })
 
-  it('counts a visit once per tab, then only reads the total', async () => {
+  it('records a visit once per tab, and sends nothing on later page loads', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ count: 7 }), { status: 200 }))
-    await (await freshModule()).siteVisitCount()
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ count: 7 }), { status: 200 }))
-    await (await freshModule()).siteVisitCount()
+    ;(await freshModule()).recordVisit()
+    await settle()
+    ;(await freshModule()).recordVisit()
+    await settle()
 
-    expect(fetchMock.mock.calls[1][1]).toBeUndefined()
-  })
-
-  it('gives no count, never an error, when the server has none, and does not ask again', async () => {
-    fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
-    const { siteVisitCount } = await freshModule()
-
-    expect(await siteVisitCount()).toBeNull()
-    expect(await siteVisitCount()).toBeNull()
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('gives no count when the request itself fails', async () => {
-    fetchMock.mockRejectedValue(new TypeError('offline'))
-    const { siteVisitCount } = await freshModule()
+  it('tries again on the next page load when the server could not record it', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+    ;(await freshModule()).recordVisit()
+    await settle()
+    ;(await freshModule()).recordVisit()
+    await settle()
 
-    expect(await siteVisitCount()).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('stays quiet when the request itself fails', async () => {
+    fetchMock.mockRejectedValue(new TypeError('offline'))
+    const { recordVisit } = await freshModule()
+
+    expect(() => recordVisit()).not.toThrow()
+    await settle()
+    expect(sessionStorage.getItem('hasVisited')).toBeNull()
   })
 })

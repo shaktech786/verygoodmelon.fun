@@ -360,12 +360,26 @@ function Celebration({ run }: { run: RunState }) {
   )
 }
 
+function inWords(items: string[]): string {
+  return items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`
+}
+
+/** The walk's best turn retold as a moment, not a figure: the cards that landed and who they landed on. */
+function strongestMoment(run: RunState): string {
+  const best = run.bestArgument
+  if (!best) return 'Still to come'
+  const cards = [...new Set(best.round.steps.map((step) => step.name))]
+  return `The turn ${inWords(cards)} came together against ${getEnemyDef(best.enemyId).name}`
+}
+
+/** The walk retold in words: who you met, how you walked, and the moment it all clicked. */
 function RunSummary({ run }: { run: RunState }) {
   const school = SCHOOLS.find((s) => s.id === run.school)?.name
+  const named = run.beaten.map((id) => getEnemyDef(id).name)
   const rows: [string, string][] = [
     ['School', `${school}, ${paceName(run)}, ${lengthName(run.length)}`],
-    ['Journey', `${count(run.stats.nodes, 'place')}, ${count(run.stats.fights, 'argument')}, ${count(run.stats.turns, 'turn')}`],
-    ['Best argument', `${run.stats.best} damage in one turn`],
+    ['Biases named', named.length === 0 ? 'None yet, and that is part of the walk too' : inWords(named)],
+    ['Strongest moment', strongestMoment(run)],
     ['Deck', count(run.deck.length, 'card')],
     ['Relics', run.relics.length === 0 ? 'None' : run.relics.map((id) => getRelicDef(id).name).join(', ')],
   ]
@@ -411,7 +425,7 @@ export function EndScreen({ run, onMenu }: { run: RunState; onMenu: () => void }
               Long walk goes on to {FLOOR_NAMES[2]} and {FLOOR_NAMES[3]}.
             </p>
           ) : won ? (
-            <p className="mt-2">You argued your way through all {RUN_FLOORS.long} floors. The questions will still be there tomorrow, and that is fine. Take a slow breath before whatever comes next.</p>
+            <p className="mt-2">You argued your way through every floor of the walk. The questions will still be there tomorrow, and that is fine. Take a slow breath before whatever comes next.</p>
           ) : (
             <p className="mt-2">
               {foe && run.defeatRound && (

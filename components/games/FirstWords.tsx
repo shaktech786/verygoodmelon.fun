@@ -206,12 +206,13 @@ export default function FirstWords() {
     }
   }, [submitted, reduceMotion])
 
-  // Words that called for care are met by support first, so it is what comes into view, even when
-  // the reply that asks for care arrives after the dawn sky has been scrolled to
+  // Words that called for care, or that no reply could judge, are met by support first, so it is what
+  // comes into view, even when that answer (or the lack of one) arrives after the dawn sky has been scrolled to
   const afterWords = submitted !== null
+  const supportFirst = afterWords && (care || unjudged)
   useEffect(() => {
-    if (care && afterWords) careRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
-  }, [care, afterWords, reduceMotion])
+    if (supportFirst) careRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
+  }, [supportFirst, reduceMotion])
 
   // The sky turning to morning is the payoff, so bring it on screen before focus moves; in care, the support stays in view
   useEffect(() => {
@@ -249,15 +250,22 @@ export default function FirstWords() {
   return (
     <div className="max-w-2xl mx-auto space-y-5">
       {/* Support comes first whenever care is called for, before the scene and anything to press */}
-      {care && (
+      {care ? (
         <div ref={careRef} className="scroll-mt-20">
           <CarePanel />
         </div>
+      ) : (
+        unjudged && (
+          // Unheard words may still be danger said sideways, so support leads here too, said softly
+          <div ref={careRef} className="scroll-mt-20 rounded-lg border border-card-border bg-card-bg p-4">
+            <QuietSupport />
+          </div>
+        )
       )}
 
       <div ref={sceneRef} className="bg-card-bg border border-card-border rounded-lg overflow-hidden scroll-mt-20">
-        {/* No sky after words that called for care: a sunrise is a celebration, and this is not the moment for one */}
-        {!(care && afterWords) && <Sky light={light} />}
+        {/* No sky after words that called for care or went unjudged: a sunrise is a celebration, and this is not the moment for one */}
+        {!supportFirst && <Sky light={light} />}
 
         <div className="p-5 sm:p-8 pt-5 sm:pt-6">
           {submitted === null ? (
@@ -320,7 +328,8 @@ export default function FirstWords() {
               <h2 ref={beforeWakingRef} {...FOCUS_TARGET} className="text-xl sm:text-2xl font-semibold text-foreground">
                 Before you wake
               </h2>
-              {!care && (
+              {/* A promise of morning belongs only to words known to be an imagined ending */}
+              {safe && (
                 <p className="mt-1 text-primary-light">
                   {joined === null
                     ? 'Morning is close.'
@@ -404,8 +413,6 @@ export default function FirstWords() {
 
       {submitted !== null && (
         <>
-          {unjudged && <QuietSupport />}
-
           <CloudSection
             cloud={cloud}
             heading="What others said on the other side"
