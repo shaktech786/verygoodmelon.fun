@@ -1,5 +1,6 @@
 'use client'
 
+import { REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Trash2, RotateCcw, FlaskConical } from 'lucide-react'
@@ -68,6 +69,7 @@ async function askForCombination(first: string, second: string): Promise<Combine
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ concept1: first, concept2: second }),
+    signal: AbortSignal.timeout(REPLY_TIMEOUT_MS),
   })
   if (!response.ok) throw new Error('Failed to combine concepts')
   return response.json()

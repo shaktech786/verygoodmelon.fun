@@ -5,6 +5,7 @@ import { useCareMode } from '@/components/games/CareMode'
 import type { WordFrequency } from '@/lib/games/wordFrequency'
 import { isUnsettled, judgementOf, verdictOf, type ReflectReply, type Verdict } from './judgement'
 import { MAX_SUBMISSION_LENGTH, soundsLikeDistress } from './moderation'
+import { REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 
 export type CommunityWordsGame = 'last-words' | 'first-words'
 
@@ -13,8 +14,6 @@ export type CloudState =
   | { status: 'ready'; words: WordFrequency[]; total: number }
 
 const HIDDEN_CLOUD: CloudState = { status: 'hidden' }
-
-const REFLECT_TIMEOUT_MS = 20_000
 
 interface Reflection {
   text: string
@@ -84,7 +83,7 @@ export function useCommunityWords(game: CommunityWordsGame) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: words }),
         // A reply that never comes must still end in the gentle exit, not an endless wait
-        signal: AbortSignal.timeout(REFLECT_TIMEOUT_MS),
+        signal: AbortSignal.timeout(REPLY_TIMEOUT_MS),
       })
       if (response.ok) reply = await response.json()
     } catch {

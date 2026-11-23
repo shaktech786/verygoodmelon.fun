@@ -1,5 +1,6 @@
 'use client'
 
+import { EXTRA_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Undo2, Trash2, Sunset } from 'lucide-react'
 import { Button, buttonClassName } from '@/components/ui/Button'
@@ -259,6 +260,7 @@ export default function CalmGarden() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ elements: spots, season, timeOfDay }),
+        signal: AbortSignal.timeout(EXTRA_TIMEOUT_MS),
       })
       if (res.ok) next = parseSuggestion((await res.json())?.suggestion, timeOfDay)
     } catch {

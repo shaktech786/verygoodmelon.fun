@@ -43,8 +43,10 @@ export interface WritingGameConfig {
   closingNeedsJudgement: boolean
   /** The calm line shown while the reply is on its way. */
   holdingLine: string
-  /** How the thank-you line counts the others whose words are in the cloud. */
+  /** The thank-you line saying the words joined others in the cloud, without a count. */
   othersLine: RegExp
+  /** The calm line shown in place of the words while they are not known to be safe. */
+  keptLine: string
   firstLine: RegExp
   /** The button that, in care mode, opens the premise and the form only when someone chooses to go on. */
   careGate?: string
@@ -148,6 +150,14 @@ const MACHINE_TALK = /\bAI\b|generat|powered by|language model|machine|loading/i
 // The cloud waits for the reflection (words judged to need care are never shared), then loads its drawing on demand
 const CLOUD_WAIT = 15_000
 
+/** One helpline block and one list of calm games, never the same thing said twice on a screen. */
+async function expectSupportOnce(page: Page) {
+  await expect(page.locator('main a[href="tel:988"]')).toHaveCount(1)
+  await expect(page.locator('main a[href="https://findahelpline.com"]')).toHaveCount(1)
+  await expect(page.locator('main a[href="/games/the-still-point"]')).toHaveCount(1)
+  await expect(page.locator('main a[href="/games/quiet-grove"]')).toHaveCount(1)
+}
+
 async function expectNoErrorPanel(page: Page) {
   await expect(page.locator('main [role="alert"]')).toHaveCount(0)
   await expect(page.locator('main')).not.toContainText(/went wrong|try again|error|failed/i)
@@ -191,8 +201,12 @@ export function describeWritingGame(config: WritingGameConfig) {
       await page.goto(`/games/${config.slug}`)
 
       await write(page, config, 'I was here and it mattered.')
-      await expect(page.locator('blockquote')).toContainText('I was here and it mattered.')
       await expect(page.getByText(QUIET_SUPPORT)).toBeVisible()
+      // Unjudged words are not framed back in a pull quote; a calm line stands in their place
+      await expect(page.getByText(config.keptLine)).toBeVisible()
+      await expect(page.locator('blockquote')).toHaveCount(0)
+      await expect(page.locator('main')).not.toContainText('I was here and it mattered.')
+      await expectSupportOnce(page)
       await expect(page.getByRole('button', { name: config.closingButton })).toHaveCount(config.closingNeedsJudgement ? 0 : 1)
       // Unheard words are met with a calm way on, not an invitation to write about an ending again
       await expect(page.getByRole('button', { name: config.againLabel })).toHaveCount(0)
@@ -233,6 +247,10 @@ export function describeWritingGame(config: WritingGameConfig) {
       await write(page, config, 'I want to end my life. Everyone is better off without me.', config.careHeading)
 
       await expect(support(page)).toBeVisible()
+      await expect(page.getByText(config.keptLine)).toBeVisible()
+      await expect(page.locator('blockquote')).toHaveCount(0)
+      await expect(page.locator('main')).not.toContainText('Everyone is better off without me')
+      await expectSupportOnce(page)
       await expect(support(page).getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
       await expect(support(page).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
       if (config.careAgainLabel) {
@@ -240,8 +258,8 @@ export function describeWritingGame(config: WritingGameConfig) {
       } else {
         await expect(page.getByRole('button', { name: config.againLabel })).toHaveCount(0)
         await expect(page.getByRole('button', { name: 'Start over' })).toHaveCount(0)
-        const exit = page.getByRole('navigation', { name: 'Somewhere calm to go next' })
-        await expect(exit.locator('a[href="/games/the-still-point"]')).toBeVisible()
+        const gentle = page.getByRole('region', { name: 'Something gentle, if it helps' })
+        await expect(gentle.locator('a[href="/games/the-still-point"]')).toBeVisible()
       }
     })
 
@@ -274,11 +292,15 @@ export function describeWritingGame(config: WritingGameConfig) {
       expect(supportBox!.y).toBeLessThan(textboxBox!.y)
       const related = page.getByRole('region', { name: 'Something gentle, if it helps' })
       await expect(related).toBeVisible()
+      // The game's own support carries the helplines, so the gentle row below only offers the calm games
+      await expect(related.locator('a[href="tel:988"]')).toHaveCount(0)
+      await expectSupportOnce(page)
 
       // Later words are met the same way, never stored, never reflected on as an ending
       const calls = reflections
       await write(page, config, 'Tell Mum I love her.', config.careHeading)
       await expect(support(page)).toBeVisible()
+      await expectSupportOnce(page)
       await page.waitForTimeout(500)
       expect(reflections).toBe(calls)
       expect(db.posts).toEqual([])
@@ -339,6 +361,7 @@ export function describeWritingGame(config: WritingGameConfig) {
       await write(page, config, INDIRECT_WISH)
       await expect.poll(() => held).toBe(true)
       await expect(page.getByText(config.holdingLine)).toBeVisible()
+      await expect(page.locator('blockquote')).toHaveCount(0)
       await expectNothingCelebratedOrShared(page, db)
       if (config.game === 'first-words') {
         // Enter in the plan box would otherwise wake without the button
@@ -363,6 +386,7 @@ export function describeWritingGame(config: WritingGameConfig) {
 
         await write(page, config, INDIRECT_WISH)
         await expect(page.getByText(QUIET_SUPPORT)).toBeVisible()
+        await expect(page.locator('blockquote')).toHaveCount(0)
         await expect(page.getByText(QUIET_SUPPORT).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
         const exit = page.getByRole('navigation', { name: 'Somewhere calm to go next' })
         await expect(exit.locator('a[href="/games/the-still-point"]')).toBeVisible()
@@ -410,8 +434,9 @@ export function describeWritingGame(config: WritingGameConfig) {
 
       await expect(cloud(page)).toBeVisible({ timeout: CLOUD_WAIT })
       await expect(cloud(page)).toHaveAttribute('aria-label', /love/, { timeout: CLOUD_WAIT })
-      await expect(page.getByText(/From 301 /)).toBeVisible()
       await expect(page.getByText(config.othersLine)).toBeVisible()
+      // The community is felt, not counted
+      await expect(page.locator('main')).not.toContainText(/\b30[01]\b|From \d/)
       expect(db.posts).toEqual(['Love each other loudly.'])
       expect(await cloud(page).locator('text').count()).toBeLessThanOrEqual(50)
       await expectNoErrorPanel(page)
@@ -426,7 +451,7 @@ export function describeWritingGame(config: WritingGameConfig) {
 
       await expect(page.getByText(config.firstLine)).toBeVisible()
       await expect(cloud(page)).toHaveAttribute('aria-label', `${config.cloudLabel}: remember, sunrise`, { timeout: CLOUD_WAIT })
-      await expect(page.getByText(/From 1 (person|visit)\.$/)).toBeVisible()
+      await expect(page.getByText('The more people who wrote a word, the larger it appears.', { exact: true })).toBeVisible()
     })
 
     test('emoji, non-Latin and markup-looking text are shown literally and never run', async ({ page }) => {

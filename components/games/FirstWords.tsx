@@ -235,7 +235,7 @@ export default function FirstWords() {
   }
 
   const light: Light = awake ? 'day' : submitted === null ? 'night' : 'dawn'
-  const before = cloud.status === 'ready' && stored ? cloud.total - 1 : null
+  const joined = cloud.status === 'ready' && stored ? cloud.total > 1 : null
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
@@ -306,15 +306,22 @@ export default function FirstWords() {
                 Before you wake
               </h2>
               <p className="mt-1 text-primary-light">
-                {before === null
+                {joined === null
                   ? 'Morning is close.'
-                  : before > 0
-                    ? `${before.toLocaleString()} ${before === 1 ? 'other has' : 'others have'} stood here and come back.`
+                  : joined
+                    ? 'Others have stood here and come back.'
                     : 'You are the first to stand here and come back.'}
               </p>
-              <blockquote className="mt-5 text-lg sm:text-xl text-foreground whitespace-pre-wrap break-words leading-relaxed">
-                &ldquo;{submitted}&rdquo;
-              </blockquote>
+              {/* Words are only framed back once they are known to be an imagined ending, never to someone who may be in danger */}
+              {safe ? (
+                <blockquote className="mt-5 text-lg sm:text-xl text-foreground whitespace-pre-wrap break-words leading-relaxed">
+                  &ldquo;{submitted}&rdquo;
+                </blockquote>
+              ) : (
+                (care || unjudged) && (
+                  <p className="mt-5 text-foreground/85 leading-relaxed">What you said stays with you. There is no hurry here.</p>
+                )
+              )}
 
               <div aria-live="polite" className="mt-5">
                 {judgement === 'awaiting' && <p className="text-sm text-primary-light">The quiet listens…</p>}
@@ -386,11 +393,10 @@ export default function FirstWords() {
             cloud={cloud}
             heading="What others said on the other side"
             label="Most common first words"
-            source={(total) => `From ${total.toLocaleString()} ${total === 1 ? 'visit' : 'visits'}.`}
           />
 
-          {/* Words not known to be safe never come with an invitation to picture a death again */}
-          {(care || unjudged) && <GentleExit />}
+          {/* Words not known to be safe never come with an invitation to picture a death again; in care the calm games wait just below */}
+          {unjudged && <GentleExit />}
           {safe && (
             <div className="text-center">
               <Button variant="secondary" onClick={imagineAgain}>

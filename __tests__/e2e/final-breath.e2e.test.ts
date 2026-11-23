@@ -40,7 +40,8 @@ test.describe('The Final Word', () => {
     closingNeedsJudgement: true,
     holdingLine: 'Sitting with your words…',
     closingLine: /^The candle is out\./,
-    othersLine: /It joins what 300 others would say/,
+    othersLine: /^It joins what others would say\.$/,
+    keptLine: 'What you wrote stays with you. There is no hurry here.',
     firstLine: /^Yours are the first words here\.$/,
   })
 

@@ -27,7 +27,8 @@ test.describe('The Awakening', () => {
     closingNeedsJudgement: true,
     holdingLine: 'The quiet listens…',
     closingLine: /^Good morning$/,
-    othersLine: /300 others have stood here and come back/,
+    othersLine: /^Others have stood here and come back\.$/,
+    keptLine: 'What you said stays with you. There is no hurry here.',
     firstLine: /^You are the first to stand here and come back\.$/,
     careGate: "I'd still like to",
   })
@@ -196,9 +197,14 @@ test.describe('The Awakening', () => {
     await expect(page.getByRole('complementary', { name: 'Support' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Start over' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Imagine it again' })).toHaveCount(0)
-    const exit = page.getByRole('navigation', { name: 'Somewhere calm to go next' })
-    await expect(exit.locator('a[href="/games/the-still-point"]')).toBeVisible()
-    await expect(exit.locator('a[href="/games/quiet-grove"]')).toBeVisible()
+    const gentle = page.getByRole('region', { name: 'Something gentle, if it helps' })
+    await expect(gentle.locator('a[href="/games/the-still-point"]')).toBeVisible()
+    await expect(gentle.locator('a[href="/games/quiet-grove"]')).toBeVisible()
+    // One helpline block and one list of calm games, not each said twice
+    await expect(page.locator('main a[href="tel:988"]')).toHaveCount(1)
+    await expect(page.locator('main a[href="/games/the-still-point"]')).toHaveCount(1)
+    await expect(page.locator('main a[href="/games/quiet-grove"]')).toHaveCount(1)
+    await expect(page.getByRole('navigation', { name: 'Somewhere calm to go next' })).toHaveCount(0)
   })
 
   test('regression: once care has begun, the next arrival never gets the ordinary flow', async ({ page }) => {
@@ -222,7 +228,7 @@ test.describe('The Awakening', () => {
     await page.getByRole('button', { name: 'Wake up' }).click()
     await expect(page.getByText('You came back. It is good to have you here, today.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Start over' })).toHaveCount(0)
-    await expect(page.getByRole('navigation', { name: 'Somewhere calm to go next' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Something gentle, if it helps' })).toBeVisible()
   })
 
   test('regression: in care mode the premise and the form wait behind a choice, and a gentle note comes first', async ({ page }) => {
@@ -234,7 +240,10 @@ test.describe('The Awakening', () => {
     await expect(page.getByText(/This one imagines the moment after a life ends/)).toBeVisible()
     await expect(page.getByText(OPENING_LINE)).toHaveCount(0)
     await expect(page.getByRole('textbox', { name: 'Your first words on arriving' })).toHaveCount(0)
-    await expect(page.getByRole('region', { name: 'Something gentle, if it helps' }).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+    // Helplines once, in the game's own support; the gentle row below only offers the calm games
+    await expect(page.getByRole('complementary', { name: 'Support' }).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+    await expect(page.locator('main a[href="tel:988"]')).toHaveCount(1)
+    await expect(page.getByRole('region', { name: 'Something gentle, if it helps' }).locator('a[href="/games/quiet-grove"]')).toBeVisible()
 
     await page.getByRole('button', { name: "I'd still like to" }).click()
     await expect(page.getByText(OPENING_LINE)).toBeVisible()

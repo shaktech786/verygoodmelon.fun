@@ -1,5 +1,6 @@
 'use client'
 
+import { REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Button, buttonClassName } from '@/components/ui/Button'
 import { StickyActionBar } from '@/components/ui/StickyActionBar'
@@ -257,7 +258,8 @@ export default function MindDebate() {
           round,
           totalRounds: TOTAL_ROUNDS,
         }),
-        signal,
+        // A turn that never comes reads as a lost train of thought, never an endless wait
+        signal: AbortSignal.any([signal, AbortSignal.timeout(REPLY_TIMEOUT_MS)]),
       })
       if (!res.ok) throw new Error(`turn ${res.status}`)
       const data = await res.json()
@@ -280,7 +282,7 @@ export default function MindDebate() {
             topic: topicName,
             history: debateHistory.map((h) => ({ speaker: h.speaker, argument: h.argument })),
           }),
-          signal,
+          signal: AbortSignal.any([signal, AbortSignal.timeout(REPLY_TIMEOUT_MS)]),
         })
         if (!res.ok) throw new Error(`closing ${res.status}`)
         const data: unknown = await res.json()

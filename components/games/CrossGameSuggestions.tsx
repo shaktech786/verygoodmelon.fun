@@ -76,7 +76,7 @@ export function GentleGames({ className = '', helplines = true }: { className?: 
 }
 
 /** Games whose own care panel already carries the helplines, so the row does not repeat them. */
-const OWN_HELPLINES: ReadonlySet<string> = new Set(['timeless-minds'])
+const OWN_HELPLINES: ReadonlySet<string> = new Set(['timeless-minds', 'last-words', 'first-words'])
 
 interface CrossGameSuggestionsProps {
   currentGameId: string

@@ -1,5 +1,6 @@
 'use client'
 
+import { EXTRA_TIMEOUT_MS, REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 import { useState, useEffect, useMemo, useRef, useId, type FormEvent } from 'react'
 import { Share2 } from 'lucide-react'
 import { Keepsake } from '@/components/games/Keepsake'
@@ -247,6 +248,7 @@ export default function HopeDaily() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ guess, guessNumber }),
+        signal: AbortSignal.timeout(EXTRA_TIMEOUT_MS),
       })
       const data = response.ok ? await response.json() : null
       if (request !== commentaryRequestRef.current) return
@@ -271,6 +273,7 @@ export default function HopeDaily() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ known: progress.known.map(([position]) => position) }),
+        signal: AbortSignal.timeout(REPLY_TIMEOUT_MS),
       })
       const data: unknown = response.ok ? await response.json() : null
       if (!isPlacedLetter(data)) {

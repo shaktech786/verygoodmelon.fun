@@ -22,6 +22,7 @@ import { plainText } from '@/lib/games/timeless-minds/plain-text'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { isKept, keepLine, loadKeptLines, removeLine, saveKeptLines, type KeptLine } from '@/lib/games/timeless-minds/kept-lines'
 import TimelessMindsKeptLines from './TimelessMindsKeptLines'
+import { REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -257,6 +258,7 @@ export default function TimelessMinds() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text, thinkerId }),
+          signal: AbortSignal.timeout(REPLY_TIMEOUT_MS),
         })
 
         const contentType = ttsResponse.headers.get('Content-Type')
@@ -424,7 +426,9 @@ export default function TimelessMinds() {
             role: m.role,
             content: m.content
           }))
-        })
+        }),
+        // A reply that never comes ends in the failed-reply path, with the words given back
+        signal: AbortSignal.timeout(REPLY_TIMEOUT_MS),
       })
 
       const data = await response.json().catch(() => null)
@@ -510,7 +514,8 @@ export default function TimelessMinds() {
         body: JSON.stringify({
           thinkerId: leaving.id,
           conversationHistory: messages.filter(m => !m.unanswered).map(m => ({ role: m.role, content: m.content }))
-        })
+        }),
+        signal: AbortSignal.timeout(REPLY_TIMEOUT_MS),
       })
       const data = await response.json().catch(() => null)
       if (response.ok && typeof data?.farewell === 'string' && data.farewell.trim()) text = data.farewell.trim()

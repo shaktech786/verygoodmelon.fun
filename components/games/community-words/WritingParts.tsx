@@ -179,12 +179,10 @@ interface CloudSectionProps {
   cloud: CloudState
   heading: string
   label: string
-  /** "From 120 people" style line, given the number of submissions. */
-  source: (total: number) => string
 }
 
 /** Others' words, drawn only once they have actually arrived. */
-export function CloudSection({ cloud, heading, label, source }: CloudSectionProps) {
+export function CloudSection({ cloud, heading, label }: CloudSectionProps) {
   const headingId = useId()
   if (cloud.status !== 'ready' || cloud.words.length === 0) return null
   return (
@@ -194,7 +192,7 @@ export function CloudSection({ cloud, heading, label, source }: CloudSectionProp
       </h3>
       <CommunityWordCloud words={cloud.words} label={label} />
       <p className="mt-2 text-center text-sm text-primary-light">
-        The more people who wrote a word, the larger it appears. {source(cloud.total)}
+        The more people who wrote a word, the larger it appears.
       </p>
     </section>
   )

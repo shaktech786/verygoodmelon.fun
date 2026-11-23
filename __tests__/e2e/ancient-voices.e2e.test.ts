@@ -249,6 +249,40 @@ test('when a reply cannot be fetched, the thinker asks again calmly, the words c
   await expect(input(page)).toBeEnabled()
 })
 
+test('a reply that never comes is let go after twenty seconds: the words come back, unanswered and uncounted', async ({ page }) => {
+  // Waits out the real twenty-second timeout
+  test.slow()
+  await setUpBrowser(page)
+  let hanging = true
+  const histories: unknown[][] = []
+  await page.route('**/api/timeless-minds/chat', route => {
+    histories.push(route.request().postDataJSON().conversationHistory)
+    // A hung reply: the request is held open and never answered
+    if (hanging) return
+    return route.fulfill({ json: { response: 'There you are.', emotion: 'neutral' } })
+  })
+  await openGame(page)
+
+  const sentAt = Date.now()
+  await send(page, 'Is anyone listening?')
+  await expect(input(page)).toBeDisabled()
+  await expect(input(page)).toHaveValue('')
+
+  await expect(bubbles(page).nth(2)).toHaveText(REPLY_TROUBLE, { timeout: 30_000 })
+  expect(Date.now() - sentAt).toBeGreaterThanOrEqual(19_000)
+  await expect(input(page)).toBeEnabled()
+  await expect(input(page)).toHaveValue('Is anyone listening?')
+  await expect(page.getByText('Not answered yet')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Say goodbye to Socrates' })).toHaveCount(0)
+
+  hanging = false
+  await page.getByRole('button', { name: 'Send message' }).click()
+  await expect(bubbles(page).nth(4)).toHaveText('There you are.')
+  // Neither side of the hung exchange is part of the talk the thinker hears
+  expect(JSON.stringify(histories[1])).not.toContain('Is anyone listening?')
+  expect(JSON.stringify(histories[1])).not.toContain('drifted')
+})
+
 test('the voice starts off, speaks only once chosen, and the portrait can be hidden', async ({ page }) => {
   await setUpBrowser(page)
   await stubChat(page)

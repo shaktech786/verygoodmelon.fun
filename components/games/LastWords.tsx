@@ -180,7 +180,7 @@ export default function LastWords() {
     reset()
   }
 
-  const others = cloud.status === 'ready' && stored ? cloud.total - 1 : null
+  const joined = cloud.status === 'ready' && stored ? cloud.total > 1 : null
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
@@ -223,17 +223,20 @@ export default function LastWords() {
             <h2 ref={thanksRef} {...FOCUS_TARGET} className="text-xl sm:text-2xl font-semibold text-foreground">
               {care ? 'We’re glad you wrote this down' : 'Thank you for writing this'}
             </h2>
-            {/* Silent while the count is unknown, but its line is kept so nothing below jumps under a second tap */}
+            {/* Silent until the cloud has answered, but its line is kept so nothing below jumps under a second tap */}
             <p className="mt-1 min-h-[1.6em] text-primary-light">
-              {others === null
-                ? null
-                : others > 0
-                  ? `It joins what ${others.toLocaleString()} ${others === 1 ? 'other person' : 'others'} would say.`
-                  : 'Yours are the first words here.'}
+              {joined === null ? null : joined ? 'It joins what others would say.' : 'Yours are the first words here.'}
             </p>
-            <blockquote className="mt-5 text-lg sm:text-xl text-foreground whitespace-pre-wrap break-words leading-relaxed">
-              &ldquo;{submitted}&rdquo;
-            </blockquote>
+            {/* Words are only framed back once they are known to be an imagined ending, never to someone who may be in danger */}
+            {safe ? (
+              <blockquote className="mt-5 text-lg sm:text-xl text-foreground whitespace-pre-wrap break-words leading-relaxed">
+                &ldquo;{submitted}&rdquo;
+              </blockquote>
+            ) : (
+              (care || unjudged) && (
+                <p className="mt-5 text-foreground/85 leading-relaxed">What you wrote stays with you. There is no hurry here.</p>
+              )
+            )}
             {safe && !candleOut && (
               <Button variant="primary" onClick={() => setCandleOut(true)} className="mt-6">
                 Blow out the candle
@@ -265,7 +268,6 @@ export default function LastWords() {
             cloud={cloud}
             heading="What others would say at the end"
             label="Most common last words"
-            source={(total) => `From ${total.toLocaleString()} ${total === 1 ? 'person' : 'people'}.`}
           />
 
           {/* Urging words out into the world is only safe once they have been heard as an imagined ending */}
