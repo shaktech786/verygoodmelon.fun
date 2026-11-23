@@ -37,37 +37,55 @@ describe('The Shapeshifter naming', () => {
     expect(fallbackTagline({ mechanicIds: [], style: 'gentle', transformed: 0 })).toBe('A game for someone who let the stars drift their way.')
   })
 
-  it('closes with a line about meeting change, shaped by what the player did', () => {
-    expect(reflection({ transformed: 3, bumps: 0, carries: 0 })).toBe('Six rules arrived without asking. You turned shadows into stars.')
-    expect(reflection({ transformed: 1, bumps: 0, carries: 0 })).toBe('Six rules arrived without asking. You turned a shadow into a star.')
-    expect(reflection({ transformed: 0, bumps: 0, carries: 0 })).toBe('Six rules arrived without asking. You met each one as it came.')
+  const RESTED = ['rested'] as const
+
+  it('closes by telling how the rules were found, never that they were announced', () => {
+    expect(reflection({ transformed: 0, bumps: 0, carries: 0, foundBy: ['rested', 'rested'] })).toBe(
+      'Nobody told you the rules. Each one grew while you simply rested. Nothing was lost along the way.',
+    )
+    expect(reflection({ transformed: 0, bumps: 0, carries: 0, foundBy: ['went'] })).toBe(
+      'Nobody told you the rules. You went looking, and found every one. Nothing was lost along the way.',
+    )
+    expect(reflection({ transformed: 0, bumps: 0, carries: 0, foundBy: ['gathered', 'went'] })).toBe(
+      'Nobody told you the rules. Some you went looking for, and some opened while you gathered light. Nothing was lost along the way.',
+    )
+    expect(reflection({ transformed: 0, bumps: 0, carries: 0, foundBy: ['rested', 'gathered', 'went'] })).toBe(
+      'Nobody told you the rules. Some you went looking for, some opened while you gathered light, and some grew while you rested. Nothing was lost along the way.',
+    )
+  })
+
+  it('tells back what the player did with the rules they found', () => {
+    expect(reflection({ transformed: 3, bumps: 0, carries: 0, foundBy: RESTED })).toBe('Nobody told you the rules. Each one grew while you simply rested. You turned shadows into stars.')
+    expect(reflection({ transformed: 1, bumps: 0, carries: 0, foundBy: RESTED })).toBe('Nobody told you the rules. Each one grew while you simply rested. You turned a shadow into a star.')
   })
 
   it('explains a shadow bump only when a shadow bumped the orb', () => {
-    expect(reflection({ transformed: 0, bumps: 4, carries: 0 })).toBe('Six rules arrived without asking. A shadow bumped into you, and nothing was lost. You kept going.')
-    expect(reflection({ transformed: 0, bumps: 1, carries: 0 })).toBe('Six rules arrived without asking. A shadow bumped into you, and nothing was lost. You kept going.')
+    expect(reflection({ transformed: 0, bumps: 4, carries: 0, foundBy: RESTED })).toBe('Nobody told you the rules. Each one grew while you simply rested. A shadow bumped into you, and nothing was lost.')
+    expect(reflection({ transformed: 0, bumps: 1, carries: 0, foundBy: RESTED })).toMatch(/A shadow bumped into you/)
   })
 
   it('never mentions shadows in a run where only tides carried the orb', () => {
-    const line = reflection({ transformed: 0, bumps: 0, carries: 16 })
-    expect(line).toBe('Six rules arrived without asking. A tide carried you along. You kept going.')
+    const line = reflection({ transformed: 0, bumps: 0, carries: 16, foundBy: RESTED })
+    expect(line).toBe('Nobody told you the rules. Each one grew while you simply rested. A tide carried you along.')
     expect(line).not.toMatch(/shadow/i)
-    expect(reflection({ transformed: 0, bumps: 0, carries: 1 })).toBe('Six rules arrived without asking. A tide carried you along. You kept going.')
   })
 
   it('never counts anything, so the closing never reads as a score', () => {
-    for (const run of [{ transformed: 7, bumps: 3, carries: 16 }, { transformed: 1, bumps: 1, carries: 1 }]) {
-      expect(reflection(run)).not.toMatch(/\d|once|twice|times/)
+    for (const run of [
+      { transformed: 7, bumps: 3, carries: 16, foundBy: ['went', 'rested', 'gathered', 'went'] as const },
+      { transformed: 1, bumps: 1, carries: 1, foundBy: RESTED },
+    ]) {
+      expect(reflection(run)).not.toMatch(/\d|once|twice|times|six/i)
     }
   })
 
   it('never mentions tides in a run where only shadows bumped the orb', () => {
-    expect(reflection({ transformed: 0, bumps: 2, carries: 0 })).not.toMatch(/tide/i)
+    expect(reflection({ transformed: 0, bumps: 2, carries: 0, foundBy: RESTED })).not.toMatch(/tide/i)
   })
 
   it('tells each thing that happened in its own words when several did', () => {
-    expect(reflection({ transformed: 2, bumps: 1, carries: 3 })).toBe(
-      'Six rules arrived without asking. You turned shadows into stars. A shadow bumped into you, and nothing was lost. A tide carried you along.',
+    expect(reflection({ transformed: 2, bumps: 1, carries: 3, foundBy: ['went', 'rested'] })).toBe(
+      'Nobody told you the rules. Some you went looking for, and some grew while you rested. You turned shadows into stars. A shadow bumped into you, and nothing was lost. A tide carried you along.',
     )
   })
 

@@ -54,7 +54,7 @@ export default function TitleScreen({ onStart, retroFont, isTouch, focusBegin }:
         </button>
 
         <p className="mt-6 sm:mt-8 text-sm text-foreground/80 leading-relaxed">
-          It learns six new rules as you play, in an order of its own. Nothing here can hurt you.
+          Six rules are hidden in it. Play, wander or simply rest, and they will show themselves. Nothing here can hurt you.
         </p>
         <p className="mt-1 text-xs text-foreground/70">
           {isTouch ? 'Tap to begin.' : 'Enter, Space or click to begin.'}

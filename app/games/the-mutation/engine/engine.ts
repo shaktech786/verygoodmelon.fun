@@ -1,14 +1,15 @@
 // ========================================
 // THE SHAPESHIFTER — Game Engine
 // ========================================
-// A small arcade game that gains one composable rule per wave.
+// A small arcade game that gains one composable rule per wave. Each rule is found, not announced:
+// a small clue grows in the field, and going to it, gathering or simply resting opens it.
 // Nothing in it can hurt the player: shadows only nudge, tides only carry,
 // and light turns shadows into stars. All functions mutate a GameState.
 
-import type { GameState, Entity, ProfileSummary, PlayStyle } from './types'
+import type { GameState, Entity, ProfileSummary, PlayStyle, FoundBy, Seed } from './types'
 import {
   GAME_W, GAME_H, DEFAULT_PARAMS,
-  WAVE_DURATION, WAVE_SCORE, MAX_WAVES,
+  CLUE_AFTER, CLUE_SCORE, MAX_WAVES, ENDING,
 } from './types'
 import type { Palette, Tint } from './palette'
 import { withAlpha } from './palette'
@@ -29,6 +30,23 @@ const SHADOW_EXIT_MARGIN = 40
 const NEW_STAR_SETTLE = 0.8
 const PATH_STEP = 6
 const PATH_MAX = 1200
+
+// A clue opens after this many seconds of rest, or five lights gathered, or the moment the orb reaches it
+const SEED_REST_SECONDS = 7
+// Even a player who never rests or gathers sees it open in its own time
+const SEED_DRIFT_SECONDS = 45
+const SEED_FEED = 0.2
+const SEED_REACH = 16
+const SEED_FIRST_OFFSET = 90
+const SEED_MIN_DISTANCE = 140
+const REST_SPEED = 15
+// A rule the player has not used yet gets a quiet hint, then is named anyway
+const HINT_AFTER = 5
+const FELT_AFTER = 14
+const BLOOM_FELT_AFTER = 1.5
+const SHADOW_FELT_RANGE = 80
+const MOVE_FELT_DISTANCE = 80
+const QUIET_AFTER_NAMING = 4
 
 // ==========================================
 // STATE CREATION
@@ -79,6 +97,15 @@ export function createState(w: number = GAME_W, h: number = GAME_H): GameState {
     spawnTimers: {},
     totalTime: 0,
     path: [{ x: w / 2, y: h / 2, wave: 0 }],
+    seed: null,
+    clueWanted: false,
+    unnamed: null,
+    quietUntil: 0,
+    foundBy: [],
+    sent: 0,
+    glides: 0,
+    finished: false,
+    events: [],
   }
 }
 
@@ -123,6 +150,7 @@ export function update(s: GameState, dt: number): void {
   }
 
   checkCollisions(s)
+  updateDiscovery(s, dt)
 
   s.entities = s.entities.filter(e => e.active)
 
@@ -181,6 +209,7 @@ export function render(ctx: CanvasRenderingContext2D, s: GameState, palette: Pal
   }
 
   if (s.rushActive) renderBloom(ctx, s, palette, reducedMotion)
+  if (s.seed) renderSeed(ctx, s.seed, palette, reducedMotion)
 
   for (const e of s.entities) {
     if (e.active) renderEntity(ctx, e, s, palette, reducedMotion)
@@ -393,6 +422,7 @@ function updateClickPhase(s: GameState): void {
     s.clickTotal += 1
     s.pSize = s.pBaseSize + 6
     burst(s, s.px, s.py, 'orb', 8)
+    feedSeed(s)
   }
 }
 
@@ -451,6 +481,11 @@ function checkCollisions(s: GameState): void {
     }
 
     if (e.type === 'bullet') {
+      if (s.seed && dist(e.x, e.y, s.seed.x, s.seed.y) < SEED_REACH + e.size) {
+        e.active = false
+        openSeed(s, 'went')
+        continue
+      }
       for (const other of s.entities) {
         if (!other.active || other === e || dist(e.x, e.y, other.x, other.y) >= e.size + other.size) continue
         if (other.type === 'chaser') transformShadow(s, other)
@@ -472,6 +507,7 @@ function collectItem(s: GameState, e: Entity): void {
   e.active = false
   burst(s, e.x, e.y, e.type === 'star' ? 'star' : 'gem', 6)
   extendCombo(s)
+  feedSeed(s)
 }
 
 /** Light reaching a shadow turns it into a star where it stood. */
@@ -732,6 +768,7 @@ function updateBlaster(s: GameState): void {
     hp: 1,
   })
   s.shootCD = p.fireRate
+  s.sent++
   burst(s, s.px, s.py, 'light', 3)
 }
 
@@ -751,6 +788,7 @@ function updatePhaseDash(s: GameState, dt: number): void {
     s.dashActive = true
     s.dashDuration = p.duration
     s.dashCD = p.cooldown
+    s.glides++
     const spd = Math.sqrt(s.pvx * s.pvx + s.pvy * s.pvy)
     if (spd > 5) {
       s.pvx = (s.pvx / spd) * 350 * p.speedMult
@@ -830,17 +868,337 @@ function bloomAway(s: GameState): void {
 }
 
 // ==========================================
+// DISCOVERY
+// ==========================================
+
+function isResting(s: GameState): boolean {
+  const [ax, ay] = heldDirection(s)
+  return ax === 0 && ay === 0 && !isActionHeld(s) && Math.hypot(s.pvx, s.pvy) < REST_SPEED
+}
+
+function updateDiscovery(s: GameState, dt: number): void {
+  if (s.seed) {
+    growSeed(s, s.seed, dt)
+    return
+  }
+  if (s.unnamed) {
+    checkFelt(s)
+    return
+  }
+  if (s.clueWanted || s.finished || s.totalTime < s.quietUntil) return
+  const due = s.waveTime >= CLUE_AFTER[s.wave] || s.score - s.waveScoreStart >= CLUE_SCORE[s.wave]
+  if (!due) return
+  if (s.wave >= MAX_WAVES - 1) {
+    plantSeed(s, ENDING)
+    return
+  }
+  s.clueWanted = true
+  s.events.push({ type: 'clue-wanted' })
+}
+
+function growSeed(s: GameState, seed: Seed, dt: number): void {
+  seed.age += dt
+  if (dist(s.px, s.py, seed.x, seed.y) < s.pSize + SEED_REACH) {
+    openSeed(s, 'went')
+    return
+  }
+  if (isResting(s)) {
+    seed.growth += dt / SEED_REST_SECONDS
+    seed.byRest += dt / SEED_REST_SECONDS
+  } else {
+    seed.growth += dt / SEED_DRIFT_SECONDS
+  }
+  if (seed.growth >= 1) openSeed(s, seed.byGather > seed.byRest ? 'gathered' : 'rested')
+}
+
+/** Gathering a light, or pulsing the still orb, helps a waiting clue grow. */
+function feedSeed(s: GameState): void {
+  if (!s.seed) return
+  s.seed.growth += SEED_FEED
+  s.seed.byGather += SEED_FEED
+  if (s.seed.growth >= 1) openSeed(s, s.seed.byGather > s.seed.byRest ? 'gathered' : 'rested')
+}
+
+/** Where a clue sits, in words, from the orb's point of view. */
+export function placeInWords(s: GameState, x: number, y: number): string {
+  const dx = x - s.px
+  const dy = y - s.py
+  if (Math.hypot(dx, dy) < SEED_FIRST_OFFSET + 20) return 'close to your orb'
+  const vertical = Math.abs(dy) > 50 ? (dy < 0 ? 'above' : 'below') : ''
+  const horizontal = Math.abs(dx) > 50 ? (dx < 0 ? 'to the left of' : 'to the right of') : ''
+  if (vertical && horizontal) return `${vertical} and ${horizontal} your orb`
+  return `${vertical || horizontal} your orb`
+}
+
+/** Puts the next clue in the field. Before the orb can move, it grows close by, where it can be watched. */
+export function plantSeed(s: GameState, id: string): void {
+  let x: number
+  let y: number
+  const canMove = s.activeMechanics.some(m => m === 'arrow_keys' || m === 'mouse_follow')
+  if (!canMove) {
+    x = s.px + SEED_FIRST_OFFSET * 0.8
+    y = s.py - SEED_FIRST_OFFSET * 0.6
+  } else {
+    const margin = 50
+    let tries = 0
+    do {
+      x = margin + Math.random() * (s.w - margin * 2)
+      y = margin + Math.random() * (s.h - margin * 2)
+      tries++
+    } while (dist(x, y, s.px, s.py) < SEED_MIN_DISTANCE && tries < 20)
+  }
+  s.seed = { id, x, y, growth: 0, age: 0, byRest: 0, byGather: 0 }
+  s.clueWanted = false
+  s.events.push({ type: 'planted', id, place: placeInWords(s, x, y) })
+}
+
+function openSeed(s: GameState, by: FoundBy): void {
+  const seed = s.seed
+  if (!seed) return
+  s.seed = null
+  burst(s, seed.x, seed.y, SEED_TINT[seed.id] ?? 'orb', 14)
+  s.foundBy.push(by)
+  if (seed.id === ENDING) {
+    s.finished = true
+    return
+  }
+  advanceWave(s)
+  activateMechanic(s, seed.id, {})
+  arriveFrom(s, seed)
+  s.unnamed = {
+    id: seed.id,
+    hinted: false,
+    at: {
+      move: s.moveDistTotal, collect: s.collectTotal, bumps: s.bumps, carries: s.carries,
+      transformed: s.transformed, sent: s.sent, glides: s.glides,
+    },
+  }
+  s.events.push({ type: 'opened', id: seed.id, by })
+}
+
+/** The first of whatever the rule brings comes out of the clue itself, so the player sees where it came from. */
+function arriveFrom(s: GameState, seed: Seed): void {
+  if (seed.id === 'stars') spawnCollectible(s, 'star', seed.x, seed.y)
+  if (seed.id === 'pulse_gems') spawnCollectible(s, 'gem', seed.x, seed.y)
+  if (seed.id === 'chasers') {
+    const speed = getParam(s, 'chasers', 'speed')
+    const d = Math.max(1, dist(seed.x, seed.y, s.px, s.py))
+    // It wanders off away from the orb, never toward it
+    s.entities.push({
+      id: s.nextId++, type: 'chaser', x: seed.x, y: seed.y,
+      vx: ((seed.x - s.px) / d) * speed, vy: ((seed.y - s.py) / d) * speed,
+      size: 8, alpha: 1, active: true, age: 0, hp: 1,
+    })
+    s.spawnTimers.chasers = 0
+  }
+  if (seed.id === 'sweepers') {
+    const speed = getParam(s, 'sweepers', 'speed')
+    const away = seed.x < s.px ? -speed : speed
+    s.entities.push({
+      id: s.nextId++, type: 'sweeper', x: seed.x, y: 0, vx: away, vy: 0,
+      size: TIDE_HALF_WIDTH, alpha: 1, active: true, age: 0, hp: 1,
+    })
+    s.spawnTimers.sweepers = 0
+  }
+}
+
+function checkFelt(s: GameState): void {
+  const u = s.unnamed
+  if (!u) return
+  const t = s.waveTime
+  if (feltYet(s, u.id, u.at) || t >= FELT_AFTER) {
+    s.unnamed = null
+    s.quietUntil = s.totalTime + QUIET_AFTER_NAMING
+    s.events.push({ type: 'felt', id: u.id })
+    return
+  }
+  if (!u.hinted && t >= HINT_AFTER) {
+    u.hinted = true
+    s.events.push({ type: 'hint', id: u.id })
+  }
+}
+
+function feltYet(s: GameState, id: string, at: NonNullable<GameState['unnamed']>['at']): boolean {
+  switch (id) {
+    case 'arrow_keys':
+    case 'mouse_follow':
+      return s.moveDistTotal - at.move > MOVE_FELT_DISTANCE
+    case 'stars':
+    case 'pulse_gems':
+    case 'combo_chain':
+    case 'gravity_well':
+      return s.collectTotal > at.collect
+    case 'chasers':
+      return s.bumps > at.bumps || s.transformed > at.transformed
+        || s.entities.some(e => e.active && e.type === 'chaser' && dist(e.x, e.y, s.px, s.py) < SHADOW_FELT_RANGE)
+    case 'sweepers':
+      return s.carries > at.carries
+    case 'blaster':
+      return s.sent > at.sent
+    case 'phase_dash':
+      return s.glides > at.glides
+    case 'score_rush':
+      return s.waveTime >= BLOOM_FELT_AFTER
+    default:
+      return false
+  }
+}
+
+const SEED_TINT: Record<string, Tint> = {
+  arrow_keys: 'orb',
+  mouse_follow: 'orb',
+  stars: 'star',
+  pulse_gems: 'gem',
+  chasers: 'shadow',
+  sweepers: 'tide',
+  blaster: 'light',
+  phase_dash: 'glide',
+  combo_chain: 'orb',
+  gravity_well: 'glide',
+  score_rush: 'bloom',
+  [ENDING]: 'orb',
+}
+
+/** A small, still picture of the rule to come, growing from faint to full as it nears opening. */
+function renderSeed(ctx: CanvasRenderingContext2D, seed: Seed, palette: Palette, reducedMotion: boolean): void {
+  const g = Math.min(1, seed.growth)
+  const tint = palette[SEED_TINT[seed.id] ?? 'orb']
+  const breath = reducedMotion ? 1 : 1 + Math.sin(seed.age * 1.6) * 0.05
+  const r = (8 + g * 5) * breath
+  ctx.save()
+  ctx.globalAlpha = 0.1 + g * 0.15
+  ctx.fillStyle = tint
+  ctx.beginPath()
+  ctx.arc(seed.x, seed.y, r * 2.1, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.globalAlpha = 0.55 + g * 0.45
+  ctx.strokeStyle = tint
+  ctx.fillStyle = tint
+  ctx.lineWidth = 2
+  ctx.lineCap = 'round'
+  drawGlyph(ctx, seed.id, seed.x, seed.y, r, g, palette)
+  ctx.restore()
+}
+
+function drawGlyph(ctx: CanvasRenderingContext2D, id: string, x: number, y: number, r: number, g: number, palette: Palette): void {
+  const fillAlpha = ctx.globalAlpha * g
+  const fillSoft = () => {
+    const a = ctx.globalAlpha
+    ctx.globalAlpha = fillAlpha
+    ctx.fill()
+    ctx.globalAlpha = a
+  }
+  ctx.beginPath()
+  switch (id) {
+    case 'arrow_keys':
+    case 'mouse_follow':
+      // Four small arrows pointing outward: the orb is about to be able to go somewhere
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2
+        const tipX = x + Math.cos(a) * r
+        const tipY = y + Math.sin(a) * r
+        ctx.moveTo(tipX - Math.cos(a - 0.7) * r * 0.5, tipY - Math.sin(a - 0.7) * r * 0.5)
+        ctx.lineTo(tipX, tipY)
+        ctx.lineTo(tipX - Math.cos(a + 0.7) * r * 0.5, tipY - Math.sin(a + 0.7) * r * 0.5)
+      }
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(x, y, r * 0.22, 0, Math.PI * 2)
+      ctx.fill()
+      return
+    case 'stars':
+      drawStar(ctx, x, y, r, 5)
+      fillSoft()
+      ctx.stroke()
+      return
+    case 'pulse_gems':
+      drawDiamond(ctx, x, y, r)
+      fillSoft()
+      ctx.stroke()
+      return
+    case 'chasers': {
+      // A small shadow, asleep
+      ctx.arc(x, y, r * 0.85, 0, Math.PI * 2)
+      fillSoft()
+      ctx.stroke()
+      ctx.strokeStyle = g > 0.5 ? palette.bg : ctx.strokeStyle
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(x - r * 0.45, y - r * 0.1)
+      ctx.lineTo(x - r * 0.15, y - r * 0.1)
+      ctx.moveTo(x + r * 0.15, y - r * 0.1)
+      ctx.lineTo(x + r * 0.45, y - r * 0.1)
+      ctx.stroke()
+      return
+    }
+    case 'sweepers':
+      ctx.moveTo(x - r * 1.2, y)
+      ctx.quadraticCurveTo(x - r * 0.6, y - r * 0.7, x, y)
+      ctx.quadraticCurveTo(x + r * 0.6, y + r * 0.7, x + r * 1.2, y)
+      ctx.stroke()
+      return
+    case 'blaster':
+      ctx.arc(x, y, r * 0.4, 0, Math.PI * 2)
+      fillSoft()
+      ctx.stroke()
+      ctx.beginPath()
+      for (let i = 0; i < 6; i++) {
+        const a = (i * Math.PI) / 3
+        ctx.moveTo(x + Math.cos(a) * r * 0.65, y + Math.sin(a) * r * 0.65)
+        ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r)
+      }
+      ctx.stroke()
+      return
+    case 'phase_dash':
+      for (const dy of [-0.45, 0, 0.45]) {
+        ctx.moveTo(x - r, y + dy * r)
+        ctx.lineTo(x + r * (dy === 0 ? 0.9 : 0.4), y + dy * r)
+      }
+      ctx.stroke()
+      return
+    case 'combo_chain':
+      ctx.arc(x, y, r * 0.45, 0, Math.PI * 2)
+      ctx.moveTo(x + r, y)
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+      ctx.stroke()
+      return
+    case 'gravity_well':
+      ctx.setLineDash([3, 3])
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.beginPath()
+      ctx.arc(x, y, r * 0.25, 0, Math.PI * 2)
+      ctx.fill()
+      return
+    case 'score_rush':
+      // A closed bud that opens as it grows
+      for (let i = 0; i < 5; i++) {
+        const a = (i * Math.PI * 2) / 5 - Math.PI / 2
+        const spread = r * (0.25 + g * 0.35)
+        ctx.moveTo(x + Math.cos(a) * spread + r * 0.35, y + Math.sin(a) * spread)
+        ctx.arc(x + Math.cos(a) * spread, y + Math.sin(a) * spread, r * 0.35, 0, Math.PI * 2)
+      }
+      fillSoft()
+      ctx.stroke()
+      return
+    default:
+      // The quiet circle that ends the game
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(x, y, r * 0.3, 0, Math.PI * 2)
+      ctx.fill()
+  }
+}
+
+// ==========================================
 // GAME STATE QUERIES
 // ==========================================
 
-export function shouldMutate(s: GameState): boolean {
-  if (s.wave >= MAX_WAVES - 1) return false
-  return s.waveTime >= WAVE_DURATION[s.wave] || (s.score - s.waveScoreStart) >= WAVE_SCORE[s.wave]
-}
-
 export function isGameComplete(s: GameState): boolean {
-  if (s.wave < MAX_WAVES - 1) return false
-  return s.waveTime >= WAVE_DURATION[s.wave]
+  return s.finished
 }
 
 export function advanceWave(s: GameState): void {

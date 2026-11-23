@@ -88,3 +88,87 @@ export function fallbackRule(mechanicId: string, active: readonly string[]): Rul
   }
   return { mechanicId, ...RULES[mechanicId](run) }
 }
+
+export interface Discovery {
+  /** The clue in the field, in plain words, before the rule has a name. */
+  clue: string
+  /** What changed the moment it opened. */
+  change: string
+  hint: string
+  touchHint?: string
+}
+
+const DISCOVERIES: Record<string, Discovery> = {
+  arrow_keys: {
+    clue: 'a small sign of four arrows',
+    change: 'Your orb can move now.',
+    hint: 'Arrow keys or WASD to move.',
+  },
+  mouse_follow: {
+    clue: 'a small sign of four arrows',
+    change: 'Your orb can move now, toward wherever you point.',
+    hint: 'Move the mouse, or use the arrow keys.',
+    touchHint: 'Drag your finger to guide the orb.',
+  },
+  stars: {
+    clue: 'a faint star outline',
+    change: 'A star came out of it, and more are appearing.',
+    hint: 'Touch a star to gather it.',
+  },
+  pulse_gems: {
+    clue: 'a faint gem outline',
+    change: 'A gem came out of it, and more are appearing, glowing and dimming slowly.',
+    hint: 'Gather one while it shines. There is no hurry.',
+  },
+  chasers: {
+    clue: 'a small sleeping shadow',
+    change: 'A little shadow woke up and wandered off. More will pass through.',
+    hint: 'A bump only nudges you. Nothing is lost.',
+  },
+  sweepers: {
+    clue: 'a short wavy line',
+    change: 'A slow tide of light began to cross the field.',
+    hint: 'If one carries you, let it. Nothing is lost.',
+  },
+  blaster: {
+    clue: 'a tiny lantern',
+    change: 'Your orb can send out light now.',
+    hint: 'Hold Space or click to send light.',
+    touchHint: 'Keep a finger down to send light.',
+  },
+  phase_dash: {
+    clue: 'three little wind lines',
+    change: 'Your orb can glide now.',
+    hint: 'Press Space or click to glide.',
+    touchHint: 'Tap to glide.',
+  },
+  combo_chain: {
+    clue: 'two quiet rings',
+    change: 'Each light you gather now makes your glow grow.',
+    hint: 'Your glow only grows. Rest whenever you like.',
+  },
+  gravity_well: {
+    clue: 'a dashed circle',
+    change: 'Lights near your orb now drift toward it.',
+    hint: 'No need to chase.',
+  },
+  score_rush: {
+    clue: 'a closed flower bud',
+    change: 'The field is in bloom. Lights come thick and bright.',
+    hint: 'Every light counts three times over, to the very end.',
+  },
+  ending: {
+    clue: 'a small circle of light',
+    change: '',
+    hint: 'When you are ready, go to the circle, or rest, and your game will finish.',
+  },
+}
+
+export function discovery(id: string): Discovery {
+  return DISCOVERIES[id]
+}
+
+export function hintFor(id: string, isTouch: boolean): string {
+  const d = DISCOVERIES[id]
+  return (isTouch && d.touchHint) || d.hint
+}

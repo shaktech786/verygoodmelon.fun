@@ -7,11 +7,11 @@ import type { Tint } from './palette'
 export const GAME_W = 640
 export const GAME_H = 480
 
-// Wave timing: [duration in seconds, score threshold to advance]
-// Whichever comes first moves the story on; nothing is lost by being slow
-// Wave 1 is short on purpose: the orb can only be pulsed, so there is little to do yet
-export const WAVE_DURATION = [10, 8, 22, 24, 26, 28, 20] as const
-export const WAVE_SCORE    = [10, 60, 150, 300, 500, 700, 999999] as const
+// When the next clue may appear, counted from the moment the last rule opened:
+// [seconds, light gathered since]. Whichever comes first plants it; nothing is lost by being slow.
+// Index 0 counts pulses of the still orb; the last index is the quiet circle that ends the game.
+export const CLUE_AFTER = [3, 8, 12, 14, 14, 14, 12] as const
+export const CLUE_SCORE = [3, 40, 100, 200, 300, 400, 999999] as const
 export const MAX_WAVES = 7
 
 export const MECHANIC_CATEGORIES = [
@@ -145,7 +145,52 @@ export interface GameState {
 
   /** Where the orb went, and which wave it was in, for the finale's picture of the run. */
   path: PathPoint[]
+
+  // Discovery: each rule first shows as a small clue in the field, opens through play, and is named once felt
+  seed: Seed | null
+  /** Asked the game for the next clue and is waiting for it to be planted. */
+  clueWanted: boolean
+  /** The rule that opened but that the player has not felt yet. */
+  unnamed: Unnamed | null
+  /** No new clue before this moment, so a rule's name is heard before anything else grows. */
+  quietUntil: number
+  foundBy: FoundBy[]
+  /** Lights sent and glides taken, so a power rule can tell it has been used. */
+  sent: number
+  glides: number
+  finished: boolean
+  /** Drained by the canvas every frame. */
+  events: DiscoveryEvent[]
 }
+
+/** The rule a clue grows into, or the quiet circle that ends the game. */
+export const ENDING = 'ending'
+
+export interface Seed {
+  id: string
+  x: number
+  y: number
+  /** 0 when planted; it opens at 1. */
+  growth: number
+  age: number
+  byRest: number
+  byGather: number
+}
+
+export type FoundBy = 'went' | 'gathered' | 'rested'
+
+export interface Unnamed {
+  id: string
+  hinted: boolean
+  at: { move: number; collect: number; bumps: number; carries: number; transformed: number; sent: number; glides: number }
+}
+
+export type DiscoveryEvent =
+  | { type: 'clue-wanted' }
+  | { type: 'planted'; id: string; place: string }
+  | { type: 'opened'; id: string; by: FoundBy }
+  | { type: 'hint'; id: string }
+  | { type: 'felt'; id: string }
 
 export interface PathPoint {
   x: number

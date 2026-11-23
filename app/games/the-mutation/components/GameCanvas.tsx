@@ -1,15 +1,13 @@
 'use client'
 
 import { useRef, useEffect, useCallback } from 'react'
-import type { GameState } from '../engine/types'
+import type { DiscoveryEvent, GameState } from '../engine/types'
 import {
   createState,
   update as updateEngine,
   render as renderEngine,
-  shouldMutate,
   isGameComplete,
   activateMechanic,
-  advanceWave,
 } from '../engine/engine'
 import { isControlTarget } from './controls'
 import { usePalette } from './usePalette'
@@ -19,7 +17,7 @@ interface GameCanvasProps {
   height: number
   isPlaying: boolean
   activeMechanics: Array<{ id: string; params: Record<string, number> }>
-  onMutationReady: () => void
+  onDiscovery: (event: DiscoveryEvent) => void
   onGameComplete: () => void
   gameStateRef: React.MutableRefObject<GameState | null>
   reducedMotion: boolean
@@ -36,7 +34,7 @@ export default function GameCanvas({
   height,
   isPlaying,
   activeMechanics,
-  onMutationReady,
+  onDiscovery,
   onGameComplete,
   gameStateRef,
   reducedMotion,
@@ -44,12 +42,12 @@ export default function GameCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stateRef = useRef<GameState | null>(null)
   const playingRef = useRef(false)
-  const callbacksRef = useRef({ onMutationReady, onGameComplete })
+  const callbacksRef = useRef({ onDiscovery, onGameComplete })
   const palette = usePalette()
   const paletteRef = useRef(palette)
 
   useEffect(() => {
-    callbacksRef.current = { onMutationReady, onGameComplete }
+    callbacksRef.current = { onDiscovery, onGameComplete }
   })
 
   // A theme change while the game is paused or between waves still repaints the frozen frame
@@ -64,7 +62,7 @@ export default function GameCanvas({
     const state = createState(width, height)
     stateRef.current = state
     gameStateRef.current = state
-    // Lets the e2e suite fast-forward waves instead of waiting out real timers
+    // Lets the e2e suite fast-forward clues instead of waiting out real rests
     if (process.env.NODE_ENV !== 'production') {
       (window as CascadeWindow).__cascadeState = state
     }
@@ -187,11 +185,8 @@ export default function GameCanvas({
       renderEngine(ctx, s, paletteRef.current, reducedMotion)
 
       const cb = callbacksRef.current
-      if (shouldMutate(s)) {
-        advanceWave(s)
-        cb.onMutationReady()
-        return
-      }
+      const events = s.events.splice(0)
+      for (const event of events) cb.onDiscovery(event)
 
       if (isGameComplete(s)) {
         cb.onGameComplete()

@@ -20,7 +20,7 @@ export interface Palette {
 }
 
 /** Colours a particle or entity can borrow from the palette. */
-export type Tint = 'orb' | 'star' | 'gem' | 'shadow' | 'tide' | 'light' | 'glide'
+export type Tint = 'orb' | 'star' | 'gem' | 'shadow' | 'tide' | 'light' | 'glide' | 'bloom'
 
 const TOKENS: Record<keyof Palette, string> = {
   bg: '--card-bg',
