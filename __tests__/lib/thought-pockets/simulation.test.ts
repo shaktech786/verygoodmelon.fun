@@ -145,7 +145,9 @@ describe('simulation', () => {
     )
     expect(rate(all('careful'), won) - rate(all('naive'), won)).toBeGreaterThan(0.1)
     expect(rate(all('planner'), won) - rate(all('naive'), won)).toBeGreaterThan(0.1)
-    expect(turns('naive')).toBeGreaterThanOrEqual(1.3 * turns('careful'))
+    // 1.25, down from 1.3: a first walk's second fight is now the Unsettle lesson (28 Resolve, no halfway mark), which a left-to-right
+    // route meets far more often than a careful one, so the naive route got about a turn shorter (45 against careful's 35).
+    expect(turns('naive')).toBeGreaterThanOrEqual(1.25 * turns('careful'))
     expect(rate(all('careful rigorous'), won) - rate(all('naive rigorous'), won)).toBeGreaterThan(0.3)
   })
 

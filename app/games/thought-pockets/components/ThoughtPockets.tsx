@@ -125,7 +125,11 @@ function HowToPlay({ school }: { school: School | null }) {
         <li>
           {PROBLEM_RULE} At half Resolve the argument stops at the line and the problem changes.
         </li>
-        <li>At Gentle pace every bias but the first fight&apos;s teaching one plays by one more rule: {slowGroundText()}</li>
+        <li>
+          At Gentle pace every bias plays by one more rule, except the first fight&apos;s teaching one and, on your first walk, the bias that teaches Unsettle:{' '}
+          {slowGroundText()}
+        </li>
+        <li>On a Short walk, the quiet place before the problem first offers one card to build on, since the problem gives nothing after.</li>
         <li>
           There is no turn limit, and a long argument never counts against you. From turn {TIRING.gentle} in Gentle pace ({TIRING.rigorous} in Rigorous) the
           bias starts to tire: it takes on Unsettle {TIRING.step} more each turn, so every argument comes to an end.

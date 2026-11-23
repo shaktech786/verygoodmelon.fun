@@ -2,7 +2,7 @@
 
 import { useRef } from 'react'
 import { EnemyDef, MapNode, RunState } from '@/types/thought-pockets'
-import { availableNodes, bossOptions, chooseNode, fightWarning, holdsNothingBack, nodesAhead, recoveryOptions, restAmount, standing } from '@/lib/games/thought-pockets/engine/run'
+import { availableNodes, bossOptions, chooseNode, fightWarning, hasHalfwayMark, holdsNothingBack, nodesAhead, recoveryOptions, restAmount, standing, studiesAtRest } from '@/lib/games/thought-pockets/engine/run'
 import { fullRuleText, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { STANDING_WORDS, recoveryLine } from '@/lib/games/thought-pockets/data/mapText'
 import { SHORT_WALK_BOSS } from '@/lib/games/thought-pockets/data/pace'
@@ -238,7 +238,7 @@ export function MapScreen({ run }: { run: RunState }) {
                     <span className="font-semibold">
                       Step {node.row + 1}, {NODE_LABELS[node.type].toLowerCase()}: {foe.name}.
                     </span>{' '}
-                    {fullRuleText(foe, run.rigor)}
+                    {fullRuleText(foe, run.rigor, hasHalfwayMark(run, foe.id))}
                     {where !== 'ahead' && (
                       <span className="text-[var(--tp-muted)]" data-testid="bias-standing">
                         {' '}
@@ -257,7 +257,12 @@ export function MapScreen({ run }: { run: RunState }) {
           <dt className="font-semibold">Hard fight</dt>
           <dd>Tougher. Win a relic and a better card.</dd>
           <dt className="font-semibold">Rest</dt>
-          <dd>{heals ? 'Recover Resolve, improve one card, or let one go.' : 'Improve one card, or let one go. At this level it does not restore Resolve.'}</dd>
+          <dd data-testid="rest-legend">
+            {studiesAtRest(run) && 'First, one card to build on, or none. Then '}
+            {heals
+              ? `${studiesAtRest(run) ? 'r' : 'R'}ecover Resolve, improve one card, or let one go.`
+              : `${studiesAtRest(run) ? 'i' : 'I'}mprove one card, or let one go. At this level it does not restore Resolve.`}
+          </dd>
           <dt className="font-semibold">Shop</dt>
           <dd>Spend gold on cards, relics, tea, or removing a card.</dd>
           <dt className="font-semibold">Encounter</dt>

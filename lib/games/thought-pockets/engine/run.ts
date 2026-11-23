@@ -18,7 +18,7 @@ import { CARDS, canUpgrade, getCardDef, isDoubt, usesKeyword } from '../data/car
 import { getSchoolDef } from '../data/schools'
 import { RELICS } from '../data/relics'
 import { REST_HEAL_PERCENT, RIGOR, RIGOROUS_FLOOR_HEAL, TIRING } from '../data/pace'
-import { OPENERS, SHORT_WALK_PROBLEMS, TUTORIAL_ENEMY, enemiesFor } from '../data/enemies'
+import { OPENERS, SECOND_LESSON, SHORT_WALK_PROBLEMS, TUTORIAL_ENEMY, enemiesFor, getEnemyDef, givesGroundSlowly } from '../data/enemies'
 import { fitsLabel } from '../data/synergy'
 import {
   ARCHIVE_COST,
@@ -58,7 +58,7 @@ import {
 import { generateFloor } from './map'
 import { pick, roll, rollInt, seedRng, shuffle } from './rng'
 
-export const RUN_VERSION = 10
+export const RUN_VERSION = 11
 export const START_RESOLVE = 60
 export const RUN_FLOORS: Record<RunLength, number> = { short: 1, long: 3 }
 /** Below this share of your Resolve, the map warns before any fight. */
@@ -79,7 +79,8 @@ function instances(cardIds: string[], firstUid: number): CardInstance[] {
 /**
  * `known` lists the opponents beaten in earlier runs. In Rigorous, `rigor` is the level from 1 to MAX_RIGOR;
  * left out, a Rigorous run plays at level 3, the old single Rigorous setting. A `teach`ing run opens with the
- * fight the first-fight hints are written for; otherwise the seed draws the opening fight.
+ * fight the first-fight hints are written for; otherwise the seed draws the opening fight. A teaching Gentle
+ * walk is ordered so each fight brings one new idea: the basics, then Unsettle alone, then the halfway mark.
  */
 export function newRun(
   school: School,
@@ -91,8 +92,13 @@ export function newRun(
   teach = true,
 ): RunState {
   const level = mode === 'gentle' ? 0 : rigor ?? DEFAULT_RIGOR
+  const teaching = teach && mode === 'gentle'
   const opener = teach ? { item: TUTORIAL_ENEMY, rng: seedRng(seed) } : pick([...OPENERS], seedRng(seed))
-  const floor = generateFloor(1, opener.rng, mode === 'gentle', { opener: opener.item, problems: length === 'short' ? SHORT_WALK_PROBLEMS : undefined })
+  const floor = generateFloor(1, opener.rng, mode === 'gentle', {
+    opener: opener.item,
+    second: teaching ? SECOND_LESSON : undefined,
+    problems: length === 'short' ? SHORT_WALK_PROBLEMS : undefined,
+  })
   const deck = instances([...getSchoolDef(school).deck, ...(level >= RIGOR.doubt ? ['doubt'] : [])], 1)
   return {
     version: RUN_VERSION,
@@ -102,6 +108,7 @@ export function newRun(
     mode,
     length,
     rigor: level,
+    teaching,
     reconsiders: level >= RIGOR.noMercy ? 0 : 1,
     known,
     floor: 1,
@@ -153,7 +160,7 @@ function cardPool(run: RunState, rarity: Rarity): CardDef[] {
 function rollRarity(rng: number, source: RewardState['source'] | 'shop'): { rarity: Rarity; rng: number } {
   const r = roll(rng)
   const percent = r.value * 100
-  const [common, uncommon] = source === 'boss' ? [0, 55] : source === 'elite' ? [40, 85] : [60, 92]
+  const [common, uncommon] = source === 'boss' || source === 'rest' ? [0, 55] : source === 'elite' ? [40, 85] : [60, 92]
   const rarity: Rarity = percent < common ? 'common' : percent < uncommon ? 'uncommon' : 'rare'
   return { rarity, rng: r.rng }
 }
@@ -178,7 +185,8 @@ export function inOrNearSchool(run: RunState, cardId: string): boolean {
 /**
  * On the first floor the first offer leans toward your school so a build can start; a problem's first
  * offers come from your school or fit your build, and the first problem always offers one of your school's
- * rares you lack. Every other offer comes from everything.
+ * rares you lack. A Short walk's quiet place offers the same as a first problem, since its problem gives nothing
+ * after. Every other offer comes from everything.
  */
 function rollCards(run: RunState, count: number, source: RewardState['source'] | 'shop'): { cards: string[]; rng: number } {
   let state = run.rng
@@ -186,7 +194,8 @@ function rollCards(run: RunState, count: number, source: RewardState['source'] |
   for (let i = 0; i < count; i++) {
     const rarity = rollRarity(state, source)
     state = rarity.rng
-    if (i === 0 && run.floor === 1 && source === 'boss') {
+    const building = source === 'boss' || source === 'rest'
+    if (i === 0 && run.floor === 1 && building) {
       const rare = buildAroundRare(run, cards, state)
       state = rare.rng
       cards.push(rare.cardId)
@@ -195,7 +204,7 @@ function rollCards(run: RunState, count: number, source: RewardState['source'] |
     let pool = cardPool(run, rarity.rarity).filter((c) => !cards.includes(c.id))
     const ownSchool = pool.filter((c) => c.school === run.school)
     if (i === 0 && run.floor === 1 && ownSchool.length > 0) pool = ownSchool
-    if (source === 'boss' && i >= count - BOSS_SCHOOL_SLOTS) {
+    if (building && i >= count - BOSS_SCHOOL_SLOTS) {
       const near = CARDS.filter((c) => c.rarity !== 'starter' && c.rarity !== 'doubt' && !cards.includes(c.id) && inOrNearSchool(run, c.id))
       const sameRarity = near.filter((c) => c.rarity === rarity.rarity)
       pool = sameRarity.length > 0 ? sameRarity : near.length > 0 ? near : pool
@@ -269,7 +278,7 @@ export function isLastFloor(run: RunState): boolean {
 }
 
 /** The last problem of a run gives nothing to choose: the run is over, so only the winning argument and what it taught remain. */
-function makeReward(run: RunState, source: RewardState['source'], finalRound: RoundReport | null = null): RunState {
+function makeReward(run: RunState, source: Exclude<RewardState['source'], 'rest'>, finalRound: RoundReport | null = null): RunState {
   if (source === 'boss' && isLastFloor(run)) {
     const reward: RewardState = { source, gold: 0, cardChoices: [], cardTaken: true, relicChoices: [], relicTaken: true, finalRound }
     return { ...run, reward, screen: 'reward' }
@@ -303,6 +312,17 @@ function makeReward(run: RunState, source: RewardState['source'], finalRound: Ro
     finalRound,
   }
   return { ...next, gold: next.gold + gold, reward, screen: 'reward' }
+}
+
+/** On a Short walk the problem gives nothing after, so a quiet place first offers one card to build on, before you rest. */
+export function studiesAtRest(run: RunState): boolean {
+  return run.length === 'short'
+}
+
+function makeStudy(run: RunState): RunState {
+  const rolled = rollCards(run, choiceCount(run), 'rest')
+  const reward: RewardState = { source: 'rest', gold: 0, cardChoices: rolled.cards, cardTaken: false, relicChoices: [], relicTaken: true, finalRound: null }
+  return { ...run, rng: rolled.rng, reward, screen: 'reward' }
 }
 
 function priced(run: RunState, base: number): number {
@@ -385,6 +405,15 @@ export function holdsNothingBack(run: RunState, enemyId: string): boolean {
   return run.length === 'short' && bossOptions(run).includes(enemyId)
 }
 
+/** Whether a bias has the Gentle halfway mark in this run: a teaching walk's opening fights have none, so each teaches its own rule alone. */
+export function hasHalfwayMark(run: RunState, enemyId: string): boolean {
+  return givesGroundSlowly(getEnemyDef(enemyId), run.rigor) && !isLesson(run, enemyId)
+}
+
+function isLesson(run: RunState, enemyId: string): boolean {
+  return run.teaching && (OPENERS as readonly string[]).includes(enemyId)
+}
+
 function startFight(run: RunState, enemyId: string): RunState {
   const seed = rollInt(run.rng, 0, 2 ** 31)
   const battle = createBattle({
@@ -398,6 +427,7 @@ function startFight(run: RunState, enemyId: string): RunState {
     rigor: run.rigor,
     known: run.known.includes(enemyId),
     lastOfShortWalk: holdsNothingBack(run, enemyId),
+    lesson: isLesson(run, enemyId),
   })
   return { ...run, rng: seed.rng, battle, screen: 'battle', stats: { ...run.stats, fights: run.stats.fights + 1 } }
 }
@@ -420,7 +450,7 @@ export function chooseNode(run: RunState, nodeId: string, enemyId?: string): Run
     case 'boss':
       return startFight(moved, foe as string)
     case 'rest':
-      return { ...moved, screen: 'rest' }
+      return studiesAtRest(moved) ? makeStudy(moved) : { ...moved, screen: 'rest' }
     case 'shop':
       return makeShop(moved)
     case 'event':
@@ -542,7 +572,7 @@ function advanceFloor(run: RunState): RunState {
 export function leaveReward(run: RunState): RunState {
   if (run.screen !== 'reward' || !run.reward) return run
   if (run.reward.source === 'boss') return advanceFloor(run)
-  return { ...run, reward: null, screen: 'map' }
+  return { ...run, reward: null, screen: run.reward.source === 'rest' ? 'rest' : 'map' }
 }
 
 export function restAmount(run: RunState): number {
@@ -854,6 +884,19 @@ function fromVersion9(saved: Saved): Saved {
   return eachRound(saved, (report) => ({ ...report, unsettleHeld: 0, unsettleGained: 0 }))
 }
 
+/** Version 11 marks teaching walks (no earlier walk was one) and records each saved battle's halfway mark, which a teaching walk's opening fights lack. */
+function fromVersion10(saved: Saved): Saved {
+  const rigor = typeof saved.rigor === 'number' ? saved.rigor : 0
+  const battle = isRecord(saved.battle)
+    ? eachCore(saved.battle, (core) => {
+        const enemy = isRecord(core.enemy) ? core.enemy : {}
+        const halfway = typeof enemy.id === 'string' && givesGroundSlowly(getEnemyDef(enemy.id), rigor)
+        return { ...core, halfway }
+      })
+    : null
+  return { ...saved, teaching: false, battle }
+}
+
 /** Loads a saved run from any earlier version this game shipped, or returns null if it cannot be read. */
 export function migrateRun(saved: unknown, version: number): RunState | null {
   if (!isRecord(saved)) return null
@@ -865,5 +908,6 @@ export function migrateRun(saved: unknown, version: number): RunState | null {
   const v7 = version <= 6 ? fromVersion6(v6) : v6
   const v8 = version <= 7 ? fromVersion7(v7) : v7
   const v9 = version <= 8 ? fromVersion8(v8) : v8
-  return { ...fromVersion9(v9), version: RUN_VERSION } as unknown as RunState
+  const v10 = version <= 9 ? fromVersion9(v9) : v9
+  return { ...fromVersion10(v10), version: RUN_VERSION } as unknown as RunState
 }

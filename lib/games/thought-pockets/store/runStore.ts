@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { Mode, RunLength, RunState, School } from '@/types/thought-pockets'
 import { RUN_VERSION, migrateRun, newRun, opensNextLevel } from '../engine/run'
+import { ALL_LESSONS, Lesson } from '../engine/lessons'
 
 interface RunStore {
   run: RunState | null
@@ -50,10 +51,13 @@ interface InsightStore {
   tutorialDone: boolean
   /** The highest Rigorous level won on a Long walk; the next one up is open. */
   rigorWon: number
+  /** The ideas beyond the first fight's basics that have been explained to you once. */
+  seen: Lesson[]
   record: (run: RunState) => void
+  learn: (lesson: Lesson) => void
 }
 
-/** What carries across runs: the insights you have earned and whether you have seen the first-fight hints. */
+/** What carries across runs: the insights you have earned, whether you have seen the first-fight hints, and which ideas have been explained. */
 export const useInsightStore = create<InsightStore>()(
   persist(
     (set) => ({
@@ -61,6 +65,8 @@ export const useInsightStore = create<InsightStore>()(
       finishedWith: [],
       tutorialDone: false,
       rigorWon: 0,
+      seen: [],
+      learn: (lesson) => set((state) => (state.seen.includes(lesson) ? state : { seen: [...state.seen, lesson] })),
       record: (run) =>
         set((state) => {
           const fresh = run.beaten.filter((id) => !state.beaten.includes(id))
@@ -79,8 +85,15 @@ export const useInsightStore = create<InsightStore>()(
     }),
     {
       name: 'thought-pockets-insights',
+      version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ beaten: state.beaten, finishedWith: state.finishedWith, tutorialDone: state.tutorialDone, rigorWon: state.rigorWon }),
+      partialize: (state) => ({ beaten: state.beaten, finishedWith: state.finishedWith, tutorialDone: state.tutorialDone, rigorWon: state.rigorWon, seen: state.seen }),
+      // Before ideas were explained one at a time, anyone who had finished a walk had already met them all.
+      migrate: (persisted) => {
+        const saved = (typeof persisted === 'object' && persisted !== null ? persisted : {}) as Partial<InsightStore>
+        const finished = (saved.finishedWith?.length ?? 0) > 0 || (saved.rigorWon ?? 0) > 0
+        return { ...saved, seen: finished ? ALL_LESSONS : [] } as InsightStore
+      },
     },
   ),
 )

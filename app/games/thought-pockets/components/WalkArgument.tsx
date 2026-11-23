@@ -48,8 +48,8 @@ export function WalkArgument({ run }: { run: RunState }) {
           <p className="mt-2 font-serif text-base">
             Weight <strong>{round.weight}</strong> × Multiplier <strong>{format(round.multiplier)}</strong> = <strong>{round.product}</strong>
           </p>
-          {round.chain.map((step) => (
-            <p key={step.kind} className="text-xs">
+          {round.chain.map((step, i) => (
+            <p key={`${i}-${step.kind}`} className="text-xs">
               → {step.text}: <strong>{step.after}</strong>
             </p>
           ))}

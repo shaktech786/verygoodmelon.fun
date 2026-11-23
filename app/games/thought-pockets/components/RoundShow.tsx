@@ -311,8 +311,8 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
           </p>
           {report.chain.length > 0 && (
             <ol className={`mt-1 space-y-0.5 ${reveal('adjust')}`} aria-label="Then, in order" data-testid="show-chain">
-              {report.chain.map((step) => (
-                <li key={step.kind}>
+              {report.chain.map((step, i) => (
+                <li key={`${i}-${step.kind}`}>
                   → {step.text}
                   {step.kind === 'guard' && report.guardBroken && (
                     <strong className="ml-1 rounded-sm border border-[var(--tp-guard)] px-1 text-[var(--tp-guard)]">Guard broken</strong>
@@ -331,8 +331,8 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
         </>
       )}
       {report.unsettleLoss > 0 && <p className={`mt-1 ${reveal('unsettle')}`}>Unsettled, it lost {report.unsettleLoss} before it could act.</p>}
-      {aftermath.map((line) => (
-        <p key={line} className={`mt-1 ${reveal('act')}`}>
+      {aftermath.map((line, i) => (
+        <p key={`${i}-${line}`} className={`mt-1 ${reveal('act')}`}>
           {line}
         </p>
       ))}

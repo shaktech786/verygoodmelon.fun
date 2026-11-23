@@ -34,6 +34,8 @@ function connect(from: number, to: number, rng: number): { links: number[][]; rn
 export interface FloorPlan {
   /** The first floor's opening fight. */
   opener?: string
+  /** On a teaching walk, the fight that follows the opening one. */
+  second?: string
   /** The problems the boss can be; two of them are offered. Every floor's own by default. */
   problems?: string[]
 }
@@ -46,7 +48,7 @@ export function generateFloor(floor: 1 | 2 | 3, rng: number, calm = false, plan:
   let state = rng
   const normals = shuffle(enemiesFor(floor, 'normal').map((e) => e.id), state)
   state = normals.rng
-  const queue = floor === 1 ? [plan.opener ?? TUTORIAL_ENEMY, ...normals.items] : normals.items
+  const queue = floor === 1 ? [plan.opener ?? TUTORIAL_ENEMY, ...(plan.second ? [plan.second] : []), ...normals.items] : normals.items
   let cursor = 0
   const nextNormal = () => queue[cursor++]
   const elite = pick(enemiesFor(floor, 'elite'), state)

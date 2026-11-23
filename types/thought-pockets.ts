@@ -348,6 +348,8 @@ export interface BattleCore {
   piercedOnce: boolean
   /** The turn from which a long fight wears the bias down. */
   tiresFrom: number
+  /** At Gentle pace a bias's halfway mark stops any round that would carry it past half; a teaching walk's opening fights have none. */
+  halfway: boolean
   nextUid: number
   rng: number
   outcome: BattleOutcome
@@ -394,7 +396,8 @@ export interface EventState {
 export type DeckPickPurpose = 'upgrade' | 'remove' | 'copy'
 
 export interface RewardState {
-  source: 'battle' | 'elite' | 'boss' | 'treasure'
+  /** `rest`: on a Short walk, the card you may carry from a quiet place before you rest there. */
+  source: 'battle' | 'elite' | 'boss' | 'treasure' | 'rest'
   gold: number
   cardChoices: string[]
   cardTaken: boolean
@@ -432,7 +435,7 @@ export interface RunStats {
 }
 
 export interface RunState {
-  version: 10
+  version: 11
   seed: number
   rng: number
   school: School
@@ -440,6 +443,8 @@ export interface RunState {
   length: RunLength
   /** 0 in Gentle; in Rigorous, the level from 1 to MAX_RIGOR, each adding one constraint. */
   rigor: number
+  /** A first Gentle walk, ordered so each fight brings one new idea. */
+  teaching: boolean
   reconsiders: number
   known: string[]
   floor: 1 | 2 | 3

@@ -19,6 +19,7 @@ import {
 } from '@/lib/games/thought-pockets/engine/battle'
 import { battleAction, holdsNothingBack } from '@/lib/games/thought-pockets/engine/run'
 import { tutorialHint } from '@/lib/games/thought-pockets/engine/tutorial'
+import { Lesson, lessonsIn } from '@/lib/games/thought-pockets/engine/lessons'
 import { describeCard, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { timesWord } from '@/lib/games/thought-pockets/data/conclusion'
 import { OVERFLOW, OVERFLOW_TEXT, PROBLEM_LINES, PROBLEM_RULE, TUTORIAL_ENEMY, getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
@@ -31,7 +32,7 @@ import { wakeTones } from '@/components/games/gentleCues'
 import { KeyHints } from '@/components/ui/KeyHints'
 import { CardFace, TYPE_COLORS, keywordsOnCard } from './CardFace'
 import { BiasPortrait, Mood, crackCount, impactLines } from './Sprites'
-import { Term } from './Term'
+import { LessonNote, Term } from './Term'
 import { AFTER_MS, BIG_HIT, Counting, HIT_PAUSE_MS, RoundShow, RoundShowState, format, showProgress, useRoundShow } from './RoundShow'
 import { SHORT_WALK_BOSS_TEXT } from './MapScreen'
 
@@ -536,8 +537,8 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
         <p className="font-serif text-base font-semibold text-[var(--tp-text)] sm:text-lg" data-testid="intent-move">
           {intentText(move, view.intent).join(' · ')}
         </p>
-        {first.map((line) => (
-          <p key={line} className="w-full text-sm text-[var(--tp-text)]" data-testid="before-it-acts">
+        {first.map((line, i) => (
+          <p key={`${i}-${line}`} className="w-full text-sm text-[var(--tp-text)]" data-testid="before-it-acts">
             {line}
           </p>
         ))}
@@ -624,7 +625,7 @@ function ArgumentPanel({ battle, preview, show, reduced }: { battle: BattleState
 function Equation({ preview }: { preview: ArgumentPreview }) {
   const damage = (
     <>
-      <strong key={preview.damage} className="tp-tick" data-testid="damage-preview">
+      <strong key={`damage-${preview.damage}`} className="tp-tick" data-testid="damage-preview">
         {preview.damage}
       </strong>{' '}
       damage
@@ -634,16 +635,16 @@ function Equation({ preview }: { preview: ArgumentPreview }) {
     <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--tp-text)]" data-testid="equation">
       <span>
         Weight{' '}
-        <strong key={preview.weight} className="tp-tick">
+        <strong key={`weight-${preview.weight}`} className="tp-tick">
           {preview.weight}
         </strong>{' '}
         × Multiplier{' '}
-        <strong key={preview.multiplier} className="tp-tick">
+        <strong key={`multiplier-${preview.multiplier}`} className="tp-tick">
           {format(preview.multiplier)}
         </strong>
       </span>
-      {preview.modifiers.map((m) => (
-        <span key={m} className="tp-pop">
+      {preview.modifiers.map((m, i) => (
+        <span key={`${i}-${m}`} className="tp-pop">
           <Chip>{m}</Chip>
         </span>
       ))}
@@ -652,13 +653,13 @@ function Equation({ preview }: { preview: ArgumentPreview }) {
         {preview.chain.length === 0 ? (
           damage
         ) : (
-          <strong key={preview.product} className="tp-tick">
+          <strong key={`product-${preview.product}`} className="tp-tick">
             {preview.product}
           </strong>
         )}
       </span>
       {preview.chain.map((step, i) => (
-        <span key={step.kind} className="contents" data-testid="chain-step">
+        <span key={`${i}-${step.kind}`} className="contents" data-testid="chain-step">
           <span aria-hidden="true">→</span>
           <Chip tone={step.kind === 'guard' ? 'guard' : 'plain'}>{step.text}</Chip>
           <span className={i === preview.chain.length - 1 ? 'text-base' : ''}>= {i === preview.chain.length - 1 ? damage : <strong>{step.after}</strong>}</span>
@@ -792,6 +793,26 @@ function useReplayInView(roundKey: string | null, replaying: boolean, dockRef: R
   return ref
 }
 
+/**
+ * In a Gentle walk, one new idea at a time: the first idea this fight puts in front of you that has not been explained yet,
+ * in one plain line. It stays up for the rest of the fight, and the next new idea can take its place from the next turn on.
+ * The first fight's hints teach the basics, so nothing else is introduced during them.
+ */
+function useLesson(run: RunState, battle: BattleState, preview: ArgumentPreview, quiet: boolean): Lesson | null {
+  const seen = useInsightStore((s) => s.seen)
+  const learn = useInsightStore((s) => s.learn)
+  const fight = run.stats.fights
+  const [shown, setShown] = useState<{ fight: number; turn: number; lesson: Lesson } | null>(null)
+  const current = shown?.fight === fight ? shown : null
+  const fresh = run.mode === 'gentle' && !quiet ? lessonsIn(battle, preview).find((l) => !seen.includes(l)) : undefined
+  if (fresh && fresh !== current?.lesson && (!current || current.turn < battle.turn)) setShown({ fight, turn: battle.turn, lesson: fresh })
+  const lesson = current?.lesson ?? null
+  useEffect(() => {
+    if (lesson) learn(lesson)
+  }, [lesson, learn])
+  return lesson
+}
+
 export function BattleScreen({ run }: { run: RunState }) {
   const act = useRunStore((s) => s.act)
   const tutorialDone = useInsightStore((s) => s.tutorialDone)
@@ -799,7 +820,9 @@ export function BattleScreen({ run }: { run: RunState }) {
   const [inspected, setInspected] = useState<number | null>(null)
   const battle = run.battle as BattleState
   const preview = previewArgument(battle)
-  const hint = !tutorialDone && battle.enemy.id === TUTORIAL_ENEMY ? tutorialHint(battle) : null
+  const teachingBasics = !tutorialDone && battle.enemy.id === TUTORIAL_ENEMY
+  const hint = teachingBasics ? tutorialHint(battle) : null
+  const lesson = useLesson(run, battle, preview, teachingBasics)
   const report = battle.lastRound
   const roundKey = report ? `${run.stats.fights}-${report.turn}` : null
   const show = useRoundShow(roundKey, report, reduced)
@@ -859,6 +882,9 @@ export function BattleScreen({ run }: { run: RunState }) {
     <div className="flex flex-col gap-2 sm:gap-3">
       <style>{SHOW_CSS}</style>
       <ThreatPanel battle={battle} view={view} known={run.known.includes(battle.enemy.id)} show={show} lastOfWalk={holdsNothingBack(run, battle.enemy.id)} />
+      <div role="status" className={lesson ? undefined : 'sr-only'}>
+        {lesson && <LessonNote lesson={lesson} />}
+      </div>
       <div ref={argumentRef}>
         <ArgumentPanel battle={battle} preview={preview} show={show} reduced={reduced} />
       </div>

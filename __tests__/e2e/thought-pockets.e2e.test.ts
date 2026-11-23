@@ -572,7 +572,7 @@ test.describe('The Philosopher', () => {
   test('the map shows which bias waits at each fight, and lists them with their rules', async ({ page }) => {
     await fresh(page, 134, true)
     await page.getByTestId('school-empiricist').click()
-    const run = newRun('empiricist', 134)
+    const run = newRun('empiricist', 134, 'gentle', [], undefined, 'long', false)
     const fights = run.map.filter((n) => n.type === 'battle' || n.type === 'elite')
     await expect(page.getByTestId('node-bias')).toHaveCount(fights.length)
     await expect(page.locator('button[data-available]').first()).toHaveAttribute('aria-label', new RegExp(`Fight: ${getEnemyDef(TUTORIAL_ENEMY).name}`))
@@ -1342,7 +1342,7 @@ test.describe('The Philosopher', () => {
   test('a Gentle bias states its halfway mark, and the preview says what the mark stops becomes Unsettle', async ({ page }) => {
     const def = getEnemyDef('sunk_cost')
     const half = Math.floor(def.health / 2)
-    const run = inFirstBattle(184, (b) => ({ ...b, enemy: { ...b.enemy, id: def.id, health: half + 1, maxHealth: def.health, moveIndex: 0 }, hand: cards(['observation']), focus: 3 }))
+    const run = inFirstBattle(184, (b) => ({ ...b, halfway: true, enemy: { ...b.enemy, id: def.id, health: half + 1, maxHealth: def.health, moveIndex: 0 }, hand: cards(['observation']), focus: 3 }))
     await fresh(page, 184, true)
     await load(page, run)
     await expect(page.getByTestId('enemy-rule')).toContainText(`its halfway mark (${half}) stops any round`)
@@ -1351,5 +1351,70 @@ test.describe('The Philosopher', () => {
     await expect(step).toContainText(`Its halfway mark (${half}) stops this round. Your extra`)
     await expect(step).toContainText('unsettles it: Unsettle +')
     await expect(page.getByTestId('damage-preview')).toHaveText('1')
+  })
+
+  test('a first Gentle walk brings one new idea per fight, each said once in a plain line', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    const run = newRun('empiricist', 185, 'gentle', [], undefined, 'short')
+    const battleAt = (row: number) => run.map.find((n) => n.row === row && n.type === 'battle') as MapNode
+    const before = (node: MapNode) => run.map.find((n) => n.next.includes(node.id)) as MapNode
+    const second = battleAt(1)
+    expect(second.enemyId).toBe('rumination')
+    await fresh(page, 185, true)
+    await load(page, { ...run, position: before(second).id, visited: [before(second).id] })
+    await page.locator('button[data-available]').and(page.getByTestId('node-battle')).first().click()
+    const lesson = page.getByTestId('lesson')
+    await expect(lesson).toHaveCount(1)
+    await expect(lesson).toHaveText(/^New: Unsettle\. /)
+    await expect(page.getByTestId('enemy-rule')).not.toContainText('halfway mark')
+    expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).state.seen, INSIGHT_KEY)).toEqual(['unsettle'])
+    expect(await axeViolations(page)).toEqual([])
+
+    const third = battleAt(2)
+    await load(page, { ...run, position: before(third).id, visited: [before(third).id] })
+    await page.locator('button[data-available]').and(page.getByTestId('node-battle')).first().click()
+    await expect(page.getByTestId('lesson')).toHaveText(/^New: The halfway mark\. /)
+    await expect(page.getByTestId('enemy-rule')).toContainText('halfway mark')
+
+    await load(page, { ...run, position: before(second).id, visited: [before(second).id] })
+    await page.locator('button[data-available]').and(page.getByTestId('node-battle')).first().click()
+    await expect(page.getByTestId('enemy-name')).toHaveText(getEnemyDef('rumination').name)
+    await expect(page.getByTestId('lesson')).toHaveCount(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  })
+
+  test('a player who has finished a walk is not shown the new-idea lines', async ({ page }) => {
+    const run = newRun('empiricist', 186, 'gentle', [], undefined, 'short')
+    const second = run.map.find((n) => n.row === 1 && n.type === 'battle') as MapNode
+    const before = run.map.find((n) => n.next.includes(second.id)) as MapNode
+    await page.goto(URL)
+    await page.evaluate((key) => {
+      localStorage.removeItem('thought-pockets-run')
+      localStorage.setItem(key, JSON.stringify({ state: { beaten: [], finishedWith: ['empiricist'], tutorialDone: true, rigorWon: 0 }, version: 0 }))
+    }, INSIGHT_KEY)
+    await load(page, { ...run, position: before.id, visited: [before.id] })
+    await page.locator('button[data-available]').and(page.getByTestId('node-battle')).first().click()
+    await expect(page.getByTestId('enemy-name')).toHaveText(getEnemyDef('rumination').name)
+    await expect(page.getByTestId('lesson')).toHaveCount(0)
+  })
+
+  test('a Short walk’s quiet place first offers one card to build on, then the rest', async ({ page }) => {
+    const { run } = standingBefore(newRun('skeptic', 187, 'gentle', [], undefined, 'short'), 'rest')
+    await fresh(page, 187, true)
+    await load(page, run)
+    await expect(page.getByTestId('rest-legend')).toContainText('First, one card to build on')
+    await page.locator('button[data-available]').and(page.getByTestId('node-rest')).first().click()
+    await expect(page.getByRole('heading', { name: 'A quiet place' })).toBeVisible()
+    await expect(page.getByTestId('study-note')).toBeVisible()
+    const choices = page.getByTestId('card-choices').getByRole('button')
+    await expect(choices).toHaveCount(3)
+    await expect(page.getByTestId('continue')).toHaveText('On to rest without a card')
+    expect(await axeViolations(page)).toEqual([])
+    await choices.first().click()
+    await expect(page.getByTestId('continue')).toHaveText('On to rest')
+    await page.getByTestId('continue').click()
+    await expect(page.getByTestId('rest-heal')).toBeVisible()
+    const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).state.run as RunState, RUN_KEY)
+    expect(saved.deck).toHaveLength(run.deck.length + 1)
   })
 })

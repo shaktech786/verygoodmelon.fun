@@ -2,6 +2,7 @@
 
 import { useId, useState } from 'react'
 import { Keyword, keywordText } from '@/lib/games/thought-pockets/data/keywords'
+import { LESSONS, Lesson } from '@/lib/games/thought-pockets/engine/lessons'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 
 /** A keyword you can hover, focus or tap to have explained. */
@@ -32,5 +33,14 @@ export function Term({ word, children }: { word: Keyword; children?: React.React
         <strong className="text-[var(--tp-accent)]">{word}.</strong> {keywordText(word, school)}
       </span>
     </span>
+  )
+}
+
+/** A new idea, explained in one plain line the first time it comes up. */
+export function LessonNote({ lesson, className = '' }: { lesson: Lesson; className?: string }) {
+  return (
+    <p className={`rounded-md border border-dashed border-[var(--tp-good)] bg-[var(--tp-ink)] px-3 py-1.5 text-sm text-[var(--tp-text)] ${className}`} data-testid="lesson">
+      <strong>New: {LESSONS[lesson].term}.</strong> {LESSONS[lesson].line}
+    </p>
   )
 }

@@ -4,6 +4,8 @@ import { RIGOR } from './pace'
 export const TUTORIAL_ENEMY = 'jumping_to_conclusions'
 /** The fights a walk can open with. The first walk always opens with the teaching one; after that the seed draws one. */
 export const OPENERS = [TUTORIAL_ENEMY, 'rumination', 'catastrophizing'] as const
+/** On a teaching walk the second fight is the bias whose whole rule is Unsettle, so Unsettle is the one new idea it brings. */
+export const SECOND_LESSON = 'rumination'
 
 const GAMBLE = { chance: 0.25, attack: 22 }
 /** The damage answering The Meaning of Life's question adds. Flat, so a small honest answer gains as much as a huge one. */
@@ -375,11 +377,11 @@ export function ruleTextAt(def: EnemyDef, rigor: number): string {
   return rigor === 0 && def.gentleRuleText ? def.gentleRuleText : def.ruleText
 }
 
-/** Every rule a bias plays by at this pace, its second rule included from the Rigorous level that adds it. */
-export function fullRuleText(def: EnemyDef, rigor: number): string {
+/** Every rule a bias plays by at this pace, its second rule included from the Rigorous level that adds it; `halfway` is false for a teaching walk's opening fight. */
+export function fullRuleText(def: EnemyDef, rigor: number, halfway = givesGroundSlowly(def, rigor)): string {
   const main = ruleTextAt(def, rigor)
   const rules = rigor >= RIGOR.secondRule && def.secondRule ? `${main} ${def.secondRule.ruleText}` : main
-  return givesGroundSlowly(def, rigor) ? `${rules} ${slowGroundText(Math.floor(def.health / 2))}` : rules
+  return halfway ? `${rules} ${slowGroundText(Math.floor(def.health / 2))}` : rules
 }
 
 /** How much Shaken the damage a rule stopped banks, when `already` has been banked this round. */

@@ -82,6 +82,8 @@ export interface BattleSetup {
   known: boolean
   /** The problem that ends a Short walk, which holds nothing back. */
   lastOfShortWalk?: boolean
+  /** An opening fight on a teaching walk teaches its own rule alone, without the Gentle halfway mark. */
+  lesson?: boolean
 }
 
 export interface Incoming {
@@ -119,7 +121,7 @@ export function enemyRuleText(core: BattleCore): string {
   const def = getEnemyDef(core.enemy.id)
   const main = inSecondPhase(core) && def.phase2 ? def.phase2.ruleText : ruleTextAt(def, core.rigor)
   const rules = core.enemy.secondRule && def.secondRule ? `${main} ${def.secondRule.ruleText}` : main
-  return givesGroundSlowly(def, core.rigor) ? `${rules} ${slowGroundText(Math.floor(core.enemy.maxHealth / 2))}` : rules
+  return core.halfway ? `${rules} ${slowGroundText(Math.floor(core.enemy.maxHealth / 2))}` : rules
 }
 
 /** Where a philosophical problem changes; until it has, no round can take it lower. */
@@ -130,7 +132,7 @@ export function phaseThreshold(core: BattleCore): number | null {
 /** Where this round stops: the next of a philosophical problem's stop lines below where it stands, or half for a bias that gives ground slowly. */
 export function stopLine(core: BattleCore): number | null {
   const def = getEnemyDef(core.enemy.id)
-  const shares = def.phase2 ? STOP_LINES : givesGroundSlowly(def, core.rigor) ? [0.5] : []
+  const shares = def.phase2 ? STOP_LINES : core.halfway ? [0.5] : []
   const lines = shares.map((share) => Math.floor(core.enemy.maxHealth * share)).filter((line) => line < core.enemy.health)
   return lines.length > 0 ? Math.max(...lines) : null
 }
@@ -290,6 +292,7 @@ export function createBattle(setup: BattleSetup): BattleState {
     lastConclusionType: null,
     piercedOnce: false,
     tiresFrom: setup.rigor === 0 ? TIRING.gentle : def.rule === 'arrow' ? ARROW_RIGOROUS_TIRING : TIRING.rigorous,
+    halfway: givesGroundSlowly(def, setup.rigor) && !setup.lesson,
     nextUid: setup.deck.reduce((max, c) => Math.max(max, c.uid), 0) + 1,
     rng: shuffled.rng,
     outcome: 'ongoing',

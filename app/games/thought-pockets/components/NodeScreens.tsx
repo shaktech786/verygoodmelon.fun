@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { CardInstance, CardType, EnemyDef, EventId, RelicId, RunState } from '@/types/thought-pockets'
 import { TYPE_LABELS, canUpgrade, getCardDef, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
@@ -31,9 +32,11 @@ import {
 } from '@/lib/games/thought-pockets/engine/run'
 import { TEA_HEAL } from '@/lib/games/thought-pockets/engine/economy'
 import { COPY_PRICE } from '@/lib/games/thought-pockets/data/events'
-import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
+import { Lesson, lessonsOnCards } from '@/lib/games/thought-pockets/engine/lessons'
+import { useInsightStore, useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { CardFace } from './CardFace'
+import { LessonNote } from './Term'
 import { NodeGlyph } from './Glyphs'
 import { BiasPortrait } from './Sprites'
 import { RoundShow, breakBeat, showProgress, useRoundShow } from './RoundShow'
@@ -167,20 +170,47 @@ function FightEnd({ run, foe }: { run: RunState; foe: EnemyDef }) {
   )
 }
 
+/**
+ * In a Gentle walk, the first new word among the offered cards, explained in one line. It is the same word for as long as this
+ * screen is open, and counts as explained from then on.
+ */
+function useCardLesson(run: RunState, cardIds: string[]): Lesson | null {
+  const learn = useInsightStore((s) => s.learn)
+  const [lesson] = useState(() => {
+    if (run.mode !== 'gentle') return null
+    const { seen } = useInsightStore.getState()
+    return lessonsOnCards(cardIds.map(getCardDef)).find((l) => !seen.includes(l)) ?? null
+  })
+  useEffect(() => {
+    if (lesson) learn(lesson)
+  }, [lesson, learn])
+  return lesson
+}
+
+const REWARD_TITLES = { battle: 'You made your point', elite: 'A hard argument, won', boss: 'Floor complete', treasure: 'Treasure', rest: 'A quiet place' } as const
+
 export function RewardScreen({ run }: { run: RunState }) {
   const act = useRunStore((s) => s.act)
   const reward = run.reward
+  const lesson = useCardLesson(run, reward && !reward.cardTaken ? reward.cardChoices : [])
   if (!reward) return null
   const last = reward.source === 'boss' && isLastFloor(run)
-  const enemyId = reward.source === 'treasure' ? undefined : run.map.find((n) => n.id === run.position)?.enemyId
+  const enemyId = reward.source === 'treasure' || reward.source === 'rest' ? undefined : run.map.find((n) => n.id === run.position)?.enemyId
   const foe = enemyId ? getEnemyDef(enemyId) : null
   const lastTitle = run.length === 'short' && foe ? `${foe.name} lets you go, for now` : 'The last question, answered for now'
-  const title = last ? lastTitle : { battle: 'You made your point', elite: 'A hard argument, won', boss: 'Floor complete', treasure: 'Treasure' }[reward.source]
+  const title = last ? lastTitle : REWARD_TITLES[reward.source]
+  const study = reward.source === 'rest'
   return (
     <section className={panel} aria-labelledby="reward-title">
-      <h2 id="reward-title" className="font-serif text-2xl font-semibold">
+      <h2 id="reward-title" className={`font-serif text-2xl font-semibold ${study ? 'flex items-center gap-2' : ''}`}>
+        {study && <NodeGlyph type="rest" className="h-7 w-7 text-[var(--tp-logic)]" />}
         {title}
       </h2>
+      {study && (
+        <p className="mt-1 text-sm" data-testid="study-note">
+          Before you rest, a moment to think. The problem ahead ends the walk, so this is your last card to build on. Then you rest.
+        </p>
+      )}
       <style>{SHOW_CSS}</style>
       {foe && <FightEnd run={run} foe={foe} />}
       {reward.gold > 0 && <p className="mt-2">+{reward.gold} gold.</p>}
@@ -211,6 +241,11 @@ export function RewardScreen({ run }: { run: RunState }) {
       {reward.cardChoices.length > 0 && (
         <div className="mt-4">
           <h3 className="font-semibold">{reward.cardTaken ? 'Card chosen' : 'Add one card to your deck, or skip'}</h3>
+          {lesson && (
+            <div className="mt-1">
+              <LessonNote lesson={lesson} />
+            </div>
+          )}
           <p className="text-sm text-[var(--tp-muted)]">
             Your deck: {deckMix(run)}. Logic only multiplies the Weight that Evidence brings, and a smaller deck draws its best cards more often, so skipping is a real choice.
           </p>
@@ -239,8 +274,8 @@ export function RewardScreen({ run }: { run: RunState }) {
         </p>
       )}
       <button type="button" className={`${primaryButton} mt-5`} onClick={() => act(leaveReward)} data-testid="continue">
-        {last ? 'Finish the walk' : reward.source === 'boss' ? 'On to the next floor' : 'Continue'}
-        {(!reward.cardTaken || !reward.relicTaken) && ' (leave the rest)'}
+        {last ? 'Finish the walk' : reward.source === 'boss' ? 'On to the next floor' : study ? 'On to rest' : 'Continue'}
+        {(!reward.cardTaken || !reward.relicTaken) && (study ? ' without a card' : ' (leave the rest)')}
       </button>
     </section>
   )
