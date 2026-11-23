@@ -46,6 +46,17 @@ const THEME_CSS = `
   --tp-doubt: var(--primary-light);
 }
 .tp-screen:focus-visible, .tp-screen [tabindex="-1"]:focus-visible { outline: none; box-shadow: none; animation: none; }
+/* A card you point at or reach by keyboard is picked up: its shadow deepens, and with motion it lifts and tilts, alternately, as in a hand. */
+@media (hover: hover) { .tp-lift:hover { box-shadow: 4px 6px 0 0 var(--tp-shadow); } }
+.tp-lift:focus-visible { box-shadow: 4px 6px 0 0 var(--tp-shadow); }
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-reduce-motion="true"]) .tp-lift { transition: transform 75ms ease-out, box-shadow 75ms ease-out; }
+  @media (hover: hover) { html:not([data-reduce-motion="true"]) .tp-lift:hover { transform: translateY(-4px) rotate(-0.8deg); } }
+  html:not([data-reduce-motion="true"]) .tp-lift:focus-visible { transform: translateY(-4px) rotate(-0.8deg); }
+  @media (hover: hover) { html:not([data-reduce-motion="true"]) .tp-lift:nth-child(even):hover { transform: translateY(-4px) rotate(0.8deg); } }
+  html:not([data-reduce-motion="true"]) .tp-lift:nth-child(even):focus-visible { transform: translateY(-4px) rotate(0.8deg); }
+  html:not([data-reduce-motion="true"]) .tp-lift:active { transform: translateY(-1px) scale(0.98); }
+}
 `
 
 function useHydrated(): boolean {

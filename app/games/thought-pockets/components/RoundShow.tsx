@@ -168,7 +168,14 @@ export function Counting({ from, to, ms, running, steps }: { from: number; to: n
     return () => cancelAnimationFrame(frame)
   }, [running, ms])
   if (!running) return <>{format(to)}</>
-  if (steps) return <>{format(steps[Math.min(steps.length - 1, Math.floor(t * steps.length))])}</>
+  if (steps) {
+    const index = Math.min(steps.length - 1, Math.floor(t * steps.length))
+    return (
+      <span key={index} className="tp-tick">
+        {format(steps[index])}
+      </span>
+    )
+  }
   return <>{Math.round(from + (to - from) * easeOut(t))}</>
 }
 
@@ -185,6 +192,19 @@ interface RoundShowProps {
 }
 
 const tallyBox = 'inline-flex items-baseline gap-1 rounded-sm border-2 px-1.5 py-0.5'
+/** How far into the total's count it settles: once the number has all but arrived. */
+const SETTLE_AT = 0.6
+
+/** The total is set larger the harder the round hits, as the damage is. */
+export function totalSize(report: RoundReport): string {
+  return report.damage >= HUGE_HIT ? 'text-2xl' : report.damage >= BIG_HIT ? 'text-xl' : 'text-lg'
+}
+
+/** The beat at which a bias that fell this round gave way: as its Shaken landed, as Unsettle took the rest, or as the argument landed. */
+export function breakBeat(report: RoundReport): Beat {
+  if (report.phaseChanged && report.released > 0) return 'shift'
+  return report.unsettleLoss > 0 ? 'unsettle' : 'land'
+}
 
 /**
  * One round, told in order. Every line is laid out from the start and only revealed as its beat comes,
@@ -265,7 +285,7 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
           <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-serif" data-testid="tally">
             <span className={`${tallyBox} border-[var(--tp-evidence)]`}>
               Weight{' '}
-              <strong className="text-base" key={`w${lit}`}>
+              <strong className={`text-base ${now === 'step' ? 'tp-tick' : ''}`} key={`w${lit}`}>
                 <Counting from={previousWeight} to={shownWeight} ms={STEP_MS} running={now === 'step'} />
               </strong>
             </span>{' '}
@@ -276,11 +296,14 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
                 <Counting from={0} to={multShown} ms={beatLength('mult', 0, report)} running={now === 'mult'} steps={mults} />
               </strong>
             </span>
-            {report.modifiers.length > 0 && reached('mult') && <span className="text-xs">({report.modifiers.join('; ')})</span>}
+            {report.modifiers.length > 0 && reached('mult') && <span className={`text-xs ${pop('mult')}`}>({report.modifiers.join('; ')})</span>}
             <span className={reveal('total')} data-testid="tally-total">
               {' '}={' '}
-              <span className={`${tallyBox} border-[var(--tp-accent)]`}>
-                <strong className="text-lg">
+              <span
+                className={`${tallyBox} border-[var(--tp-accent)] ${now === 'total' && !reduced ? 'tp-settle' : ''}`}
+                style={now === 'total' && !reduced ? { animationDelay: `${Math.round(SETTLE_AT * beatLength('total', 0, report))}ms` } : undefined}
+              >
+                <strong className={totalSize(report)}>
                   <Counting from={0} to={report.product} ms={beatLength('total', 0, report)} running={now === 'total'} />
                 </strong>
               </span>

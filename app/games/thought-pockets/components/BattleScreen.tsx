@@ -82,7 +82,17 @@ export const SHOW_CSS = `
   100% { transform: none; background-color: transparent; }
 }
 @keyframes tp-nudge { 0% { transform: none; } 20% { transform: translateY(2px); } 100% { transform: none; } }
+@keyframes tp-tick { from { transform: translateY(-3px) scale(1.14); } to { transform: none; } }
+@keyframes tp-settle { 0% { transform: none; } 35% { transform: scale(1.2); } 70% { transform: translateY(1px) scale(0.97); } 100% { transform: none; } }
+@keyframes tp-arrive { from { opacity: 0; transform: translateY(14px) rotate(-2deg) scale(0.94); } 70% { opacity: 1; transform: translateY(-2px) rotate(0.5deg); } to { opacity: 1; transform: none; } }
+@keyframes tp-break { 0% { transform: none; } 18% { transform: scale(1.06); } 45% { transform: translateY(2px) scale(0.98); } 100% { transform: none; } }
+@keyframes tp-ring { from { opacity: 0.8; transform: scale(0.9); } to { opacity: 0; transform: scale(1.45); } }
 @media (prefers-reduced-motion: no-preference) {
+  html:not([data-reduce-motion="true"]) .tp-tick { display: inline-block; animation: tp-tick 200ms ease-out; }
+  html:not([data-reduce-motion="true"]) .tp-settle { animation: tp-settle 360ms ease-out both; }
+  html:not([data-reduce-motion="true"]) .tp-arrive { animation: tp-arrive 240ms ease-out both; }
+  html:not([data-reduce-motion="true"]) .tp-break { animation: tp-break 520ms ease-out; }
+  html:not([data-reduce-motion="true"]) .tp-ring { animation: tp-ring 700ms ease-out both; }
   html:not([data-reduce-motion="true"]) .tp-appear { animation: tp-appear 220ms ease-out both; }
   html:not([data-reduce-motion="true"]) .tp-pop { display: inline-block; animation: tp-pop 360ms ease-out; }
   html:not([data-reduce-motion="true"]) .tp-rise { animation: tp-rise 900ms ease-out both; }
@@ -95,8 +105,8 @@ export const SHOW_CSS = `
   html:not([data-reduce-motion="true"]) .tp-hurt { animation: tp-hurt ${AFTER_MS}ms ease-out; }
   html:not([data-reduce-motion="true"]) .tp-nudge { animation: tp-nudge 360ms ease-out; animation-delay: ${HIT_PAUSE_MS}ms; }
 }
-html[data-reduce-motion="true"] .tp-shake-lines, html[data-reduce-motion="true"] .tp-burst { display: none; }
-@media (prefers-reduced-motion: reduce) { .tp-shake-lines, .tp-burst { display: none; } }
+html[data-reduce-motion="true"] .tp-shake-lines, html[data-reduce-motion="true"] .tp-burst, html[data-reduce-motion="true"] .tp-ring { display: none; }
+@media (prefers-reduced-motion: reduce) { .tp-shake-lines, .tp-burst, .tp-ring { display: none; } }
 `
 
 function odds(chance: number): string {
@@ -587,7 +597,8 @@ function ArgumentPanel({ battle, preview, show, reduced }: { battle: BattleState
             {preview.steps.map((step, i) => (
               <li
                 key={step.uid}
-                className={`rounded-sm border-l-4 bg-[var(--tp-paper)] px-2 py-1 text-xs text-[var(--tp-paper-ink)] ${step.conclusion ? 'outline-2 outline-[var(--tp-accent)]' : ''}`}
+                className={`tp-arrive rounded-sm border-l-4 bg-[var(--tp-paper)] px-2 py-1 text-xs text-[var(--tp-paper-ink)] ${step.conclusion ? 'outline-2 outline-[var(--tp-accent)]' : ''}`}
+                data-testid="argument-step"
                 style={{ borderLeftColor: TYPE_COLORS[step.type] }}
               >
                 <span className="font-semibold">
@@ -606,22 +617,46 @@ function ArgumentPanel({ battle, preview, show, reduced }: { battle: BattleState
   )
 }
 
-/** Weight × Multiplier = product, then each step the engine applies, the last number being the damage (said once). */
+/**
+ * Weight × Multiplier = product, then each step the engine applies, the last number being the damage (said once).
+ * Each number ticks once as a card changes it; a number a card leaves alone stays still.
+ */
 function Equation({ preview }: { preview: ArgumentPreview }) {
   const damage = (
     <>
-      <strong data-testid="damage-preview">{preview.damage}</strong> damage
+      <strong key={preview.damage} className="tp-tick" data-testid="damage-preview">
+        {preview.damage}
+      </strong>{' '}
+      damage
     </>
   )
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--tp-text)]" data-testid="equation">
       <span>
-        Weight <strong>{preview.weight}</strong> × Multiplier <strong>{format(preview.multiplier)}</strong>
+        Weight{' '}
+        <strong key={preview.weight} className="tp-tick">
+          {preview.weight}
+        </strong>{' '}
+        × Multiplier{' '}
+        <strong key={preview.multiplier} className="tp-tick">
+          {format(preview.multiplier)}
+        </strong>
       </span>
       {preview.modifiers.map((m) => (
-        <Chip key={m}>{m}</Chip>
+        <span key={m} className="tp-pop">
+          <Chip>{m}</Chip>
+        </span>
       ))}
-      <span className={preview.chain.length === 0 ? 'text-base' : ''}>= {preview.chain.length === 0 ? damage : <strong>{preview.product}</strong>}</span>
+      <span className={preview.chain.length === 0 ? 'text-base' : ''}>
+        ={' '}
+        {preview.chain.length === 0 ? (
+          damage
+        ) : (
+          <strong key={preview.product} className="tp-tick">
+            {preview.product}
+          </strong>
+        )}
+      </span>
       {preview.chain.map((step, i) => (
         <span key={step.kind} className="contents" data-testid="chain-step">
           <span aria-hidden="true">→</span>

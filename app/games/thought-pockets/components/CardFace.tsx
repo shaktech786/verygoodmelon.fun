@@ -86,13 +86,13 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
         label ??
         `${card.name}. ${TYPE_LABELS[card.type]}${school ? `, ${school} card` : ''}${card.rarity === 'rare' ? ', rare' : ''}${unplayable ? '' : `, costs ${card.cost} Focus${freeNote ? `, ${freeNote.toLowerCase()}` : ''}`}. ${lines.join(' ')}`
       }${fits ? `. ${fits}` : ''}`}
-      className={`relative flex flex-col overflow-hidden rounded-md border-2 bg-[var(--tp-paper)] text-left text-[var(--tp-paper-ink)] shadow-[3px_3px_0_0_var(--tp-shadow)] motion-safe:transition-transform motion-safe:duration-75 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] ${
+      className={`relative flex flex-col overflow-hidden rounded-md border-2 bg-[var(--tp-paper)] text-left text-[var(--tp-paper-ink)] shadow-[3px_3px_0_0_var(--tp-shadow)] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] ${
         hand
           ? 'w-full min-h-[5.75rem] sm:w-36 sm:min-h-[9.75rem]'
           : size === 'compact'
             ? 'w-[6.75rem] min-h-[8.75rem] sm:w-[7.25rem] sm:min-h-[9.5rem]'
             : 'w-[6.75rem] min-h-[8.75rem] sm:min-h-[11rem] sm:w-36'
-      } ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer motion-safe:hover:-translate-y-1'}`}
+      } ${disabled ? 'cursor-not-allowed opacity-60' : 'tp-lift cursor-pointer'}`}
       style={{ borderColor: color }}
     >
       <span

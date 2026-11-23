@@ -1,6 +1,6 @@
 'use client'
 
-import { CardInstance, CardType, EventId, RelicId, RunState } from '@/types/thought-pockets'
+import { CardInstance, CardType, EnemyDef, EventId, RelicId, RunState } from '@/types/thought-pockets'
 import { TYPE_LABELS, canUpgrade, getCardDef, resolveCard } from '@/lib/games/thought-pockets/data/cards'
 import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
 import { getEventDef } from '@/lib/games/thought-pockets/data/events'
@@ -36,7 +36,7 @@ import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { CardFace } from './CardFace'
 import { NodeGlyph } from './Glyphs'
 import { BiasPortrait } from './Sprites'
-import { RoundShow, useRoundShow } from './RoundShow'
+import { RoundShow, breakBeat, showProgress, useRoundShow } from './RoundShow'
 import { SHOW_CSS } from './BattleScreen'
 
 const PICKER_TEXT = {
@@ -110,20 +110,60 @@ function deckMix(run: RunState): string {
   return [...counts.entries()].map(([type, n]) => `${n} ${TYPE_LABELS[type]}`).join(', ')
 }
 
-/** The argument that won the fight, played once more on the reward screen. */
-function FinalArgument({ run }: { run: RunState }) {
+/** Every crack the portrait has: a bias that has given way shows them all. */
+const ALL_CRACKS = 3
+
+/**
+ * The argument that won the fight, played once more, and the bias giving way to it: as the winning hit lands its portrait
+ * cracks through, settles and sinks, and what it taught you comes up. Then the biases named so far on this walk, the newest
+ * last. With reduced motion the replay is one still frame, so the portrait is already broken and everything shows at once.
+ * The words are on the page from the start, quieter until it gives way (a screen reader reads them where they are, once).
+ */
+function FightEnd({ run, foe }: { run: RunState; foe: EnemyDef }) {
   const reduced = useReducedMotion()
   const report = run.reward?.finalRound ?? null
-  const enemyId = run.map.find((n) => n.id === run.position)?.enemyId
   const show = useRoundShow(report ? `final-${run.stats.fights}` : null, report, reduced)
-  if (!report || !enemyId) return null
-  const foe = getEnemyDef(enemyId)
-  const words = finalRoundWords(report)
+  const { reached } = showProgress(show)
+  const beat = report ? breakBeat(report) : null
+  const broken = show.done || (beat !== null && show.beats.includes(beat) && reached(beat))
+  const moving = broken && !show.done
+  const words = report ? finalRoundWords(report) : null
+  const named = run.beaten.map(getEnemyDef)
   return (
-    <div className="mt-2 rounded-md border border-[var(--tp-line)] p-2.5" data-testid="final-argument">
-      <style>{SHOW_CSS}</style>
-      <RoundShow report={report} show={show} reduced={reduced} aftermath={[`${foe.name} has no answer left.`]} title={words.title} noArgument={words.noArgument} />
-    </div>
+    <>
+      {report && words && (
+        <div className="mt-2 rounded-md border border-[var(--tp-line)] p-2.5" data-testid="final-argument">
+          <RoundShow report={report} show={show} reduced={reduced} aftermath={[`${foe.name} has no answer left.`]} title={words.title} noArgument={words.noArgument} />
+        </div>
+      )}
+      <div className="mt-2 flex items-center gap-3 rounded-md bg-[var(--tp-ink)] p-2" data-testid="insight" data-broken={broken || undefined}>
+        <span className="relative shrink-0">
+          <span key={broken ? 'broken' : 'whole'} className={`block ${moving ? 'tp-break' : ''}`}>
+            <BiasPortrait enemyId={foe.id} tier={foe.tier} mood={broken ? 'gives' : 'shaken'} cracks={broken ? ALL_CRACKS : 0} className="h-12 w-12" />
+          </span>
+          {moving && <span className="tp-ring pointer-events-none absolute inset-0 border-2 border-[var(--tp-good)]" aria-hidden="true" />}
+        </span>
+        <p className={`text-sm ${broken ? (moving ? 'tp-appear' : '') : 'text-[var(--tp-muted)]'}`}>
+          <span className="font-semibold">What {foe.name} taught you:</span> {foe.insight}
+        </p>
+      </div>
+      {named.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--tp-muted)]" data-testid="named-so-far">
+          <span>Named on this walk</span>
+          <ul className="flex flex-wrap gap-1" aria-label="Biases named on this walk">
+            {named.map((def) => {
+              const newest = def.id === foe.id
+              return (
+                <li key={def.id} className={newest && moving ? 'tp-arrive' : newest && !broken ? 'opacity-0' : ''}>
+                  <BiasPortrait enemyId={def.id} tier={def.tier} mood="gives" className="h-6 w-6" />
+                  <span className="sr-only">{def.name}</span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -141,15 +181,8 @@ export function RewardScreen({ run }: { run: RunState }) {
       <h2 id="reward-title" className="font-serif text-2xl font-semibold">
         {title}
       </h2>
-      <FinalArgument run={run} />
-      {foe && (
-        <div className="mt-2 flex items-center gap-3 rounded-md bg-[var(--tp-ink)] p-2" data-testid="insight">
-          <BiasPortrait enemyId={foe.id} tier={foe.tier} mood="gives" className="h-12 w-12 shrink-0" />
-          <p className="text-sm">
-            <span className="font-semibold">What {foe.name} taught you:</span> {foe.insight}
-          </p>
-        </div>
-      )}
+      <style>{SHOW_CSS}</style>
+      {foe && <FightEnd run={run} foe={foe} />}
       {reward.gold > 0 && <p className="mt-2">+{reward.gold} gold.</p>}
       {reward.relicChoices.length > 0 && (
         <div className="mt-4">
