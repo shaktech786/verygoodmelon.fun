@@ -298,6 +298,46 @@ test.describe('The Awakening', () => {
       await expect(page.getByRole('heading', { name: 'Before you wake' })).toBeInViewport()
     })
 
+    test('regression: in care, the helplines come first on screen, with no sunrise and nothing red to press', async ({ page }) => {
+      await offline(page, { reflection: 'Thank you for trusting this page.', care: true })
+      await page.goto('/games/first-breath')
+      // Indirect enough that only the reply's own judgement asks for care
+      await speak(page, 'It is so quiet here. I think I would like to stay.')
+
+      const support = page.getByRole('complementary', { name: 'Support' })
+      await expect(support).toBeVisible()
+      await expect(async () => {
+        const helpline = await support.getByRole('link', { name: '988' }).boundingBox()
+        const header = await page.locator('header').first().boundingBox()
+        expect(helpline!.y).toBeGreaterThanOrEqual(header!.y + header!.height - 1)
+        expect(helpline!.y + helpline!.height).toBeLessThanOrEqual(844)
+      }).toPass()
+      await expect(page.getByText('Morning is close.')).toHaveCount(0)
+      await expect(page.locator('[data-sky]')).toHaveCount(0)
+
+      const wake = page.getByRole('button', { name: 'Wake up' })
+      await expect(wake).toBeVisible()
+      const accent = await page.evaluate(() => {
+        const probe = document.createElement('div')
+        probe.className = 'bg-accent'
+        document.body.append(probe)
+        const color = getComputedStyle(probe).backgroundColor
+        probe.remove()
+        return color
+      })
+      const redButtons = await page.locator('main button').evaluateAll(
+        (buttons, red) => buttons.filter((b) => getComputedStyle(b).backgroundColor === red).length,
+        accent
+      )
+      expect(redButtons).toBe(0)
+
+      await wake.click()
+      await expect(page.getByRole('heading', { name: 'Good morning' })).toBeFocused()
+      await expect(page.locator('[data-sky]')).toHaveCount(0)
+      await expect(page.getByTestId('sunrise-glow')).toHaveCount(0)
+      await expect(support.getByRole('link', { name: '988' })).toBeInViewport()
+    })
+
     test('regression: the sky turning to morning happens on screen, beside the greeting', async ({ page }) => {
       await offline(page, { reflection: 'Dancing sounds like joy you can still reach.', intention: INTENTION, safe: true })
       await page.goto('/games/first-breath')

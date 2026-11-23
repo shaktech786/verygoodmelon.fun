@@ -75,16 +75,35 @@ Use \\n\\n to separate paragraphs in the body.`,
 // written once and every visit that day reads it back. The day is part of the key.
 const thoughtOfTheDay = unstable_cache(writeThought, ['fresh-thought-v1'], { revalidate: ONE_DAY_SECONDS })
 
+const RETRY_AFTER_FAILURE_SECONDS = 10 * 60
+
+// A failure is never written to the daily cache, so on its own an outage would send every visit
+// to the model. This short cache remembers the miss for a few minutes; once the day's thought
+// exists it is read straight back from the daily cache.
+const thoughtOrNothing = unstable_cache(
+  async (day: string): Promise<FreshThought | null> => {
+    try {
+      return await thoughtOfTheDay(day)
+    } catch (error) {
+      console.error('Failed to generate fresh thought:', error)
+      return null
+    }
+  },
+  ['fresh-thought-attempt-v1'],
+  { revalidate: RETRY_AFTER_FAILURE_SECONDS }
+)
+
 // ---------------------------------------------------------------------------
 // GET /api/thoughts/fresh
 // ---------------------------------------------------------------------------
 
 export async function GET() {
-  try {
-    const thought = await thoughtOfTheDay(today())
-    return NextResponse.json({ thought }, { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } })
-  } catch (error) {
-    console.error('Failed to generate fresh thought:', error)
-    return NextResponse.json({ thought: null })
+  const thought = await thoughtOrNothing(today())
+  if (!thought) {
+    return NextResponse.json(
+      { thought: null },
+      { headers: { 'Cache-Control': `public, s-maxage=${RETRY_AFTER_FAILURE_SECONDS}` } }
+    )
   }
+  return NextResponse.json({ thought }, { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } })
 }

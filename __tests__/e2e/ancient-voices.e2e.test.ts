@@ -7,7 +7,7 @@ import { getThinkerById, thinkers } from '@/lib/games/timeless-minds/thinkers'
  * The Sage (Timeless Minds): a conversation with a thinker from history in a quiet sitting room,
  * with every control folded into one Menu beside their portrait.
  *
- * The first thinker is random, so each test calls Socrates from the directory first.
+ * The visit starts with a short choice of who to talk with, so each test chooses Socrates there first.
  * Replies come from a stub, and browser speech is replaced with a recorder so nothing
  * is spoken aloud and nothing paid is reached. The voice starts off: no sound until the player asks.
  */
@@ -85,10 +85,25 @@ async function callFromPhoneBook(page: Page, name: string) {
   await expect(phoneBook).toHaveCount(0)
 }
 
-async function openGame(page: Page) {
+const chooser = (page: Page) => page.getByRole('region', { name: 'Who would you like to talk with?' })
+
+/** Loads the game and answers its opening question with one of the offered thinkers. */
+async function chooseFirst(page: Page, name: string) {
   await page.goto('/games/ancient-voices')
+  await answerChooser(page, name)
+}
+
+/** A tap that lands before the page has woken up does nothing, so it is tried again until the call starts. */
+async function answerChooser(page: Page, name: string) {
+  await expect(async () => {
+    await chooser(page).getByRole('button', { name: new RegExp(`^${name}`) }).click({ timeout: 1000 })
+    await expect(chooser(page)).toHaveCount(0, { timeout: 1000 })
+  }).toPass()
   await expect(bubbles(page).first()).toBeVisible()
-  await callFromPhoneBook(page, 'Socrates')
+}
+
+async function openGame(page: Page) {
+  await chooseFirst(page, 'Socrates')
   await expect(bubbles(page)).toHaveText([SOCRATES_OPENING])
 }
 
@@ -96,6 +111,42 @@ async function send(page: Page, text: string) {
   await input(page).fill(text)
   await input(page).press('Enter')
 }
+
+test('the visit opens on a calm choice of a few thinkers or a surprise, then the chosen one greets the player', async ({ page }) => {
+  await setUpBrowser(page)
+  await page.goto('/games/ancient-voices')
+
+  await expect(chooser(page).getByRole('heading', { name: 'Who would you like to talk with?' })).toBeVisible()
+  const choices = chooser(page).getByRole('listitem')
+  expect(await choices.count()).toBeGreaterThanOrEqual(3)
+  expect(await choices.count()).toBeLessThanOrEqual(4)
+  await expect(chooser(page).getByRole('button', { name: 'Surprise me' })).toBeVisible()
+  // Nothing grabs focus on arrival, and the conversation waits for the choice
+  await expect(input(page)).toHaveCount(0)
+  await expect(chooser(page)).not.toContainText(/\bAI\b|generat|powered by/i)
+
+  // Keyboard only: Enter on an offer starts the call, ready to type into
+  const socrates = chooser(page).getByRole('button', { name: /^Socrates/ })
+  await expect(async () => {
+    await socrates.focus({ timeout: 1000 })
+    await page.keyboard.press('Enter')
+    await expect(chooser(page)).toHaveCount(0, { timeout: 1000 })
+  }).toPass()
+  await expect(page.getByRole('heading', { name: 'Talking with Socrates' })).toBeAttached()
+  await expect(input(page)).toBeFocused()
+})
+
+test('"Surprise me" starts a call with someone, never one whose life ended in despair', async ({ page }) => {
+  const vanGogh = thinkers.findIndex(t => t.id === 'vincent-van-gogh')
+  await setUpBrowser(page)
+  await page.goto('/games/ancient-voices')
+  // Fixed only once the page is up, so the page itself starts as it always does
+  await page.evaluate((value: number) => { Math.random = () => value }, (vanGogh + 0.5) / thinkers.length)
+  await answerChooser(page, 'Surprise me')
+
+  await expect(page.getByRole('heading', { name: /Talking with/ })).not.toContainText('Vincent van Gogh')
+  await expect(bubbles(page).first()).not.toHaveText(opening('vincent-van-gogh'))
+})
 
 test('a first-time player picks a suggested topic and has a multi-turn conversation', async ({ page }) => {
   await setUpBrowser(page)
@@ -253,6 +304,8 @@ test('a reply that never comes is let go after twenty seconds: the words come ba
   // Waits out the real twenty-second timeout
   test.slow()
   await setUpBrowser(page)
+  const errors: string[] = []
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
   let hanging = true
   const histories: unknown[][] = []
   await page.route('**/api/timeless-minds/chat', route => {
@@ -274,6 +327,8 @@ test('a reply that never comes is let go after twenty seconds: the words come ba
   await expect(input(page)).toHaveValue('Is anyone listening?')
   await expect(page.getByText('Not answered yet')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Say goodbye to Socrates' })).toHaveCount(0)
+  // Letting a slow reply go is expected, not a fault
+  expect(errors.filter(text => /Failed to send message|TimeoutError/.test(text))).toEqual([])
 
   hanging = false
   await page.getByRole('button', { name: 'Send message' }).click()
@@ -556,11 +611,22 @@ test('"About these conversations" opens in the same tab, plain words first and t
 
   await page.getByRole('link', { name: 'Return to The Sage' }).click()
   await expect(page).toHaveURL(/\/games\/ancient-voices$/)
-  await expect(page.getByRole('textbox', { name: 'Message input' })).toBeVisible()
+  await expect(chooser(page).getByRole('heading', { name: 'Who would you like to talk with?' })).toBeVisible()
 })
 
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+  test('the opening choice fits on one screen, every offer and the surprise within reach', async ({ page }) => {
+    await setUpBrowser(page)
+    await page.goto('/games/ancient-voices')
+    for (const button of await chooser(page).getByRole('button').all()) {
+      await expect(button).toBeInViewport({ ratio: 1 })
+      expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    }
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+    expect(overflow).toBeLessThanOrEqual(0)
+  })
 
   test('the conversation and every control fit and work', async ({ page }) => {
     await setUpBrowser(page)
@@ -657,31 +723,22 @@ test('when someone may be at risk, tappable support stays for the visit, the nex
   await expect(support(page)).toBeVisible()
 })
 
-test('a random first thinker is never one whose life ended in despair', async ({ page }) => {
-  const vanGogh = thinkers.findIndex(t => t.id === 'vincent-van-gogh')
-  await page.addInitScript((value: number) => { Math.random = () => value }, (vanGogh + 0.5) / thinkers.length)
-  await setUpBrowser(page)
-  await page.goto('/games/ancient-voices')
-
-  await expect(bubbles(page).first()).toBeVisible()
-  await expect(page.getByRole('heading', { name: /Talking with/ })).not.toContainText('Vincent van Gogh')
-  await expect(bubbles(page).first()).not.toHaveText(opening('vincent-van-gogh'))
-})
-
-test('replies reach screen readers once through a polite log, the page does not grab focus, and the mic reads Ready when off', async ({ page }) => {
+test('replies reach screen readers once through a polite log, the page does not grab focus, and the idle status reads like a person', async ({ page }) => {
   await setUpBrowser(page)
   await stubChat(page)
   await page.goto('/games/ancient-voices')
+  await expect(page.locator('main [aria-live], main [role="alert"], main [role="status"]')).toHaveCount(0)
+  await expect(page.locator('body')).toBeFocused()
 
+  await answerChooser(page, 'Socrates')
   const log = page.getByRole('log', { name: 'Conversation' })
   await expect(log).toHaveAttribute('aria-live', 'polite')
-  await expect(input(page)).not.toBeFocused()
-  await expect(page.getByText('Ready', { exact: true })).toBeVisible()
+  await expect(page.getByText('Here with you', { exact: true })).toBeVisible()
+  await expect(page.getByText(/^Ready$/)).toHaveCount(0)
   await expect(page.getByText(/Listening/)).toHaveCount(0)
   // The only live region the game adds is the conversation itself.
   await expect(page.locator('main [aria-live], main [role="alert"], main [role="status"]')).toHaveCount(1)
 
-  await callFromPhoneBook(page, 'Socrates')
   await send(page, 'Hello')
   await expect(log).toContainText('Reply 1: let us think about "Hello".')
 })
@@ -689,7 +746,7 @@ test('replies reach screen readers once through a polite log, the page does not 
 test('a portrait is framed on the face, not the beard', async ({ page }) => {
   await setUpBrowser(page)
   await stubChat(page)
-  await page.goto('/games/ancient-voices')
+  await chooseFirst(page, 'Socrates')
   await callFromPhoneBook(page, 'Leonardo da Vinci')
 
   const portrait = page.locator('img[src$="leonardo-da-vinci.png"]').first()
@@ -861,7 +918,7 @@ test('parting words can be kept on a small shelf on this device, read again late
 
   // A later visit still has the line.
   await page.reload()
-  await expect(bubbles(page).first()).toBeVisible()
+  await answerChooser(page, 'Socrates')
   await fromMenu(page, 'Kept lines')
   await expect(shelf.getByRole('heading', { name: 'Kept lines' })).toBeFocused()
   await expect(shelf.locator('blockquote')).toHaveText(['Carry your question gently; it is already half an answer.'])

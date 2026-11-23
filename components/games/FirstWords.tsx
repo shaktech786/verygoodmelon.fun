@@ -174,6 +174,7 @@ export default function FirstWords() {
   const [goingOn, setGoingOn] = useState(false)
   const reduceMotion = useReducedMotion()
   const sceneRef = useRef<HTMLDivElement>(null)
+  const careRef = useRef<HTMLDivElement>(null)
   const intentionRef = useRef<HTMLTextAreaElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const beforeWakingRef = useRef<HTMLHeadingElement>(null)
@@ -205,12 +206,20 @@ export default function FirstWords() {
     }
   }, [submitted, reduceMotion])
 
-  // The sky turning to morning is the payoff, so bring it on screen before focus moves
+  // Words that called for care are met by support first, so it is what comes into view, even when
+  // the reply that asks for care arrives after the dawn sky has been scrolled to
+  const afterWords = submitted !== null
+  useEffect(() => {
+    if (care && afterWords) careRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
+  }, [care, afterWords, reduceMotion])
+
+  // The sky turning to morning is the payoff, so bring it on screen before focus moves; in care, the support stays in view
   useEffect(() => {
     if (!awake) return
-    sceneRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
+    const inView = care ? careRef : sceneRef
+    inView.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
     morningRef.current?.focus({ preventScroll: true })
-  }, [awake, reduceMotion])
+  }, [awake, care, reduceMotion])
 
   useEffect(() => {
     if (goingOn) textareaRef.current?.focus()
@@ -239,10 +248,16 @@ export default function FirstWords() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
-      {care && submitted === null && <CarePanel />}
+      {/* Support comes first whenever care is called for, before the scene and anything to press */}
+      {care && (
+        <div ref={careRef} className="scroll-mt-20">
+          <CarePanel />
+        </div>
+      )}
 
       <div ref={sceneRef} className="bg-card-bg border border-card-border rounded-lg overflow-hidden scroll-mt-20">
-        <Sky light={light} />
+        {/* No sky after words that called for care: a sunrise is a celebration, and this is not the moment for one */}
+        {!(care && afterWords) && <Sky light={light} />}
 
         <div className="p-5 sm:p-8 pt-5 sm:pt-6">
           {submitted === null ? (
@@ -305,13 +320,15 @@ export default function FirstWords() {
               <h2 ref={beforeWakingRef} {...FOCUS_TARGET} className="text-xl sm:text-2xl font-semibold text-foreground">
                 Before you wake
               </h2>
-              <p className="mt-1 text-primary-light">
-                {joined === null
-                  ? 'Morning is close.'
-                  : joined
-                    ? 'Others have stood here and come back.'
-                    : 'You are the first to stand here and come back.'}
-              </p>
+              {!care && (
+                <p className="mt-1 text-primary-light">
+                  {joined === null
+                    ? 'Morning is close.'
+                    : joined
+                      ? 'Others have stood here and come back.'
+                      : 'You are the first to stand here and come back.'}
+                </p>
+              )}
               {/* Words are only framed back once they are known to be an imagined ending, never to someone who may be in danger */}
               {safe ? (
                 <blockquote className="mt-5 text-lg sm:text-xl text-foreground whitespace-pre-wrap break-words leading-relaxed">
@@ -368,8 +385,9 @@ export default function FirstWords() {
                     <div className="mt-4 text-center">
                       <Button
                         type="submit"
-                        variant="primary"
-                        className="px-8 py-3 text-lg"
+                        // In care, going on is a quiet choice beside the support, never a call to action
+                        variant={care ? 'secondary' : 'primary'}
+                        className={care ? undefined : 'px-8 py-3 text-lg'}
                         // The second click of a double click on Speak can land here; waking should be a choice
                         onClick={(event) => event.detail > 1 && event.preventDefault()}
                       >
@@ -386,7 +404,6 @@ export default function FirstWords() {
 
       {submitted !== null && (
         <>
-          {care && <CarePanel />}
           {unjudged && <QuietSupport />}
 
           <CloudSection

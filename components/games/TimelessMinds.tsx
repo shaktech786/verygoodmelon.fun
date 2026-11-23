@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { pickRandomThinker, thinkers as allThinkers, getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
-import { Hand, Send, Loader2, Mic, MicOff, Image as ImageIcon, ImageOff, Volume2, VolumeX, Users, Plus, MoreHorizontal, BookmarkPlus, BookmarkCheck, Library } from 'lucide-react'
+import { Hand, Send, Mic, MicOff, Image as ImageIcon, ImageOff, Volume2, VolumeX, Users, Plus, MoreHorizontal, BookmarkPlus, BookmarkCheck, Library } from 'lucide-react'
 import ThinkerPhoneBook from './ThinkerPhoneBook'
 import RequestThinkerModal from './RequestThinkerModal'
 import { Button } from '@/components/ui/Button'
@@ -22,6 +22,7 @@ import { plainText } from '@/lib/games/timeless-minds/plain-text'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { isKept, keepLine, loadKeptLines, removeLine, saveKeptLines, type KeptLine } from '@/lib/games/timeless-minds/kept-lines'
 import TimelessMindsKeptLines from './TimelessMindsKeptLines'
+import TimelessMindsChooser from './TimelessMindsChooser'
 import { REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 
 interface Message {
@@ -114,6 +115,11 @@ function keepTabInside(e: React.KeyboardEvent<HTMLElement>) {
     e.preventDefault()
     first.focus()
   }
+}
+
+// A reply let go after its time limit is an expected pause, not a fault worth logging
+function isTimeout(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'TimeoutError'
 }
 
 function openingMessage(thinker: Thinker): Message {
@@ -317,12 +323,13 @@ export default function TimelessMinds() {
       .catch(() => setRequestsAvailable(false))
   }, [])
 
-  // Initialize with random thinker
+  // Once chosen at the start, the conversation opens ready to type into
+  const focusInputOnArrival = useRef(false)
   useEffect(() => {
-    const selectedThinker = pickRandomThinker()
-    setThinker(selectedThinker)
-    setMessages([openingMessage(selectedThinker)])
-  }, [])
+    if (!thinker || !focusInputOnArrival.current) return
+    focusInputOnArrival.current = false
+    inputRef.current?.focus()
+  }, [thinker])
 
   useEffect(() => {
     const saved = loadKeptLines()
@@ -451,7 +458,7 @@ export default function TimelessMinds() {
         speakWithAvatar(plainText(reply), thinker.id, emotion).catch(console.error)
       }
     } catch (error) {
-      console.error('Failed to send message:', error)
+      if (!isTimeout(error)) console.error('Failed to send message:', error)
       if (conversation !== conversationRef.current) return
       replyFailed()
     } finally {
@@ -520,7 +527,7 @@ export default function TimelessMinds() {
       const data = await response.json().catch(() => null)
       if (response.ok && typeof data?.farewell === 'string' && data.farewell.trim()) text = data.farewell.trim()
     } catch (error) {
-      console.error('Farewell unavailable:', error)
+      if (!isTimeout(error)) console.error('Farewell unavailable:', error)
     }
     if (conversation === conversationRef.current) setFarewell({ thinker: leaving, text })
   }
@@ -696,14 +703,19 @@ export default function TimelessMinds() {
   }
 
   if (!thinker) {
+    const chooseFirst = (first: Thinker) => {
+      focusInputOnArrival.current = true
+      startConversation(first)
+    }
     return (
-      <div className="flex items-center justify-center min-h-screen" role="status" aria-label="Loading conversation">
-        <Loader2 className={`${reducedMotion ? '' : 'animate-spin'} text-foreground/50`} size={48} aria-hidden="true" />
+      <div className="sage-room sage-wall max-w-2xl mx-auto rounded-2xl border sage-line shadow-sm">
+        <style>{SAGE_ROOM_CSS}</style>
+        <TimelessMindsChooser care={care} onChoose={chooseFirst} onSurprise={() => chooseFirst(pickRandomThinker({ care }))} />
       </div>
     )
   }
 
-  const statusLabel = isSpeaking ? 'Speaking' : isLoading ? 'Thinking' : isListening ? 'Listening' : 'Ready'
+  const statusLabel = isSpeaking ? 'Speaking' : isLoading ? 'Thinking' : isListening ? 'Listening' : 'Here with you'
   const menuItem = 'w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-left text-sm sage-ink hover:bg-[var(--sage-paper)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
   const menuIcon = 'shrink-0 sage-ink-soft'
   const userHasSpoken = messages.some((m) => m.role === 'user')

@@ -22,7 +22,7 @@ vi.mock('@/lib/games/timeless-minds/thinkers', async (importOriginal) => {
   return {
     ...actual,
     pickRandomThinker: () => mockThinker,
-    getThinkerById: () => mockThinker,
+    getThinkerById: (id: string) => (id === 'socrates' ? mockThinker : (actual.getThinkerById as (id: string) => unknown)(id)),
   }
 })
 
@@ -81,6 +81,12 @@ function CareProbe() {
 
 const reply = (body: Record<string, unknown>) => ({ ok: true, json: async () => body })
 
+/** Renders the game and answers its opening question by choosing Socrates. */
+async function renderRoom(ui: React.ReactElement = <TimelessMinds />) {
+  render(ui)
+  await userEvent.click(await screen.findByRole('button', { name: /^Socrates/ }))
+}
+
 describe('TimelessMinds', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -91,7 +97,7 @@ describe('TimelessMinds', () => {
   })
 
   it('renders with thinker name', async () => {
-    render(<TimelessMinds />)
+    await renderRoom()
     await waitFor(() => {
       const elements = screen.getAllByText('Socrates')
       expect(elements.length).toBeGreaterThan(0)
@@ -99,35 +105,35 @@ describe('TimelessMinds', () => {
   })
 
   it('shows message input', async () => {
-    render(<TimelessMinds />)
+    await renderRoom()
     await waitFor(() => {
       expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument()
     })
   })
 
   it('shows send button', async () => {
-    render(<TimelessMinds />)
+    await renderRoom()
     await waitFor(() => {
       expect(screen.getByLabelText(/Send message/i)).toBeInTheDocument()
     })
   })
 
   it('displays topic suggestions', async () => {
-    render(<TimelessMinds />)
+    await renderRoom()
     await waitFor(() => {
       expect(screen.getByText(/Try asking about/i)).toBeInTheDocument()
     })
   })
 
   it('renders avatar area', async () => {
-    render(<TimelessMinds />)
+    await renderRoom()
     await waitFor(() => {
       expect(screen.getByTestId('avatar-renderer')).toBeInTheDocument()
     })
   })
 
   it('says plainly that the conversation is imagined, without naming the technology', async () => {
-    render(<TimelessMinds />)
+    await renderRoom()
     await waitFor(() => {
       expect(screen.getByText(/Imagined conversations, not real quotes from the person/)).toBeInTheDocument()
     })
@@ -135,21 +141,31 @@ describe('TimelessMinds', () => {
   })
 
   it('starts with the voice off until the player chooses it', async () => {
-    render(<TimelessMinds />)
+    await renderRoom()
     await userEvent.click(await screen.findByRole('button', { name: 'Menu' }))
     const voice = screen.getByRole('button', { name: 'Turn on thinker voice' })
     expect(voice).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('does not take focus when the page loads', async () => {
+  it('opens on a short choice of who to talk with, without taking focus', async () => {
     render(<TimelessMinds />)
-    const box = await screen.findByRole('textbox', { name: 'Message input' })
-    expect(box).not.toHaveFocus()
+    const chooser = await screen.findByRole('region', { name: 'Who would you like to talk with?' })
+    expect(within(chooser).getAllByRole('listitem')).toHaveLength(4)
+    expect(within(chooser).getByRole('button', { name: 'Surprise me' })).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Message input' })).not.toBeInTheDocument()
+    expect(document.body).toHaveFocus()
   })
 
-  it('reads Ready, not Listening, while the microphone is off', async () => {
-    render(<TimelessMinds />)
-    expect(await screen.findByText('Ready')).toBeInTheDocument()
+  it('once a thinker is chosen, the conversation opens ready to type into', async () => {
+    await renderRoom()
+    expect(await screen.findByRole('textbox', { name: 'Message input' })).toHaveFocus()
+    expect(screen.queryByRole('region', { name: 'Who would you like to talk with?' })).not.toBeInTheDocument()
+  })
+
+  it('reads like a person while idle, not Ready or Listening', async () => {
+    await renderRoom()
+    expect(await screen.findByText('Here with you')).toBeInTheDocument()
+    expect(screen.queryByText('Ready')).not.toBeInTheDocument()
     expect(screen.queryByText(/Listening/)).not.toBeInTheDocument()
   })
 
@@ -157,7 +173,7 @@ describe('TimelessMinds', () => {
     mockFetch.mockImplementation(async (url: string) =>
       url.includes('/chat') ? reply({ response: '**Breathe.** Then tell me *more*.', emotion: 'neutral' }) : reply({})
     )
-    render(<TimelessMinds />)
+    await renderRoom()
     const log = await screen.findByRole('log', { name: 'Conversation' })
     expect(log).toHaveAttribute('aria-live', 'polite')
 
@@ -176,7 +192,7 @@ describe('TimelessMinds', () => {
         ? reply({ response: 'I am glad you told me.', emotion: 'concerned', care: true })
         : reply({ response: 'I am still here.', emotion: 'neutral' })
     })
-    render(<CareModeProvider><TimelessMinds /><CareProbe /></CareModeProvider>)
+    await renderRoom(<CareModeProvider><TimelessMinds /><CareProbe /></CareModeProvider>)
     const box = await screen.findByRole('textbox', { name: 'Message input' })
     expect(screen.queryByRole('complementary', { name: 'Support' })).not.toBeInTheDocument()
 
@@ -198,7 +214,7 @@ describe('TimelessMinds', () => {
     mockFetch.mockImplementation(async (url: string) =>
       url.includes('/farewell') ? reply({ farewell: 'Know thyself, gently.' }) : reply({})
     )
-    render(<TimelessMinds />)
+    await renderRoom()
     await userEvent.click(await screen.findByRole('button', { name: 'Menu' }))
     await userEvent.click(screen.getByRole('button', { name: 'Say goodbye' }))
     await userEvent.click(within(screen.getByRole('dialog', { name: 'Say goodbye to Socrates?' })).getByRole('button', { name: 'Say goodbye' }))
