@@ -22,7 +22,7 @@ import {
 import { BOOKENDS_DRAW, STILL_WATER_GUARD, SUNDIAL_FOCUS, FOCUS_PER_TURN, HAND_SIZE, createBattle, currentMove, endTurn, playCard, previewArgument } from '@/lib/games/thought-pockets/engine/battle'
 import { shopPrice, TEA_HEAL, TEA_PRICE } from '@/lib/games/thought-pockets/engine/economy'
 import { CARDS, describeCard, getCardDef, summarizeCard } from '@/lib/games/thought-pockets/data/cards'
-import { DISMISS_CARDS, SLOW_GROUND_TEXT, fullRuleText, getEnemyDef, ruleTextAt } from '@/lib/games/thought-pockets/data/enemies'
+import { DISMISS_CARDS, fullRuleText, getEnemyDef, ruleTextAt, slowGroundText } from '@/lib/games/thought-pockets/data/enemies'
 import { RELICS } from '@/lib/games/thought-pockets/data/relics'
 import { SCHOOLS } from '@/lib/games/thought-pockets/data/schools'
 import { RIGOR, SHORT_WALK_BOSS } from '@/lib/games/thought-pockets/data/pace'
@@ -103,7 +103,7 @@ describe('every rule a bias plays by is listed wherever it is described', () => 
       const second = enemy.secondRule?.ruleText as string
       expect(fullRuleText(enemy, RIGOR.secondRule)).toBe(`${ruleTextAt(enemy, RIGOR.secondRule)} ${second}`)
       expect(fullRuleText(enemy, RIGOR.secondRule - 1)).not.toContain(second)
-      expect(fullRuleText(enemy, 0)).toBe(`${ruleTextAt(enemy, 0)} ${SLOW_GROUND_TEXT}`)
+      expect(fullRuleText(enemy, 0)).toBe(`${ruleTextAt(enemy, 0)} ${slowGroundText(Math.floor(enemy.health / 2))}`)
     }
   })
 

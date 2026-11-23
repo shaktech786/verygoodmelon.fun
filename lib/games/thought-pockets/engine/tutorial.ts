@@ -12,7 +12,7 @@ export function tutorialHint(battle: BattleState): string | null {
   const played = battle.played.map(resolveCard)
   const playable = battle.hand.filter((c) => canPlay(battle, c.uid))
   const types = playable.map((c) => resolveCard(c).type)
-  if (battle.turn === 1 && played.length === 0) return 'Play an Evidence card: tap it, or press its number. It adds Weight to your argument.'
+  if (battle.turn === 1 && played.length === 0) return 'Play an Evidence card. It adds Weight to your argument.'
   if (preview.conclusionEmpty)
     return `Your last card has no Weight or Multiplier, so counting it ${timesWord(preview.conclusionCount)} as the Conclusion adds nothing. Undo it, or finish on a card with Weight or Multiplier.`
   if (battle.turn === 1 && !played.some((d) => d.type === 'logic') && types.includes('logic'))

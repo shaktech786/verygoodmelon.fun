@@ -12,5 +12,5 @@ export function recoveryLine(options: Recovery[]): string {
   return `On your next step, ${line}.`
 }
 
-/** What the floor's list of biases says of a fight you cannot reach: whether you passed it or it lies on another path. */
-export const STANDING_WORDS = { behind: 'Behind you.', elsewhere: 'Not on your path.' } as const
+/** What the floor's list of biases says of a fight you cannot reach: whether you fought it, passed it by, or it lies on another path. */
+export const STANDING_WORDS = { behind: 'Behind you.', skipped: 'Not taken.', elsewhere: 'Not on your path.' } as const

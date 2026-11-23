@@ -425,32 +425,46 @@ const FRAME: Record<EnemyTier, { outer: string; inner: string }> = {
  */
 export type Mood = 'idle' | 'shaken' | 'gives'
 
-/** Cracks across the emblem, one more for each quarter of its Resolve lost: pixel lines in emblem coordinates, drawn only through its ink. */
+/**
+ * Cracks across the whole portrait, one more for each quarter of its Resolve lost: pixel lines in portrait coordinates, each running
+ * in from the frame. Over the emblem's ink a crack is a paper-coloured split; over paper and frame it is a dark line.
+ */
 const CRACKS: [number, number][][] = [
   [
-    [11, 3],
-    [10, 4],
-    [10, 5],
-    [9, 6],
-    [9, 7],
-    [8, 8],
-  ],
-  [
-    [2, 9],
-    [3, 9],
-    [4, 8],
-    [5, 8],
-    [6, 9],
-    [7, 9],
-  ],
-  [
-    [8, 13],
-    [8, 12],
-    [7, 11],
-    [8, 10],
-    [9, 9],
-    [10, 10],
+    [16, 0],
+    [16, 1],
+    [15, 2],
+    [15, 3],
+    [14, 4],
+    [14, 5],
+    [13, 6],
+    [13, 7],
+    [12, 8],
+    [12, 9],
     [11, 10],
+  ],
+  [
+    [0, 12],
+    [1, 12],
+    [2, 11],
+    [3, 11],
+    [4, 12],
+    [5, 12],
+    [6, 11],
+    [7, 11],
+    [8, 12],
+    [9, 12],
+  ],
+  [
+    [9, 21],
+    [9, 20],
+    [10, 19],
+    [10, 18],
+    [9, 17],
+    [10, 16],
+    [11, 15],
+    [12, 14],
+    [13, 14],
   ],
 ]
 
@@ -485,6 +499,11 @@ function Pixels({ rows, x, y, opacity }: { rows: string[]; x: number; y: number;
   )
 }
 
+/** Whether the emblem has ink at this pixel, in its own coordinates. */
+function onInk(rows: string[], x: number, y: number): boolean {
+  return (rows[y]?.[x] ?? '.') !== '.'
+}
+
 interface PortraitProps {
   enemyId: string
   tier: EnemyTier
@@ -501,6 +520,7 @@ export function BiasPortrait({ enemyId, tier, className, mood = 'idle', cracks =
   const frame = FRAME[tier]
   const rows = EMBLEMS[enemyId] ?? []
   const sunk = mood === 'gives' ? SINK : 0
+  const drawn = rows.slice(0, rows.length - sunk)
   return (
     <svg viewBox="0 0 22 22" className={className ?? 'h-16 w-16'} shapeRendering="crispEdges" aria-hidden="true" focusable="false" data-mood={mood}>
       <rect x="0" y="0" width="22" height="22" fill="var(--tp-paper)" />
@@ -523,7 +543,7 @@ export function BiasPortrait({ enemyId, tier, className, mood = 'idle', cracks =
       )}
       {mood === 'gives' && (
         <>
-          <Pixels rows={rows.slice(0, rows.length - SINK)} x={3} y={3 + SINK} opacity={0.8} />
+          <Pixels rows={drawn} x={3} y={3 + SINK} opacity={0.8} />
           <g transform="translate(3 3)">
             {SIGH.map(([x, y]) => (
               <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="var(--tp-muted)" />
@@ -532,12 +552,11 @@ export function BiasPortrait({ enemyId, tier, className, mood = 'idle', cracks =
         </>
       )}
       {cracks > 0 && (
-        <g transform={`translate(3 ${3 + sunk})`} data-testid="cracks" data-cracks={cracks}>
+        <g data-testid="cracks" data-cracks={cracks}>
           {CRACKS.slice(0, cracks)
             .flat()
-            .filter(([x, y]) => y < rows.length - sunk && (rows[y]?.[x] ?? '.') !== '.')
             .map(([x, y]) => (
-              <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="var(--tp-paper)" />
+              <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill={onInk(drawn, x - 3, y - 3 - sunk) ? 'var(--tp-paper)' : 'var(--tp-text)'} />
             ))}
         </g>
       )}

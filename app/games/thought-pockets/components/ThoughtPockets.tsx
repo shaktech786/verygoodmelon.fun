@@ -9,11 +9,11 @@ import { KEYWORDS, Keyword, keywordText } from '@/lib/games/thought-pockets/data
 import { conclusionLine } from '@/lib/games/thought-pockets/data/conclusion'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { COMPOSURE_GUARD } from '@/lib/games/thought-pockets/engine/battle'
-import { PROBLEM_RULE, SLOW_GROUND_TEXT } from '@/lib/games/thought-pockets/data/enemies'
+import { PROBLEM_RULE, slowGroundText } from '@/lib/games/thought-pockets/data/enemies'
 import { RUN_FLOORS } from '@/lib/games/thought-pockets/engine/run'
 import { TIRING } from '@/lib/games/thought-pockets/data/pace'
 import { SoundToggle } from '@/components/ui/SoundToggle'
-import { BattleScreen } from './BattleScreen'
+import { BattleScreen, PlayerResolve, PlayerShown, PlayerShownContext } from './BattleScreen'
 import { MapScreen, FLOOR_NAMES } from './MapScreen'
 import { EventScreen, RestScreen, RewardScreen, ShopScreen, quietButton } from './NodeScreens'
 import { EndScreen, MenuScreen, paceName, runInProgress } from './MenuScreens'
@@ -114,7 +114,7 @@ function HowToPlay({ school }: { school: School | null }) {
         <li>
           {PROBLEM_RULE} At half Resolve the argument stops at the line and the problem changes.
         </li>
-        <li>At Gentle pace every bias but the first fight&apos;s teaching one plays by one more rule: {SLOW_GROUND_TEXT}</li>
+        <li>At Gentle pace every bias but the first fight&apos;s teaching one plays by one more rule: {slowGroundText()}</li>
         <li>
           There is no turn limit, and a long argument never counts against you. From turn {TIRING.gentle} in Gentle pace ({TIRING.rigorous} in Rigorous) the
           bias starts to tire: it takes on Unsettle {TIRING.step} more each turn, so every argument comes to an end.
@@ -193,8 +193,9 @@ function DeckList({ run }: { run: RunState }) {
   )
 }
 
-function StatusBar({ run, onMenu, onDeck, onHelp }: { run: RunState; onMenu: () => void; onDeck: () => void; onHelp: () => void }) {
-  const resolve = run.battle?.player.resolve ?? run.resolve
+function StatusBar({ run, shown, onMenu, onDeck, onHelp }: { run: RunState; shown: PlayerShown | null; onMenu: () => void; onDeck: () => void; onHelp: () => void }) {
+  const live = run.battle?.player.resolve ?? run.resolve
+  const fight = run.battle && shown
   const small = `${quietButton} px-2.5 py-1 text-xs sm:px-3 sm:text-sm`
   return (
     <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-[var(--tp-text)] sm:mb-3 sm:gap-x-4">
@@ -203,12 +204,7 @@ function StatusBar({ run, onMenu, onDeck, onHelp }: { run: RunState; onMenu: () 
         <span className="hidden text-[var(--tp-muted)] sm:inline"> · {FLOOR_NAMES[run.floor]}</span>
       </p>
       <p className="flex items-center gap-2" data-testid="player-resolve">
-        <span>
-          Resolve <strong>{resolve}</strong>/{run.maxResolve}
-        </span>
-        <span className="hidden h-2 w-24 overflow-hidden rounded-sm bg-[var(--tp-line)] sm:block" aria-hidden="true">
-          <span className="block h-full bg-[var(--tp-player-bar)]" style={{ width: `${(100 * resolve) / run.maxResolve}%` }} />
-        </span>
+        <PlayerResolve resolve={fight ? shown.resolve : live} max={run.maxResolve} hit={fight ? shown.hit : 0} roundKey={fight ? shown.roundKey : null} bar />
         {run.battle && run.battle.player.guard > 0 && <span className="text-[var(--tp-guard)]">Guard {run.battle.player.guard}</span>}
       </p>
       <p>
@@ -256,6 +252,7 @@ export function ThoughtPockets() {
   const run = useRunStore((s) => s.run)
   const [menuOpen, setMenuOpen] = useState(true)
   const [dialog, setDialog] = useState<'help' | 'deck' | null>(null)
+  const [shown, setShown] = useState<PlayerShown | null>(null)
   const screenRef = useRef<HTMLDivElement>(null)
   const showMenu = !run || menuOpen
   const viewKey = showMenu ? 'menu' : `${run.screen}-${run.pick ?? ''}-${run.floor}`
@@ -280,7 +277,7 @@ export function ThoughtPockets() {
         ) : (
           <>
             {runInProgress(run) && !showMenu && run.screen !== 'defeat' && (
-              <StatusBar run={run} onMenu={() => setMenuOpen(true)} onDeck={() => setDialog('deck')} onHelp={() => setDialog('help')} />
+              <StatusBar run={run} shown={shown} onMenu={() => setMenuOpen(true)} onDeck={() => setDialog('deck')} onHelp={() => setDialog('help')} />
             )}
             <div ref={screenRef} tabIndex={-1} className="tp-screen outline-none" data-testid={`screen-${showMenu ? 'menu' : run.screen}`}>
               {showMenu ? (
@@ -288,7 +285,9 @@ export function ThoughtPockets() {
               ) : run.screen === 'victory' || run.screen === 'defeat' ? (
                 <EndScreen run={run} onMenu={() => setMenuOpen(true)} />
               ) : (
-                <Screen run={run} />
+                <PlayerShownContext.Provider value={setShown}>
+                  <Screen run={run} />
+                </PlayerShownContext.Provider>
               )}
             </div>
           </>

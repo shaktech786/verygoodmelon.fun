@@ -255,6 +255,10 @@ export interface ArgumentPreview {
   unsettle: number
   /** What Unsettle takes before it acts, after this argument lands. */
   unsettleTick: number
+  /** Unsettle a stop line kept from landing this round; when there is any, its Unsettle does not halve. */
+  unsettleHeld: number
+  /** Unsettle a Gentle bias takes on for next turn from the damage its halfway mark stopped. */
+  unsettleGained: number
   enemyFalls: 'argument' | 'unsettle' | null
   /** The Conclusion has no Weight or Multiplier, so counting it again adds nothing. */
   conclusionEmpty: boolean
@@ -300,6 +304,10 @@ export interface RoundReport {
   playerLoss: number
   enemyGuardGained: number
   unsettleLoss: number
+  /** Unsettle a stop line kept from landing; it stayed whole for the next turn. */
+  unsettleHeld: number
+  /** Unsettle a Gentle bias took on from the damage its halfway mark stopped. */
+  unsettleGained: number
   doubtsAdded: number
   growth: number
   phaseChanged: boolean
@@ -424,7 +432,7 @@ export interface RunStats {
 }
 
 export interface RunState {
-  version: 9
+  version: 10
   seed: number
   rng: number
   school: School

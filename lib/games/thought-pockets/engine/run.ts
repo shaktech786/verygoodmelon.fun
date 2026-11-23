@@ -58,7 +58,7 @@ import {
 import { generateFloor } from './map'
 import { pick, roll, rollInt, seedRng, shuffle } from './rng'
 
-export const RUN_VERSION = 9
+export const RUN_VERSION = 10
 export const START_RESOLVE = 60
 export const RUN_FLOORS: Record<RunLength, number> = { short: 1, long: 3 }
 /** Below this share of your Resolve, the map warns before any fight. */
@@ -223,11 +223,12 @@ export function nodesAhead(run: RunState): MapNode[] {
   return run.map.filter((n) => found.has(n.id))
 }
 
-/** Where a place stands from where you are: still ahead, already behind you, or on another path. */
-export function standing(run: RunState, nodeId: string): 'ahead' | 'behind' | 'elsewhere' {
+/** Where a place stands from where you are: still ahead, behind you (you went there), not taken (a step you passed by), or on another path. */
+export function standing(run: RunState, nodeId: string): 'ahead' | 'behind' | 'skipped' | 'elsewhere' {
   if (nodesAhead(run).some((n) => n.id === nodeId)) return 'ahead'
   const row = run.map.find((n) => n.id === run.position)?.row ?? -1
-  return (run.map.find((n) => n.id === nodeId)?.row ?? Infinity) <= row ? 'behind' : 'elsewhere'
+  if ((run.map.find((n) => n.id === nodeId)?.row ?? Infinity) > row) return 'elsewhere'
+  return run.visited.includes(nodeId) ? 'behind' : 'skipped'
 }
 
 /** Whether a relic can still do anything on what is left of this walk: a later floor, or the places still ahead on this one. */
@@ -827,8 +828,16 @@ function fromVersion7(saved: Saved): Saved {
   return { ...saved, battle, defeatRound: null, bestArgument: null, reward: isRecord(saved.reward) ? { ...saved.reward, finalRound: null } : null }
 }
 
-function withEased(report: unknown): unknown {
-  return isRecord(report) ? { ...report, eased: 0 } : report
+/** Applies `change` to every round summary a saved run keeps: the battle's last round, the lost round, the best argument and the final round. */
+function eachRound(saved: Saved, change: (report: Saved) => Saved): Saved {
+  const fix = (report: unknown) => (isRecord(report) ? change(report) : (report ?? null))
+  return {
+    ...saved,
+    battle: isRecord(saved.battle) ? eachCore(saved.battle, (core) => ({ ...core, lastRound: fix(core.lastRound) })) : null,
+    defeatRound: fix(saved.defeatRound),
+    bestArgument: isRecord(saved.bestArgument) ? { ...saved.bestArgument, round: fix(saved.bestArgument.round) } : null,
+    reward: isRecord(saved.reward) ? { ...saved.reward, finalRound: fix(saved.reward.finalRound) } : null,
+  }
 }
 
 /** Version 9 lists the problems each boss offers on the map, and round summaries say how much a bias calmed. */
@@ -837,16 +846,12 @@ function fromVersion8(saved: Saved): Saved {
   const map = Array.isArray(saved.map)
     ? saved.map.map((node: Saved) => (node.type === 'boss' ? { ...node, options: enemiesFor(floor, 'boss').map((e) => e.id) } : node))
     : saved.map
-  const battle = isRecord(saved.battle) ? eachCore(saved.battle, (core) => ({ ...core, lastRound: withEased(core.lastRound) })) : null
-  const best = isRecord(saved.bestArgument) ? { ...saved.bestArgument, round: withEased(saved.bestArgument.round) } : null
-  return {
-    ...saved,
-    map,
-    battle,
-    defeatRound: withEased(saved.defeatRound) ?? null,
-    bestArgument: best,
-    reward: isRecord(saved.reward) ? { ...saved.reward, finalRound: withEased(saved.reward.finalRound) ?? null } : null,
-  }
+  return eachRound({ ...saved, map }, (report) => ({ ...report, eased: 0 }))
+}
+
+/** Version 10 keeps the Unsettle a stop line holds back, and a Gentle bias's halfway mark turns what it stops into Unsettle; round summaries say how much of each. */
+function fromVersion9(saved: Saved): Saved {
+  return eachRound(saved, (report) => ({ ...report, unsettleHeld: 0, unsettleGained: 0 }))
 }
 
 /** Loads a saved run from any earlier version this game shipped, or returns null if it cannot be read. */
@@ -859,5 +864,6 @@ export function migrateRun(saved: unknown, version: number): RunState | null {
   const v6 = version <= 5 ? fromVersion5(v5) : v5
   const v7 = version <= 6 ? fromVersion6(v6) : v6
   const v8 = version <= 7 ? fromVersion7(v7) : v7
-  return { ...fromVersion8(v8), version: RUN_VERSION } as unknown as RunState
+  const v9 = version <= 8 ? fromVersion8(v8) : v8
+  return { ...fromVersion9(v9), version: RUN_VERSION } as unknown as RunState
 }

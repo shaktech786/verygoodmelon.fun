@@ -27,8 +27,12 @@ const CONFIGS: Record<string, BotConfig> = {
 const BOOKENDS_EXPERT: BotConfig = { ...CONFIGS.planner, startRelics: ['bookends'] }
 /** A newcomer past the first fight's hints, on a Short walk that opens with a drawn fight. */
 const DRAWN_NEWCOMER: BotConfig = { ...CONFIGS.newcomer, teach: false }
-/** Gentle should still resist an expert: a planning deck takes at least this many turns over the Long walk. */
-const EXPERT_LONG_WALK_TURNS = 27
+/**
+ * Gentle should still resist an expert: a planning deck takes at least this many turns over the Long walk. It was 27 while a
+ * Gentle bias's halfway mark threw away what it stopped; now that the stopped damage comes back as Unsettle a turn later,
+ * an Empiricist planner's median is 25.5 (26 with Bookends), and every bias still takes it at least two rounds.
+ */
+const EXPERT_LONG_WALK_TURNS = 25
 /** Labels are checked at every Rigorous level with this many runs per school and policy. */
 const LEVEL_RUNS = Math.max(20, Math.round(RUNS / 2))
 

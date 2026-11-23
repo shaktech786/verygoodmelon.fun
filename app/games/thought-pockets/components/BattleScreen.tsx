@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArgumentPreview, BattleState, EnemyMove, RoundReport, RunState, StepView } from '@/types/thought-pockets'
 import {
   KNOWN_UNSETTLE,
@@ -31,7 +31,7 @@ import { wakeTones } from '@/components/games/gentleCues'
 import { CardFace, TYPE_COLORS, keywordsOnCard } from './CardFace'
 import { BiasPortrait, Mood, crackCount, impactLines } from './Sprites'
 import { Term } from './Term'
-import { HIT_PAUSE_MS, RoundShow, RoundShowState, format, showProgress, useRoundShow } from './RoundShow'
+import { AFTER_MS, BIG_HIT, Counting, HIT_PAUSE_MS, RoundShow, RoundShowState, format, showProgress, useRoundShow } from './RoundShow'
 import { SHORT_WALK_BOSS_TEXT } from './MapScreen'
 
 const TIER_LABELS = { normal: 'Bias', elite: 'Stubborn bias', boss: 'Philosophical problem' }
@@ -50,6 +50,8 @@ const BURST = [
   [-22, -2],
 ]
 const DOCK_VAR = '--tp-dock'
+/** Below Tailwind's sm breakpoint, where the hand and End turn are pinned to the bottom of the screen. */
+const PHONE_QUERY = '(max-width: 639.98px)'
 /** How many turns ahead the screen says a long fight is about to tire the bias. */
 const TIRING_NOTICE = 2
 
@@ -70,6 +72,15 @@ export const SHOW_CSS = `
 @keyframes tp-lines { 0%, 18% { opacity: 0; } 20%, 60% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes tp-burst { from { opacity: 1; transform: translate(0, 0); } to { opacity: 0; transform: translate(var(--tp-dx), var(--tp-dy)); } }
 @keyframes tp-sink { 0% { transform: none; } 30%, 100% { transform: translateY(3px); } }
+@keyframes tp-hurt {
+  0% { transform: none; background-color: color-mix(in srgb, var(--warm) 35%, transparent); }
+  12% { transform: translateX(-2px); }
+  26% { transform: translateX(2px); }
+  40% { transform: translateX(-1px); }
+  54% { transform: none; }
+  100% { transform: none; background-color: transparent; }
+}
+@keyframes tp-nudge { 0% { transform: none; } 20% { transform: translateY(2px); } 100% { transform: none; } }
 @media (prefers-reduced-motion: no-preference) {
   html:not([data-reduce-motion="true"]) .tp-appear { animation: tp-appear 220ms ease-out both; }
   html:not([data-reduce-motion="true"]) .tp-pop { display: inline-block; animation: tp-pop 360ms ease-out; }
@@ -80,6 +91,8 @@ export const SHOW_CSS = `
   html:not([data-reduce-motion="true"]) .tp-shake-lines { animation: tp-lines 480ms steps(4, end) both; }
   html:not([data-reduce-motion="true"]) .tp-burst { animation: tp-burst 900ms ease-out both; }
   html:not([data-reduce-motion="true"]) .tp-sink { animation: tp-sink 1000ms ease-out both; }
+  html:not([data-reduce-motion="true"]) .tp-hurt { animation: tp-hurt ${AFTER_MS}ms ease-out; }
+  html:not([data-reduce-motion="true"]) .tp-nudge { animation: tp-nudge 360ms ease-out; animation-delay: ${HIT_PAUSE_MS}ms; }
 }
 html[data-reduce-motion="true"] .tp-shake-lines, html[data-reduce-motion="true"] .tp-burst { display: none; }
 @media (prefers-reduced-motion: reduce) { .tp-shake-lines, .tp-burst { display: none; } }
@@ -189,6 +202,7 @@ function aftermathLines(report: RoundReport, shift: string | null): string[] {
   if (report.gamble === 'miss') lines.push('Its gamble did not come off. The odds next round are exactly the same.')
   const why = report.ruleGuardNote ? ` (${report.ruleGuardNote.charAt(0).toLowerCase()}${report.ruleGuardNote.slice(1)})` : ''
   if (report.enemyGuardGained > 0) lines.push(`It raised ${report.enemyGuardGained} Guard${why}.`)
+  if (report.unsettleHeld > 0) lines.push(`The line held back ${report.unsettleHeld} of its Unsettle, so its Unsettle did not halve.`)
   if (report.shaken > 0 && !report.phaseChanged) lines.push(`What it stopped shook it: Shaken +${report.shaken}. It all lands at once when it changes.`)
   if (report.eased > 0) lines.push(`You lost nothing to it this round, so it calmed a little: its attacks −${report.eased}.`)
   if (report.doubtsAdded > 0) lines.push('A Doubt went into your draw pile.')
@@ -248,6 +262,50 @@ function shownHealth(battle: BattleState, show: RoundShowState): number {
   const argument = reached('land') ? 0 : report.damage - report.healedBack
   const release = reached('shift') ? 0 : report.released
   return Math.min(battle.enemy.maxHealth, battle.enemy.health + unsettle + argument + release)
+}
+
+/** While the round plays out, your Resolve stays as it was until the replay reaches what cost it: Backfire as your argument lands, the bias's attack as it acts. */
+function shownResolve(battle: BattleState, show: RoundShowState): number {
+  const report = battle.lastRound
+  if (!report || show.done) return battle.player.resolve
+  const { reached } = showProgress(show)
+  const backfire = reached('land') ? 0 : report.selfLoss
+  const attack = reached('act') ? 0 : report.playerLoss - report.restored
+  return battle.player.resolve + backfire + attack
+}
+
+/** Your Resolve as the fight on screen shows it, and how much the bias's hit is taking from it right now. */
+export interface PlayerShown {
+  resolve: number
+  hit: number
+  roundKey: string | null
+}
+
+/** How a fight tells the status bar, which sits outside it, what your Resolve shows during a replay. */
+export const PlayerShownContext = createContext<(shown: PlayerShown | null) => void>(() => {})
+
+/**
+ * Your Resolve, counting down as the bias's hit lands, with one small shake and a warm tint that fades once.
+ * Nothing moves with reduced motion: the replay is a still frame, so the new number simply shows.
+ */
+export function PlayerResolve({ resolve, max, hit, roundKey, bar = false }: { resolve: number; max: number; hit: number; roundKey: string | null; bar?: boolean }) {
+  const hurt = hit > 0
+  return (
+    <span key={hurt ? `hurt-${roundKey}` : 'still'} className={`inline-flex items-center gap-2 rounded-sm ${hurt ? 'tp-hurt' : ''}`} data-hit={hurt ? hit : undefined}>
+      <span>
+        Resolve{' '}
+        <strong>
+          <Counting from={resolve + hit} to={resolve} ms={AFTER_MS / 2} running={hurt} />
+        </strong>
+        /{max}
+      </span>
+      {bar && (
+        <span className="hidden h-2 w-24 overflow-hidden rounded-sm bg-[var(--tp-line)] sm:block" aria-hidden="true">
+          <span className="block h-full bg-[var(--tp-player-bar)] motion-safe:transition-[width] motion-safe:duration-300" style={{ width: `${(100 * resolve) / max}%` }} />
+        </span>
+      )}
+    </span>
+  )
 }
 
 /**
@@ -361,8 +419,9 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
   const gamble = def.gamble
   const threshold = phaseThreshold(battle)
   const first = beforeItActs(view.preview)
+  const big = hit >= BIG_HIT
   return (
-    <section aria-label="Opponent" className="grid gap-2 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-2.5 sm:grid-cols-[1fr_15rem] sm:gap-3 sm:p-4">
+    <section aria-label="Opponent" className={`${big ? 'tp-nudge' : ''} grid gap-2 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-2.5 sm:grid-cols-[1fr_15rem] sm:gap-3 sm:p-4`} data-big-hit={big || undefined}>
       <div className="flex gap-3">
         <div className="relative shrink-0" data-testid="portrait">
           <div className={hit > 0 ? 'tp-recoil' : bursting ? 'tp-sink' : ''} style={{ '--tp-recoil': `${RECOIL_PX[impact]}px` } as React.CSSProperties}>
@@ -377,7 +436,7 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
           </div>
           {hit > 0 && (
             <span
-              className="tp-rise tp-after-pause pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded-sm bg-[var(--tp-ink)] px-1 font-serif text-lg font-bold text-[var(--tp-accent)]"
+              className={`tp-rise tp-after-pause pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded-sm bg-[var(--tp-ink)] px-1 font-serif font-bold text-[var(--tp-accent)] ${big ? 'text-3xl' : 'text-lg'}`}
               aria-hidden="true"
             >
               −{hit}
@@ -586,6 +645,11 @@ function Equation({ preview }: { preview: ArgumentPreview }) {
       {preview.selfLoss > 0 && <Chip tone="warn">You lose {preview.selfLoss}</Chip>}
       {preview.growth > 0 && <Chip tone="warn">Its attacks +{preview.growth}</Chip>}
       {preview.unsettleTick > 0 && <Chip tone="good">Then Unsettle takes {preview.unsettleTick}</Chip>}
+      {preview.unsettleHeld > 0 && (
+        <Chip tone="good">
+          <span data-testid="unsettle-held">The line holds back Unsettle {preview.unsettleHeld}: no halving this round</span>
+        </Chip>
+      )}
       {preview.shaken > 0 && <Chip tone="good">Shaken +{preview.shaken}</Chip>}
       {preview.released > 0 && (
         <Chip tone="good">
@@ -675,6 +739,23 @@ function useRefocus(hand: BattleState['hand'], replaying: boolean) {
   return { handRef, endRef, refocus }
 }
 
+/**
+ * On a phone the pinned dock covers the lower half of the screen, where the replay plays out. While it plays the dock shrinks
+ * to one line and the page brings the replay up above it. With reduced motion the round is one still frame at once, so nothing scrolls.
+ */
+function useReplayInView(roundKey: string | null, replaying: boolean, dockRef: React.RefObject<HTMLDivElement | null>) {
+  const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const replay = ref.current
+    const dock = dockRef.current
+    if (!replaying || !replay || !dock || !window.matchMedia(PHONE_QUERY).matches) return
+    // The dock has already shrunk in this render; scroll only as far as it takes to bring the replay's end above it.
+    const hidden = replay.getBoundingClientRect().bottom - dock.getBoundingClientRect().top
+    if (hidden > 0) window.scrollBy({ top: hidden, behavior: 'smooth' })
+  }, [roundKey, replaying, dockRef])
+  return ref
+}
+
 export function BattleScreen({ run }: { run: RunState }) {
   const act = useRunStore((s) => s.act)
   const tutorialDone = useInsightStore((s) => s.tutorialDone)
@@ -691,6 +772,13 @@ export function BattleScreen({ run }: { run: RunState }) {
   const announcement = useAnnouncement(battle, preview)
   const skipShow = show.skip
   const dockRef = useDockClearance()
+  const replaying = !show.done
+  const playerResolve = shownResolve(battle, show)
+  const playerHit = showProgress(show).now === 'act' && report ? report.playerLoss : 0
+  const publish = useContext(PlayerShownContext)
+  useLayoutEffect(() => publish({ resolve: playerResolve, hit: playerHit, roundKey }), [publish, playerResolve, playerHit, roundKey])
+  useLayoutEffect(() => () => publish(null), [publish])
+  const argumentRef = useReplayInView(roundKey, replaying, dockRef)
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -735,7 +823,9 @@ export function BattleScreen({ run }: { run: RunState }) {
     <div className="flex flex-col gap-2 sm:gap-3">
       <style>{SHOW_CSS}</style>
       <ThreatPanel battle={battle} view={view} known={run.known.includes(battle.enemy.id)} show={show} lastOfWalk={holdsNothingBack(run, battle.enemy.id)} />
-      <ArgumentPanel battle={battle} preview={preview} show={show} reduced={reduced} />
+      <div ref={argumentRef}>
+        <ArgumentPanel battle={battle} preview={preview} show={show} reduced={reduced} />
+      </div>
 
       <div
         ref={dockRef}
@@ -743,7 +833,7 @@ export function BattleScreen({ run }: { run: RunState }) {
         data-testid="hand-dock"
       >
         {hint && (
-          <p role="status" className="rounded-md border border-[var(--tp-accent)] bg-[var(--tp-ink-2)] px-3 py-1.5 text-sm text-[var(--tp-text)]" data-testid="hint">
+          <p role="status" className={`${replaying ? 'max-sm:hidden' : ''} rounded-md border border-[var(--tp-accent)] bg-[var(--tp-ink-2)] px-3 py-1.5 text-sm text-[var(--tp-text)]`} data-testid="hint">
             {hint}
           </p>
         )}
@@ -791,10 +881,18 @@ export function BattleScreen({ run }: { run: RunState }) {
         </section>
 
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 bg-[var(--tp-ink)] pb-2 pr-16 sm:sticky sm:bottom-0 sm:z-10 sm:rounded-lg sm:border sm:border-[var(--tp-line)] sm:py-3 sm:pl-4 sm:pr-4">
+          {replaying && (
+            <p className="w-full text-sm text-[var(--tp-text)] sm:hidden" data-testid="dock-resolve">
+              <PlayerResolve resolve={playerResolve} max={battle.player.maxResolve} hit={playerHit} roundKey={roundKey} />
+            </p>
+          )}
           <p className="w-full text-xs leading-snug text-[var(--tp-text)] sm:hidden" data-testid="intent-compact">
             {compactIntent(view.intent, view.preview)}
           </p>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-[var(--tp-text)]" data-testid="focus">
+          <div className={`${replaying ? 'max-sm:hidden' : ''} flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-[var(--tp-text)]`} data-testid="focus">
+            <span className="mr-2 hidden sm:inline" data-testid="bar-resolve">
+              <PlayerResolve resolve={playerResolve} max={battle.player.maxResolve} hit={playerHit} roundKey={roundKey} />
+            </span>
             <Term word="Focus" />
             <span className="flex gap-1" aria-hidden="true">
               {Array.from({ length: Math.max(battle.focus, 3) }, (_, i) => (
@@ -810,7 +908,7 @@ export function BattleScreen({ run }: { run: RunState }) {
               {battle.exhausted.length > 0 && ` · Gone this fight ${battle.exhausted.length}`}
             </span>
           </div>
-          <div className="flex gap-2">
+          <div className={`${replaying ? 'max-sm:hidden' : ''} flex gap-2`}>
             <button
               type="button"
               onClick={() => act((r) => battleAction(r, undoPlay))}

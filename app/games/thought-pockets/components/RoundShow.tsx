@@ -16,11 +16,13 @@ const ADJUST_MS = 480
 const LAND_MS = 480
 /** The hit-pause: on a landing hit the bias recoils and holds still this long before the number appears. */
 export const HIT_PAUSE_MS = 100
-const BIG_HIT = 20
+/** From this much damage a hit lands harder: a longer pause, a bigger number, a bolder recoil. */
+export const BIG_HIT = 20
 const HUGE_HIT = 40
 const BIG_EXTRA_MS = 200
 const HUGE_EXTRA_MS = 350
-const AFTER_MS = 500
+/** How long the bias's own turn holds on screen: long enough for your Resolve to count down as it hits. */
+export const AFTER_MS = 500
 const SHIFT_MS = 1000
 const LOUDNESS = 0.05
 /** The pitch of the Multiplier's tone: a gentle rise, a little under an octave from ×1 to ×4. */
@@ -150,7 +152,7 @@ export function showProgress(show: RoundShowState) {
 const easeOut = (t: number) => 1 - (1 - t) ** 3
 
 /** A number that runs from `from` to `to` over `ms` while `running`; otherwise it simply shows `to`. */
-function Counting({ from, to, ms, running, steps }: { from: number; to: number; ms: number; running: boolean; steps?: number[] }) {
+export function Counting({ from, to, ms, running, steps }: { from: number; to: number; ms: number; running: boolean; steps?: number[] }) {
   const [t, setT] = useState(running ? 0 : 1)
   useEffect(() => {
     if (!running) return

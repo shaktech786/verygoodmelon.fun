@@ -212,6 +212,8 @@ describe('a philosophical problem cannot be argued past half Resolve in one roun
     const start = battleWith({ enemyId: 'problem_of_induction', hand: [] })
     const unsettled = { ...start, focus: 0, enemy: { ...start.enemy, health: half('problem_of_induction') + 3, unsettle: 12 } }
     expect(previewArgument(unsettled).unsettleTick).toBe(3)
+    expect(previewArgument(unsettled).unsettleHeld).toBe(9)
+    expect(endTurn(unsettled).enemy.unsettle, 'what the line held back stays whole').toBe(12)
     const landed = playCard({ ...battleWith({ enemyId: 'meaning_of_life', hand: ['smoking_gun'], school: 'skeptic' }), focus: 3 }, 100)
     const atEdge = { ...landed, enemy: { ...landed.enemy, health: half('meaning_of_life') + 5, unsettle: 40 } }
     expect(previewArgument(atEdge).unsettleTick).toBe(0)

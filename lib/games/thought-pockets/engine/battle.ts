@@ -30,7 +30,6 @@ import {
   MOTIVATED_CARDS,
   RUMINATION_STEP,
   SHORT_WALK_GUESTS,
-  SLOW_GROUND_TEXT,
   STOP_LINES,
   SORITES_CAP,
   STATUS_QUO_MAX_GUARD,
@@ -41,6 +40,7 @@ import {
   overflowWords,
   releaseLeftover,
   ruleTextAt,
+  slowGroundText,
 } from '../data/enemies'
 import { RIGOR, RIGOROUS_ATTACK, RIGOROUS_HEALTH, SHORT_WALK_BOSS, TIRING } from '../data/pace'
 import { roll, rollInt, shuffle } from './rng'
@@ -119,7 +119,7 @@ export function enemyRuleText(core: BattleCore): string {
   const def = getEnemyDef(core.enemy.id)
   const main = inSecondPhase(core) && def.phase2 ? def.phase2.ruleText : ruleTextAt(def, core.rigor)
   const rules = core.enemy.secondRule && def.secondRule ? `${main} ${def.secondRule.ruleText}` : main
-  return givesGroundSlowly(def, core.rigor) ? `${rules} ${SLOW_GROUND_TEXT}` : rules
+  return givesGroundSlowly(def, core.rigor) ? `${rules} ${slowGroundText(Math.floor(core.enemy.maxHealth / 2))}` : rules
 }
 
 /** Where a philosophical problem changes; until it has, no round can take it lower. */
@@ -545,11 +545,13 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   const line = stopLine(core)
   const room = line !== null ? core.enemy.health - line : null
   let spill = 0
+  let unsettleGained = 0
   if (line !== null && room !== null && value > room) {
     const extra = value - room
     value = room
     if (!getEnemyDef(core.enemy.id).phase2) {
-      chain.push({ kind: 'half', text: `It gives ground slowly: it stops at ${line}, half its Resolve. Your extra ${extra} is lost`, short: 'stops at half', after: value })
+      unsettleGained = overflowUnsettle(extra)
+      chain.push({ kind: 'half', text: `Its halfway mark (${line}) stops this round. Your extra ${extra} ${overflowWords(extra, unsettleGained, 'Unsettle')}`, short: 'stops at half', after: value })
     } else {
       spill = overflowUnsettle(extra, grains)
       const shakes = `Your extra ${extra} ${overflowWords(extra, spill)}`
@@ -573,8 +575,10 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
   const healthAfterArgument = Math.max(0, core.enemy.health - damage + healedBack)
   const argumentFinishes = healthAfterArgument === 0
   const unsettleRoom = line !== null ? Math.max(0, healthAfterArgument - line) : healthAfterArgument
-  const unsettleTick = argumentFinishes ? 0 : Math.min(core.enemy.unsettle + unsettle, unsettleRoom)
+  const unsettleTotal = core.enemy.unsettle + unsettle
+  const unsettleTick = argumentFinishes ? 0 : Math.min(unsettleTotal, unsettleRoom)
   const enemyFalls = argumentFinishes ? 'argument' : healthAfterArgument - unsettleTick <= 0 ? 'unsettle' : null
+  const unsettleHeld = enemyFalls === null ? unsettleTotal - unsettleTick : 0
   const threshold = phaseThreshold(core)
   const changes = enemyFalls === null && threshold !== null && healthAfterArgument - unsettleTick <= threshold
   const released = changes ? core.enemy.shaken + shaken : 0
@@ -624,6 +628,8 @@ export function previewArgument(core: BattleCore): ArgumentPreview {
     focusCarried,
     unsettle,
     unsettleTick,
+    unsettleHeld,
+    unsettleGained,
     enemyFalls,
     conclusionEmpty,
     conclusionCount,
@@ -657,7 +663,7 @@ function addDoubtsToDrawPile(core: BattleCore, count: number): BattleCore {
 }
 
 /**
- * A round, in order: your argument lands, Unsettle takes its toll and halves, then the bias acts.
+ * A round, in order: your argument lands, Unsettle takes its toll and halves (unless a stop line held some of it back), then the bias acts.
  * A bias that falls before it acts never acts, and a win always leaves you at least 1 Resolve.
  */
 export function endTurn(battle: BattleState): BattleState {
@@ -693,6 +699,8 @@ export function endTurn(battle: BattleState): BattleState {
     playerLoss: 0,
     enemyGuardGained: 0,
     unsettleLoss: preview.unsettleTick,
+    unsettleHeld: preview.unsettleHeld,
+    unsettleGained: preview.unsettleGained,
     doubtsAdded: 0,
     growth: preview.growth,
     phaseChanged: false,
@@ -711,7 +719,9 @@ export function endTurn(battle: BattleState): BattleState {
     guard: core.enemy.guard - preview.blocked,
     health: Math.max(0, core.enemy.health - preview.damage + preview.healedBack) - preview.unsettleTick,
     strength: core.enemy.strength + preview.growth,
-    unsettle: preview.enemyFalls === 'argument' || core.unsettleLasts || has(core, 'still_water') || hasRule(core, 'ruminates') ? unsettle : Math.floor(unsettle / 2),
+    unsettle:
+      (preview.enemyFalls === 'argument' || preview.unsettleHeld > 0 || core.unsettleLasts || has(core, 'still_water') || hasRule(core, 'ruminates') ? unsettle : Math.floor(unsettle / 2)) +
+      preview.unsettleGained,
     shaken: core.enemy.shaken + preview.shaken,
     seen: [...new Set([...core.enemy.seen, ...playedDefs.filter((d) => d.type === 'evidence').map((d) => d.id)])],
   }

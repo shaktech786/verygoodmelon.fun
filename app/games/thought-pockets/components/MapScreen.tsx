@@ -107,6 +107,12 @@ export function MapScreen({ run }: { run: RunState }) {
             </p>
           </div>
         )}
+        {!heals && open.some((n) => n.type === 'elite') && (
+          <p className="mx-auto mb-2 max-w-[520px] rounded-md border border-[var(--tp-line)] bg-[var(--tp-ink)] px-3 py-2 text-sm text-[var(--tp-text)]" data-testid="hard-fight-note">
+            <strong>A hard fight is one of your next steps.</strong> At this level rests do not restore Resolve, so what it takes stays taken until tea, an
+            encounter or the next floor.
+          </p>
+        )}
         <div className="relative mx-auto w-full max-w-[520px]" style={{ height }}>
           <svg viewBox={`0 0 ${WIDTH} ${height}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden="true">
             {run.map.flatMap((node) =>
@@ -137,7 +143,7 @@ export function MapScreen({ run }: { run: RunState }) {
               const here = node.id === run.position
               const past = run.visited.includes(node.id) && !here
               const where = standing(run, node.id)
-              const state = available ? 'you can go here' : here ? 'you are here' : past ? 'visited' : where === 'ahead' ? 'further along your path' : where === 'behind' ? 'behind you' : 'not on your path'
+              const state = available ? 'you can go here' : here ? 'you are here' : past ? 'visited' : where === 'ahead' ? 'further along your path' : where === 'behind' ? 'behind you' : where === 'skipped' ? 'not taken' : 'not on your path'
               const portrait = (isFight(node) || (node.type === 'boss' && (here || past))) && node.enemyId
               return (
                 <li key={node.id} className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: `${(100 * x) / WIDTH}%`, top: y }}>

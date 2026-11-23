@@ -20,7 +20,9 @@ export const OVERFLOW = { rate: 2, max: 5 } as const
 export const OVERFLOW_TEXT = `Anything past it shakes it: 1 Shaken for every ${OVERFLOW.rate} (at most ${OVERFLOW.max} a round). When it changes, all its Shaken takes that much Resolve at once, and half of it stays as Unsettle for the next turn.`
 /** No single round takes a philosophical problem past the next of these shares of its Resolve, so even a huge deck needs three rounds. Half is where it changes. */
 export const STOP_LINES = [0.75, 0.5] as const
-export const PROBLEM_LINES = 'A philosophical problem gives ground slowly: no single round takes it past three quarters of its Resolve, or past half, where it changes.'
+/** A stop line holds back Unsettle as well as the argument; what it holds back does not halve, so none of it is quietly lost. */
+export const HELD_UNSETTLE_TEXT = 'Unsettle a line holds back does not halve.'
+export const PROBLEM_LINES = `A philosophical problem gives ground slowly: no single round takes it past three quarters of its Resolve, or past half, where it changes. ${HELD_UNSETTLE_TEXT}`
 export const PROBLEM_RULE = `${PROBLEM_LINES} ${OVERFLOW_TEXT}`
 export const STATUS_QUO_MAX_GUARD = 12
 /** Below this, an argument does not move Zeno's Arrow. Gentle pace lets smaller arguments through. */
@@ -106,7 +108,7 @@ export const ENEMIES: EnemyDef[] = [
     health: 38,
     rule: 'grows',
     growth: SUNK_COST_GROWTH,
-    ruleText: `Its attacks grow by ${SUNK_COST_GROWTH} every time it acts. End it quickly.`,
+    ruleText: `Its attacks grow by ${SUNK_COST_GROWTH} every time it acts, so every round it lasts costs a little more.`,
     intro: "You've come this far. Why stop now?",
     insight: 'What you have already spent is gone either way. Decide by what lies ahead.',
     moves: [{ attack: 4 }, { guard: 5 }, { attack: 7 }],
@@ -377,7 +379,7 @@ export function ruleTextAt(def: EnemyDef, rigor: number): string {
 export function fullRuleText(def: EnemyDef, rigor: number): string {
   const main = ruleTextAt(def, rigor)
   const rules = rigor >= RIGOR.secondRule && def.secondRule ? `${main} ${def.secondRule.ruleText}` : main
-  return givesGroundSlowly(def, rigor) ? `${rules} ${SLOW_GROUND_TEXT}` : rules
+  return givesGroundSlowly(def, rigor) ? `${rules} ${slowGroundText(Math.floor(def.health / 2))}` : rules
 }
 
 /** How much Shaken the damage a rule stopped banks, when `already` has been banked this round. */
@@ -393,22 +395,27 @@ export function enemiesFor(floor: number, tier: EnemyTier): EnemyDef[] {
 }
 
 /**
- * At Gentle pace a bias gives ground slowly: no round takes it past half its Resolve, so a strong deck still
- * needs two rounds. A newcomer's arguments rarely reach that far in one round, and the teaching fight is exempt.
+ * At Gentle pace a bias gives ground slowly: its halfway mark stops any round that would carry it past, so a strong deck still
+ * needs two rounds. What the mark stops is not lost: it unsettles the bias at the rate a problem's line shakes one, and the
+ * teaching fight is exempt.
  */
 export function givesGroundSlowly(def: EnemyDef, rigor: number): boolean {
   return rigor === 0 && def.tier !== 'boss' && def.id !== TUTORIAL_ENEMY
 }
 
-export const SLOW_GROUND_TEXT = 'It gives ground slowly: no single round takes it past half its Resolve.'
+/** The Gentle rule, with the bias's halfway mark when it is known. */
+export function slowGroundText(half?: number): string {
+  const mark = half === undefined ? 'its halfway mark' : `its halfway mark (${half})`
+  return `It gives ground slowly: ${mark} stops any round. The rest unsettles it instead, 1 Unsettle for every ${OVERFLOW.rate} (at most ${OVERFLOW.max}), and Unsettle the mark holds back does not halve.`
+}
 
 /** The problems that can end a Short walk: the first floor's own, and the guests. */
 export const SHORT_WALK_PROBLEMS = [...enemiesFor(1, 'boss').map((e) => e.id), ...Object.keys(SHORT_WALK_GUESTS)]
 
-/** What is left of the damage a rule stopped: "shakes it: Shaken +3", or why it is lost. */
-export function overflowWords(extra: number, banked: number): string {
-  if (banked > 0) return `shakes it: Shaken +${banked}`
-  return extra < OVERFLOW.rate ? `is lost (1 Shaken for every ${OVERFLOW.rate})` : `is lost (at most ${OVERFLOW.max} Shaken a round)`
+/** What is left of the damage a rule stopped: "shakes it: Shaken +3" (a problem) or "unsettles it: Unsettle +3" (a Gentle bias), or why it is lost. */
+export function overflowWords(extra: number, banked: number, into: 'Shaken' | 'Unsettle' = 'Shaken'): string {
+  if (banked > 0) return into === 'Shaken' ? `shakes it: Shaken +${banked}` : `unsettles it: Unsettle +${banked} for next turn`
+  return extra < OVERFLOW.rate ? `is lost (1 ${into} for every ${OVERFLOW.rate})` : `is lost (at most ${OVERFLOW.max} ${into} a round)`
 }
 
 /** When a problem changes, its Shaken takes that much Resolve at once and adds half as much Unsettle for the turns after. */

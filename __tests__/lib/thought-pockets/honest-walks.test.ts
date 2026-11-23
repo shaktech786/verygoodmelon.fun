@@ -4,12 +4,13 @@ import {
   EMPIRICIST_EVIDENCE_TIMES,
   timesWord,
 } from '@/lib/games/thought-pockets/data/conclusion'
-import { createBattle, endTurn, playCard, previewArgument, stopLine, tiringUnsettle } from '@/lib/games/thought-pockets/engine/battle'
+import { createBattle, endTurn, enemyRuleText, playCard, previewArgument, stopLine, tiringUnsettle } from '@/lib/games/thought-pockets/engine/battle'
 import {
   availableNodes,
   bossOptions,
   chooseNode,
   holdsNothingBack,
+  RUN_VERSION,
   migrateRun,
   newRun,
   nodesAhead,
@@ -28,13 +29,13 @@ import {
   RUMINATION_STEP,
   SHORT_WALK_GUESTS,
   SHORT_WALK_PROBLEMS,
-  SLOW_GROUND_TEXT,
   TUTORIAL_ENEMY,
   enemiesFor,
   fullRuleText,
   getEnemyDef,
   givesGroundSlowly,
   releaseLeftover,
+  slowGroundText,
 } from '@/lib/games/thought-pockets/data/enemies'
 import { getRelicDef } from '@/lib/games/thought-pockets/data/relics'
 import { STANDING_WORDS } from '@/lib/games/thought-pockets/data/mapText'
@@ -110,7 +111,7 @@ describe('what the text says is what the engine does', () => {
     expect(finalRoundWords(both.lastRound as NonNullable<BattleState['lastRound']>).title).toBe(`Your argument, then Unsettle ${both.lastRound?.unsettleLoss}, finished it`)
   })
 
-  it('the map calls a fight you passed "behind you", and only a fight on another path "not on your path"', () => {
+  it('the map calls a fight you went to "behind you", one on a step you passed by "not taken", and only a fight on another path "not on your path"', () => {
     const run = newRun('empiricist', 31)
     const first = availableNodes(run)[0]
     const atStart: RunState = { ...run, position: first.id, visited: [first.id] }
@@ -118,10 +119,11 @@ describe('what the text says is what the engine does', () => {
     const next = availableNodes({ ...atStart, screen: 'map' })[0]
     const moved: RunState = { ...atStart, position: next.id, visited: [first.id, next.id] }
     const sameRow = moved.map.filter((n) => n.row === next.row && n.id !== next.id)
-    for (const node of sameRow) expect(standing(moved, node.id)).toBe('behind')
+    expect(sameRow.length).toBeGreaterThan(0)
+    for (const node of sameRow) expect(standing(moved, node.id)).toBe('skipped')
     const ahead = new Set(nodesAhead(moved).map((n) => n.id))
     for (const node of moved.map.filter((n) => n.row > next.row)) expect(standing(moved, node.id)).toBe(ahead.has(node.id) ? 'ahead' : 'elsewhere')
-    expect(STANDING_WORDS).toEqual({ behind: 'Behind you.', elsewhere: 'Not on your path.' })
+    expect(STANDING_WORDS).toEqual({ behind: 'Behind you.', skipped: 'Not taken.', elsewhere: 'Not on your path.' })
   })
 })
 
@@ -169,22 +171,58 @@ describe('Bookends counts the far end only the plain number of times', () => {
 })
 
 describe('Gentle biases give ground slowly, so a strong deck needs two rounds', () => {
-  it('no round takes a Gentle bias past half; the teaching fight, problems and Rigorous are untouched', () => {
+  it('its halfway mark stops any round, and what it stops becomes Unsettle at the one rate, exactly as the preview says', () => {
     const start = battleWith({ enemyId: 'sunk_cost', hand: ['smoking_gun', 'syllogism', 'smoking_gun'], school: 'empiricist', resolve: 999 })
     const battle = playAll({ ...start, focus: 9 }, [101, 100, 102])
     const half = Math.floor(start.enemy.maxHealth / 2)
     const preview = previewArgument(battle)
+    const extra = preview.raw - (start.enemy.maxHealth - half)
+    const gained = Math.min(OVERFLOW.max, Math.floor(extra / OVERFLOW.rate))
     expect(preview.damage).toBe(start.enemy.maxHealth - half)
-    expect(preview.chain.at(-1)?.text).toBe(`It gives ground slowly: it stops at ${half}, half its Resolve. Your extra ${preview.raw - (start.enemy.maxHealth - half)} is lost`)
+    expect(preview.chain.at(-1)?.text).toBe(`Its halfway mark (${half}) stops this round. Your extra ${extra} unsettles it: Unsettle +${gained} for next turn`)
+    expect(preview.unsettleGained).toBe(gained)
     expect(preview.shaken).toBe(0)
     const second = endTurn(battle)
     expect(second.enemy.health).toBe(half)
+    expect(second.enemy.unsettle).toBe(gained)
+    expect(second.lastRound?.unsettleGained).toBe(gained)
     expect(stopLine(second)).toBeNull()
+    expect(previewArgument(second).unsettleTick).toBe(gained)
     expect(givesGroundSlowly(getEnemyDef(TUTORIAL_ENEMY), 0)).toBe(false)
     expect(givesGroundSlowly(getEnemyDef('sunk_cost'), 1)).toBe(false)
     expect(givesGroundSlowly(getEnemyDef('zenos_arrow'), 0)).toBe(false)
-    expect(fullRuleText(getEnemyDef('sunk_cost'), 0)).toContain(SLOW_GROUND_TEXT)
-    expect(fullRuleText(getEnemyDef('sunk_cost'), 1)).not.toContain(SLOW_GROUND_TEXT)
+    expect(fullRuleText(getEnemyDef('sunk_cost'), 0)).toContain(slowGroundText(half))
+    expect(enemyRuleText(start)).toContain(`its halfway mark (${half}) stops any round`)
+    expect(fullRuleText(getEnemyDef('sunk_cost'), 1)).not.toContain(slowGroundText(half))
+  })
+
+  it("a round that only just crosses the mark loses nothing: Anchoring at 28 of 54 takes 1 to its mark, and the other 7 become Unsettle 3", () => {
+    const start = battleWith({ enemyId: 'anchoring', hand: ['observation'], school: 'rationalist', resolve: 999 })
+    const battle = playCard({ ...start, focus: 9, enemy: { ...start.enemy, health: 28, maxHealth: 54 } }, 100)
+    const preview = previewArgument(battle)
+    expect(preview.raw).toBe(8)
+    expect(preview.damage).toBe(1)
+    expect(preview.unsettleGained).toBe(3)
+    expect(preview.chain.at(-1)?.text).toBe('Its halfway mark (27) stops this round. Your extra 7 unsettles it: Unsettle +3 for next turn')
+    const after = endTurn(battle)
+    expect(after.enemy.health).toBe(27)
+    expect(after.enemy.unsettle).toBe(3)
+  })
+
+  it('Unsettle played on a round the mark stops is not lost: it does not tick, and it does not halve', () => {
+    const start = battleWith({ enemyId: 'anchoring', hand: ['observation'], school: 'skeptic', resolve: 999 })
+    const battle = playCard({ ...start, focus: 9, enemy: { ...start.enemy, health: 28, maxHealth: 54, unsettle: 6 } }, 100)
+    const preview = previewArgument(battle)
+    expect(preview.unsettleTick).toBe(0)
+    expect(preview.unsettleHeld).toBe(6)
+    const after = endTurn(battle)
+    expect(after.enemy.unsettle).toBe(6 + preview.unsettleGained)
+    expect(after.lastRound?.unsettleHeld).toBe(6)
+    expect(previewArgument(after).unsettleTick).toBe(6 + preview.unsettleGained)
+
+    const below = endTurn({ ...start, focus: 0, enemy: { ...start.enemy, health: 20, maxHealth: 54, unsettle: 6 } })
+    expect(below.lastRound?.unsettleHeld).toBe(0)
+    expect(below.enemy.unsettle).toBe(3)
   })
 })
 
@@ -283,11 +321,26 @@ describe('saved runs from version 8 load with the boss options and round summari
     const path = await import('path')
     const saved = JSON.parse(readFileSync(path.join(__dirname, 'fixtures', 'run-v8.json'), 'utf8'))
     const run = migrateRun(saved, 8) as RunState
-    expect(run.version).toBe(9)
+    expect(run.version).toBe(RUN_VERSION)
     expect(bossOptions(run)).toEqual(enemiesFor(run.floor, 'boss').map((e) => e.id))
     expect(run.battle?.lastRound?.eased).toBe(0)
     const battle = run.battle as BattleState
     const next = endTurn(battle)
     expect(next.turn).toBe(battle.turn + 1)
+  })
+})
+
+describe('saved runs from version 9 load with the held and gained Unsettle filled in', () => {
+  it('migrates the fixture and plays on', async () => {
+    const { readFileSync } = await import('fs')
+    const path = await import('path')
+    const saved = JSON.parse(readFileSync(path.join(__dirname, 'fixtures', 'run-v9.json'), 'utf8'))
+    const run = migrateRun(saved, 9) as RunState
+    expect(run.version).toBe(RUN_VERSION)
+    expect(run.battle?.lastRound?.unsettleHeld).toBe(0)
+    expect(run.battle?.lastRound?.unsettleGained).toBe(0)
+    expect(run.bestArgument?.round.unsettleHeld).toBe(0)
+    const battle = run.battle as BattleState
+    expect(endTurn(battle).turn).toBe(battle.turn + 1)
   })
 })
