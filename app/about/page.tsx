@@ -27,24 +27,20 @@ export default function AboutPage() {
           </div>
 
           <p className="text-lg">
-            VeryGoodMelon.Fun is a side project by <span className="text-foreground font-medium">Shakeel Bhamani</span>,
-            a Lead Consultant at ThoughtWorks in Atlanta, Georgia.
+            It&apos;s made by <span className="text-foreground font-medium">Shakeel Bhamani</span>, a software
+            consultant in Atlanta, in the evenings. The name is a nod to VeryGoodPizza, my gaming channel.
+            Elsewhere I&apos;ve given a TEDx talk and was runner-up at a 2017 beatbox championship.
           </p>
 
           <p>
-            By day, I build AI solutions for Fortune 500 clients. By night, I explore the intersection
-            of technology, creativity, and purpose through projects like this.
-          </p>
-
-          <p>
-            This site is an experiment in thoughtful design—games that engage without addicting,
-            interfaces that respect your attention, and experiences that might just make you think.
+            No streaks, no scores to chase, nothing against the clock. Play one for a few minutes and close
+            the tab whenever you like.
           </p>
 
           <div className="pt-6 border-t border-card-border">
             <h2 className="text-xl font-semibold text-foreground mb-4">Inspiration</h2>
             <p>
-              A huge shoutout to{' '}
+              A huge thank you to{' '}
               <a
                 href="https://neal.fun"
                 target="_blank"
@@ -65,17 +61,6 @@ export default function AboutPage() {
               . His creative, purposeful web experiments inspired me to build this site and stick to
               creating things that matter. If you haven&apos;t explored neal.fun yet, you&apos;re in for a treat.
             </p>
-          </div>
-
-          <div className="pt-6 border-t border-card-border">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Background</h2>
-            <ul className="space-y-2 list-disc list-inside">
-              <li>Lead Consultant at ThoughtWorks</li>
-              <li>Georgia Tech educated</li>
-              <li>TEDx Speaker</li>
-              <li>2017 Beatbox Vice Champion</li>
-              <li>9+ years in software development</li>
-            </ul>
           </div>
 
           <div className="pt-6 border-t border-card-border">
