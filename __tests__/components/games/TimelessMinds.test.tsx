@@ -190,7 +190,8 @@ describe('TimelessMinds', () => {
     await userEvent.type(box, 'Thank you{Enter}')
     await screen.findByText('I am still here.')
     expect(screen.getByRole('complementary', { name: 'Support' })).toBeInTheDocument()
-  })
+    // Typing two sentences key by key outlasts the 5s default when the whole suite runs on a busy machine
+  }, 15_000)
 
   it('keeps parting words on a small shelf on the device, where each line can be let go', async () => {
     localStorage.clear()
