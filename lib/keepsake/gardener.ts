@@ -24,6 +24,8 @@ const GROUND: Record<TimeOfDay, [Hex, Hex, Hex]> = {
   night: ['#35604a', '#2a5040', '#1c3a2c'],
 }
 const CANOPY: Record<Season, Hex> = { spring: '#5fbf8a', summer: '#40916c', autumn: '#d98e3b', winter: '#6f8f7a' }
+// The canopy's colours taken deeper, so the season's name reads in cream on the stamp.
+const STAMP: Record<Season, Hex> = { spring: '#2d6a4f', summer: '#1a4d2e', autumn: '#8f4a12', winter: '#3f5a4c' }
 // Tulips and poppies take the colour the garden gave them; the rest are always the same colour there too
 const PETAL: Partial<Record<PlantType, Hex>> = { daisy: '#f4f1ea', lavender: '#c792ea', sunflower: '#f2a83b' }
 
@@ -153,7 +155,7 @@ function stamp(season: Season): KeepsakeOp[] {
   const y = VIEW.top + 24
   return [
     { kind: 'rect', x: x - 6, y: y - 6, w: w + 12, h: h + 12, ink: '#fbf7f0' },
-    { kind: 'rect', x, y, w, h, ink: CANOPY[season] },
+    { kind: 'rect', x, y, w, h, ink: STAMP[season] },
     { kind: 'text', x: x + w / 2, y: y + h / 2 + 10, text: season.toUpperCase(), size: 24, ink: '#fbf7f0', font: 'sans', align: 'center', weight: 700 },
   ]
 }

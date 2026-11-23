@@ -173,6 +173,7 @@ export interface Seed {
   /** 0 when planted; it opens at 1. */
   growth: number
   age: number
+  byNear: number
   byRest: number
   byGather: number
 }

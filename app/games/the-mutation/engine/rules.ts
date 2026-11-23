@@ -155,7 +155,7 @@ const DISCOVERIES: Record<string, Discovery> = {
   score_rush: {
     clue: 'a closed flower bud',
     change: 'The field is in bloom. Lights come thick and bright.',
-    hint: 'Every light counts three times over, to the very end.',
+    hint: 'Gather freely. The field stays in bloom to the very end.',
   },
   ending: {
     clue: 'a small circle of light',

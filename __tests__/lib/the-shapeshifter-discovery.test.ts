@@ -69,13 +69,13 @@ describe('The Shapeshifter discovery', () => {
     expect(placeInWords(s, s.px + 200, s.py)).toBe('to the right of your orb')
   })
 
-  it('resting opens a clue in its own time: the rest path always moves the game on', () => {
+  it('resting opens a clue slowly, in its own time: the rest path always moves the game on', () => {
     const s = withClue('stars')
-    run(s, 5)
+    run(s, 8)
     expect(s.activeMechanics).not.toContain('stars')
     expect(s.seed?.growth ?? 0).toBeGreaterThan(0.6)
 
-    run(s, 2.5)
+    run(s, 4.5)
     expect(s.seed).toBeNull()
     expect(s.activeMechanics).toContain('stars')
     expect(s.foundBy).toEqual(['rested'])
@@ -87,6 +87,7 @@ describe('The Shapeshifter discovery', () => {
     plantSeed(s, 'arrow_keys')
     run(s, 8)
     expect(s.activeMechanics).toEqual(['arrow_keys'])
+    expect(s.foundBy).toEqual(['rested'])
     expect(s.wave).toBe(1)
   })
 
@@ -105,6 +106,17 @@ describe('The Shapeshifter discovery', () => {
       st.keys.add(Math.floor(st.totalTime) % 2 ? 'ArrowRight' : 'ArrowLeft')
     })
     expect(s.activeMechanics).toContain('chasers')
+  })
+
+  it('coming near the clue opens it within a couple of seconds, long before resting would', () => {
+    const s = withClue('pulse_gems')
+    s.px = s.seed!.x - 60
+    s.py = s.seed!.y
+    run(s, 1)
+    expect(s.activeMechanics).not.toContain('pulse_gems')
+    run(s, 0.4)
+    expect(s.activeMechanics).toContain('pulse_gems')
+    expect(s.foundBy).toEqual(['went'])
   })
 
   it('going to the clue opens it at once', () => {
@@ -191,7 +203,7 @@ describe('The Shapeshifter discovery', () => {
     expect(planted).toMatchObject({ type: 'planted', id: ENDING })
     expect(isGameComplete(s)).toBe(false)
 
-    run(s, 8)
+    run(s, 13)
     expect(isGameComplete(s)).toBe(true)
     expect(s.foundBy).toEqual(['rested'])
   })

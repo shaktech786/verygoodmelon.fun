@@ -592,7 +592,7 @@ function LetGo({ onLetGo, opened }: { onLetGo: () => boolean; opened: boolean })
   return (
     <div role="group" aria-label="Let it go" className="w-full rounded-lg bg-hover-bg px-4 py-3 space-y-3">
       <p className="text-sm text-foreground">
-        {opened ? 'Let this one go? It leaves your tally too, for good.' : 'Let it go without opening it? It will be gone for good.'}
+        {opened ? 'Let this one go? It leaves your shelf too, for good.' : 'Let it go without opening it? It will be gone for good.'}
       </p>
       {failed && <p role="alert" className="text-sm text-foreground">This browser couldn’t change anything just now. It is still kept.</p>}
       <div className="flex flex-wrap gap-2 justify-center">
@@ -724,7 +724,7 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: 
                   </label>
                 ))}
               </div>
-              <p className="mt-2 text-sm text-foreground/75">It stays out of your tally until you can say how it went.</p>
+              <p className="mt-2 text-sm text-foreground/75">It won’t join the answers on your shelf until you can say how it went.</p>
             </fieldset>
           )}
 

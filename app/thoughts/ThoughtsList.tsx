@@ -15,6 +15,8 @@ const THEME_LABELS: Record<Thought['theme'], string> = {
   perspective: 'Perspective',
 }
 
+const STAGGERED_CARDS = 5
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -50,11 +52,13 @@ export function ThoughtsList({ thoughts }: ThoughtsListProps) {
           key={thought.id}
           className={`
             group block
-            transition-all duration-700 ease-out
+            transition-all duration-500 ease-out
             ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}
           `}
           style={{
-            transitionDelay: mounted ? `${100 + index * 80}ms` : '0ms',
+            // Only the first few cards stagger, so the whole list has settled within a second and no
+            // card further down is still half-faded (and so too faint to read) when someone reaches it
+            transitionDelay: mounted ? `${Math.min(index, STAGGERED_CARDS) * 60}ms` : '0ms',
           }}
           aria-labelledby={`thought-title-${thought.id}`}
         >
@@ -84,7 +88,7 @@ export function ThoughtsList({ thoughts }: ThoughtsListProps) {
             </h2>
 
             {/* Preview */}
-            <p className="text-foreground/70 text-sm leading-relaxed">
+            <p className="text-foreground/80 text-sm leading-relaxed">
               {truncate(thought.body, 120)}
             </p>
           </Link>

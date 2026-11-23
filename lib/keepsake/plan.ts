@@ -14,6 +14,10 @@ export type Ink =
   | 'line'
   | 'rind'
   | 'rindLight'
+  /** Green for words on the paper, light enough to read on dark paper. */
+  | 'rindInk'
+  /** Words on a rind-green band, the same cream in both themes. */
+  | 'onRind'
   | 'flesh'
   | 'seed'
   | 'gold'

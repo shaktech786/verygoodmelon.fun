@@ -12,6 +12,8 @@ const MELON = {
   flesh: '#e63946',
   seed: '#2a211c',
   gold: '#c98a1b',
+  // Cream words set on the rind, such as a band of green across a card.
+  onRind: '#fbf7f0',
 } as const
 
 // Warm paper rather than the page's grey, so a saved keepsake reads as a thing, not a screenshot.
@@ -22,6 +24,8 @@ const PALETTES: Record<KeepsakeTheme, Record<NamedInk, string>> = {
     ink: '#1a1a1a',
     inkSoft: '#5b6470',
     line: '#e4dccd',
+    // Green words and marks on the paper: the rind itself on light paper, a lighter rind on dark.
+    rindInk: '#1a4d2e',
     ...MELON,
     voiceA: ARENA_VOICE_COLOURS.light.a,
     voiceB: ARENA_VOICE_COLOURS.light.b,
@@ -32,6 +36,7 @@ const PALETTES: Record<KeepsakeTheme, Record<NamedInk, string>> = {
     ink: '#f2eee8',
     inkSoft: '#b9b2a8',
     line: '#3d3934',
+    rindInk: '#8fd4ad',
     ...MELON,
     voiceA: ARENA_VOICE_COLOURS.dark.a,
     voiceB: ARENA_VOICE_COLOURS.dark.b,

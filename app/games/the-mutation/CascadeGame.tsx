@@ -92,10 +92,6 @@ function rememberPlan(order: string) {
   }
 }
 
-function rulesLabel(found: number): string {
-  return found === 0 ? 'No rules yet' : `${found} of ${RULE_COUNT} rules found`
-}
-
 /** What a screen reader hears when a clue appears: where it is and what it looks like, never the rule's name. */
 function plantedWords(id: string, place: string, firstClue: boolean): string {
   if (id === ENDING) {
@@ -371,7 +367,6 @@ export default function CascadeGame() {
 
   const showHud = phase === 'playing' || phase === 'paused'
   const blooming = activeMechanics.some(m => m.id === 'score_rush')
-  const hudLabel = rulesLabel(currentWave)
   const fade = reducedMotion ? '' : 'animate-fade'
   const caption = seedId === ENDING
     ? 'When you are ready, go to the circle, or rest.'
@@ -407,8 +402,6 @@ export default function CascadeGame() {
             className="col-start-1 row-start-1 self-start relative w-full pointer-events-none z-10"
             style={{ aspectRatio: `${fieldW} / ${fieldH}` }}
           >
-            <p className="absolute top-2 left-3 text-xs text-foreground/80">{hudLabel}</p>
-
             {/* The name comes last: the rule has already been seen and used by the time it appears */}
             {named && (
               <div className="absolute top-8 inset-x-3 flex justify-center" data-testid="rule-named">
@@ -496,7 +489,7 @@ export default function CascadeGame() {
       </div>
 
       <div className="sr-only" role="status" aria-live="polite">
-        {phase === 'playing' && (announcement || `${hudLabel}.`)}
+        {phase === 'playing' && announcement}
         {phase === 'paused' && 'Paused.'}
         {phase === 'finale' && 'Your game is finished.'}
       </div>

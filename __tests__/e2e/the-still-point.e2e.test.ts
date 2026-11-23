@@ -110,8 +110,10 @@ test.describe('The Harmonist', () => {
     await page.locator('h1').click()
     await page.keyboard.press(' ')
     await expect(phase(page)).toHaveText('Inhale')
-    await expect(sessionTime(page)).toHaveText('0:00')
-    // A calm clock is the only thing that moves while breathing: no tally of seeds, no countdown to the end
+    // No clock is shown while breathing, and nothing counts the time
+    await expect(sessionTime(page)).toHaveCount(0)
+    await expect(guide(page).getByText(/\d+:\d\d/)).toHaveCount(0)
+    // Nothing counts while breathing: no clock, no tally of seeds, no countdown to the end
     await expect(guide(page)).not.toContainText(/so far|\bof \d+:\d\d/)
 
     // Box breathing: 4s inhale, 4s hold, 4s exhale, 4s hold, then again.
@@ -120,25 +122,22 @@ test.describe('The Harmonist', () => {
       await advance(page, ms)
       await expect(phase(page)).toHaveText(label)
     }
-    await expect(sessionTime(page)).toHaveText('0:26')
     await expect(page.getByTestId('phase-progress')).toHaveAttribute('style', /width: 5\d(\.\d+)?%/)
 
     await page.keyboard.press(' ')
     await expect(phase(page)).toHaveText('Paused')
     await advance(page, 30_000)
-    await expect(sessionTime(page)).toHaveText('0:26')
 
     await page.keyboard.press(' ')
     await expect(phase(page)).toHaveText('Exhale')
     await advance(page, 2000)
     await expect(phase(page)).toHaveText('Hold')
-    await expect(sessionTime(page)).toHaveText('0:28')
 
     await page.keyboard.press('Escape')
     await expect(guide(page).getByRole('heading', { name: 'Your breaths, gathered' })).toBeVisible()
     // Headings never skip a level: the ending's h2 comes before the keepsake's h3
     expect(await guide(page).getByRole('heading').evaluateAll((hs) => hs.map((h) => h.tagName))).toEqual(['H2', 'H3'])
-    await expect(guide(page)).toContainText('You spent 28 seconds breathing.')
+    await expect(guide(page)).not.toContainText(/You spent|\d+ (seconds?|minutes?)/)
     await expect(guide(page)).toContainText('Each seed is a breath you finished. Its shape comes from the rhythm')
     await expect(guide(page)).toContainText('Pattern: Box Breathing')
     await expect(guide(page).getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/cut open along a square/)
@@ -191,7 +190,7 @@ test.describe('The Harmonist', () => {
     await advance(page, 3000)
     await page.getByRole('button', { name: 'End session' }).click()
     await expect(guide(page).getByRole('heading', { name: 'A short pause' })).toBeVisible()
-    await expect(guide(page)).toContainText('You spent 3 seconds breathing.')
+    await expect(guide(page)).not.toContainText(/You spent|\d+ (seconds?|minutes?)/)
     await expect(guide(page)).not.toContainText('Each seed')
   })
 
@@ -206,7 +205,6 @@ test.describe('The Harmonist', () => {
     await startPattern(page, /Coherent/)
     await expect(guide(page)).toContainText('Coherent Breathing')
     await expect(phase(page)).toHaveText('Inhale')
-    await expect(sessionTime(page)).toHaveText('0:00')
     await advance(page, 6000)
     await expect(phase(page)).toHaveText('Exhale')
   })
@@ -227,10 +225,8 @@ test.describe('The Harmonist', () => {
     await page.getByRole('button', { name: 'Resume' }).click()
     await expect(rhythm).toHaveCount(0)
     await expect(phase(page)).toHaveText('Inhale')
-    await expect(sessionTime(page)).toHaveText('0:17')
     await advance(page, 6000)
     await expect(phase(page)).toHaveText('Exhale')
-    await expect(sessionTime(page)).toHaveText('0:23')
     await advance(page, 5100)
 
     // Arrow keys move through the rhythms too.
@@ -252,16 +248,15 @@ test.describe('The Harmonist', () => {
     await openGame(page)
     await page.getByRole('radio', { name: '1 min' }).click()
     await startPattern(page, /Box Breathing/)
-    await expect(sessionTime(page)).toHaveText('0:00')
 
     await advance(page, 61_000)
     await expect(phase(page)).toHaveText('Hold')
-    await expect(guide(page)).toContainText('finishing this breath')
+    await expect(guide(page)).toContainText('Finishing this breath')
 
     // Box breathing is 16s a cycle, so the fourth breath ends at 1:04.
     await advance(page, 3500)
     await expect(guide(page).getByRole('heading', { name: 'Your breaths, gathered' })).toBeVisible()
-    await expect(guide(page)).toContainText('You spent 1 minute and 4 seconds breathing.')
+    await expect(guide(page)).not.toContainText(/You spent|\d+ (seconds?|minutes?)/)
     await expect(guide(page)).toContainText('Each seed is a breath you finished.')
     await expect(guide(page).getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/cut open along a square/)
     await expect(openedMelon(page).locator('[data-seed]')).toHaveCount(4)
@@ -272,7 +267,6 @@ test.describe('The Harmonist', () => {
     await page.getByRole('button', { name: 'One minute of sighs' }).click()
     await expect(phase(page)).toHaveText('Inhale')
     await expect(guide(page)).toContainText('Physiological Sigh')
-    await expect(sessionTime(page)).toHaveText('0:00')
   })
 
   test('an open session keeps going until you end it', async ({ page }) => {
@@ -280,7 +274,6 @@ test.describe('The Harmonist', () => {
     await page.getByRole('radio', { name: 'Open' }).click()
     await startPattern(page, /Coherent/)
     await advance(page, 10 * 60_000)
-    await expect(sessionTime(page)).toHaveText('10:00')
     await expect(phase(page)).toHaveText('Exhale')
   })
 
@@ -296,10 +289,9 @@ test.describe('The Harmonist', () => {
     await page.locator('h1').click()
     await page.keyboard.press(' ')
     await expect(guide(page)).toContainText('3 breaths marked')
-    await expect(sessionTime(page)).toHaveText('0:08')
 
     await page.keyboard.press('Escape')
-    await expect(guide(page)).toContainText('You spent 8 seconds breathing.')
+    await expect(guide(page)).not.toContainText(/You spent|\d+ (seconds?|minutes?)/)
     await expect(guide(page)).toContainText('Each seed is a breath you marked.')
     await expect(openedMelon(page).locator('[data-seed]')).toHaveCount(3)
   })
@@ -314,13 +306,11 @@ test.describe('The Harmonist', () => {
     await advance(page, 60_000)
     await hideTab(page, false)
     await expect(phase(page)).toHaveText('Paused')
-    await expect(sessionTime(page)).toHaveText('0:05')
 
     await page.getByRole('button', { name: 'Resume' }).click()
     await expect(phase(page)).toHaveText('Hold')
     await advance(page, 3500)
     await expect(phase(page)).toHaveText('Exhale')
-    await expect(sessionTime(page)).toHaveText('0:08')
   })
 
   test('regression: Space on the focused Pause button toggles once', async ({ page }) => {
@@ -391,7 +381,6 @@ test.describe('The Harmonist', () => {
     await page.keyboard.press('Enter')
     await expect(phase(page)).toBeFocused()
     await expect(guide(page)).toContainText('Coherent Breathing')
-    await expect(sessionTime(page)).toHaveText('0:00')
     await expect(phase(page)).toHaveText('Inhale')
     await expect(keys).toBeVisible()
     await expect(page.getByText('Space pauses. Escape ends.')).toBeHidden()
@@ -600,7 +589,6 @@ test.describe('The Harmonist on a phone with reduced motion', () => {
     await advance(page, 6000)
     await expect(phase(page)).toHaveText('Hold')
     await expect(page.getByRole('img', { name: 'Breathing visualization - Hold' })).toBeVisible()
-    await expect(sessionTime(page)).toHaveText('0:06')
     await advance(page, 20_000)
     await expect(phase(page)).toHaveText('Exhale')
     await expect(page.getByRole('img', { name: /Breathing visualization/ }).locator('ellipse')).toHaveCount(1)
@@ -617,7 +605,7 @@ test.describe('The Harmonist on a phone with reduced motion', () => {
     expect(await dot.evaluate((circle) => getComputedStyle(circle).fill)).not.toBe(accent)
 
     await page.getByRole('button', { name: 'End session' }).tap()
-    await expect(guide(page)).toContainText('You spent 26 seconds breathing.')
+    await expect(guide(page)).not.toContainText(/You spent|\d+ (seconds?|minutes?)/)
 
     await page.getByRole('button', { name: 'Breathe again' }).tap()
     await page.getByRole('radio', { name: /Free Breathing/ }).tap()

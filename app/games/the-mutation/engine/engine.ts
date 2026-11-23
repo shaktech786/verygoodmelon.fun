@@ -31,8 +31,13 @@ const NEW_STAR_SETTLE = 0.8
 const PATH_STEP = 6
 const PATH_MAX = 1200
 
-// A clue opens after this many seconds of rest, or five lights gathered, or the moment the orb reaches it
-const SEED_REST_SECONDS = 7
+// A clue opens the moment the orb reaches it, within a second or so of the orb coming near,
+// after five lights gathered, or slowly while the player rests
+const SEED_NEAR = 80
+const SEED_NEAR_SECONDS = 1.2
+const SEED_REST_SECONDS = 12
+// Before the orb can move, resting and pulsing are the only ways in, so the first clue grows sooner
+const FIRST_SEED_REST_SECONDS = 7
 // Even a player who never rests or gathers sees it open in its own time
 const SEED_DRIFT_SECONDS = 45
 const SEED_FEED = 0.2
@@ -896,19 +901,31 @@ function updateDiscovery(s: GameState, dt: number): void {
   s.events.push({ type: 'clue-wanted' })
 }
 
+/** How a clue was found: whichever of going near, gathering or resting grew it most. */
+function foundBy(seed: Seed): FoundBy {
+  if (seed.byNear > 0 && seed.byNear >= seed.byGather && seed.byNear >= seed.byRest) return 'went'
+  return seed.byGather > seed.byRest ? 'gathered' : 'rested'
+}
+
 function growSeed(s: GameState, seed: Seed, dt: number): void {
   seed.age += dt
-  if (dist(s.px, s.py, seed.x, seed.y) < s.pSize + SEED_REACH) {
+  const away = dist(s.px, s.py, seed.x, seed.y)
+  if (away < s.pSize + SEED_REACH) {
     openSeed(s, 'went')
     return
   }
-  if (isResting(s)) {
-    seed.growth += dt / SEED_REST_SECONDS
-    seed.byRest += dt / SEED_REST_SECONDS
+  // The first clue grows beside an orb that cannot move yet, so only coming near later counts
+  if (s.wave > 0 && away < s.pSize + SEED_NEAR) {
+    seed.growth += dt / SEED_NEAR_SECONDS
+    seed.byNear += dt / SEED_NEAR_SECONDS
+  } else if (isResting(s)) {
+    const rest = s.wave === 0 ? FIRST_SEED_REST_SECONDS : SEED_REST_SECONDS
+    seed.growth += dt / rest
+    seed.byRest += dt / rest
   } else {
     seed.growth += dt / SEED_DRIFT_SECONDS
   }
-  if (seed.growth >= 1) openSeed(s, seed.byGather > seed.byRest ? 'gathered' : 'rested')
+  if (seed.growth >= 1) openSeed(s, foundBy(seed))
 }
 
 /** Gathering a light, or pulsing the still orb, helps a waiting clue grow. */
@@ -916,7 +933,7 @@ function feedSeed(s: GameState): void {
   if (!s.seed) return
   s.seed.growth += SEED_FEED
   s.seed.byGather += SEED_FEED
-  if (s.seed.growth >= 1) openSeed(s, s.seed.byGather > s.seed.byRest ? 'gathered' : 'rested')
+  if (s.seed.growth >= 1) openSeed(s, foundBy(s.seed))
 }
 
 /** Where a clue sits, in words, from the orb's point of view. */
@@ -947,7 +964,7 @@ export function plantSeed(s: GameState, id: string): void {
       tries++
     } while (dist(x, y, s.px, s.py) < SEED_MIN_DISTANCE && tries < 20)
   }
-  s.seed = { id, x, y, growth: 0, age: 0, byRest: 0, byGather: 0 }
+  s.seed = { id, x, y, growth: 0, age: 0, byNear: 0, byRest: 0, byGather: 0 }
   s.clueWanted = false
   s.events.push({ type: 'planted', id, place: placeInWords(s, x, y) })
 }

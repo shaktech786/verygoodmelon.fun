@@ -44,8 +44,8 @@ function inkedWord(word: string, top: number): KeepsakeOp[] {
   ;[...word].forEach((letter, i) => {
     const x = x0 + i * slot
     ops.push(
-      { kind: 'rect', x: x + gap / 2, y: top + size + 12, w: slot - gap, h: 6, ink: 'rind' },
-      { kind: 'text', x: x + slot / 2, y: top + size, text: letter, size, ink: 'rind', font: 'hand', align: 'center', weight: 700 },
+      { kind: 'rect', x: x + gap / 2, y: top + size + 12, w: slot - gap, h: 6, ink: 'rindInk' },
+      { kind: 'text', x: x + slot / 2, y: top + size, text: letter, size, ink: 'rindInk', font: 'hand', align: 'center', weight: 700 },
     )
   })
   return ops
@@ -71,7 +71,7 @@ export function optimistKeepsake({ reveal, day }: OptimistKeepsakeInput): Keepsa
       y: top + 140,
       text: `${reveal.category} · ${kind}`.toUpperCase(),
       size: 22,
-      ink: 'rind',
+      ink: 'rindInk',
       font: 'sans',
       align: 'center',
       weight: 700,

@@ -163,12 +163,6 @@ function saveStrip(records: MomentRecord[]) {
   }
 }
 
-function timesWord(n: number): string {
-  if (n === 1) return 'once'
-  if (n === 2) return 'twice'
-  return `${n} times`
-}
-
 /** How far along the moment is, in words rather than a number, so nothing counts down at the listener. */
 function momentInWords(progress: number): string {
   if (progress >= 1) return 'The moment is whole'
@@ -784,7 +778,7 @@ export default function TheUnrusher() {
                 <p className="text-lg text-foreground/80 mb-6 max-w-md mx-auto">
                   {stirCount === 0
                     ? 'All eight seeds settled, and you did not move once.'
-                    : `All eight seeds settled. You stirred them ${timesWord(stirCount)}, and ${stirCount === 1 ? 'they' : 'each time they'} waited for you.`}
+                    : 'All eight seeds settled. When you stirred them, they waited for you.'}
                 </p>
               )}
 

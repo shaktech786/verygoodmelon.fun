@@ -1,24 +1,6 @@
 import { NextResponse } from 'next/server'
+import { unstable_cache } from 'next/cache'
 import { generateText, initializeGemini, isAIAvailable } from '@/lib/ai/gemini'
-
-// ---------------------------------------------------------------------------
-// In-memory cache — stores a fresh thought for 6 hours
-// ---------------------------------------------------------------------------
-
-interface CachedThought {
-  title: string
-  body: string
-  theme: string
-  generatedAt: number
-}
-
-const SIX_HOURS_MS = 6 * 60 * 60 * 1000
-let cachedThought: CachedThought | null = null
-
-function isCacheValid(): boolean {
-  if (!cachedThought) return false
-  return Date.now() - cachedThought.generatedAt < SIX_HOURS_MS
-}
 
 // ---------------------------------------------------------------------------
 // Themes we rotate through
@@ -34,40 +16,32 @@ const THEMES = [
   'perspective',
 ] as const
 
-function pickTheme(): string {
-  const hour = new Date().getHours()
-  return THEMES[hour % THEMES.length]
+interface FreshThought {
+  title: string
+  body: string
+  theme: string
 }
 
-// ---------------------------------------------------------------------------
-// GET /api/thoughts/fresh
-// ---------------------------------------------------------------------------
+const ONE_DAY_SECONDS = 24 * 60 * 60
 
-export async function GET() {
-  // Return cached thought if still fresh
-  if (isCacheValid() && cachedThought) {
-    return NextResponse.json({
-      thought: {
-        title: cachedThought.title,
-        body: cachedThought.body,
-        theme: cachedThought.theme,
-      },
-      cached: true,
-    })
-  }
+/** "2026-11-23": one thought per UTC day, shared by every visitor. */
+function today(): string {
+  return new Date().toISOString().slice(0, 10)
+}
 
-  // Try generating a new thought via Gemini
+function themeFor(day: string): string {
+  const daysSinceEpoch = Math.floor(Date.parse(day) / 86_400_000)
+  return THEMES[daysSinceEpoch % THEMES.length]
+}
+
+/** Writes the day's thought. Throws when nothing usable comes back, so a failure is never cached. */
+async function writeThought(day: string): Promise<FreshThought> {
   initializeGemini()
+  if (!isAIAvailable()) throw new Error('Fresh thought unavailable')
+  const theme = themeFor(day)
 
-  if (!isAIAvailable()) {
-    return NextResponse.json({ thought: null })
-  }
-
-  const theme = pickTheme()
-
-  try {
-    const raw = await generateText(
-      `Write a short philosophical reflection on the theme of "${theme}".
+  const raw = await generateText(
+    `Write a short philosophical reflection on the theme of "${theme}".
 
 Requirements:
 - Title: 2-5 words, evocative, not generic
@@ -82,41 +56,33 @@ Return ONLY valid JSON in this exact format (no markdown, no code fences):
 {"title": "...", "body": "...", "theme": "${theme}"}
 
 Use \\n\\n to separate paragraphs in the body.`,
-      {
-        temperature: 0.95,
-        maxTokens: 600,
-        systemInstruction:
-          'You are a warm, observant writer who notices small truths about being human. You write short reflections that feel like journal entries — personal, unhurried, quietly insightful. You never lecture. You never use cliches. Your words help people feel a little less alone.',
-      }
-    )
-
-    if (!raw) {
-      return NextResponse.json({ thought: null })
+    {
+      temperature: 0.95,
+      maxTokens: 600,
+      systemInstruction:
+        'You are a warm, observant writer who notices small truths about being human. You write short reflections that feel like journal entries — personal, unhurried, quietly insightful. You never lecture. You never use cliches. Your words help people feel a little less alone.',
     }
+  )
+  if (!raw) throw new Error('Fresh thought came back empty')
 
-    // Parse the JSON response
-    const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
-    const parsed = JSON.parse(cleaned) as { title: string; body: string; theme: string }
+  const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
+  const parsed = JSON.parse(cleaned) as Partial<FreshThought>
+  if (!parsed.title || !parsed.body) throw new Error('Fresh thought was incomplete')
+  return { title: parsed.title, body: parsed.body, theme: parsed.theme || theme }
+}
 
-    if (!parsed.title || !parsed.body) {
-      return NextResponse.json({ thought: null })
-    }
+// Kept in Next's data cache, which outlives any one server instance, so the day's thought is
+// written once and every visit that day reads it back. The day is part of the key.
+const thoughtOfTheDay = unstable_cache(writeThought, ['fresh-thought-v1'], { revalidate: ONE_DAY_SECONDS })
 
-    cachedThought = {
-      title: parsed.title,
-      body: parsed.body,
-      theme: parsed.theme || theme,
-      generatedAt: Date.now(),
-    }
+// ---------------------------------------------------------------------------
+// GET /api/thoughts/fresh
+// ---------------------------------------------------------------------------
 
-    return NextResponse.json({
-      thought: {
-        title: cachedThought.title,
-        body: cachedThought.body,
-        theme: cachedThought.theme,
-      },
-      cached: false,
-    })
+export async function GET() {
+  try {
+    const thought = await thoughtOfTheDay(today())
+    return NextResponse.json({ thought }, { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } })
   } catch (error) {
     console.error('Failed to generate fresh thought:', error)
     return NextResponse.json({ thought: null })

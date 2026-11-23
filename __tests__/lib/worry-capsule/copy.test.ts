@@ -25,6 +25,10 @@ describe('pickLine', () => {
     expect(every).not.toMatch(/small|big|half|weight|never needed|louder|convincing|rarely|imagine|real thing|handled|worth/i)
   })
 
+  it('is true even for the very first capsule, so no line assumes others are already kept', () => {
+    expect(Object.values(OUTCOME_RESPONSES).flat().join(' ')).not.toMatch(/the others|the rest|another/i)
+  })
+
   it('never calls a worry that came true simply a real thing and leaves it there', () => {
     expect(OUTCOME_RESPONSES.yes.join(' ')).not.toMatch(/This one was\./)
   })

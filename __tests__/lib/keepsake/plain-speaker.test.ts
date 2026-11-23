@@ -19,7 +19,7 @@ describe('plainSpeakerKeepsake', () => {
     for (const op of [label, opening]) {
       expect(op?.y).toBeGreaterThan(bar.y)
       expect(op?.y).toBeLessThan(bar.y + bar.h)
-      expect(op?.ink).toBe('paper')
+      expect(op?.ink).toBe('onRind')
     }
   })
 

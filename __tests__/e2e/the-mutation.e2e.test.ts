@@ -252,7 +252,8 @@ test.describe('The Shapeshifter', () => {
     await expect(title(page).getByText('Nothing here can hurt you.', { exact: false })).toBeVisible()
     await page.keyboard.press('Enter')
     await expect(page.getByText('Click the orb, or press Space.')).toBeVisible()
-    await expect(page.getByText('No rules yet', { exact: true })).toBeVisible()
+    // No count of rules found or still to find, at any point
+    await expect(page.getByText(/rules? (yet|found)|of 6/i)).toHaveCount(0)
     // Light still gathers, but no running count of it is shown while playing
     await expect(page.getByText(/^light$/)).toHaveCount(0)
 
@@ -268,12 +269,13 @@ test.describe('The Shapeshifter', () => {
     await expect(page.getByText(/WAVE 1/)).toHaveCount(0)
 
     // More pulses help it grow until it opens, without any card stopping the game
-    for (let i = 0; i < 6 && (await engine(page)).seed; i++) await page.keyboard.press(' ')
+    // Presses that land within one frame count once, so a few more are allowed than the five it needs
+    for (let i = 0; i < 15 && (await engine(page)).seed; i++) await page.keyboard.press(' ')
     await expect.poll(async () => (await engine(page)).activeMechanics).toEqual(['arrow_keys'])
     expect((await engine(page)).foundBy).toEqual(['gathered'])
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(status(page)).toHaveText('It opened. Your orb can move now.')
-    await expect(page.getByText('1 of 6 rules found', { exact: true })).toBeVisible()
+    await expect(page.getByText(/rules? (yet|found)|of 6/i)).toHaveCount(0)
     await expect(named(page)).toHaveCount(0)
 
     // Moving is feeling it, and only then is it named
@@ -332,7 +334,7 @@ test.describe('The Shapeshifter', () => {
     await expect(title(page)).toBeVisible()
     await expect(title(page).getByRole('button', { name: 'BEGIN' })).toBeFocused()
     await page.keyboard.press('Enter')
-    await expect(page.getByText('No rules yet', { exact: true })).toBeVisible()
+    await expect(page.getByText('Click the orb, or press Space.')).toBeVisible()
     const fresh = await engine(page)
     expect(fresh).toMatchObject({ wave: 0, score: 0, activeMechanics: [], seed: null, foundBy: [] })
     // Regression: the old state survived Play Again and the next run ended instantly

@@ -170,7 +170,9 @@ test.describe('The Patient One', () => {
 
     await advance(page, 25_000)
     await expect(page.getByRole('heading', { name: REWARD_HEADING })).toBeFocused()
-    await expect(page.getByText('All eight seeds settled. You stirred them twice, and each time they waited for you.')).toBeVisible()
+    await expect(page.getByText('All eight seeds settled. When you stirred them, they waited for you.')).toBeVisible()
+    // How often they were stirred is never counted back
+    await expect(page.getByText(/twice|once|\d+ times/)).toHaveCount(0)
   })
 
   test('without sound the listener keeps their eyes soft and open, and nothing makes a sound', async ({ page }) => {

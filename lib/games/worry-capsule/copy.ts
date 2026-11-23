@@ -21,7 +21,7 @@ export const OUTCOME_RESPONSES: Record<Outcome, readonly string[]> = {
   yes: [
     'It happened. Thank you for coming back to look at it.',
     'It happened. Be gentle with yourself today.',
-    'It happened. It is kept here now, with the others.',
+    'It happened. It is kept here now, on your shelf.',
     'It came true. You don’t have to make sense of it today.',
   ],
 }

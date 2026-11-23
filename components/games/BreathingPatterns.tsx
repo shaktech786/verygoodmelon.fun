@@ -125,12 +125,6 @@ const PHASE_BUZZ: Record<PhaseKind, number[]> = { in: [40], hold: [], out: [40, 
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${String(s).padStart(2, '0')}`
-}
-
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
@@ -690,7 +684,6 @@ export default function BreathingPatterns() {
   const isRunning = sessionState === 'active'
   const targetMs = lengthMinutes === null ? null : lengthMinutes * 60_000
   const position = isFreeMode ? null : breathPositionAt(pattern.phases, elapsedMs - patternStartMs)
-  const sessionElapsed = Math.floor(elapsedMs / 1000)
   const finishing = targetMs !== null && elapsedMs >= targetMs
 
   // ---------------------------------------------------------------------------
@@ -992,12 +985,6 @@ export default function BreathingPatterns() {
   // ---------------------------------------------------------------------------
 
   if (sessionState === 'complete') {
-    const minutes = Math.floor(sessionElapsed / 60)
-    const seconds = sessionElapsed % 60
-    const timeStr =
-      minutes > 0
-        ? `${minutes} minute${minutes !== 1 ? 's' : ''}${seconds > 0 ? ` and ${seconds} second${seconds !== 1 ? 's' : ''}` : ''}`
-        : `${seconds} second${seconds !== 1 ? 's' : ''}`
     // Only rhythms actually breathed: passing over an option while paused is not breathing it
     const breathed = [...new Set(breaths.map((breath) => breath.pattern))]
     const usedNames = breathed.map((id) => PATTERNS.find((p) => p.id === id)!.name)
@@ -1019,9 +1006,7 @@ export default function BreathingPatterns() {
                 <MelonSvg c={100} r={92} breaths={breaths} />
               </svg>
             )}
-            <p className="text-lg text-foreground/80 mb-2">
-              You spent {timeStr} breathing.
-            </p>
+            {seeds === 0 && <p className="text-lg text-foreground/80 mb-2">A pause, however short, is still a pause.</p>}
             {seeds > 0 && (
               <p className="text-sm text-foreground/70">
                 Each seed is a breath you {onlyFree ? 'marked' : 'finished'}. Its shape comes from the rhythm, and
@@ -1137,10 +1122,9 @@ export default function BreathingPatterns() {
             </p>
           )}
 
-          {/* Only the time spent, for orientation: the seeds gather in the melon, and no countdown hurries the end. */}
-          <p className="text-sm text-foreground/70 mb-5">
-            <span className="tabular-nums" role="timer" aria-label="Session time">{formatTime(sessionElapsed)}</span>
-            {finishing && !isFreeMode && <span> · finishing this breath</span>}
+          {/* No clock: the seeds gather in the melon, and nothing counts the time or hurries the end. */}
+          <p className="text-sm text-foreground/70 mb-5 min-h-5">
+            {finishing && !isFreeMode && 'Finishing this breath'}
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3">
