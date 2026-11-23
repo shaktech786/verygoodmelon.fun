@@ -193,6 +193,68 @@ describe('The Shapeshifter engine', () => {
   })
 })
 
+describe('The Shapeshifter rules change each other', () => {
+  it('a tide carries the stars it passes over along with it', () => {
+    const s = withMechanics('arrow_keys', 'stars', 'sweepers')
+    s.spawnTimers.stars = -999
+    s.spawnTimers.sweepers = -999
+    const star = place(s, 'star', 100, 100)
+    place(s, 'sweeper', 100, 0, 100, 0)
+    run(s, 0.3)
+    expect(star.x).toBeGreaterThan(115)
+  })
+
+  it('without a tide, a star stays where it is', () => {
+    const s = withMechanics('arrow_keys', 'stars')
+    s.spawnTimers.stars = -999
+    const star = place(s, 'star', 100, 100)
+    run(s, 0.3)
+    expect(Math.abs(star.x - 100)).toBeLessThan(1)
+  })
+
+  it('with the gentle pull, a shadow that reaches the orb becomes a star instead of nudging it', () => {
+    const s = withMechanics('arrow_keys', 'chasers', 'gravity_well')
+    s.spawnTimers.chasers = -999
+    place(s, 'chaser', s.px + 6, s.py)
+    run(s, 0.1)
+    expect(s.transformed).toBe(1)
+    expect(s.bumps).toBe(0)
+  })
+
+  it('the gentle pull holds the orb steadier in a tide', () => {
+    const carried = (...ids: string[]) => {
+      const s = withMechanics('arrow_keys', 'sweepers', ...ids)
+      s.spawnTimers.sweepers = -999
+      place(s, 'sweeper', s.px - 4, 0, 120, 0)
+      const startX = s.px
+      run(s, 0.4)
+      return s.px - startX
+    }
+    expect(carried('gravity_well')).toBeLessThan(carried() * 0.6)
+    expect(carried('gravity_well')).toBeGreaterThan(0)
+  })
+
+  it('with a rhythm, riding a tide makes the glow grow', () => {
+    const s = withMechanics('arrow_keys', 'sweepers', 'combo_chain')
+    s.spawnTimers.sweepers = -999
+    place(s, 'sweeper', s.px - 4, 0, 120, 0)
+    run(s, 0.2)
+    expect(s.combo).toBe(1)
+  })
+
+  it('light sent into a tide settles there as a star', () => {
+    const s = withMechanics('arrow_keys', 'sweepers', 'blaster')
+    s.spawnTimers.sweepers = -999
+    place(s, 'sweeper', s.px + 100, 0, 0.001, 0)
+    s.mx = s.px + 300
+    s.my = s.py
+    s.keys.add(' ')
+    run(s, 0.35)
+    s.keys.clear()
+    expect(s.entities.some((e) => e.type === 'star' && Math.abs(e.x - (s.px + 100)) < 20)).toBe(true)
+  })
+})
+
 describe('The Shapeshifter path', () => {
   it('begins where the orb rests, before any rule', () => {
     expect(createState(480, 720).path).toEqual([{ x: 240, y: 360, wave: 0 }])

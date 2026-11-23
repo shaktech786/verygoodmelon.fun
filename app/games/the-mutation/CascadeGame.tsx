@@ -3,12 +3,12 @@
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Press_Start_2P } from 'next/font/google'
 import { Pause } from 'lucide-react'
-import type { DiscoveryEvent, GameState, MutationResult, MutationRecord, PathPoint, PlayStyle } from './engine/types'
-import { MECHANIC_CATEGORIES, DEFAULT_PARAMS, GAME_W, GAME_H, ENDING } from './engine/types'
-import { getProfileSummary, plantSeed } from './engine/engine'
-import { fallbackName, fallbackTagline, reflection } from './engine/naming'
-import { planRun, planOrder, type PlanStep } from './engine/plan'
-import { fallbackRule, discovery, hintFor } from './engine/rules'
+import type { CluePlace, DiscoveryEvent, GameState, MutationResult, MutationRecord, PathPoint, Sleeping } from './engine/types'
+import { DEFAULT_PARAMS, GAME_W, GAME_H, ENDING } from './engine/types'
+import { cluePlaces, getProfileSummary } from './engine/engine'
+import { endingKind, fallbackName, fallbackTagline, reflection, type RunStory } from './engine/naming'
+import { categoryOf } from './engine/plan'
+import { fallbackRule, discovery, hintFor, listed, shortName, togetherNow } from './engine/rules'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { KeyHints } from '@/components/ui/KeyHints'
 import GameCanvas from './components/GameCanvas'
@@ -26,17 +26,18 @@ type ActiveMechanic = { id: string; params: Record<string, number> }
 interface Finale {
   closingLine: string
   path: PathPoint[]
+  sleeping: Sleeping[]
   field: { w: number; h: number }
 }
 
 interface Named extends MutationRecord {
   hint: string
+  together: string[]
 }
 
 const MUTATE_URL = '/api/cascade/mutate'
 const REQUEST_TIMEOUT_MS = 8000
 const ARROW_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
-const LAST_PLAN_KEY = 'shapeshifter_lastPlan'
 // A phone gets a tall field so the game fills the screen instead of a third of it
 const PORTRAIT_W = 480
 const PORTRAIT_H = 720
@@ -47,7 +48,6 @@ function isTextEntry(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest('input, textarea, select, [contenteditable="true"]') !== null
 }
 
-const RULE_COUNT = MECHANIC_CATEGORIES.length
 const TOUCH_QUERY = '(pointer: coarse)'
 const NARROW_QUERY = '(max-width: 639px)'
 
@@ -76,29 +76,46 @@ function toMutation(mechanicId: string, data: Record<string, unknown>, active: r
   }
 }
 
-function readLastPlan(): string | undefined {
-  try {
-    return localStorage.getItem(LAST_PLAN_KEY) ?? undefined
-  } catch {
-    return undefined
-  }
+function toRecord(m: MutationResult): MutationRecord {
+  return { id: m.mechanicId, title: m.title, description: m.description, flavorText: m.flavorText }
 }
 
-function rememberPlan(order: string) {
-  try {
-    localStorage.setItem(LAST_PLAN_KEY, order)
-  } catch {
-    // Without storage the in-memory order still keeps this visit's replays different
-  }
+/** "a faint star outline above your orb" */
+function clueAt({ id, place }: CluePlace): string {
+  return `${discovery(id).clue} ${place}`
 }
 
-/** What a screen reader hears when a clue appears: where it is and what it looks like, never the rule's name. */
-function plantedWords(id: string, place: string, firstClue: boolean): string {
-  if (id === ENDING) {
-    return `A small circle of light has appeared ${place}. When you are ready, go to it, or rest, and your game will finish.`
+/** Clues and places hold commas of their own, so a list of them is split with semicolons. */
+function clueList(clues: readonly CluePlace[]): string {
+  const parts = clues.map(clueAt)
+  if (parts.length <= 2) return parts.join(' and ')
+  return `${parts.slice(0, -1).join('; ')}; and ${parts[parts.length - 1]}`
+}
+
+/** What a screen reader hears when clues appear: what each looks like and where, never the rule's name. */
+function plantedWords(clues: readonly CluePlace[], canMove: boolean): string {
+  const [only] = clues
+  if (clues.length === 1 && only.id === ENDING) {
+    return `A small circle of light has appeared ${only.place}. When you are ready, go to it, or rest, and your game will finish.`
   }
-  const how = firstClue ? 'Pulse the orb, or rest' : 'Go to it, gather light, or rest'
-  return `Something new is growing ${place}: ${discovery(id).clue}. ${how}, and it will open.`
+  if (clues.length === 1) {
+    const how = canMove ? 'Go to it, gather light, or rest' : 'Pulse the orb, or rest'
+    return `Something new is growing ${only.place}: ${discovery(only.id).clue}. ${how}, and it will open.`
+  }
+  const circle = clues.some(c => c.id === ENDING)
+  const choose = circle
+    ? 'Go to the one you want. The circle ends the game, and so does resting.'
+    : 'Go to the one you want, and it will open. Or rest, and they will settle and sleep.'
+  return `Some new things are growing: ${clueList(clues)}. ${choose}`
+}
+
+function capitalised(words: string): string {
+  return words[0].toUpperCase() + words.slice(1)
+}
+
+function whereWords(clues: readonly CluePlace[]): string {
+  if (clues.length === 0) return 'Nothing is growing right now.'
+  return `${capitalised(clueList(clues))}.`
 }
 
 export default function CascadeGame() {
@@ -107,13 +124,14 @@ export default function CascadeGame() {
   const [currentWave, setCurrentWave] = useState(0)
   const [allMutations, setAllMutations] = useState<MutationRecord[]>([])
   const [activeMechanics, setActiveMechanics] = useState<ActiveMechanic[]>([])
-  const [seedId, setSeedId] = useState<string | null>(null)
+  const [clues, setClues] = useState<CluePlace[]>([])
+  const [settling, setSettling] = useState(false)
   const [hint, setHint] = useState<string | null>(null)
   const [named, setNamed] = useState<Named | null>(null)
   const [announcement, setAnnouncement] = useState('')
   const [gameName, setGameName] = useState('')
   const [tagline, setTagline] = useState('')
-  const [finale, setFinale] = useState<Finale>({ closingLine: '', path: [], field: { w: GAME_W, h: GAME_H } })
+  const [finale, setFinale] = useState<Finale>({ closingLine: '', path: [], sleeping: [], field: { w: GAME_W, h: GAME_H } })
   const [lockedPortrait, setLockedPortrait] = useState<boolean | null>(null)
   const reducedMotion = useReducedMotion()
   // Arrow keys cannot be pressed on a phone, so touch players always get the follow control
@@ -123,131 +141,122 @@ export default function CascadeGame() {
   const portrait = lockedPortrait ?? isNarrow
   const [fieldW, fieldH] = portrait ? [PORTRAIT_W, PORTRAIT_H] : [GAME_W, GAME_H]
   const gameStateRef = useRef<GameState | null>(null)
-  const prefetchRef = useRef<{ wave: number; promise: Promise<MutationResult> } | null>(null)
-  // The words for the clue now growing in the field, kept until it opens
-  const seedRuleRef = useRef<MutationResult | null>(null)
   // Events arrive from the game loop between renders, so the run's rules are also kept outside state
   const mechanicsRef = useRef<ActiveMechanic[]>([])
   const mutationsRef = useRef<MutationRecord[]>([])
+  const namedIdsRef = useRef<Set<string>>(new Set())
   const runRef = useRef(0)
-  const planRef = useRef<PlanStep[]>([])
-  const lastPlanRef = useRef<string | undefined>(undefined)
   const boxRef = useRef<HTMLDivElement>(null)
 
-  const fetchMutation = useCallback(async (
-    wave: number,
-    mechanics: ActiveMechanic[],
-    mutations: MutationRecord[],
-  ): Promise<MutationResult> => {
-    const { category, options } = planRef.current[wave]
-    const s = gameStateRef.current
-    const active = mechanics.map(m => m.id)
+  /** A repeated sentence is still read again, so asking twice is never met with silence. */
+  const say = useCallback((words: string) => {
+    setAnnouncement(prev => (prev === words ? `${words} ` : words))
+  }, [])
 
+  /** Fresh words for a rule the player just chose; the run's own words stand in until they come. */
+  const fetchWords = useCallback(async (id: string, wave: number, active: string[], mutations: MutationRecord[]): Promise<MutationResult | null> => {
+    const s = gameStateRef.current
     try {
       const res = await fetch(MUTATE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           wave,
-          category,
-          options,
+          category: categoryOf(id),
+          options: [id],
           profile: s ? getProfileSummary(s) : null,
           activeMechanics: active,
           mutations,
         }),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       })
-      if (!res.ok) throw new Error(`mutate ${res.status}`)
+      if (!res.ok) return null
       const data = await res.json()
-      if (!options.includes(data.mechanicId)) throw new Error('unknown mechanic')
-      return toMutation(data.mechanicId, data, active)
+      return data.mechanicId === id ? toMutation(id, data, active) : null
     } catch {
-      // The run already leans toward one rule per step, so the game varies even with no reply
-      return toMutation(options[0], {}, active)
+      return null
     }
   }, [])
 
-  const prefetch = useCallback((wave: number, mechanics: ActiveMechanic[], mutations: MutationRecord[]) => {
-    prefetchRef.current = wave < RULE_COUNT
-      ? { wave, promise: fetchMutation(wave, mechanics, mutations) }
-      : null
-  }, [fetchMutation])
-
   const handleStart = useCallback(() => {
-    const avoid = lastPlanRef.current ?? readLastPlan()
-    const plan = planRun(Math.random, isTouch, avoid)
-    const order = planOrder(plan)
-    planRef.current = plan
-    lastPlanRef.current = order
-    rememberPlan(order)
     setLockedPortrait(isNarrow)
     setPhase('playing')
-    prefetch(0, [], [])
-  }, [prefetch, isTouch, isNarrow])
+  }, [isNarrow])
 
   const handleDiscovery = useCallback((event: DiscoveryEvent) => {
     const s = gameStateRef.current
     if (!s) return
 
-    if (event.type === 'clue-wanted') {
-      const run = runRef.current
-      const wave = mechanicsRef.current.length
-      const pending = prefetchRef.current?.wave === wave
-        ? prefetchRef.current.promise
-        : fetchMutation(wave, mechanicsRef.current, mutationsRef.current)
-      prefetchRef.current = null
-      void pending.then((mutation) => {
-        if (runRef.current !== run || gameStateRef.current !== s) return
-        seedRuleRef.current = mutation
-        plantSeed(s, mutation.mechanicId)
-      })
+    if (event.type === 'planted') {
+      setClues(event.clues)
+      setSettling(false)
+      setHint(null)
+      // The name card would hide clues near the top, and choosing matters more now
+      setNamed(null)
+      say(plantedWords(event.clues, mechanicsRef.current.length > 0))
       return
     }
 
-    if (event.type === 'planted') {
-      setSeedId(event.id)
-      setHint(null)
-      setAnnouncement(plantedWords(event.id, event.place, mechanicsRef.current.length === 0))
+    if (event.type === 'beside') {
+      say(`You are beside ${discovery(event.id).clue}.`)
+      return
+    }
+
+    if (event.type === 'settling') {
+      setSettling(true)
+      say('If you keep resting, these will settle into the field and sleep. Move, and they stay awake.')
+      return
+    }
+
+    if (event.type === 'let-be') {
+      setClues([])
+      setSettling(false)
+      say(`You let them be. ${capitalised(listed(event.ids.map(shortName)))} settled into the field to sleep. Something else will grow soon.`)
       return
     }
 
     if (event.type === 'opened') {
       const ids = mechanicsRef.current.map(m => m.id)
-      const pending = seedRuleRef.current
-      const mutation = pending?.mechanicId === event.id ? pending : toMutation(event.id, {}, ids)
-      seedRuleRef.current = null
+      const mutation = toMutation(event.id, {}, ids)
       const mechanics = [...mechanicsRef.current, { id: mutation.mechanicId, params: mutation.params }]
-      const mutations = [
-        ...mutationsRef.current,
-        { id: mutation.mechanicId, title: mutation.title, description: mutation.description, flavorText: mutation.flavorText },
-      ]
+      const mutations = [...mutationsRef.current, toRecord(mutation)]
       mechanicsRef.current = mechanics
       mutationsRef.current = mutations
       setActiveMechanics(mechanics)
       setAllMutations(mutations)
       setCurrentWave(mechanics.length)
-      setSeedId(null)
+      setClues([])
+      setSettling(false)
       setHint(null)
       setNamed(null)
       // Says what changed in plain words; the rule's name waits until the player has felt it
-      setAnnouncement(`It opened. ${discovery(event.id).change}`)
-      prefetch(mechanics.length, mechanics, mutations)
+      const passed = event.passed.filter(id => id !== ENDING)
+      say(`It opened. ${discovery(event.id).change}${passed.length ? ' The others faded, and may grow again later.' : ''}`)
+
+      const run = runRef.current
+      void fetchWords(event.id, mechanics.length - 1, ids, mutationsRef.current.slice(0, -1)).then((fresh) => {
+        if (!fresh || runRef.current !== run || namedIdsRef.current.has(event.id)) return
+        mutationsRef.current = mutationsRef.current.map(m => (m.id === event.id ? toRecord(fresh) : m))
+        setAllMutations(mutationsRef.current)
+      })
       return
     }
 
     const words = hintFor(event.id, isTouch)
     if (event.type === 'hint') {
       setHint(words)
-      setAnnouncement(words)
+      say(words)
       return
     }
 
     const rule = mutationsRef.current.find(m => m.id === event.id)
     if (!rule) return
+    namedIdsRef.current.add(event.id)
+    const together = togetherNow(event.id, mechanicsRef.current.map(m => m.id))
     setHint(null)
-    setNamed({ ...rule, hint: words })
-    setAnnouncement(`${rule.title}. ${rule.description} ${words}`)
-  }, [fetchMutation, prefetch, isTouch])
+    setNamed({ ...rule, hint: words, together })
+    say([`${rule.title}.`, rule.description, ...together, words].join(' '))
+  }, [fetchWords, isTouch, say])
 
   useEffect(() => {
     if (!named) return
@@ -257,41 +266,43 @@ export default function CascadeGame() {
 
   const handleGameComplete = useCallback(async () => {
     const s = gameStateRef.current
-    const finalScore = s ? Math.floor(s.score) : 0
     const run = runRef.current
-    const style: PlayStyle = s ? getProfileSummary(s).playStyle : 'gentle'
+    const mutations = mutationsRef.current
+    const story: RunStory = {
+      mechanicIds: mutations.map(m => m.id),
+      letBe: s ? s.sleeping.map(z => z.id) : [],
+      foundBy: s ? [...s.foundBy] : [],
+      style: s ? getProfileSummary(s).playStyle : 'gentle',
+      transformed: s?.transformed ?? 0,
+      bumps: s?.bumps ?? 0,
+      carries: s?.carries ?? 0,
+    }
     setFinale({
       path: s ? [...s.path] : [],
+      sleeping: s ? [...s.sleeping] : [],
       field: { w: s?.w ?? GAME_W, h: s?.h ?? GAME_H },
-      closingLine: reflection({
-        transformed: s?.transformed ?? 0,
-        bumps: s?.bumps ?? 0,
-        carries: s?.carries ?? 0,
-        foundBy: s ? [...s.foundBy] : [],
-      }),
+      closingLine: reflection(story),
     })
     setGameName('')
     setTagline('')
     setPhase('finale')
 
-    let name = fallbackName(allMutations.map(m => m.id), style)
-    let line = fallbackTagline({
-      mechanicIds: allMutations.map(m => m.id),
-      style,
-      transformed: s?.transformed ?? 0,
-    })
+    let name = fallbackName(story)
+    let line = fallbackTagline(story)
     try {
       const res = await fetch(MUTATE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           isNaming: true,
-          mutations: allMutations,
-          score: finalScore,
+          mutations,
+          score: s ? Math.floor(s.score) : 0,
           profile: s ? getProfileSummary(s) : null,
-          transformed: s?.transformed ?? 0,
-          bumps: s?.bumps ?? 0,
-          carries: s?.carries ?? 0,
+          ending: endingKind(story),
+          letBe: story.letBe,
+          transformed: story.transformed,
+          bumps: story.bumps,
+          carries: story.carries,
         }),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       })
@@ -301,12 +312,12 @@ export default function CascadeGame() {
         if (typeof data.tagline === 'string' && data.tagline) line = data.tagline
       }
     } catch {
-      // The play-style name above is the fallback
+      // The ending's own name above is the fallback
     }
     if (runRef.current !== run) return
     setGameName(name)
     setTagline(line)
-  }, [allMutations])
+  }, [])
 
   const handlePlayAgain = useCallback(() => {
     runRef.current += 1
@@ -315,17 +326,17 @@ export default function CascadeGame() {
     setCurrentWave(0)
     setAllMutations([])
     setActiveMechanics([])
-    setSeedId(null)
+    setClues([])
+    setSettling(false)
     setHint(null)
     setNamed(null)
     setAnnouncement('')
     mechanicsRef.current = []
     mutationsRef.current = []
-    seedRuleRef.current = null
+    namedIdsRef.current = new Set()
     setGameName('')
     setTagline('')
     setLockedPortrait(null)
-    prefetchRef.current = null
   }, [])
 
   const pause = useCallback(() => setPhase(p => (p === 'playing' ? 'paused' : p)), [])
@@ -337,6 +348,11 @@ export default function CascadeGame() {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat || isTextEntry(e.target)) return
       const key = e.key.toLowerCase()
+      if (key === 'c' && phase === 'playing') {
+        const s = gameStateRef.current
+        if (s) say(whereWords(cluePlaces(s)))
+        return
+      }
       if (key !== 'escape' && key !== 'p') return
       if (phase === 'playing') pause()
       else resume()
@@ -352,7 +368,7 @@ export default function CascadeGame() {
       window.removeEventListener('blur', pause)
       document.removeEventListener('visibilitychange', onHide)
     }
-  }, [phase, pause, resume])
+  }, [phase, pause, resume, say])
 
   // The finale is taller than a short laptop screen allows only if the box is half scrolled away
   useEffect(() => {
@@ -368,13 +384,21 @@ export default function CascadeGame() {
   const showHud = phase === 'playing' || phase === 'paused'
   const blooming = activeMechanics.some(m => m.id === 'score_rush')
   const fade = reducedMotion ? '' : 'animate-fade'
-  const caption = seedId === ENDING
+  const crossroads = clues.length > 1
+  const circleOffered = clues.some(c => c.id === ENDING)
+  const caption = clues.length === 1 && circleOffered
     ? 'When you are ready, go to the circle, or rest.'
-    : seedId && currentWave === 0
+    : clues.length === 1 && currentWave === 0
       ? `Something is growing. ${isTouch ? 'Tap the orb' : 'Press Space'}, or just rest.`
-      : seedId
+      : clues.length === 1
         ? 'Something is growing. Go to it, or rest.'
-        : hint ?? (currentWave === 0 ? (isTouch ? 'Tap the orb.' : 'Click the orb, or press Space.') : blooming ? 'the bloom' : null)
+        : crossroads && settling
+          ? 'Resting lets them settle and sleep. Move, and they stay awake.'
+          : crossroads && circleOffered
+            ? 'Go to the one you want. The circle ends the game, and so does resting.'
+            : crossroads
+              ? 'Go to the one you want, or rest and let them be.'
+              : hint ?? (currentWave === 0 ? (isTouch ? 'Tap the orb.' : 'Click the orb, or press Space.') : blooming ? 'the bloom' : null)
 
   return (
     // The finished game takes the page's width, so its map and legend are drawn large enough to read
@@ -388,6 +412,7 @@ export default function CascadeGame() {
             key={`${runId}-${fieldW}`}
             width={fieldW}
             height={fieldH}
+            isTouch={isTouch}
             isPlaying={phase === 'playing'}
             activeMechanics={activeMechanics}
             onDiscovery={handleDiscovery}
@@ -411,6 +436,9 @@ export default function CascadeGame() {
                     {named.title}
                   </p>
                   <p className="text-sm text-foreground mt-1 break-words">{named.description}</p>
+                  {named.together.map(line => (
+                    <p key={line} className="text-sm text-foreground mt-1 break-words" data-testid="rule-together">{line}</p>
+                  ))}
                   {named.flavorText && <p className="text-xs italic text-foreground/75 mt-1 break-words">{named.flavorText}</p>}
                   <p className="text-xs text-foreground/80 mt-1">{named.hint}</p>
                 </div>
@@ -448,7 +476,7 @@ export default function CascadeGame() {
             >
               Start over
             </button>
-            {!isTouch && <KeyHints>Esc or P pauses and resumes.</KeyHints>}
+            {!isTouch && <KeyHints>Esc or P pauses and resumes. C tells you where the clues are.</KeyHints>}
           </div>
         )}
 
@@ -463,6 +491,7 @@ export default function CascadeGame() {
             closingLine={finale.closingLine}
             mutations={allMutations}
             path={finale.path}
+            sleeping={finale.sleeping}
             field={finale.field}
             onPlayAgain={handlePlayAgain}
             retroFont={retroFont.className}
@@ -483,7 +512,7 @@ export default function CascadeGame() {
               <Pause size={16} aria-hidden="true" />
               Pause
             </button>
-            {!isTouch && <KeyHints>Esc or P also pauses.</KeyHints>}
+            {!isTouch && <KeyHints>Esc or P also pauses. C tells you where the clues are.</KeyHints>}
           </>
         )}
       </div>

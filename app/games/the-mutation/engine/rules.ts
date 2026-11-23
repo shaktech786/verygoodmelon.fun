@@ -164,6 +164,77 @@ const DISCOVERIES: Record<string, Discovery> = {
   },
 }
 
+/** A clue's short name for lists: "the tides", "a lantern". Used once a rule is chosen or let be. */
+const SHORT: Record<string, string> = {
+  stars: 'the stars',
+  pulse_gems: 'the breathing gems',
+  chasers: 'the shy shadows',
+  sweepers: 'the tides',
+  blaster: 'a lantern',
+  phase_dash: 'the glide',
+  combo_chain: 'a rhythm',
+  gravity_well: 'the gentle pull',
+  score_rush: 'the bloom',
+}
+
+export function shortName(id: string): string {
+  return SHORT[id] ?? 'a small rule'
+}
+
+/** "a, b and c" */
+export function listed(items: readonly string[]): string {
+  if (items.length <= 1) return items[0] ?? ''
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+}
+
+const LIGHTS = ['stars', 'pulse_gems']
+
+interface Together {
+  a: readonly string[]
+  b: readonly string[]
+  /** Said as the second of the two arrives; left out where the rule's own words already say it. */
+  now?: string
+  /** Told back in the finale. */
+  then: string
+}
+
+// Two rules that change each other. {lights} is what this run gathers.
+const TOGETHER: readonly Together[] = [
+  { a: LIGHTS, b: ['sweepers'], now: 'The tides carry the {lights} along with them.', then: 'your tides carried the {lights} along' },
+  { a: ['gravity_well'], b: ['chasers'], now: 'The pull draws shadows in, and any that reach you turn into stars.', then: 'the pull drew shadows in and made them stars' },
+  { a: ['gravity_well'], b: ['sweepers'], now: 'The pull holds you steady, so the tides only sway you.', then: 'the pull held you steady in the tides' },
+  { a: ['combo_chain'], b: ['sweepers'], now: 'Riding a tide makes your glow grow too.', then: 'riding the tides kept your rhythm' },
+  { a: ['blaster'], b: ['sweepers'], now: 'Light sent into a tide settles there as a star.', then: 'your lantern left stars along the tides' },
+  { a: ['blaster'], b: ['chasers'], then: 'your lantern turned shadows into stars' },
+  { a: ['phase_dash'], b: ['chasers'], then: 'your glides turned shadows into stars' },
+  { a: ['score_rush'], b: ['chasers'], then: 'the bloom turned every shadow to light' },
+  { a: ['score_rush'], b: ['sweepers'], then: 'the bloom stilled the tides' },
+]
+
+function lightsOf(ids: readonly string[]): string {
+  return ids.includes('pulse_gems') && !ids.includes('stars') ? 'gems' : 'stars'
+}
+
+function joins(pair: Together, id: string, others: readonly string[]): boolean {
+  return (pair.a.includes(id) && pair.b.some(o => others.includes(o)))
+    || (pair.b.includes(id) && pair.a.some(o => others.includes(o)))
+}
+
+/** What a newly opened rule does with the rules already there, in plain words. */
+export function togetherNow(id: string, active: readonly string[]): string[] {
+  const others = active.filter(o => o !== id)
+  const lights = lightsOf(active)
+  return TOGETHER.filter(pair => pair.now && joins(pair, id, others)).map(pair => (pair.now ?? '').replace('{lights}', lights))
+}
+
+/** Every pair of rules in this run that changed each other, for the finale. */
+export function togetherThen(ids: readonly string[]): string[] {
+  const lights = lightsOf(ids)
+  return TOGETHER
+    .filter(pair => pair.a.some(a => ids.includes(a)) && pair.b.some(b => ids.includes(b)))
+    .map(pair => pair.then.replace('{lights}', lights))
+}
+
 export function discovery(id: string): Discovery {
   return DISCOVERIES[id]
 }

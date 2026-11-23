@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { fallbackRule } from '@/app/games/the-mutation/engine/rules'
+import { fallbackRule, togetherNow, togetherThen } from '@/app/games/the-mutation/engine/rules'
 import { MECHANIC_OPTIONS } from '@/app/games/the-mutation/engine/types'
 
 const words = (id: string, active: string[]) => {
@@ -41,5 +41,19 @@ describe('The Shapeshifter offline rule texts', () => {
     expect(words('blaster', ['arrow_keys', 'pulse_gems'])).toMatch(/gems/)
     expect(words('blaster', ['arrow_keys', 'pulse_gems'])).not.toMatch(/stars/)
     expect(words('score_rush', ['arrow_keys', 'pulse_gems'])).toMatch(/gems come thick/)
+  })
+
+  it('tells the player, as a rule arrives, how it changes the rules already there', () => {
+    expect(togetherNow('sweepers', ['arrow_keys', 'pulse_gems', 'sweepers'])).toEqual(['The tides carry the gems along with them.'])
+    expect(togetherNow('gravity_well', ['arrow_keys', 'stars', 'chasers', 'sweepers', 'gravity_well'])).toEqual([
+      'The pull draws shadows in, and any that reach you turn into stars.',
+      'The pull holds you steady, so the tides only sway you.',
+    ])
+    expect(togetherNow('combo_chain', ['arrow_keys', 'stars', 'combo_chain'])).toEqual([])
+  })
+
+  it('remembers every pair that changed each other, for the finale', () => {
+    expect(togetherThen(['stars', 'sweepers', 'blaster'])).toEqual(['your tides carried the stars along', 'your lantern left stars along the tides'])
+    expect(togetherThen(['stars', 'combo_chain'])).toEqual([])
   })
 })

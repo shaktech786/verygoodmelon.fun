@@ -7,12 +7,14 @@ import type { Tint } from './palette'
 export const GAME_W = 640
 export const GAME_H = 480
 
-// When the next clue may appear, counted from the moment the last rule opened:
-// [seconds, light gathered since]. Whichever comes first plants it; nothing is lost by being slow.
-// Index 0 counts pulses of the still orb; the last index is the quiet circle that ends the game.
-export const CLUE_AFTER = [3, 8, 12, 14, 14, 14, 12] as const
-export const CLUE_SCORE = [3, 40, 100, 200, 300, 400, 999999] as const
-export const MAX_WAVES = 7
+// The first clue appears after this many seconds of rest, or this many pulses of the still orb
+export const FIRST_CLUE_AFTER = 3
+// After the orb can move, each crossroads offers up to this many clues, and the player goes to one.
+export const OFFER_SIZE = 3
+// Once this many crossroads have passed, the quiet circle that ends the game is one of the clues offered
+export const CIRCLE_AFTER = 3
+// After this many, only the circle is left
+export const MAX_FORKS = 5
 
 export const MECHANIC_CATEGORIES = [
   'movement',
@@ -147,9 +149,19 @@ export interface GameState {
   path: PathPoint[]
 
   // Discovery: each rule first shows as a small clue in the field, opens through play, and is named once felt
-  seed: Seed | null
-  /** Asked the game for the next clue and is waiting for it to be planted. */
-  clueWanted: boolean
+  /** Touch players only ever learn the follow control. */
+  touch: boolean
+  /** The clues growing now: one before the orb can move, then a few at each crossroads to choose between. */
+  seeds: Seed[]
+  /** Clues the player rested past instead of choosing; they stay in the field, asleep. */
+  sleeping: Sleeping[]
+  /** Crossroads passed, whether a clue was chosen or all were let be. */
+  forks: number
+  /** Rest gathered at the current crossroads; at 1 its clues settle and sleep. */
+  stillness: number
+  settlingTold: boolean
+  /** The clue the orb is beside, so a screen reader hears it once. */
+  beside: string | null
   /** The rule that opened but that the player has not felt yet. */
   unnamed: Unnamed | null
   /** No new clue before this moment, so a rule's name is heard before anything else grows. */
@@ -180,6 +192,17 @@ export interface Seed {
 
 export type FoundBy = 'went' | 'gathered' | 'rested'
 
+export interface Sleeping {
+  id: string
+  x: number
+  y: number
+}
+
+export interface CluePlace {
+  id: string
+  place: string
+}
+
 export interface Unnamed {
   id: string
   hinted: boolean
@@ -187,9 +210,11 @@ export interface Unnamed {
 }
 
 export type DiscoveryEvent =
-  | { type: 'clue-wanted' }
-  | { type: 'planted'; id: string; place: string }
-  | { type: 'opened'; id: string; by: FoundBy }
+  | { type: 'planted'; clues: CluePlace[] }
+  | { type: 'opened'; id: string; by: FoundBy; passed: string[] }
+  | { type: 'settling' }
+  | { type: 'let-be'; ids: string[] }
+  | { type: 'beside'; id: string }
   | { type: 'hint'; id: string }
   | { type: 'felt'; id: string }
 

@@ -1,4 +1,4 @@
-import { MECHANIC_OPTIONS, type MechanicCategory, type PathPoint } from '@/app/games/the-mutation/engine/types'
+import { MECHANIC_OPTIONS, type MechanicCategory, type PathPoint, type Sleeping } from '@/app/games/the-mutation/engine/types'
 import { KEEPSAKE_HEIGHT, KEEPSAKE_WIDTH, MARGIN, framedKeepsake, keepsakeDay, keepsakeFileName, type KeepsakeOp, type KeepsakePlan } from './plan'
 
 // The field is night-dark in both themes, like the game at dusk, so every rule's colour glows on it.
@@ -20,7 +20,7 @@ interface RuleLook {
 }
 
 /**
- * One look per kind of rule. Each run meets exactly one rule of each kind, so no two share a look,
+ * One look per kind of rule. A run holds at most one rule of each kind, so no two share a look,
  * and the line's pattern tells the rules apart for anyone who cannot tell the colours apart.
  */
 export const RULE_LOOK: Record<MechanicCategory, RuleLook> = {
@@ -112,6 +112,8 @@ export interface ShapeshifterKeepsakeInput {
   /** Where the orb went; wave n is coloured by the nth rule. */
   path: readonly PathPoint[]
   rules: readonly ShapeshifterRule[]
+  /** Clues the player let be, drawn faintly where they sleep. */
+  sleeping?: readonly Sleeping[]
   field: { w: number; h: number }
   /** The name the finished game was given. */
   name: string
@@ -193,9 +195,10 @@ function describe(rule: ShapeshifterRule): string {
   return `${rule.title} (${look.colourName} ${look.shape})`
 }
 
-export function shapeshifterKeepsake({ path, rules, field, name, day }: ShapeshifterKeepsakeInput): KeepsakePlan {
+export function shapeshifterKeepsake({ path, rules, sleeping = [], field, name, day }: ShapeshifterKeepsakeInput): KeepsakePlan {
   const { left, top, w, h } = fieldBox(field)
-  const { at } = framePath(path, field)
+  // The sleeping clues are part of the picture, so a still run is framed to hold them too
+  const { at } = framePath([...path, ...sleeping.map((z) => ({ x: z.x, y: z.y, wave: 0 }))], field)
 
   const art: KeepsakeOp[] = [
     { kind: 'rect', x: left, y: top, w, h, ink: FIELD_EDGE },
@@ -209,6 +212,13 @@ export function shapeshifterKeepsake({ path, rules, field, name, day }: Shapeshi
         art.push({ kind: 'rect', x: x - 3, y: y - 3, w: 6, h: 6, ink: DOT })
       }
     }
+  }
+
+  // Clues let be, small and faint under the path, where they were left to sleep
+  for (const z of sleeping) {
+    const [x, y] = at(z)
+    if (x < left + 24 || x > left + w - 24 || y < top + 24 || y > top + h - 24) continue
+    art.push(...mark(ruleLook(z.id).shape, x, y, 13, ruleLook(z.id).colour).map((op): KeepsakeOp => ({ ...op, alpha: 0.4 })))
   }
 
   const ruleFor = (wave: number) => rules[wave - 1]
@@ -262,9 +272,10 @@ export function shapeshifterKeepsake({ path, rules, field, name, day }: Shapeshi
 
   const shown = displayName(name)
   const order = rules.map(describe)
+  const asleep = sleeping.length ? ` Faint marks show the clues you let be, asleep where they grew.` : ''
   const alt = rules.length
-    ? `A map of the path your orb took across the field, its line changing colour as each rule arrived, with each rule's shape marking where it began: ${order.join(', then ')}. A bright orb marks where it came to rest.`
-    : 'A dark field with your orb resting where it began.'
+    ? `A map of the path your orb took across the field, its line changing colour as each rule arrived, with each rule's shape marking where it began: ${order.join(', then ')}. A bright orb marks where it came to rest.${asleep}`
+    : `A dark field with your orb resting where it began.${asleep}`
   const text = [
     shown,
     keepsakeDay(day),

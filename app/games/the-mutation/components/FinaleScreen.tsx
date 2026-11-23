@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Keepsake } from '@/components/games/Keepsake'
 import { shapeshifterKeepsake } from '@/lib/keepsake/shapeshifter'
-import type { MutationRecord, PathPoint } from '../engine/types'
+import type { MutationRecord, PathPoint, Sleeping } from '../engine/types'
 import { isControlTarget } from './controls'
 
 interface FinaleScreenProps {
@@ -13,6 +13,8 @@ interface FinaleScreenProps {
   closingLine: string
   mutations: MutationRecord[]
   path: readonly PathPoint[]
+  /** Clues the player let be, still asleep in the field. */
+  sleeping: readonly Sleeping[]
   field: { w: number; h: number }
   onPlayAgain: () => void
   retroFont: string
@@ -27,6 +29,7 @@ export default function FinaleScreen({
   closingLine,
   mutations,
   path,
+  sleeping,
   field,
   onPlayAgain,
   retroFont,
@@ -64,8 +67,8 @@ export default function FinaleScreen({
   }, [canPlayAgain, onPlayAgain])
 
   const plan = useMemo(
-    () => (gameName ? shapeshifterKeepsake({ path, rules: mutations, field, name: gameName, day }) : null),
-    [gameName, path, mutations, field, day],
+    () => (gameName ? shapeshifterKeepsake({ path, rules: mutations, sleeping, field, name: gameName, day }) : null),
+    [gameName, path, mutations, sleeping, field, day],
   )
 
   const fade = reducedMotion ? '' : 'animate-fade'
@@ -114,7 +117,7 @@ export default function FinaleScreen({
                 PLAY AGAIN
               </button>
               <p className="text-base mt-2 text-foreground/70">
-                Play again and its rules will arrive in a different order.
+                Play again and choose other clues, or rest through them, and it will end another way.
               </p>
             </div>
           )}

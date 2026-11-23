@@ -172,4 +172,22 @@ describe('shapeshifterKeepsake', () => {
       expect(quiet.ops.filter((op) => op.kind !== 'text' && op.ink === colour).length).toBeGreaterThanOrEqual(2)
     }
   })
+
+  it('draws the clues a player let be faintly where they sleep, and says so', () => {
+    const rested = shapeshifterKeepsake({
+      path: [{ x: 320, y: 240, wave: 0 }, { x: 320, y: 240, wave: 1 }],
+      rules: [{ id: 'arrow_keys', title: 'IT CAN MOVE' }],
+      sleeping: [{ id: 'sweepers', x: 360, y: 260 }, { id: 'blaster', x: 290, y: 220 }],
+      field: WIDE,
+      name: 'SLEEPING TIDES & LANTERNS',
+      day,
+    })
+    for (const id of ['sweepers', 'blaster']) {
+      const faint = rested.ops.filter((op) => op.kind !== 'text' && op.kind !== 'line' && op.ink === ruleLook(id).colour && op.alpha === 0.4)
+      expect(faint.length).toBeGreaterThanOrEqual(1)
+    }
+    expect(rested.alt).toMatch(/clues you let be, asleep where they grew/)
+    expect(plan.alt).not.toMatch(/let be/)
+  })
 })
+

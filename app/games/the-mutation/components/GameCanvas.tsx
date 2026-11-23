@@ -15,6 +15,7 @@ import { usePalette } from './usePalette'
 interface GameCanvasProps {
   width: number
   height: number
+  isTouch: boolean
   isPlaying: boolean
   activeMechanics: Array<{ id: string; params: Record<string, number> }>
   onDiscovery: (event: DiscoveryEvent) => void
@@ -32,6 +33,7 @@ function normalizeKey(key: string): string {
 export default function GameCanvas({
   width,
   height,
+  isTouch,
   isPlaying,
   activeMechanics,
   onDiscovery,
@@ -59,14 +61,14 @@ export default function GameCanvas({
   }, [palette, reducedMotion])
 
   useEffect(() => {
-    const state = createState(width, height)
+    const state = createState(width, height, isTouch)
     stateRef.current = state
     gameStateRef.current = state
     // Lets the e2e suite fast-forward clues instead of waiting out real rests
     if (process.env.NODE_ENV !== 'production') {
       (window as CascadeWindow).__cascadeState = state
     }
-  }, [gameStateRef, width, height])
+  }, [gameStateRef, width, height, isTouch])
 
   useEffect(() => {
     const s = stateRef.current
@@ -218,8 +220,12 @@ export default function GameCanvas({
         onTouchCancel={release}
         role="application"
         aria-label="The Shapeshifter game area"
+        aria-describedby="shapeshifter-controls"
         tabIndex={0}
       />
+      <p id="shapeshifter-controls" className="sr-only">
+        Space pulses the orb. Once it can move, the arrow keys move it. Go to a clue to choose it, or rest and let it be. C tells you where the clues are. Escape pauses.
+      </p>
     </div>
   )
 }

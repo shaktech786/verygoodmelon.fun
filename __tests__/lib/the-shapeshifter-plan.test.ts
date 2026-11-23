@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { planRun, planOrder } from '@/app/games/the-mutation/engine/plan'
-import { MECHANIC_OPTIONS } from '@/app/games/the-mutation/engine/types'
+import { categoryOf, movementFor, offerClues } from '@/app/games/the-mutation/engine/plan'
+import { CIRCLE_AFTER, ENDING, MAX_FORKS, OFFER_SIZE } from '@/app/games/the-mutation/engine/types'
 
 /** A repeatable stand-in for Math.random. */
 function seeded(seed: number): () => number {
@@ -11,45 +11,76 @@ function seeded(seed: number): () => number {
   }
 }
 
-describe('The Shapeshifter run plan', () => {
-  it('always learns to move first, finds something to gather second, and blooms last', () => {
-    for (let seed = 1; seed <= 40; seed++) {
-      const plan = planRun(seeded(seed), false)
-      expect(plan).toHaveLength(6)
-      expect(plan[0].category).toBe('movement')
-      expect(plan[1].category).toBe('collectible')
-      expect(plan[5].category).toBe('climax')
-      expect(plan.slice(2, 5).map(step => step.category).sort()).toEqual(['modifier', 'power', 'threat'])
-    }
-  })
+const offer = (chosen: string[], forks: number, asleep: string[] = [], seed = 1) =>
+  offerClues({ chosen, asleep, forks }, seeded(seed))
 
-  it('offers every rule of a step, with the one this run leans toward first', () => {
-    for (let seed = 1; seed <= 20; seed++) {
-      for (const step of planRun(seeded(seed), false)) {
-        expect([...step.options].sort()).toEqual([...MECHANIC_OPTIONS[step.category]].sort())
-      }
-    }
-  })
-
+describe('The Shapeshifter crossroads', () => {
   it('only offers touch players a way of moving they can use', () => {
-    for (let seed = 1; seed <= 10; seed++) expect(planRun(seeded(seed), true)[0].options).toEqual(['mouse_follow'])
+    for (let seed = 1; seed <= 10; seed++) expect(movementFor(seeded(seed), true)).toBe('mouse_follow')
+    const desktop = new Set(Array.from({ length: 20 }, (_, i) => movementFor(seeded(i * 98765431 + 1), false)))
+    expect(desktop).toEqual(new Set(['arrow_keys', 'mouse_follow']))
   })
 
-  it('varies which rules arrive, and in what order, from run to run', () => {
-    const leanings = new Set(Array.from({ length: 60 }, (_, i) => planRun(seeded(i + 1), false).map(s => s.options[0]).join()))
-    expect(leanings.size).toBeGreaterThan(20)
-    const orders = new Set(Array.from({ length: 60 }, (_, i) => planRun(seeded(i + 1), false).map(s => s.category).join()))
-    expect(orders.size).toBe(6)
-  })
-
-  it('never brings the rules in the same order as the run before it, even when chance would', () => {
-    const always = () => 0
-    const first = planRun(always, false)
-    const next = planRun(always, false, planOrder(first))
-    expect(planOrder(next)).not.toBe(planOrder(first))
+  it('the first crossroads puts both lights side by side, with something different beside them', () => {
     for (let seed = 1; seed <= 30; seed++) {
-      const previous = planOrder(planRun(seeded(seed), false))
-      expect(planOrder(planRun(seeded(seed + 100), false, previous))).not.toBe(previous)
+      const clues = offer(['arrow_keys'], 0, [], seed)
+      expect(clues).toHaveLength(OFFER_SIZE)
+      expect(clues).toEqual(expect.arrayContaining(['stars', 'pulse_gems']))
+      const third = clues.find((id) => id !== 'stars' && id !== 'pulse_gems') ?? ''
+      expect(['threat', 'power', 'modifier']).toContain(categoryOf(third))
     }
+  })
+
+  it('a run holds one rule of each kind: choosing tides means the shadows never come', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const clues = offer(['arrow_keys', 'stars', 'sweepers'], 2, [], seed)
+      expect(clues).not.toContain('chasers')
+      expect(clues).not.toContain('pulse_gems')
+      expect(clues).not.toContain('sweepers')
+    }
+  })
+
+  it('offers different kinds of thing at once, so each crossroads is a real choice', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const clues = offer(['arrow_keys', 'stars'], 1, [], seed).filter((id) => id !== ENDING)
+      expect(new Set(clues.map(categoryOf)).size).toBe(clues.length)
+    }
+  })
+
+  it('never offers again a clue the player let sleep', () => {
+    const asleep = ['stars', 'pulse_gems', 'chasers']
+    for (let seed = 1; seed <= 20; seed++) {
+      for (const id of offer(['arrow_keys'], 1, asleep, seed)) expect(asleep).not.toContain(id)
+    }
+  })
+
+  it('keeps the bloom back until there is something for it to gather up', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      expect(offer(['arrow_keys', 'stars'], 1, [], seed)).not.toContain('score_rush')
+    }
+    const later = new Set(Array.from({ length: 40 }, (_, i) => offer(['arrow_keys', 'stars', 'chasers'], 2, [], i + 1)).flat())
+    expect(later).toContain('score_rush')
+  })
+
+  it('lets the player choose when to end: the circle joins the clues after a few crossroads', () => {
+    expect(offer(['arrow_keys', 'stars', 'chasers'], CIRCLE_AFTER - 1)).not.toContain(ENDING)
+    const withCircle = offer(['arrow_keys', 'stars', 'chasers', 'blaster'], CIRCLE_AFTER)
+    expect(withCircle).toContain(ENDING)
+    expect(withCircle.length).toBeGreaterThan(1)
+  })
+
+  it('leaves only the circle once the bloom is chosen, or the crossroads run out', () => {
+    expect(offer(['arrow_keys', 'stars', 'chasers', 'score_rush'], 3)).toEqual([ENDING])
+    expect(offer(['arrow_keys'], MAX_FORKS, ['stars'])).toEqual([ENDING])
+    const everything = ['stars', 'pulse_gems', 'chasers', 'sweepers', 'blaster', 'phase_dash', 'combo_chain', 'gravity_well']
+    expect(offer(['arrow_keys'], 3, everything)).toEqual([ENDING])
+  })
+
+  it('different choices lead to different later crossroads', () => {
+    const afterTides = new Set(Array.from({ length: 30 }, (_, i) => offer(['arrow_keys', 'stars', 'sweepers'], 2, [], i + 1)).flat())
+    const afterLantern = new Set(Array.from({ length: 30 }, (_, i) => offer(['arrow_keys', 'stars', 'blaster'], 2, [], i + 1)).flat())
+    expect(afterTides).not.toEqual(afterLantern)
+    expect(afterTides).not.toContain('chasers')
+    expect(afterLantern).toContain('chasers')
   })
 })

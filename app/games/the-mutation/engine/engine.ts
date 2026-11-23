@@ -2,23 +2,27 @@
 // THE SHAPESHIFTER — Game Engine
 // ========================================
 // A small arcade game that gains one composable rule per wave. Each rule is found, not announced:
-// a small clue grows in the field, and going to it, gathering or simply resting opens it.
+// at each crossroads a few clues grow in the field, and the one the player goes to opens.
+// Resting instead lets them all settle and sleep, which is a way of playing too.
 // Nothing in it can hurt the player: shadows only nudge, tides only carry,
 // and light turns shadows into stars. All functions mutate a GameState.
 
-import type { GameState, Entity, ProfileSummary, PlayStyle, FoundBy, Seed } from './types'
-import {
-  GAME_W, GAME_H, DEFAULT_PARAMS,
-  CLUE_AFTER, CLUE_SCORE, MAX_WAVES, ENDING,
-} from './types'
+import type { GameState, Entity, ProfileSummary, PlayStyle, FoundBy, Seed, Sleeping, CluePlace } from './types'
+import { GAME_W, GAME_H, DEFAULT_PARAMS, FIRST_CLUE_AFTER, ENDING } from './types'
 import type { Palette, Tint } from './palette'
 import { withAlpha } from './palette'
+import { isMovement, movementFor, offerClues } from './plan'
 
 const KEY_STEER_REACH = 70
 const NUDGE_SPEED = 260
 const NUDGE_COOLDOWN = 0.6
 const DRIFT_DECAY = 0.02
 const TIDE_CARRY = 0.9
+// With the gentle pull, a tide only sways the orb
+const TIDE_CARRY_HELD = 0.35
+const TIDE_CARRIES_LIGHTS = 0.9
+// The pull reaches shy shadows too, more weakly than it reaches lights
+const PULL_ON_SHADOWS = 0.35
 const TIDE_HALF_WIDTH = 10
 const TRANSFORM_SCORE = 5
 const BLOOM_BREATH_HZ = 0.25
@@ -32,18 +36,24 @@ const PATH_STEP = 6
 const PATH_MAX = 1200
 
 // A clue opens the moment the orb reaches it, within a second or so of the orb coming near,
-// after five lights gathered, or slowly while the player rests
+// or after five lights gathered. Nothing opens on a clock.
 const SEED_NEAR = 80
 const SEED_NEAR_SECONDS = 1.2
+// Resting grows a clue that stands alone: the first one, or the closing circle...
 const SEED_REST_SECONDS = 12
-// Before the orb can move, resting and pulsing are the only ways in, so the first clue grows sooner
+// ...and before the orb can move, resting and pulsing are the only ways in, so the first grows sooner
 const FIRST_SEED_REST_SECONDS = 7
-// Even a player who never rests or gathers sees it open in its own time
-const SEED_DRIFT_SECONDS = 45
+// At a crossroads, resting this long lets every clue settle and sleep; moving lets the stillness ebb
+const LET_BE_SECONDS = 12
+const SETTLING_TOLD_AT = 0.4
+const STILLNESS_EBB = 1
 const SEED_FEED = 0.2
 const SEED_REACH = 16
 const SEED_FIRST_OFFSET = 90
 const SEED_MIN_DISTANCE = 140
+const SEED_APART = 150
+const SEED_MARGIN = 50
+const CAPTION_ROOM = 30
 const REST_SPEED = 15
 // A rule the player has not used yet gets a quiet hint, then is named anyway
 const HINT_AFTER = 5
@@ -51,13 +61,13 @@ const FELT_AFTER = 14
 const BLOOM_FELT_AFTER = 1.5
 const SHADOW_FELT_RANGE = 80
 const MOVE_FELT_DISTANCE = 80
-const QUIET_AFTER_NAMING = 4
+const QUIET_AFTER_NAMING = 6
 
 // ==========================================
 // STATE CREATION
 // ==========================================
 
-export function createState(w: number = GAME_W, h: number = GAME_H): GameState {
+export function createState(w: number = GAME_W, h: number = GAME_H, touch = false): GameState {
   return {
     w,
     h,
@@ -102,8 +112,13 @@ export function createState(w: number = GAME_W, h: number = GAME_H): GameState {
     spawnTimers: {},
     totalTime: 0,
     path: [{ x: w / 2, y: h / 2, wave: 0 }],
-    seed: null,
-    clueWanted: false,
+    touch,
+    seeds: [],
+    sleeping: [],
+    forks: 0,
+    stillness: 0,
+    settlingTold: false,
+    beside: null,
     unnamed: null,
     quietUntil: 0,
     foundBy: [],
@@ -214,7 +229,10 @@ export function render(ctx: CanvasRenderingContext2D, s: GameState, palette: Pal
   }
 
   if (s.rushActive) renderBloom(ctx, s, palette, reducedMotion)
-  if (s.seed) renderSeed(ctx, s.seed, palette, reducedMotion)
+  for (const sleeper of s.sleeping) renderSleeping(ctx, sleeper, palette)
+  // Clues dim as the player's stillness lets them settle, so resting visibly does something
+  const settle = 1 - Math.min(1, s.stillness) * 0.6
+  for (const seed of s.seeds) renderSeed(ctx, seed, palette, reducedMotion, settle)
 
   for (const e of s.entities) {
     if (e.active) renderEntity(ctx, e, s, palette, reducedMotion)
@@ -464,35 +482,45 @@ function checkCollisions(s: GameState): void {
 
     if (e.type === 'chaser') {
       if (dist(s.px, s.py, e.x, e.y) >= s.pSize + e.size) continue
-      if (s.dashActive) transformShadow(s, e)
+      // A shadow glided through, or drawn in by the gentle pull, becomes a star
+      if (s.dashActive || s.activeMechanics.includes('gravity_well')) transformShadow(s, e)
       else if (s.invTimer <= 0) nudge(s, e)
       continue
     }
 
     if (e.type === 'sweeper') {
-      const isVertical = Math.abs(e.vx) > 0
-      const inside = isVertical
-        ? Math.abs(s.px - e.x) < s.pSize + TIDE_HALF_WIDTH
-        : Math.abs(s.py - e.y) < s.pSize + TIDE_HALF_WIDTH
-      if (!inside) continue
-      // Carried along rather than hurt; counted once per tide
-      s.driftX = e.vx * TIDE_CARRY
-      s.driftY = e.vy * TIDE_CARRY
+      if (!inTide(e, s.px, s.py, s.pSize)) continue
+      // Carried along rather than hurt; counted once per tide. The gentle pull holds the orb steadier.
+      const carry = s.activeMechanics.includes('gravity_well') ? TIDE_CARRY_HELD : TIDE_CARRY
+      s.driftX = e.vx * carry
+      s.driftY = e.vy * carry
       if (e.hp > 0) {
         e.hp = 0
         s.carries++
+        // With a rhythm, riding a tide keeps it going
+        extendCombo(s)
       }
       continue
     }
 
     if (e.type === 'bullet') {
-      if (s.seed && dist(e.x, e.y, s.seed.x, s.seed.y) < SEED_REACH + e.size) {
+      const reached = s.seeds.find(seed => dist(e.x, e.y, seed.x, seed.y) < SEED_REACH + e.size)
+      if (reached) {
         e.active = false
-        openSeed(s, 'went')
-        continue
+        openSeed(s, reached, 'went')
+        return
       }
       for (const other of s.entities) {
-        if (!other.active || other === e || dist(e.x, e.y, other.x, other.y) >= e.size + other.size) continue
+        if (!other.active || other === e) continue
+        // Light sent into a tide settles there as a star
+        if (other.type === 'sweeper') {
+          if (!inTide(other, e.x, e.y, e.size)) continue
+          e.active = false
+          spawnCollectible(s, 'star', clamp(e.x, 30, s.w - 30), clamp(e.y, 30, s.h - 30))
+          burst(s, e.x, e.y, 'light', 6)
+          break
+        }
+        if (dist(e.x, e.y, other.x, other.y) >= e.size + other.size) continue
         if (other.type === 'chaser') transformShadow(s, other)
         else if ((other.type === 'star' || other.type === 'gem') && other.age > NEW_STAR_SETTLE) collectItem(s, other)
         else continue
@@ -501,6 +529,12 @@ function checkCollisions(s: GameState): void {
       }
     }
   }
+}
+
+function inTide(tide: Entity, x: number, y: number, size: number): boolean {
+  return Math.abs(tide.vx) > 0
+    ? Math.abs(x - tide.x) < size + TIDE_HALF_WIDTH
+    : Math.abs(y - tide.y) < size + TIDE_HALF_WIDTH
 }
 
 function collectItem(s: GameState, e: Entity): void {
@@ -737,6 +771,12 @@ function updateSweepers(s: GameState, dt: number): void {
 
   for (const e of s.entities) {
     if (e.type !== 'sweeper' || !e.active) continue
+    // A tide carries any star or gem it passes over along with it
+    for (const light of s.entities) {
+      if (!light.active || (light.type !== 'star' && light.type !== 'gem') || !inTide(e, light.x, light.y, light.size)) continue
+      light.x = clamp(light.x + e.vx * TIDE_CARRIES_LIGHTS * dt, 20, s.w - 20)
+      light.y = clamp(light.y + e.vy * TIDE_CARRIES_LIGHTS * dt, 20, s.h - 20)
+    }
     if (Math.abs(e.vx) > 0) {
       if ((e.vx > 0 && e.x > s.w + 20) || (e.vx < 0 && e.x < -20)) e.active = false
     } else if ((e.vy > 0 && e.y > s.h + 20) || (e.vy < 0 && e.y < -20)) {
@@ -815,12 +855,12 @@ function updateGravityWell(s: GameState, dt: number): void {
   const range = getParam(s, 'gravity_well', 'range')
   const strength = getParam(s, 'gravity_well', 'strength')
   for (const e of s.entities) {
-    if (!e.active || (e.type !== 'star' && e.type !== 'gem')) continue
+    if (!e.active || (e.type !== 'star' && e.type !== 'gem' && e.type !== 'chaser')) continue
     const dx = s.px - e.x
     const dy = s.py - e.y
     const d = Math.sqrt(dx * dx + dy * dy)
     if (d < range && d > 1) {
-      const force = ((range - d) / range) * strength
+      const force = ((range - d) / range) * strength * (e.type === 'chaser' ? PULL_ON_SHADOWS : 1)
       e.vx += (dx / d) * force * dt
       e.vy += (dy / d) * force * dt
     }
@@ -881,24 +921,28 @@ function isResting(s: GameState): boolean {
   return ax === 0 && ay === 0 && !isActionHeld(s) && Math.hypot(s.pvx, s.pvy) < REST_SPEED
 }
 
+function canMove(s: GameState): boolean {
+  return s.activeMechanics.some(isMovement)
+}
+
 function updateDiscovery(s: GameState, dt: number): void {
-  if (s.seed) {
-    growSeed(s, s.seed, dt)
+  if (s.seeds.length > 0) {
+    growSeeds(s, dt)
     return
   }
   if (s.unnamed) {
     checkFelt(s)
     return
   }
-  if (s.clueWanted || s.finished || s.totalTime < s.quietUntil) return
-  const due = s.waveTime >= CLUE_AFTER[s.wave] || s.score - s.waveScoreStart >= CLUE_SCORE[s.wave]
-  if (!due) return
-  if (s.wave >= MAX_WAVES - 1) {
-    plantSeed(s, ENDING)
+  if (s.finished || s.totalTime < s.quietUntil) return
+  if (!canMove(s)) {
+    // Before anything else, the orb learns to move: after a short rest, or a few pulses
+    if (s.waveTime >= FIRST_CLUE_AFTER || s.clickTotal >= FIRST_CLUE_AFTER) {
+      plantClues(s, [movementFor(Math.random, s.touch)])
+    }
     return
   }
-  s.clueWanted = true
-  s.events.push({ type: 'clue-wanted' })
+  plantClues(s, offerClues({ chosen: s.activeMechanics, asleep: s.sleeping.map(z => z.id), forks: s.forks }, Math.random))
 }
 
 /** How a clue was found: whichever of going near, gathering or resting grew it most. */
@@ -907,33 +951,73 @@ function foundBy(seed: Seed): FoundBy {
   return seed.byGather > seed.byRest ? 'gathered' : 'rested'
 }
 
-function growSeed(s: GameState, seed: Seed, dt: number): void {
-  seed.age += dt
-  const away = dist(s.px, s.py, seed.x, seed.y)
+function nearestSeed(s: GameState, seeds: readonly Seed[] = s.seeds): Seed | null {
+  let best: Seed | null = null
+  let bestD = Infinity
+  for (const seed of seeds) {
+    const d = dist(s.px, s.py, seed.x, seed.y)
+    if (d < bestD) {
+      best = seed
+      bestD = d
+    }
+  }
+  return best
+}
+
+/** The clue a rest grows: one that stands alone, or the closing circle. At a crossroads of rules, none. */
+function restingGrows(s: GameState): Seed | null {
+  if (s.seeds.length === 1) return s.seeds[0]
+  return s.seeds.find(seed => seed.id === ENDING) ?? null
+}
+
+function growSeeds(s: GameState, dt: number): void {
+  for (const seed of s.seeds) seed.age += dt
+  const near = nearestSeed(s)
+  if (!near) return
+  const away = dist(s.px, s.py, near.x, near.y)
   if (away < s.pSize + SEED_REACH) {
-    openSeed(s, 'went')
+    openSeed(s, near, 'went')
     return
   }
   // The first clue grows beside an orb that cannot move yet, so only coming near later counts
-  if (s.wave > 0 && away < s.pSize + SEED_NEAR) {
-    seed.growth += dt / SEED_NEAR_SECONDS
-    seed.byNear += dt / SEED_NEAR_SECONDS
-  } else if (isResting(s)) {
-    const rest = s.wave === 0 ? FIRST_SEED_REST_SECONDS : SEED_REST_SECONDS
-    seed.growth += dt / rest
-    seed.byRest += dt / rest
-  } else {
-    seed.growth += dt / SEED_DRIFT_SECONDS
+  if (canMove(s) && away < s.pSize + SEED_NEAR) {
+    near.growth += dt / SEED_NEAR_SECONDS
+    near.byNear += dt / SEED_NEAR_SECONDS
+    if (s.beside !== near.id) {
+      s.beside = near.id
+      s.events.push({ type: 'beside', id: near.id })
+    }
+    if (near.growth >= 1) openSeed(s, near, foundBy(near))
+    return
   }
-  if (seed.growth >= 1) openSeed(s, foundBy(seed))
+  s.beside = null
+  if (!isResting(s)) {
+    s.stillness = Math.max(0, s.stillness - (dt / LET_BE_SECONDS) * STILLNESS_EBB)
+    return
+  }
+  const grows = restingGrows(s)
+  if (grows) {
+    const rest = canMove(s) ? SEED_REST_SECONDS : FIRST_SEED_REST_SECONDS
+    grows.growth += dt / rest
+    grows.byRest += dt / rest
+    if (grows.growth >= 1) openSeed(s, grows, foundBy(grows))
+    return
+  }
+  s.stillness += dt / LET_BE_SECONDS
+  if (!s.settlingTold && s.stillness >= SETTLING_TOLD_AT) {
+    s.settlingTold = true
+    s.events.push({ type: 'settling' })
+  }
+  if (s.stillness >= 1) letBe(s)
 }
 
-/** Gathering a light, or pulsing the still orb, helps a waiting clue grow. */
+/** Gathering a light, or pulsing the still orb, helps the nearest waiting clue grow. The circle waits to be chosen. */
 function feedSeed(s: GameState): void {
-  if (!s.seed) return
-  s.seed.growth += SEED_FEED
-  s.seed.byGather += SEED_FEED
-  if (s.seed.growth >= 1) openSeed(s, foundBy(s.seed))
+  const seed = nearestSeed(s, s.seeds.filter(z => z.id !== ENDING))
+  if (!seed) return
+  seed.growth += SEED_FEED
+  seed.byGather += SEED_FEED
+  if (seed.growth >= 1) openSeed(s, seed, foundBy(seed))
 }
 
 /** Where a clue sits, in words, from the orb's point of view. */
@@ -947,38 +1031,62 @@ export function placeInWords(s: GameState, x: number, y: number): string {
   return `${vertical || horizontal} your orb`
 }
 
-/** Puts the next clue in the field. Before the orb can move, it grows close by, where it can be watched. */
-export function plantSeed(s: GameState, id: string): void {
-  let x: number
-  let y: number
-  const canMove = s.activeMechanics.some(m => m === 'arrow_keys' || m === 'mouse_follow')
-  if (!canMove) {
-    x = s.px + SEED_FIRST_OFFSET * 0.8
-    y = s.py - SEED_FIRST_OFFSET * 0.6
-  } else {
-    const margin = 50
-    let tries = 0
-    do {
-      x = margin + Math.random() * (s.w - margin * 2)
-      y = margin + Math.random() * (s.h - margin * 2)
-      tries++
-    } while (dist(x, y, s.px, s.py) < SEED_MIN_DISTANCE && tries < 20)
-  }
-  s.seed = { id, x, y, growth: 0, age: 0, byNear: 0, byRest: 0, byGather: 0 }
-  s.clueWanted = false
-  s.events.push({ type: 'planted', id, place: placeInWords(s, x, y) })
+/** Where every growing clue is now, for a player who asks. */
+export function cluePlaces(s: GameState): CluePlace[] {
+  return s.seeds.map(seed => ({ id: seed.id, place: placeInWords(s, seed.x, seed.y) }))
 }
 
-function openSeed(s: GameState, by: FoundBy): void {
-  const seed = s.seed
-  if (!seed) return
-  s.seed = null
+function freeSpot(s: GameState, taken: ReadonlyArray<{ x: number; y: number }>): { x: number; y: number } {
+  // A crowded field takes the roomiest of the spots tried
+  let best = { x: s.w / 2, y: s.h / 2 }
+  let bestRoom = -Infinity
+  for (let tries = 0; tries < 40; tries++) {
+    const x = SEED_MARGIN + Math.random() * (s.w - SEED_MARGIN * 2)
+    // Kept clear of the caption along the bottom edge
+    const y = SEED_MARGIN + Math.random() * (s.h - SEED_MARGIN * 2 - CAPTION_ROOM)
+    const room = Math.min(dist(x, y, s.px, s.py) - SEED_MIN_DISTANCE, ...taken.map(t => dist(x, y, t.x, t.y) - SEED_APART))
+    if (room >= 0) return { x, y }
+    if (room > bestRoom) {
+      best = { x, y }
+      bestRoom = room
+    }
+  }
+  return best
+}
+
+/**
+ * Puts the next clues in the field, well apart so going to one is a clear choice.
+ * Before the orb can move, the single clue grows close by, where it can be watched.
+ */
+export function plantClues(s: GameState, ids: readonly string[]): void {
+  const seeds: Seed[] = []
+  for (const id of ids) {
+    const spot = canMove(s)
+      ? freeSpot(s, [...seeds, ...s.sleeping])
+      : { x: s.px + SEED_FIRST_OFFSET * 0.8, y: s.py - SEED_FIRST_OFFSET * 0.6 }
+    seeds.push({ id, x: spot.x, y: spot.y, growth: 0, age: 0, byNear: 0, byRest: 0, byGather: 0 })
+  }
+  s.seeds = seeds
+  s.stillness = 0
+  s.settlingTold = false
+  s.beside = null
+  s.events.push({ type: 'planted', clues: cluePlaces(s) })
+}
+
+function openSeed(s: GameState, seed: Seed, by: FoundBy): void {
+  const passed = s.seeds.filter(z => z !== seed)
+  s.seeds = []
+  s.stillness = 0
+  s.beside = null
   burst(s, seed.x, seed.y, SEED_TINT[seed.id] ?? 'orb', 14)
+  // The clues not chosen fade where they stood and may come back at a later crossroads
+  for (const other of passed) burst(s, other.x, other.y, SEED_TINT[other.id] ?? 'orb', 4)
   s.foundBy.push(by)
   if (seed.id === ENDING) {
     s.finished = true
     return
   }
+  if (!isMovement(seed.id)) s.forks++
   advanceWave(s)
   activateMechanic(s, seed.id, {})
   arriveFrom(s, seed)
@@ -990,10 +1098,20 @@ function openSeed(s: GameState, by: FoundBy): void {
       transformed: s.transformed, sent: s.sent, glides: s.glides,
     },
   }
-  s.events.push({ type: 'opened', id: seed.id, by })
+  s.events.push({ type: 'opened', id: seed.id, by, passed: passed.map(z => z.id) })
 }
 
-/** The first of whatever the rule brings comes out of the clue itself, so the player sees where it came from. */
+/** The player rested through a crossroads: every clue settles where it grew and sleeps there. */
+function letBe(s: GameState): void {
+  const ids = s.seeds.map(z => z.id)
+  s.sleeping.push(...s.seeds.map(({ id, x, y }): Sleeping => ({ id, x, y })))
+  s.seeds = []
+  s.stillness = 0
+  s.forks++
+  s.quietUntil = s.totalTime + QUIET_AFTER_NAMING
+  s.events.push({ type: 'let-be', ids })
+}
+
 function arriveFrom(s: GameState, seed: Seed): void {
   if (seed.id === 'stars') spawnCollectible(s, 'star', seed.x, seed.y)
   if (seed.id === 'pulse_gems') spawnCollectible(s, 'gem', seed.x, seed.y)
@@ -1077,24 +1195,37 @@ const SEED_TINT: Record<string, Tint> = {
 }
 
 /** A small, still picture of the rule to come, growing from faint to full as it nears opening. */
-function renderSeed(ctx: CanvasRenderingContext2D, seed: Seed, palette: Palette, reducedMotion: boolean): void {
+function renderSeed(ctx: CanvasRenderingContext2D, seed: Seed, palette: Palette, reducedMotion: boolean, settle: number): void {
   const g = Math.min(1, seed.growth)
   const tint = palette[SEED_TINT[seed.id] ?? 'orb']
   const breath = reducedMotion ? 1 : 1 + Math.sin(seed.age * 1.6) * 0.05
-  const r = (8 + g * 5) * breath
+  const r = (9 + g * 5) * breath
   ctx.save()
-  ctx.globalAlpha = 0.1 + g * 0.15
+  ctx.globalAlpha = (0.12 + g * 0.15) * settle
   ctx.fillStyle = tint
   ctx.beginPath()
   ctx.arc(seed.x, seed.y, r * 2.1, 0, Math.PI * 2)
   ctx.fill()
 
-  ctx.globalAlpha = 0.55 + g * 0.45
+  ctx.globalAlpha = (0.75 + g * 0.25) * settle
   ctx.strokeStyle = tint
   ctx.fillStyle = tint
   ctx.lineWidth = 2
   ctx.lineCap = 'round'
   drawGlyph(ctx, seed.id, seed.x, seed.y, r, g, palette)
+  ctx.restore()
+}
+
+/** A clue the player let be: small, faint and still, resting where it grew. */
+function renderSleeping(ctx: CanvasRenderingContext2D, z: Sleeping, palette: Palette): void {
+  ctx.save()
+  ctx.globalAlpha = 0.3
+  const tint = palette[SEED_TINT[z.id] ?? 'orb']
+  ctx.strokeStyle = tint
+  ctx.fillStyle = tint
+  ctx.lineWidth = 1.5
+  ctx.lineCap = 'round'
+  drawGlyph(ctx, z.id, z.x, z.y, 7, 0, palette)
   ctx.restore()
 }
 

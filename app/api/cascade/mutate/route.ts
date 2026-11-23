@@ -12,9 +12,19 @@ const MECHANIC_DESCRIPTIONS: Record<string, string> = {
   sweepers: 'Slow tides of light sweep across and carry the orb along; nothing is lost.',
   blaster: 'The orb sends out light. Light gathers the stars it reaches and turns shadows into stars.',
   phase_dash: 'The orb can glide quickly. Gliding through a shadow turns it into a star.',
-  combo_chain: 'Gathering in a steady rhythm grows a glow multiplier. A pause only lowers it one step.',
+  combo_chain: 'Each light gathered makes the glow grow, and it stays.',
   gravity_well: 'Lights near the orb drift toward it on their own.',
-  score_rush: 'The bloom: every shadow turns to light and stars come thick and bright for the final moments.',
+  score_rush: 'The bloom: every shadow turns to light and stars come thick and bright until the end.',
+}
+
+// How the run ended, from the player's own choices (see endingKind in the game's naming)
+const ENDINGS: Record<string, string> = {
+  still: 'rested through every crossroads and let every clue sleep, so the field stayed quiet',
+  bloom: 'chose the bloom, so everything glowed at once at the end',
+  kept: 'chose a few rules and let as many others sleep',
+  wandering: 'went looking for each clue',
+  gathering: 'opened clues by gathering light',
+  resting: 'mostly waited and let clues grow beside them',
 }
 
 const PLAY_STYLES: readonly PlayStyle[] = ['gentle', 'explorer', 'collector', 'bold']
@@ -35,6 +45,8 @@ const FLAVOR_MAX = 100
 const NAME_MAX = 32
 const TAGLINE_MAX = 110
 const HISTORY_TITLE_MAX = 40
+// Movement, then up to five crossroads
+const MAX_WAVE = 6
 
 interface PlayerPicture {
   style: PlayStyle
@@ -95,7 +107,7 @@ export async function POST(request: NextRequest) {
 
 async function handleMutation(body: Record<string, unknown>) {
   const { wave, category } = body
-  if (!isCategory(category) || typeof wave !== 'number' || !Number.isInteger(wave) || wave < 0 || wave >= MECHANIC_CATEGORIES.length) {
+  if (!isCategory(category) || typeof wave !== 'number' || !Number.isInteger(wave) || wave < 0 || wave > MAX_WAVE) {
     return NextResponse.json({ error: 'Unknown stage' }, { status: 400 })
   }
   const options = (Array.isArray(body.options) ? body.options : [])
@@ -114,7 +126,7 @@ async function handleMutation(body: Record<string, unknown>) {
 
     const prompt = `${VOICE}
 
-Rule ${wave + 1} of ${MECHANIC_CATEGORIES.length}. The player ${STYLE_NOTES[picture.style]}.
+This is rule number ${wave + 1} the player has chosen. The player ${STYLE_NOTES[picture.style]}.
 Rules so far: ${picture.history.map(m => m.title || m.id).join(' → ') || 'none yet'}.
 
 ${optionsList}
@@ -155,6 +167,10 @@ async function handleNaming(body: Record<string, unknown>) {
   const transformed = count(body.transformed)
   const bumps = count(body.bumps)
   const carries = count(body.carries)
+  const ending = typeof body.ending === 'string' && body.ending in ENDINGS ? ENDINGS[body.ending] : ''
+  const letBe = (Array.isArray(body.letBe) ? body.letBe : [])
+    .filter((id): id is string => typeof id === 'string' && id in MECHANIC_DESCRIPTIONS)
+    .slice(0, 12)
   const happened = [
     transformed > 0 && `turned ${transformed} shadows into stars`,
     bumps > 0 && `were bumped by a shadow ${bumps} times`,
@@ -166,7 +182,9 @@ async function handleNaming(body: Record<string, unknown>) {
 
 The player just finished their game. Name it.
 
-How it grew: ${picture.history.map(m => `${m.title || m.id} (${m.id})`).join(', ') || 'six small rules'}.
+The player chose which rules it grew, in this order: ${picture.history.map(m => `${m.title || m.id} (${m.id})`).join(', ') || 'only the first small rule'}.
+${letBe.length ? `They rested past these and let them sleep instead: ${letBe.join(', ')}.` : ''}
+${ending ? `How it ended: the player ${ending}. The name must feel like this particular ending.` : ''}
 The player ${STYLE_NOTES[picture.style]} (${picture.style}). ${happened.length ? `They ${happened.join(' and ')}.` : ''}
 
 Give it a name of 2 to 4 words in ALL CAPS that sounds like a gentle retro arcade cabinet, and a one-line tagline that begins "For someone who" and kindly notices how they played.
