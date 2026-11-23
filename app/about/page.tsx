@@ -27,8 +27,8 @@ export default function AboutPage() {
           </div>
 
           <p className="text-lg">
-            It&apos;s made by <span className="text-foreground font-medium">Shakeel Bhamani</span>, a software
-            consultant in Atlanta, in the evenings. The name is a nod to VeryGoodPizza, my gaming channel.
+            I&apos;m <span className="text-foreground font-medium">Shakeel Bhamani</span>, a software consultant
+            in Atlanta, and I make these in the evenings. The name is a nod to VeryGoodPizza, my gaming channel.
             Elsewhere I&apos;ve given a TEDx talk and was runner-up at a 2017 beatbox championship.
           </p>
 
