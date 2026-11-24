@@ -654,25 +654,42 @@ test.describe('The Shapeshifter', () => {
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
   })
 
-  test('the playfield is drawn in the site\'s colours and follows a dark theme', async ({ page }) => {
+  test('the playfield is a dark arcade screen in every theme, with still scanlines and a glow that softens', async ({ page }) => {
     await mockMutations(page)
     await begin(page)
     const corner = () =>
       canvasOf(page).evaluate((canvas: HTMLCanvasElement) => {
         const [r, g, b] = canvas.getContext('2d')!.getImageData(3, 3, 1, 1).data
+        // Probed inside the stage, where the screen's inks replace the site's tokens
         const probe = document.createElement('div')
         probe.style.background = 'var(--card-bg)'
-        document.body.append(probe)
+        canvas.parentElement!.append(probe)
         const css = getComputedStyle(probe).backgroundColor
         probe.remove()
-        return { pixel: `rgb(${r}, ${g}, ${b})`, css }
+        return { pixel: `rgb(${r}, ${g}, ${b})`, css, luma: (r * 299 + g * 587 + b * 114) / 1000 }
       })
     await expect.poll(async () => { const c = await corner(); return c.pixel === c.css }).toBe(true)
-    const light = (await corner()).pixel
+    const light = await corner()
+    expect(light.luma).toBeLessThan(30)
 
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
-    await expect.poll(async () => { const c = await corner(); return c.pixel === c.css }).toBe(true)
-    expect((await corner()).pixel).not.toBe(light)
+    await page.waitForTimeout(100)
+    expect((await corner()).pixel).toBe(light.pixel)
+
+    // The scanlines are a still overlay, never redrawn or animated
+    const overlay = await canvasOf(page).evaluate((canvas) => {
+      const after = getComputedStyle(canvas.parentElement!, '::after')
+      return { image: after.backgroundImage, animation: after.animationName, pointer: after.pointerEvents }
+    })
+    expect(overlay.image).toContain('repeating-linear-gradient')
+    expect(overlay.animation).toBe('none')
+    expect(overlay.pointer).toBe('none')
+
+    // Reduced motion, like Quiet, halves the glow
+    const neon = () => canvasOf(page).evaluate((canvas) => getComputedStyle(canvas).getPropertyValue('--game-screen-neon').trim())
+    expect(await neon()).toBe('1')
+    await page.evaluate(() => document.documentElement.setAttribute('data-reduce-motion', 'true'))
+    expect(await neon()).toBe('0.5')
   })
 
   test('every clue at a crossroads is drawn in the field where the engine says it grows', async ({ page }) => {

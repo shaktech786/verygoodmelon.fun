@@ -10,7 +10,7 @@ import {
   activateMechanic,
 } from '../engine/engine'
 import { isControlTarget } from './controls'
-import { usePalette } from './usePalette'
+import { useScreen } from './useScreen'
 
 interface GameCanvasProps {
   width: number
@@ -45,20 +45,20 @@ export default function GameCanvas({
   const stateRef = useRef<GameState | null>(null)
   const playingRef = useRef(false)
   const callbacksRef = useRef({ onDiscovery, onGameComplete })
-  const palette = usePalette()
-  const paletteRef = useRef(palette)
+  const screen = useScreen(canvasRef)
+  const screenRef = useRef(screen)
 
   useEffect(() => {
     callbacksRef.current = { onDiscovery, onGameComplete }
   })
 
-  // A theme change while the game is paused or between waves still repaints the frozen frame
+  // A theme or sense change while the game is paused or between waves still repaints the frozen frame
   useEffect(() => {
-    paletteRef.current = palette
+    screenRef.current = screen
     const s = stateRef.current
     const ctx = canvasRef.current?.getContext('2d')
-    if (s && ctx) renderEngine(ctx, s, palette, reducedMotion)
-  }, [palette, reducedMotion])
+    if (s && ctx) renderEngine(ctx, s, screen.palette, reducedMotion, screen.neon)
+  }, [screen, reducedMotion])
 
   useEffect(() => {
     const state = createState(width, height, isTouch)
@@ -184,7 +184,7 @@ export default function GameCanvas({
       lastTime = time
 
       updateEngine(s, dt)
-      renderEngine(ctx, s, paletteRef.current, reducedMotion)
+      renderEngine(ctx, s, screenRef.current.palette, reducedMotion, screenRef.current.neon)
 
       const cb = callbacksRef.current
       const events = s.events.splice(0)
@@ -203,7 +203,7 @@ export default function GameCanvas({
   }, [isPlaying, reducedMotion])
 
   return (
-    <div className="relative select-none">
+    <div className="shapeshifter-crt relative select-none">
       <canvas
         ref={canvasRef}
         width={width}

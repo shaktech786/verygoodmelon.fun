@@ -37,7 +37,7 @@ export default function TitleScreen({ onStart, retroFont, isTouch, focusBegin }:
       aria-label="The Shapeshifter"
     >
       <div className="text-center max-w-sm">
-        <h2 className={`text-lg sm:text-3xl tracking-[0.12em] sm:tracking-[0.2em] mb-3 text-melon-green leading-relaxed ${retroFont}`}>
+        <h2 className={`text-lg sm:text-3xl tracking-[0.12em] sm:tracking-[0.2em] mb-3 text-melon-green leading-relaxed shapeshifter-neon ${retroFont}`}>
           THE SHAPESHIFTER
         </h2>
 

@@ -63,7 +63,7 @@ The site's words and games are unusually thoughtful, but its chrome is a SaaS st
 - **No counters**, enforced by `__tests__/lib/no-counters.test.ts`, which parses every string a player can read.
 - **Keepsakes** are planned as data (`lib/keepsake/plan.ts`) and contrast-tested on the surface beneath every glyph (`__tests__/lib/keepsake/contrast.test.ts`). This pattern becomes the model for testing tokens.
 - **The pixel heritage:** the logo, the `MoodGlyph` ASCII-row SVGs (`components/home/MoodDoors.tsx`), the keepsakes' coarse 6-unit grid and The Shapeshifter's retro canvas. It is the most original visual idea on the site, and the new icon set is built from it.
-- **Sub-token layers per game.** The Philosopher derives `--tp-*` tokens from site tokens (`app/games/thought-pockets/components/ThoughtPockets.tsx` lines 24–45). The Shapeshifter resolves site tokens for its canvas (`app/games/the-mutation/engine/palette.ts` and `components/usePalette.ts`). The new system generalises both.
+- **Sub-token layers per game.** The Philosopher derives `--tp-*` tokens from site tokens (`app/games/thought-pockets/components/ThoughtPockets.tsx` lines 24–45). The Shapeshifter resolves site tokens for its canvas (`app/games/the-mutation/engine/palette.ts` and `components/useScreen.ts`). The new system generalises both.
 - **Care mode** (`components/games/CareMode.tsx`, `CrossGameSuggestions.tsx`, `HelplineSentence.tsx`): the logic is right. Only its presentation changes.
 - **Settings already exist:** theme, text size, three contrast levels, greyscale, reduce motion, mute, volume and presets (`components/accessibility/AccessibilityPanel.tsx`, `types/accessibility.ts`). They are re-housed and extended, not replaced.
 
@@ -1110,6 +1110,7 @@ For each game: its packet motif and inks, its chrome, and **its stimulating mome
     - *Packet:* an orb trailing a line; every spot ink. It is the site's **Lively showcase**, but still within chroma limits.
     - *Chrome:* the title and finale screens become `NoteDialog`s; the mechanic icons become the 11 Shapeshifter stamps.
     - *Art:* `palette.ts` reads `getInks()` instead of raw tokens, and `--melon-yellow` and `--melon-orange` become clay and brass.
+    - *The arcade screen (its signature, keep it):* play happens on a deep dark CRT field in every theme, framed like a screen in a bezel (`app/games/the-mutation/screen.css`). The stage redefines the colour tokens as neon inks (each ≥7:1 on the field), so the canvas and the title, pause and rule cards drawn over it share them. The orb, clues, shadows, stars and gems carry a soft neon glow from cached halo sprites (only the orb gets a live `shadowBlur`), and still scanlines with a vignette lie over the glass as a CSS overlay. The Phase 4 restyle sets this screen **inside a Seedpress bezel**: the bezel becomes a sheet-and-rule frame in the counter's inks, the glass stays dark, and the neon inks become `getInks()`'s spot inks lifted for a dark field. Quiet (and reduced motion) halves the glow through `--game-screen-neon`; high contrast lifts words to white and takes the scanlines off. **Never** bring back what `cb6473a` removed on purpose: screen shake, glitch jitter, countdowns or timers, multipliers or other visible numbers, and any flicker (nothing brightens faster than a slow fade or pulses above 3 Hz; the scanlines never move).
     - *Moment (S3, once per new rule):* the rule-change "bloom". It is capped to one region, has no flashing (luminance change ≤10% per frame and well under three changes per second), and is replaced by a still rule card in Quiet.
 
 ---
@@ -1121,7 +1122,7 @@ For each game: its packet motif and inks, its chrome, and **its stimulating mome
 ```
 lib/design/
   tokens.ts          ← single source: palettes (6), type, space, radii, motion, z, sound params
-  inks.ts            ← getInks(theme, sense, contrast) for canvas and SVG; useInks() hook (generalises the-mutation usePalette)
+  inks.ts            ← getInks(theme, sense, contrast) for canvas and SVG; useInks() hook (generalises the-mutation useScreen)
   sense.ts           ← useSense(): { sense, reducedMotion, motionScale } from <html> data attributes
   print.ts           ← canvas helpers: two-ink overprint, misregistration, grain
 lib/care/helplines.ts

@@ -1,4 +1,5 @@
-// The canvas cannot read CSS variables by itself, so the site's tokens are resolved once per theme change.
+// The canvas cannot read CSS variables by itself, so the tokens are resolved once per theme change.
+// The stage (screen.css) redefines the site's tokens as the arcade screen's inks, so they are read from the canvas.
 
 export interface Palette {
   bg: string
@@ -41,24 +42,24 @@ const TOKENS: Record<keyof Palette, string> = {
   textDim: '--primary-light',
 }
 
-/** Light-theme values from app/globals.css, used before the page's styles can be read. */
+/** The arcade screen's inks from screen.css, used before the page's styles can be read. */
 export const DEFAULT_PALETTE: Palette = {
-  bg: '#ffffff',
-  grid: '#e8e8e8',
-  orb: '#1a4d2e',
-  orbGlow: '#74c69d',
-  star: '#f6ad55',
-  starEdge: '#f97316',
-  gem: '#14b8a6',
-  gemEdge: '#1a4d2e',
-  shadow: '#8b5cf6',
-  tide: '#3b82f6',
-  light: '#f6ad55',
-  glide: '#74c69d',
-  ring: '#d32f3f',
-  bloom: '#ec4899',
-  text: '#1a1a1a',
-  textDim: '#4a5568',
+  bg: '#08100c',
+  grid: '#3d5a4b',
+  orb: '#5cf29a',
+  orbGlow: '#a8ffcf',
+  star: '#ffd166',
+  starEdge: '#ff9f43',
+  gem: '#2ee6d6',
+  gemEdge: '#5cf29a',
+  shadow: '#b18cff',
+  tide: '#5aa9ff',
+  light: '#ffd166',
+  glide: '#a8ffcf',
+  ring: '#ff6b7a',
+  bloom: '#ff7ac6',
+  text: '#d9f7e6',
+  textDim: '#9cc4ae',
 }
 
 export function readPalette(root: Element): Palette {
@@ -69,6 +70,12 @@ export function readPalette(root: Element): Palette {
     if (value) palette[key] = value
   }
   return palette
+}
+
+/** How strongly the screen glows, 0 to 1: screen.css halves it for Quiet and reduced motion. */
+export function readNeon(el: Element): number {
+  const value = parseFloat(getComputedStyle(el).getPropertyValue('--game-screen-neon'))
+  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1
 }
 
 /** `#rrggbb` plus an alpha, for glows and faint fills drawn from a token. */

@@ -1,0 +1,86 @@
+/*
+ * The Shapeshifter's arcade screen: a deep dark field in a bezel, in every site theme.
+ * The site's colour tokens are redefined inside the stage, so the canvas (through usePalette) and the
+ * title, pause and rule cards drawn over it all take the screen's neon inks. Every ink keeps at least
+ * 7:1 against the field. Nothing here moves: the scanlines and vignette are a still overlay.
+ */
+.shapeshifter-screen {
+  --game-screen-field: #08100c;
+  --game-screen-bezel: #1c2320;
+  --game-screen-bezel-edge: #3d4a44;
+  --game-screen-scanline: rgba(0, 0, 0, 0.22);
+  --game-screen-vignette: rgba(0, 0, 0, 0.55);
+  --game-screen-neon: 1;
+
+  --card-bg: var(--game-screen-field);
+  --card-border: #3d5a4b;
+  --foreground: #d9f7e6;
+  --primary-light: #9cc4ae;
+  --accent: #ff6b7a;
+  --melon-green: #5cf29a;
+  --melon-green-light: #a8ffcf;
+  --melon-yellow: #ffd166;
+  --melon-orange: #ff9f43;
+  --melon-teal: #2ee6d6;
+  --melon-purple: #b18cff;
+  --melon-blue: #5aa9ff;
+  --melon-pink: #ff7ac6;
+  --focus-ring: #ffd166;
+  --color-focus-ring: var(--focus-ring);
+
+  color-scheme: dark;
+  background-color: var(--game-screen-field);
+  border: 10px solid var(--game-screen-bezel);
+  border-radius: 1.25rem;
+  box-shadow: 0 0 0 1px var(--game-screen-bezel-edge);
+}
+
+@media (max-width: 640px) {
+  .shapeshifter-screen {
+    border-width: 6px;
+  }
+}
+
+/* Quiet, or reduced motion, softens the glow. The canvas reads this through usePalette. */
+[data-sense="quiet"] .shapeshifter-screen,
+html[data-reduce-motion="true"] .shapeshifter-screen {
+  --game-screen-neon: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shapeshifter-screen {
+    --game-screen-neon: 0.5;
+  }
+}
+
+/* Still scanlines over a soft vignette, laid on the canvas once and never redrawn */
+.shapeshifter-crt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 0.75rem;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 2px, var(--game-screen-scanline) 2px 3px),
+    radial-gradient(ellipse at center, transparent 55%, var(--game-screen-vignette) 100%);
+  box-shadow: inset 0 0 24px var(--game-screen-vignette);
+}
+
+/* Title and pause sit on the same glass, so the scanlines run behind their words, never across them */
+.shapeshifter-screen > [role="dialog"] {
+  background-image: repeating-linear-gradient(to bottom, transparent 0 2px, var(--game-screen-scanline) 2px 3px);
+}
+
+/* Neon on the retro titles, drawn once and held still */
+.shapeshifter-neon {
+  text-shadow: 0 0 calc(8px * var(--game-screen-neon)) color-mix(in srgb, currentColor 70%, transparent);
+}
+
+/* High contrast settings lift the words to white and take the lines off the glass */
+html[data-contrast="high"] .shapeshifter-screen,
+html[data-contrast="extra-high"] .shapeshifter-screen {
+  --foreground: #ffffff;
+  --primary-light: #e6f5ec;
+  --card-border: #8fb8a3;
+  --game-screen-scanline: transparent;
+}

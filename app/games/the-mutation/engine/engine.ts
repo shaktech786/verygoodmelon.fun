@@ -215,7 +215,8 @@ function recordPath(s: GameState): void {
 // MAIN RENDER
 // ==========================================
 
-export function render(ctx: CanvasRenderingContext2D, s: GameState, palette: Palette, reducedMotion = false): void {
+/** `neon` (0 to 1) scales the glow; Quiet and reduced motion halve it. The glow never pulses on its own. */
+export function render(ctx: CanvasRenderingContext2D, s: GameState, palette: Palette, reducedMotion = false, neon = 1): void {
   ctx.save()
 
   ctx.fillStyle = palette.bg
@@ -223,20 +224,22 @@ export function render(ctx: CanvasRenderingContext2D, s: GameState, palette: Pal
 
   // A quiet field of dots instead of grid lines
   ctx.fillStyle = palette.grid
+  ctx.globalAlpha = 0.55
   for (let x = 40; x < s.w; x += 40) {
     for (let y = 40; y < s.h; y += 40) {
       ctx.fillRect(x - 1, y - 1, 2, 2)
     }
   }
+  ctx.globalAlpha = 1
 
   if (s.rushActive) renderBloom(ctx, s, palette, reducedMotion)
   for (const sleeper of s.sleeping) renderSleeping(ctx, sleeper, palette)
   // Clues dim as the player's stillness lets them settle, so resting visibly does something
   const settle = 1 - Math.min(1, s.stillness) * 0.6
-  for (const seed of s.seeds) renderSeed(ctx, seed, palette, reducedMotion, settle)
+  for (const seed of s.seeds) renderSeed(ctx, seed, palette, reducedMotion, settle, neon)
 
   for (const e of s.entities) {
-    if (e.active) renderEntity(ctx, e, s, palette, reducedMotion)
+    if (e.active) renderEntity(ctx, e, s, palette, reducedMotion, neon)
   }
 
   for (const t of s.pTrail) {
@@ -276,7 +279,7 @@ export function render(ctx: CanvasRenderingContext2D, s: GameState, palette: Pal
     ctx.globalAlpha = 1
   }
 
-  renderPlayer(ctx, s, palette)
+  renderPlayer(ctx, s, palette, neon)
 
   for (const p of s.particles) {
     ctx.globalAlpha = p.alpha
@@ -311,11 +314,12 @@ function renderBloom(ctx: CanvasRenderingContext2D, s: GameState, palette: Palet
 // ENTITY RENDERING
 // ==========================================
 
-function renderEntity(ctx: CanvasRenderingContext2D, e: Entity, s: GameState, palette: Palette, reducedMotion: boolean): void {
+function renderEntity(ctx: CanvasRenderingContext2D, e: Entity, s: GameState, palette: Palette, reducedMotion: boolean, neon: number): void {
   ctx.save()
 
   if (e.type === 'star') {
     ctx.globalAlpha = e.alpha
+    drawGlow(ctx, palette.star, e.x, e.y, e.size * 2.6, 0.7 * neon)
     ctx.fillStyle = palette.star
     ctx.strokeStyle = palette.starEdge
     ctx.lineWidth = 1.5
@@ -326,6 +330,7 @@ function renderEntity(ctx: CanvasRenderingContext2D, e: Entity, s: GameState, pa
 
   if (e.type === 'gem') {
     ctx.globalAlpha = Math.max(0.15, e.alpha)
+    drawGlow(ctx, palette.gem, e.x, e.y, e.size * 2.6, 0.7 * neon)
     ctx.fillStyle = palette.gem
     ctx.strokeStyle = palette.gemEdge
     ctx.lineWidth = 1.5
@@ -337,6 +342,7 @@ function renderEntity(ctx: CanvasRenderingContext2D, e: Entity, s: GameState, pa
   if (e.type === 'chaser') {
     // A shy, round shadow with two eyes that look at the orb
     const wobble = reducedMotion ? 0 : Math.sin(s.totalTime * 2 + e.id) * 1
+    drawGlow(ctx, palette.shadow, e.x, e.y + wobble, e.size * 3, 0.8 * neon)
     ctx.fillStyle = palette.shadow
     ctx.beginPath()
     ctx.arc(e.x, e.y + wobble, e.size + 2, 0, Math.PI * 2)
@@ -379,6 +385,7 @@ function renderEntity(ctx: CanvasRenderingContext2D, e: Entity, s: GameState, pa
   }
 
   if (e.type === 'bullet') {
+    drawGlow(ctx, palette.light, e.x, e.y, e.size * 3, 0.6 * neon)
     ctx.fillStyle = palette.light
     ctx.strokeStyle = palette.starEdge
     ctx.lineWidth = 1
@@ -391,9 +398,11 @@ function renderEntity(ctx: CanvasRenderingContext2D, e: Entity, s: GameState, pa
   ctx.restore()
 }
 
-function renderPlayer(ctx: CanvasRenderingContext2D, s: GameState, palette: Palette): void {
+function renderPlayer(ctx: CanvasRenderingContext2D, s: GameState, palette: Palette, neon: number): void {
   ctx.save()
-  ctx.shadowBlur = 18
+  drawGlow(ctx, palette.orbGlow, s.px, s.py, s.pSize * 4, neon)
+  // The orb is the one shape given a live blur: a single entity, so it stays cheap
+  ctx.shadowBlur = 20 * neon
   ctx.shadowColor = palette.orbGlow
   ctx.fillStyle = s.dashActive ? palette.glide : palette.orb
   ctx.beginPath()
@@ -406,6 +415,50 @@ function renderPlayer(ctx: CanvasRenderingContext2D, s: GameState, palette: Pale
   ctx.arc(s.px - s.pSize * 0.25, s.py - s.pSize * 0.25, s.pSize * 0.35, 0, Math.PI * 2)
   ctx.fill()
   ctx.restore()
+}
+
+// ==========================================
+// GLOW
+// ==========================================
+
+const GLOW_SPRITE = 64
+const glowSprites = new Map<string, HTMLCanvasElement | null>()
+
+/** A soft neon halo for one ink, painted once and reused, so glow costs a drawImage instead of a per-frame blur. */
+function glowSprite(color: string): HTMLCanvasElement | null {
+  const known = glowSprites.get(color)
+  if (known !== undefined) return known
+  let sprite: HTMLCanvasElement | null = null
+  const clear = withAlpha(color, 0)
+  const g = clear !== color && typeof document !== 'undefined' ? document.createElement('canvas') : null
+  const gctx = g?.getContext('2d')
+  if (g && gctx) {
+    g.width = GLOW_SPRITE
+    g.height = GLOW_SPRITE
+    const c = GLOW_SPRITE / 2
+    const gradient = gctx.createRadialGradient(c, c, 0, c, c, c)
+    gradient.addColorStop(0, withAlpha(color, 0.5))
+    gradient.addColorStop(0.35, withAlpha(color, 0.22))
+    gradient.addColorStop(1, clear)
+    gctx.fillStyle = gradient
+    gctx.fillRect(0, 0, GLOW_SPRITE, GLOW_SPRITE)
+    sprite = g
+  }
+  glowSprites.set(color, sprite)
+  return sprite
+}
+
+function drawGlow(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, radius: number, strength: number): void {
+  if (strength <= 0) return
+  const sprite = glowSprite(color)
+  if (!sprite) return
+  const alpha = ctx.globalAlpha
+  const op = ctx.globalCompositeOperation
+  ctx.globalAlpha = alpha * Math.min(1, strength)
+  ctx.globalCompositeOperation = 'lighter'
+  ctx.drawImage(sprite, x - radius, y - radius, radius * 2, radius * 2)
+  ctx.globalAlpha = alpha
+  ctx.globalCompositeOperation = op
 }
 
 // ==========================================
@@ -1205,12 +1258,13 @@ const SEED_TINT: Record<string, Tint> = {
 }
 
 /** A small, still picture of the rule to come, growing from faint to full as it nears opening. */
-function renderSeed(ctx: CanvasRenderingContext2D, seed: Seed, palette: Palette, reducedMotion: boolean, settle: number): void {
+function renderSeed(ctx: CanvasRenderingContext2D, seed: Seed, palette: Palette, reducedMotion: boolean, settle: number, neon: number): void {
   const g = Math.min(1, seed.growth)
   const tint = palette[SEED_TINT[seed.id] ?? 'orb']
   const breath = reducedMotion ? 1 : 1 + Math.sin(seed.age * 1.6) * 0.05
   const r = (9 + g * 5) * breath
   ctx.save()
+  drawGlow(ctx, tint, seed.x, seed.y, r * 3.2, (0.45 + g * 0.4) * settle * neon)
   ctx.globalAlpha = (0.12 + g * 0.15) * settle
   ctx.fillStyle = tint
   ctx.beginPath()

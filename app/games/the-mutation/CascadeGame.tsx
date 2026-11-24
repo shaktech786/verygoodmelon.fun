@@ -16,6 +16,7 @@ import TitleScreen from './components/TitleScreen'
 import FinaleScreen from './components/FinaleScreen'
 import { isControlTarget } from './components/controls'
 import { MechanicIcon } from './components/MechanicIcon'
+import './screen.css'
 
 const retroFont = Press_Start_2P({ weight: '400', subsets: ['latin'], display: 'swap' })
 
@@ -404,8 +405,9 @@ export default function CascadeGame() {
     // The finished game takes the page's width, so its map and legend are drawn large enough to read
     <div className={`w-full mx-auto ${phase === 'finale' ? 'max-w-3xl' : 'max-w-[640px]'}`} onKeyDown={keepKeysInGame}>
       <h1 className="sr-only">The Shapeshifter</h1>
-      {/* Overlays share the canvas's grid cell so a tall screen grows the box instead of being clipped */}
-      <div ref={boxRef} className="grid rounded-xl overflow-hidden border border-card-border bg-card-bg scroll-mt-20">
+      {/* Overlays share the canvas's grid cell so a tall screen grows the box instead of being clipped.
+          Play happens on a dark arcade screen in a bezel; the finished game is printed back on the site's paper. */}
+      <div ref={boxRef} className={`grid rounded-xl overflow-hidden border border-card-border bg-card-bg scroll-mt-20 ${phase === 'finale' ? '' : 'shapeshifter-screen'}`}>
         {/* Hidden under the finale, so the box takes the finale's height rather than the field's */}
         <div className={`col-start-1 row-start-1 ${phase === 'finale' ? 'hidden' : ''}`}>
           <GameCanvas
@@ -431,7 +433,7 @@ export default function CascadeGame() {
             {named && (
               <div className="absolute top-8 inset-x-3 flex justify-center" data-testid="rule-named">
                 <div className={`max-w-sm text-center rounded-lg border border-card-border bg-card-bg/90 px-4 py-2.5 ${fade}`}>
-                  <p className={`flex items-center justify-center gap-2 text-[11px] sm:text-sm leading-relaxed text-melon-green break-words ${retroFont.className}`}>
+                  <p className={`flex items-center justify-center gap-2 text-[11px] sm:text-sm leading-relaxed text-melon-green break-words shapeshifter-neon ${retroFont.className}`}>
                     <MechanicIcon id={named.id} size={16} />
                     {named.title}
                   </p>
@@ -459,7 +461,7 @@ export default function CascadeGame() {
             role="dialog"
             aria-label="Paused"
           >
-            <p className={`text-base tracking-[0.3em] text-melon-green ${retroFont.className}`}>PAUSED</p>
+            <p className={`text-base tracking-[0.3em] text-melon-green shapeshifter-neon ${retroFont.className}`}>PAUSED</p>
             <p className="text-sm text-foreground/80">Take as long as you like.</p>
             <button
               type="button"
