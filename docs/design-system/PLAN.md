@@ -949,7 +949,9 @@ This replaces the marketing-hero layout.
    - packets in a **two-column grid** (each about 165 px), so the 14 packets read as 3 + 7 + 4 on shelves instead of one 14-item list.
 6. Footer.
 
-**At 1024–1599 px:**
+**As built after the Phase 1 review (supersedes the column and rail layouts below):** the shelves are stacked full-width rows of at most 5 packets each (5 + 5 + 4, following the games' config categories). Packets are size containers whose titles clamp between 18 and 24 px, hooks wrap in full, and `--w-shop` is 100rem. On a phone with larger text there is one packet per row. The counter rail was dropped: the sign and today's packet always share one top-aligned band.
+
+**At 1024–1599 px (original plan):**
 - The sign and today's packet sit side by side in one band.
 - The mood stamps sit right-aligned in that band.
 - The rack becomes **three shelf columns** of 1, 2 and 2 packet widths, mirroring the shelves' sizes. Each shelf's packets flow within its own column, so a visitor scans by shelf, then by packet.
