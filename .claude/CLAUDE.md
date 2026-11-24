@@ -67,7 +67,7 @@ It contains:
 
 - **Framework**: Next.js 16 (App Router + Turbopack)
 - **Language**: TypeScript (strict mode)
-- **Styling**: Tailwind CSS v4 with custom CSS variables
+- **Styling**: Tailwind CSS v4 for layout; colour, type and shape come from the Seedpress tokens (`lib/design/tokens.ts`)
 - **AI**: Google Gemini via `@google/genai` (primary; model ID lives only in `GEMINI_MODEL`, `lib/ai/gemini.ts`), OpenAI (fallback)
 - **Database**: Supabase (PostgreSQL) - for future game data
 - **Deployment**: Vercel (auto-deploy from `main` branch)
@@ -75,23 +75,20 @@ It contains:
 
 ---
 
-## Design System Quick Reference
+## Design System: Seedpress
 
-### Colors (Watermelon Theme)
-```css
---background: #fafafa        /* Light grey */
---foreground: #1a1a1a        /* Dark grey */
---accent: #e63946            /* Coral red (watermelon) */
---success: #74c69d           /* Light green (rind) */
---melon-green: #1a4d2e       /* Dark green */
-```
+The site is moving to **Seedpress**, a two-ink print-shop system. The spec is `docs/design-system/PLAN.md`; the parts live in `components/seedpress`, the tokens in `lib/design/tokens.ts`. See every part at `/press` and the new homepage at `/press/home` (proof pages, noindex, linked from nowhere; Phase 1, so tokens are scoped to `.press` until Phase 2 flips the shell).
 
-### Visual Language
-- **Pixelated aesthetic**: Use `.pixelated` class for crisp rendering
-- **Minimal UI**: Every element serves a purpose
-- **Fast transitions**: 75ms for snappy feel
-- **Generous spacing**: Never cramped
-- **System fonts**: Performance over custom fonts
+- **Never raw hex** in TS/TSX. Use the roles: paper, sheet, well, ink, ink-soft, rule, rule-strong, rind, rind-wash, flesh, flesh-press, on-flesh, flesh-wash, seed, moss, dusk, clay. `npm run check:design` ratchets old debt and fails on new.
+- **The flesh rule**: flesh fills the one go-action of a view (`<Go>`) and nothing else. Never a state, never text, never an error. Chosen, current and links are rind. Gentle problems are seed ink with a glyph and words.
+- **One Go per screen.** Everything else is a `<Stamp>` or `<QuietButton>`.
+- **Type**: Atkinson Hyperlegible Next for reading, Bricolage Grotesque only for short titles of 24 px and up. No italics, no capitals or letter-spacing for emphasis, no weights under 400; emphasis is weight 700. Body 18 px, left-aligned, 66ch at most.
+- **Shapes**: sheet (14 px radius), stamp (10 px, 2 px edge, 3 px printed bottom), slice (the Go only). No blurred shadows: height is a printed edge.
+- **Motion budget** (PLAN.md §4): S0 still, S1 responds to a press (≤160 ms, ≤4 px), S2 one local flourish, S3 one earned showpiece per session. Chrome never loops. Multiply durations by `--motion`, which Quiet and reduced motion set to 0.
+- **The sensory dial** (Quiet, Gentle default, Lively) sets `data-sense`; Quiet must feel softer, not broken.
+- **Icons are seed stamps** (`components/seedpress/icons`, 12×12 ASCII grids), not lucide.
+- **Game art** reads its colours from tokens, never hex; each game is a two-ink packet print (`components/seedpress/packets/art.tsx`).
+- **Every new game ships** a packet print, a game ink map and its one stimulating moment written into PLAN.md §9 before its first commit.
 
 ---
 
@@ -240,16 +237,12 @@ export function Game({ onComplete }: GameProps) {
 
 ### Styling Patterns
 ```typescript
-// ✅ Use utility classes + custom CSS variables
-<button className="
-  px-4 py-2
-  bg-accent text-white
-  rounded
-  transition-transform hover:scale-105
-  focus:outline-none focus:ring-2 focus:ring-accent
-">
-  Play
-</button>
+// ✅ Seedpress parts: one Go per screen, stamps for the rest, tokens for colour
+import { Go } from '@/components/seedpress/Go'
+import { Stamp } from '@/components/seedpress/Stamp'
+
+<Go onClick={seal}>Seal the jar</Go>
+<Stamp onClick={reset}>Start again</Stamp>
 ```
 
 ### Accessibility Patterns

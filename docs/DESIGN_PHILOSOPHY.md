@@ -99,10 +99,11 @@ The emotional palette is **diverse, not singular**. Some games meditative, some 
 ## UX Guidelines
 
 ### Visual Design
-- **Color Palette**: Watermelon-inspired (coral red, soft green, charcoal)
-- **Typography**: System fonts for performance, clear hierarchy
-- **Spacing**: Generous whitespace, never cramped
-- **Animations**: Purposeful, not decorative
+The visual system is **Seedpress**: a small two-ink print shop where every game is a seed packet. Its spec, tokens, components and rules are in `docs/design-system/PLAN.md`; the parts are in `components/seedpress` and can be seen together at `/press`.
+- **Colour**: warm paper and one dark ink for the chrome; spot inks (moss, dusk, clay) only on packets and game art. Melon flesh is the one go-action per screen.
+- **Typography**: Atkinson Hyperlegible Next for reading, Bricolage Grotesque for short titles. No italics or capitals for emphasis.
+- **Spacing**: Generous, on a 4 px scale, never cramped
+- **Animations**: Within the stimulation budget (PLAN.md §4). Nothing moves unless the visitor caused or chose it.
 
 ### Interaction Design
 - **Feedback**: Immediate visual/audio confirmation
