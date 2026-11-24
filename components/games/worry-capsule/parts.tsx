@@ -102,7 +102,8 @@ export function TallyCard({ counts, opened }: { counts: Tally; opened: Capsule[]
       <h3 id="keeper-tally" className="text-base font-semibold text-foreground mb-3">How they turned out</h3>
       <div className="flex flex-wrap gap-1.5 mb-3" aria-hidden="true">
         {oldestFirst.length > shown.length && (
-          <span className="text-xs text-foreground/70 mr-1">+{oldestFirst.length - shown.length}</span>
+          // Older marks trail off rather than being tallied
+          <span className="text-sm leading-none text-foreground/70 mr-0.5">…</span>
         )}
         {shown.map((capsule) => capsule.opening && <OutcomeMark key={capsule.id} outcome={capsule.opening.outcome} className="w-4 h-4" />)}
       </div>

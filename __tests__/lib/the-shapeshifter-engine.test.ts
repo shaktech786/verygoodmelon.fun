@@ -283,6 +283,8 @@ describe('The Shapeshifter path', () => {
 
   it('stays a modest size on a long, busy run and keeps the start of every wave', () => {
     const s = withMechanics('mouse_follow')
+    // No clues grow here: a clue the sweeping orb happened to open would start a wave of its own
+    s.quietUntil = Infinity
     for (let wave = 1; wave <= 6; wave++) {
       advanceWave(s)
       for (let i = 0; i < 400; i++) {

@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Button, buttonClassName } from '@/components/ui/Button'
 import { KeepsakeSave } from '@/components/games/Keepsake'
+import { useCareMode } from '@/components/games/CareMode'
+import { HelplineSentence } from '@/components/games/HelplineSentence'
+import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
 import { CarryScreen } from '@/components/games/hard-talk/CarryScreen'
 import { BreathMelon, StepOutArt, ThresholdArt } from '@/components/games/hard-talk/ThresholdArt'
 import { plainSpeakerKeepsake } from '@/lib/keepsake/plain-speaker'
@@ -175,6 +178,13 @@ function HardTalkGame() {
   const responseRef = useRef<HTMLDivElement>(null)
   const keepOnScreenRef = useRef<HTMLButtonElement>(null)
   const revealResponse = useRef(false)
+  const { enterCareMode } = useCareMode()
+  // Words that sound like someone in danger are met with support, never made into a card to keep or share
+  const distressed = [session.who, session.understand, session.ownOpening].some(soundsLikeDistress)
+
+  useEffect(() => {
+    if (distressed) enterCareMode()
+  }, [distressed, enterCareMode])
 
   useEffect(() => {
     if (opening.replacesSaved) writeSaved(browserStorage(), opening.session)
@@ -272,6 +282,17 @@ function HardTalkGame() {
   const sub = (text: string) => <p id="hard-talk-sub" className="mt-3 text-base sm:text-lg text-foreground/75 leading-relaxed">{text}</p>
 
   const optional = (filled: boolean) => (filled ? 'Next' : 'Skip')
+
+  const support = (
+    <aside
+      aria-label="Support"
+      className="rounded-lg border border-card-border border-l-4 border-l-[var(--melon-green)] bg-background px-4 py-3 text-left leading-relaxed text-foreground"
+    >
+      <p>
+        <HelplineSentence lead="What you wrote sounds very heavy. You don’t have to carry it alone." />
+      </p>
+    </aside>
+  )
 
   const keepOnScreenButton = (
     <button
@@ -518,6 +539,18 @@ function HardTalkGame() {
         return { nextLabel: 'Next', body: <>{heading(prompt.line)}{sub(prompt.sub)}</> }
       }
       case 'carry':
+        if (distressed) {
+          return {
+            nextLabel: null,
+            body: (
+              <>
+                {heading('Before any talk, you')}
+                <div className="mt-5">{support}</div>
+                {sub('The talk can wait. Go back to change what you wrote, or start over whenever you like.')}
+              </>
+            ),
+          }
+        }
         return {
           nextLabel: null,
           body: (
@@ -593,8 +626,14 @@ function HardTalkGame() {
     return (
       <>
         {heading('Welcome back. How did it go?')}
-        {sub('Only if you’d like to say. Your line was:')}
-        <p className="mt-2 text-lg font-semibold text-foreground">{carryNotes(session).line}</p>
+        {distressed ? (
+          <div className="mt-5">{support}</div>
+        ) : (
+          <>
+            {sub('Only if you’d like to say. Your line was:')}
+            <p className="mt-2 text-lg font-semibold text-foreground">{carryNotes(session).line}</p>
+          </>
+        )}
         <fieldset className="mt-6">
           <legend className="sr-only">How the talk went</legend>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -674,6 +713,9 @@ function HardTalkGame() {
         </p>
       )}
 
+      {/* Support leads every later step too, once words have called for it */}
+      {distressed && view === 'steps' && session.step !== 'carry' && <div className="mb-5">{support}</div>}
+
       <div key={view === 'steps' ? session.step : view} className={cn(!reducedMotion && 'animate-fade')}>
         {view === 'offer' && renderOffer()}
         {view === 'check-in' && renderCheckIn()}
@@ -691,7 +733,7 @@ function HardTalkGame() {
         </div>
       )}
       {confirmingStartOver === 'bottom' && startOverPanel}
-      {onScreen && (
+      {onScreen && !distressed && (
         <CarryScreen
           line={notes.line}
           begin={notes.begin}

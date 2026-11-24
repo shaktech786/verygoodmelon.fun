@@ -244,7 +244,8 @@ export default function FirstWords() {
     reset()
   }
 
-  const light: Light = awake ? 'day' : submitted === null ? 'night' : 'dawn'
+  // The sun only starts to rise once the words are judged safe; until then the sky stays dark
+  const light: Light = awake ? 'day' : safe ? 'dawn' : 'night'
   const joined = cloud.status === 'ready' && stored ? cloud.total > 1 : null
 
   return (

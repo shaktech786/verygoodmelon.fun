@@ -144,7 +144,7 @@ export function SubmitThought() {
           >
             {charCount > 0
               ? `${charCount.toLocaleString()} / 2,000 characters${
-                  charCount < 20 ? ` (${20 - charCount} more needed)` : ''
+                  charCount < 20 ? ' (a little longer, please)' : ''
                 }`
               : '20\u20132,000 characters'}
           </p>

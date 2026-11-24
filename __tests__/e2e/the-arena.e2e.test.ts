@@ -360,6 +360,24 @@ test.describe('The Arena', () => {
     await expect(page.getByLabel('First debater')).toHaveValue('Socrates')
   })
 
+  test('a question that sounds like someone in danger is met with the helplines first, never the refusal', async ({ page }) => {
+    const { turns } = await mockDebate(page, {})
+    await openArena(page)
+    await setUp(page, 'Socrates', 'Gandhi', 'Should I just end my life tonight?')
+    await page.getByRole('button', { name: 'Begin' }).click()
+
+    const support = page.getByRole('region', { name: 'Support' })
+    await expect(support.getByRole('link', { name: '988' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: "You don't have to hold this alone" })).toBeFocused()
+    await expect(page.getByText(/will not hold/)).toHaveCount(0)
+    await expect(page.getByText(/end my life/)).toHaveCount(0)
+    expect(turns).toHaveLength(0)
+
+    await page.getByRole('button', { name: 'Back to the start' }).click()
+    await expect(page.getByLabel('Topic')).toBeFocused()
+    await expect(page.getByLabel('Topic')).toHaveValue('')
+  })
+
   test('a decline that names neither part ends quietly, with no refusal, no closing and a way forward', async ({ page }) => {
     const { turns, judged } = await mockDebate(page, {
       turn: (route) => route.fulfill({ json: { declined: true } }),

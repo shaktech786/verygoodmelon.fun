@@ -10,6 +10,9 @@ import { PAIRINGS, pairingIndexOf, type EmblemId } from '@/lib/games/arena-pairi
 import { ARENA_VOICES_CSS, Emblem, OWN_CARD, PairingDeck, VOICE, VoiceMarker, voiceTint } from '@/components/games/ArenaPairingDeck'
 import { Keepsake } from '@/components/games/Keepsake'
 import { arenaKeepsake } from '@/lib/keepsake/arena'
+import { useCareMode } from '@/components/games/CareMode'
+import { HelplineSentence } from '@/components/games/HelplineSentence'
+import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
 
 interface DebateEntry {
   speaker: string
@@ -24,7 +27,8 @@ interface Closing {
   question: string
 }
 
-type GamePhase = 'setup' | 'debating' | 'stopped' | 'declined' | 'judging' | 'closing'
+// Care is its own phase, never a decline: a question that sounds like someone in danger is met with support, not a refusal
+type GamePhase = 'setup' | 'debating' | 'stopped' | 'declined' | 'judging' | 'closing' | 'care'
 type DeclineReason = 'voice' | 'topic' | null
 type FocusTarget = 'transcript' | 'person1' | 'topic' | 'start'
 type Side = 'left' | 'right'
@@ -110,6 +114,12 @@ class Declined extends Error {
   }
 }
 
+class NeedsCare extends Error {
+  constructor() {
+    super('care')
+  }
+}
+
 export default function MindDebate() {
   const [person1, setPerson1] = useState('')
   const [person2, setPerson2] = useState('')
@@ -125,6 +135,7 @@ export default function MindDebate() {
   const [awaitingReader, setAwaitingReader] = useState(false)
   const [writingOwn, setWritingOwn] = useState(false)
   const reducedMotion = useReducedMotion()
+  const { enterCareMode } = useCareMode()
   const turnByTurn = turnByTurnChoice ?? reducedMotion
 
   const regionRef = useRef<HTMLDivElement>(null)
@@ -137,6 +148,7 @@ export default function MindDebate() {
   const continueRef = useRef<HTMLButtonElement>(null)
   const declineActionRef = useRef<HTMLButtonElement>(null)
   const closingHeadingRef = useRef<HTMLHeadingElement>(null)
+  const careHeadingRef = useRef<HTMLHeadingElement>(null)
   const focusNextRef = useRef<FocusTarget | null>(null)
 
   const stickToBottomRef = useRef(true)
@@ -178,7 +190,10 @@ export default function MindDebate() {
     else if (target === 'person1') person1Ref.current?.focus()
     else if (target === 'topic') topicRef.current?.focus()
     else if (target === 'start') startRef.current?.focus()
-    else if (phase === 'closing' || phase === 'declined') {
+    else if (phase === 'care') {
+      careHeadingRef.current?.focus({ preventScroll: true })
+      careHeadingRef.current?.closest('section')?.scrollIntoView({ block: 'start' })
+    } else if (phase === 'closing' || phase === 'declined') {
       // An ending the reader would otherwise have to go looking for
       if (focusLost() || regionRef.current?.contains(document.activeElement)) {
         if (phase === 'closing') closingHeadingRef.current?.focus({ preventScroll: true })
@@ -272,6 +287,7 @@ export default function MindDebate() {
       })
       if (!res.ok) throw new Error(`turn ${res.status}`)
       const data = await res.json()
+      if (data.declined === true && data.reason === 'care') throw new NeedsCare()
       if (data.declined === true) throw new Declined(data.reason === 'voice' || data.reason === 'topic' ? data.reason : null)
       if (typeof data.argument !== 'string' || !data.argument.trim()) throw new Error('empty turn')
       return { speaker: speakerFor(round, person1Name, person2Name), argument: data.argument.trim(), round }
@@ -364,6 +380,11 @@ export default function MindDebate() {
         entry = result
       } catch (error) {
         if (session.aborted || play.signal.aborted) return
+        if (error instanceof NeedsCare) {
+          enterCareMode()
+          setPhase('care')
+          return
+        }
         if (error instanceof Declined) {
           setDeclineReason(error.reason)
           setPhase('declined')
@@ -396,7 +417,7 @@ export default function MindDebate() {
     if (session.aborted) return
     setClosing(result)
     setPhase('closing')
-  }, [requestTurn, commit, typeText, waitForReader, fetchClosing, person1Name, person2Name])
+  }, [requestTurn, commit, typeText, waitForReader, fetchClosing, enterCareMode, person1Name, person2Name])
 
   const resetDebate = () => {
     sessionRef.current?.abort()
@@ -416,6 +437,12 @@ export default function MindDebate() {
     e.preventDefault()
     if (!canStart) return
     resetDebate()
+    // Words that sound like someone in danger are never sent off to be debated
+    if ([person1Name, person2Name, topicName].some(soundsLikeDistress)) {
+      enterCareMode()
+      setPhase('care')
+      return
+    }
     sessionRef.current = new AbortController()
     focusNextRef.current = 'transcript'
     runDebate()
@@ -430,6 +457,12 @@ export default function MindDebate() {
 
   const backToSetup = (focus?: FocusTarget) => {
     resetDebate()
+    // Words that called for care are not left waiting in the boxes
+    if (phase === 'care') {
+      if (soundsLikeDistress(person1)) setPerson1('')
+      if (soundsLikeDistress(person2)) setPerson2('')
+      if (soundsLikeDistress(topic)) setTopic('')
+    }
     focusNextRef.current = focus ?? null
     setPhase('setup')
   }
@@ -546,6 +579,38 @@ export default function MindDebate() {
             </Button>
           </StickyActionBar>
         </form>
+      </div>
+    )
+  }
+
+  if (phase === 'care') {
+    return (
+      <div className="max-w-2xl mx-auto animate-fade" role="region" aria-label="Support">
+        <section
+          aria-labelledby="arena-care-heading"
+          className="scroll-mt-20 rounded-xl border border-card-border border-l-4 border-l-[var(--melon-green)] bg-card-bg px-5 py-6 sm:px-8 text-left text-foreground leading-relaxed"
+        >
+          <h2
+            id="arena-care-heading"
+            ref={careHeadingRef}
+            tabIndex={-1}
+            className="text-xl sm:text-2xl font-semibold text-foreground focus:outline-none"
+          >
+            You don&apos;t have to hold this alone
+          </h2>
+          <p className="mt-3">
+            <HelplineSentence lead="If this question is close to home, please talk to someone who can listen." />
+          </p>
+          <p className="mt-3 text-foreground/85">
+            This is not one for a debate. The Arena will be here whenever you want a lighter question.
+          </p>
+        </section>
+        <div className="mt-4 flex justify-center">
+          <Button onClick={() => backToSetup('topic')} variant="secondary" className={ACTION}>
+            <RotateCcw size={16} aria-hidden="true" />
+            Back to the start
+          </Button>
+        </div>
       </div>
     )
   }

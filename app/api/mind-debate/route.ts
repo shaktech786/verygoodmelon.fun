@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GEMINI_MODEL, MINIMAL_THINKING, getGemini } from '@/lib/ai/gemini'
+import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
 import {
-  NAME_MAX, TOPIC_MAX, STEP_ASIDE_VOICE, STEP_ASIDE_TOPIC,
+  NAME_MAX, TOPIC_MAX, STEP_ASIDE_VOICE, STEP_ASIDE_TOPIC, STEP_ASIDE_CARE,
   clean, cleanHistory, isRefusal, declineReason, plainSpeech, clampToSentences, limitSpeech,
 } from './text'
 
@@ -33,6 +34,11 @@ export async function POST(request: NextRequest) {
 
     if (!Number.isInteger(round) || !Number.isInteger(totalRounds) || round < 1 || round > totalRounds || totalRounds > MAX_ROUNDS) {
       return NextResponse.json({ error: 'Invalid round number' }, { status: 400 })
+    }
+
+    // Words that sound like someone in danger are met with care, never debated or refused
+    if ([person1, person2, topic].some(soundsLikeDistress)) {
+      return NextResponse.json({ declined: true, reason: 'care' })
     }
 
     const currentSpeaker = round % 2 === 1 ? person1 : person2
@@ -69,8 +75,10 @@ Reply with exactly ${STEP_ASIDE_VOICE} and nothing else if the problem is who is
 - mocking, threatening or making claims about a private individual.
 Reply with exactly ${STEP_ASIDE_TOPIC} and nothing else if the problem is the question itself, whoever discusses it:
 - arguing that any group of people is inferior, or that anyone should be harmed;
-- sexual content, self-harm, or instructions for anything dangerous.
-Never explain, apologise or mention rules. Either speak in character or send one of those two markers.`
+- sexual content, or instructions for anything dangerous.
+Reply with exactly ${STEP_ASIDE_CARE} and nothing else if the question touches on suicide or self-harm,
+or sounds like the person asking may be in danger themselves.
+Never explain, apologise or mention rules. Either speak in character or send one of those three markers.`
 
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,

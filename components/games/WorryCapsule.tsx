@@ -2,6 +2,9 @@
 
 import { type ReactNode, useId, useRef, useState, useSyncExternalStore } from 'react'
 import { Button } from '@/components/ui/Button'
+import { useCareMode } from '@/components/games/CareMode'
+import { HelplineSentence } from '@/components/games/HelplineSentence'
+import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { cn } from '@/lib/utils/cn'
 import { type ArchiveProblem, MAX_ARCHIVE_CHARS, type Merge, mergeCapsules, readArchive, writeArchive } from '@/lib/games/worry-capsule/archive'
@@ -86,6 +89,7 @@ function placeInDay(position: number): string {
 const CEREMONY_NEIGHBOURS = 3
 
 const panel = 'bg-card-bg border border-card-border rounded-lg px-5 py-8 sm:px-10 sm:py-10'
+const careAside = 'rounded-lg border border-card-border border-l-4 border-l-[var(--melon-green)] bg-background px-4 py-4 text-left text-foreground leading-relaxed'
 const muted = 'text-sm sm:text-base text-foreground/75'
 
 export default function WorryCapsule() {
@@ -97,6 +101,7 @@ export default function WorryCapsule() {
   const [quietNews, setQuietNews] = useState('')
   const [importMessage, setImportMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { care, enterCareMode } = useCareMode()
 
   if (!snapshot.loaded) {
     return (
@@ -225,7 +230,10 @@ export default function WorryCapsule() {
           forgetDraft()
           setView({ kind: 'compose', draft: EMPTY_DRAFT })
         }}
-        onNext={(draft) => go({ kind: 'review', draft })}
+        onNext={(draft) => {
+          if (soundsLikeDistress(draft.text)) enterCareMode()
+          go({ kind: 'review', draft })
+        }}
         onCancel={capsules.length > 0 ? () => go({ kind: 'shelf' }) : undefined}
         restore={
           capsules.length === 0 && (
@@ -241,6 +249,24 @@ export default function WorryCapsule() {
           )
         }
       />
+    )
+  } else if (current.kind === 'review' && soundsLikeDistress(current.draft.text)) {
+    const { draft } = current
+    // Words like these are met with support first; sealing stays possible, but quietly, and never as the next step
+    body = (
+      <div className="space-y-5">
+        <ViewHeading focus={navigated}>You don’t have to hold this alone</ViewHeading>
+        <aside aria-label="Support" className={careAside}>
+          <p>
+            <HelplineSentence lead="What you wrote sounds very heavy. Please talk to someone who can be with you in it." />
+          </p>
+        </aside>
+        <p className={muted}>Your words are safe here, and nothing is sealed unless you choose it.</p>
+        <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center pt-1">
+          <Button variant="ghost" onClick={() => seal(draft)}>Keep it in a jar anyway</Button>
+          <Button variant="secondary" onClick={() => go({ kind: 'compose', draft })}>Change it</Button>
+        </div>
+      </div>
     )
   } else if (current.kind === 'review') {
     const { draft } = current
@@ -262,7 +288,25 @@ export default function WorryCapsule() {
   } else if (current.kind === 'sealed') {
     const capsule = capsules.find((c) => c.id === current.id)
     bodyKey = `sealed-${current.id}`
-    body = capsule ? (
+    const supportFirst = capsule !== undefined && (care || soundsLikeDistress(capsule.worry))
+    body = capsule && supportFirst ? (
+      // No sealing ceremony and no settling line here: support comes first, then the plain facts
+      <div className="space-y-4">
+        <ViewHeading focus={navigated}>It is kept</ViewHeading>
+        <aside aria-label="Support" className={careAside}>
+          <p>
+            <HelplineSentence lead="If things feel too heavy right now, you can talk to someone." />
+          </p>
+        </aside>
+        <p className={muted}>
+          It comes back on <strong className="font-semibold text-foreground">{formatDay(capsule.opensOn, today)}</strong>. Only this browser keeps it.
+        </p>
+        <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center pt-1">
+          <Button variant="secondary" onClick={() => exportAll()}>Save a copy</Button>
+          <Button variant="secondary" onClick={() => go({ kind: 'shelf' })}>Back to the shelf</Button>
+        </div>
+      </div>
+    ) : capsule ? (
       <div className={cn(motion && styles.motion)}>
         {motion ? (
           <Jar scene="sealing" motion className="w-44 h-56 mx-auto mb-2" />

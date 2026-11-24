@@ -6,9 +6,11 @@ export const MAX_HISTORY = 12
 /** Markers the model is told to send instead of explaining why it will not voice a turn. */
 export const STEP_ASIDE_VOICE = '[[STEP_ASIDE_VOICE]]'
 export const STEP_ASIDE_TOPIC = '[[STEP_ASIDE_TOPIC]]'
+export const STEP_ASIDE_CARE = '[[STEP_ASIDE_CARE]]'
 const STEP_ASIDE_PREFIX = '[[STEP_ASIDE'
 
-export type DeclineReason = 'voice' | 'topic'
+/** 'care' is not a refusal: the question sounds like someone in danger, and is met with support. */
+export type DeclineReason = 'voice' | 'topic' | 'care'
 
 export interface HistoryEntry {
   speaker: string
@@ -45,6 +47,7 @@ export function isRefusal(text: string): boolean {
 export function declineReason(text: string): DeclineReason | null {
   if (text.includes(STEP_ASIDE_VOICE)) return 'voice'
   if (text.includes(STEP_ASIDE_TOPIC)) return 'topic'
+  if (text.includes(STEP_ASIDE_CARE)) return 'care'
   return null
 }
 

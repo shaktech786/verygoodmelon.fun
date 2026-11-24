@@ -92,6 +92,23 @@ describe('POST /api/mind-debate (one turn)', () => {
     await askTurn()
     expect(promptOf()).toContain('[[STEP_ASIDE_VOICE]]')
     expect(promptOf()).toContain('[[STEP_ASIDE_TOPIC]]')
+    expect(promptOf()).toContain('[[STEP_ASIDE_CARE]]')
+  })
+
+  it('meets a question that sounds like someone in danger with care, before the model is asked', async () => {
+    const asked = await askTurn({ topic: 'Should I just end my life tonight?' })
+    expect(asked.status).toBe(200)
+    expect(asked.data).toEqual({ declined: true, reason: 'care' })
+
+    const named = await askTurn({ person2: 'I want to kill myself' })
+    expect(named.data).toEqual({ declined: true, reason: 'care' })
+    expect(generateContent).not.toHaveBeenCalled()
+  })
+
+  it('turns the model’s own self-harm signal into care, not a refusal', async () => {
+    generateContent.mockResolvedValue({ text: '[[STEP_ASIDE_CARE]]' })
+    const { data } = await askTurn({ topic: 'Is it ever right to give up?' })
+    expect(data).toEqual({ declined: true, reason: 'care' })
   })
 
   it('never lets a refusal be read out as if the debater said it', async () => {

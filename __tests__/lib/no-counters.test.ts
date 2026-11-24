@@ -11,7 +11,13 @@ import { readsAsCounter } from '../e2e/helpers/counters'
  */
 
 const ROOT = process.cwd()
-const SCANNED_DIRS = ['components/games', 'components/ui', 'app/games', 'lib/games', 'lib/keepsake']
+// Every page a visitor can reach, not only the games; the API routes send data, not text to read
+const SCANNED_DIRS = ['components/games', 'components/ui', 'app', 'lib/games', 'lib/keepsake']
+const SKIPPED_DIRS = ['app/api']
+
+// "+{hidden}" in JSX, or "+${n}" in a template, standing alone is an overflow tally: some marks shown, "+3" more.
+// A modifier such as "+2 Weight" or "Attacks +1" is a combat rule, not a tally, so only the bare badge is matched.
+const PLUS_TALLY = /^\(?\+9\)?(?:\s+(?:more|others?))?$/i
 
 /** Text that matches a pattern but is content, not a counter. Each entry says why. */
 const ALLOWED: { file: RegExp; text: RegExp; why: string }[] = [
@@ -35,6 +41,11 @@ const ALLOWED: { file: RegExp; text: RegExp; why: string }[] = [
   },
   { file: /community-words\/WritingParts\.tsx$/, text: /^9\/9 characters$/, why: 'a length limit beside a text box, owned by The Awakening and The Final Word' },
   { file: /keepsake\/render\.ts$/, text: /Times New Roman/, why: 'a font name' },
+  { file: /thought-pockets\/data\/cards\.ts$/, text: /^\+9$/, why: "a card's Multiplier bonus written as +N, a combat rule, not a tally" },
+  { file: /^app\/about\/page\.tsx$/, text: /nothing against the clock\. Play one for a few minutes/, why: 'says there are no clocks; "a few minutes" is how long a game takes, not a timer' },
+  { file: /^app\/privacy\/page\.tsx$/, text: /how many seconds it was open/, why: 'the privacy notice disclosing what is recorded' },
+  { file: /^app\/privacy\/SiteNumbers\.tsx$/, text: /^Times opened$/, why: 'the anonymous site totals the privacy page publishes for transparency, not a player’s progress' },
+  { file: /^app\/thoughts\/SubmitThought\.tsx$/, text: /^9 \/ 2,000 characters/, why: 'a length limit beside a text box, like the one in The Awakening' },
 ]
 
 /** Class lists and inline styles are code; everything else may reach a player. */
@@ -47,7 +58,9 @@ function sourceFiles(dir: string): string[] {
   const full = path.join(ROOT, dir)
   return readdirSync(full).flatMap((name) => {
     const child = path.join(dir, name)
-    if (statSync(path.join(ROOT, child)).isDirectory()) return sourceFiles(child)
+    if (statSync(path.join(ROOT, child)).isDirectory()) {
+      return SKIPPED_DIRS.includes(child.replace(/\\/g, '/')) ? [] : sourceFiles(child)
+    }
     return /\.tsx?$/.test(name) ? [child] : []
   })
 }
@@ -92,8 +105,20 @@ function playerText(file: string, source: string): string[] {
 describe('no counters, scores, countdowns or clocks in game text', () => {
   const files = SCANNED_DIRS.flatMap(sourceFiles)
 
-  it('finds the games to scan', () => {
+  it('finds the games and the pages around them to scan', () => {
     expect(files.length).toBeGreaterThan(50)
+    const unix = files.map((file) => file.replace(/\\/g, '/'))
+    for (const page of ['app/page.tsx', 'app/about/page.tsx', 'app/offline/page.tsx', 'app/support/page.tsx']) {
+      expect(unix).toContain(page)
+    }
+    expect(unix.some((file) => file.startsWith('app/thoughts/'))).toBe(true)
+    expect(unix.some((file) => file.startsWith('app/api/'))).toBe(false)
+  })
+
+  it('reads an overflow badge such as +{hidden} as a tally', () => {
+    const [text] = playerText('Badge.tsx', 'const Badge = ({ hidden }: { hidden: number }) => <span>+{hidden}</span>')
+    expect(PLUS_TALLY.test(text)).toBe(true)
+    expect(PLUS_TALLY.test(playerText('Badge.ts', 'const badge = (n: number) => `+${n}`')[0])).toBe(true)
   })
 
   it('every line a player can read is free of counting', () => {
@@ -101,11 +126,12 @@ describe('no counters, scores, countdowns or clocks in game text', () => {
     for (const file of files) {
       const unix = file.replace(/\\/g, '/')
       for (const text of playerText(file, readFileSync(path.join(ROOT, file), 'utf8'))) {
-        if (!readsAsCounter(text)) continue
+        if (!readsAsCounter(text) && !PLUS_TALLY.test(text)) continue
         if (ALLOWED.some((allowed) => allowed.file.test(unix) && allowed.text.test(text))) continue
         offenders.push(`${unix}: ${text}`)
       }
     }
     expect(offenders).toEqual([])
-  })
+    // Parsing every page and game is slow when the whole suite shares the machine
+  }, 30_000)
 })

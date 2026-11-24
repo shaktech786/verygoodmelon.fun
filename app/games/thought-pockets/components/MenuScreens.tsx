@@ -46,10 +46,6 @@ function deckSummary(deck: string[]): string {
   return [...counts.entries()].map(([id, n]) => `${n > 1 ? `${n}× ` : ''}${getCardDef(id).name}`).join(', ')
 }
 
-function count(n: number, word: string): string {
-  return `${n} ${word}${n === 1 ? '' : 's'}`
-}
-
 export function paceName(run: RunState): string {
   return run.mode === 'rigorous' ? `Rigorous ${run.rigor}` : 'Gentle'
 }
@@ -380,7 +376,6 @@ function RunSummary({ run }: { run: RunState }) {
     ['School', `${school}, ${paceName(run)}, ${lengthName(run.length)}`],
     ['Biases named', named.length === 0 ? 'None yet, and that is part of the walk too' : inWords(named)],
     ['Strongest moment', strongestMoment(run)],
-    ['Deck', count(run.deck.length, 'card')],
     ['Relics', run.relics.length === 0 ? 'None' : run.relics.map((id) => getRelicDef(id).name).join(', ')],
   ]
   return (
