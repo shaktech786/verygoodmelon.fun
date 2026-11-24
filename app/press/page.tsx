@@ -272,7 +272,7 @@ export default function PressSpecimen() {
           <ul className="sp-prints">
             {SHOWCASE_GAMES.map((game, order) => (
               <li key={game.id}>
-                <Packet game={game} order={order} />
+                <Packet game={game} order={order} shelfTab />
               </li>
             ))}
           </ul>

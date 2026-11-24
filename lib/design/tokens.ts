@@ -191,7 +191,7 @@ export const FONTS = {
 /** The 4px scale, --s-1 to --s-9. */
 export const SPACE = [4, 8, 12, 16, 24, 32, 48, 64, 96] as const
 
-export const WIDTHS = { prose: '40rem', stage: '60rem', shop: '90rem' } as const
+export const WIDTHS = { prose: '40rem', stage: '60rem', shop: '100rem' } as const
 
 export const RADII = { sheet: '14px', stamp: '10px', slice: '999px' } as const
 
@@ -209,11 +209,11 @@ export type Sense = 'quiet' | 'gentle' | 'lively'
 export const SENSES: readonly Sense[] = ['quiet', 'gentle', 'lively']
 export const DEFAULT_SENSE: Sense = 'gentle'
 
-/** What each stop of the dial allows. Tilt scales the packet angles below; lively reaches ±2°. */
+/** What each stop of the dial allows. Tilt scales the packet angles below; lively reaches ±2°. Lift and misregistration are px, inside the S1 ceiling of 4 px. */
 export const SENSE_VALUES: Readonly<Record<Sense, { motion: number; grain: number; misreg: number; misregHover: number; tilt: number; lift: number }>> = {
   quiet: { motion: 0, grain: 0, misreg: 0, misregHover: 0, tilt: 0, lift: 0 },
   gentle: { motion: 1, grain: 0.04, misreg: 1, misregHover: 0, tilt: 1, lift: 3 },
-  lively: { motion: 1, grain: 0.06, misreg: 1, misregHover: 2, tilt: 2 / 1.2, lift: 3 },
+  lively: { motion: 1, grain: 0.06, misreg: 1, misregHover: 2, tilt: 2 / 1.2, lift: 4 },
 }
 
 /** Packet angles in degrees, cycled by a packet's order so a returning visitor sees the same shelf. */

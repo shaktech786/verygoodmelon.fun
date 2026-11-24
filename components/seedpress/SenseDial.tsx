@@ -8,7 +8,7 @@ import { useSenseDial } from './SenseContext'
 const STOPS: Readonly<Record<Sense, { label: string; line: string; turn: number }>> = {
   quiet: { label: 'Quiet', line: 'Nothing moves unless you move it. Softer colours.', turn: -60 },
   gentle: { label: 'Gentle', line: 'Small movements when you press things, and one moment of colour when you finish.', turn: 0 },
-  lively: { label: 'Lively', line: 'A bit more bounce and a few soft sounds, if you like that.', turn: 60 },
+  lively: { label: 'Lively', line: 'A bit more bounce: packets lift higher and their inks settle as you pass.', turn: 60 },
 }
 
 /** The sensory dial: three native radios under a knob that shows where it is set. */

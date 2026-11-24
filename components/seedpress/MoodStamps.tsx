@@ -9,6 +9,9 @@ const GLYPH: Readonly<Record<MoodId, IconName>> = { restless: 'restless', heavy:
 export function MoodStamps() {
   return (
     <nav aria-labelledby="mood-stamps-line" className="sp-moods">
+      <p id="mood-stamps-line" className="sp-moods__line">
+        Start from how you feel
+      </p>
       <ul className="sp-moods__row">
         {MOODS.map((mood) => (
           <li key={mood.id}>
@@ -19,9 +22,6 @@ export function MoodStamps() {
           </li>
         ))}
       </ul>
-      <p id="mood-stamps-line" className="sp-moods__line">
-        Start from how you feel
-      </p>
     </nav>
   )
 }

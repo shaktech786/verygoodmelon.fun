@@ -16,7 +16,7 @@ export function Rack() {
             key={group.category}
             aria-labelledby={headingId}
             className="sp-shelf"
-            style={{ ['--shelf-ink' as string]: `var(--${style.ink})`, ['--shelf-span' as string]: Math.min(group.games.length, 2) }}
+            style={{ ['--shelf-ink' as string]: `var(--${style.ink})` }}
           >
             <h2 id={headingId} className="sp-shelf__name">
               <Icon name={style.glyph} size={36} />

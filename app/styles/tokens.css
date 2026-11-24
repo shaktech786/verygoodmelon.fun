@@ -34,7 +34,7 @@
   --s-9: 96px;
   --w-prose: 40rem;
   --w-stage: 60rem;
-  --w-shop: 90rem;
+  --w-shop: 100rem;
   --r-sheet: 14px;
   --r-stamp: 10px;
   --r-slice: 999px;
@@ -268,7 +268,7 @@
   --misreg: 1px;
   --misreg-hover: 2px;
   --tilt: 1.6667;
-  --lift: 3px;
+  --lift: 4px;
 }
 
 :where(html[data-contrast="extra-high"]) .press {

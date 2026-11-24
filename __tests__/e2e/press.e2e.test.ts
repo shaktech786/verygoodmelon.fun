@@ -12,7 +12,7 @@ import { expectOneGo } from './helpers/design'
 
 const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
 const SENSE_KEY = 'verygoodmelon:press:sense'
-const WIDTHS = [390, 1440, 2560] as const
+const WIDTHS = [390, 1024, 1440, 2560] as const
 const LOOKS = [
   { name: 'light', scheme: 'light', sense: 'gentle' },
   { name: 'dark', scheme: 'dark', sense: 'gentle' },
@@ -112,8 +112,8 @@ test('nothing moves on arrival, and Quiet has no motion at all', async ({ page }
 
 test('the header gear opens the settings, and the old chrome stays out of the way', async ({ page }) => {
   await open(page, '/press/home', 'gentle')
-  await expect(page.getByRole('banner')).toBeHidden()
-  await expect(page.getByRole('contentinfo')).toBeHidden()
+  await expect(page.locator('body > header[role="banner"]')).toBeHidden()
+  await expect(page.locator('body > footer[role="contentinfo"]')).toBeHidden()
   const panel = page.getByRole('dialog', { name: 'Accessibility settings' })
   await expect(async () => {
     if (!(await panel.isVisible())) await page.getByRole('button', { name: 'Open accessibility settings' }).click()
@@ -129,4 +129,79 @@ test('the fonts are served from the site, never from Google', async ({ page }) =
   await open(page, '/press/home', 'gentle')
   await expect.poll(() => fontHosts.length).toBeGreaterThan(0)
   expect(fontHosts.every((host) => host === 'localhost:3000')).toBe(true)
+})
+
+const FIT_CASES = [
+  { width: 390, textSize: 'default' },
+  { width: 390, textSize: 'larger' },
+  { width: 1024, textSize: 'default' },
+  { width: 1440, textSize: 'default' },
+  { width: 2560, textSize: 'default' },
+] as const
+
+for (const { width, textSize } of FIT_CASES) {
+  test(`/press/home at ${width}px, ${textSize} text: nothing scrolls sideways and every packet title fits`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.addInitScript((size) => window.localStorage.setItem('verygoodmelon:accessibility:settings', JSON.stringify({ textSize: size })), textSize)
+    await open(page, '/press/home', 'gentle')
+    await expect(page.locator('html')).toHaveAttribute('data-text-size', textSize)
+    const fit = await page.evaluate(() => ({
+      sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      overflowing: [...document.querySelectorAll('.sp-packet__title, .sp-packet__hook, .sp-counter__title')]
+        .filter((el) => el.scrollWidth > el.clientWidth + 1)
+        .map((el) => el.textContent),
+    }))
+    expect(fit.sideways).toBeLessThanOrEqual(0)
+    expect(fit.overflowing).toEqual([])
+    if (width === 390 && textSize === 'larger') {
+      const lefts = await page.locator('.sp-shelf a.sp-packet').evaluateAll((packets) => packets.map((p) => Math.round(p.getBoundingClientRect().left / 40)))
+      expect(new Set(lefts).size).toBe(1)
+    }
+  })
+}
+
+test('hooks are never cut short', async ({ page }) => {
+  await open(page, '/press/home', 'gentle')
+  for (const game of SHOWCASE_GAMES) {
+    await expect(page.locator('.sp-packet__hook', { hasText: game.hook })).toHaveCSS('-webkit-line-clamp', 'none')
+  }
+})
+
+test('the proof has its own banner, main region and footer landmarks', async ({ page }) => {
+  await open(page, '/press/home', 'gentle')
+  await expect(page.getByRole('banner').filter({ visible: true })).toHaveCount(1)
+  await expect(page.getByRole('banner').filter({ visible: true }).getByRole('link', { name: 'VeryGoodMelon.Fun' })).toBeVisible()
+  await expect(page.getByRole('main')).toHaveCount(1)
+  await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.getByRole('contentinfo').filter({ visible: true })).toHaveCount(1)
+  for (const link of await page.getByRole('contentinfo').filter({ visible: true }).getByRole('link').all()) {
+    const box = await link.boundingBox()
+    expect(box!.width).toBeGreaterThanOrEqual(44)
+    expect(box!.height).toBeGreaterThanOrEqual(44)
+  }
+})
+
+test('today’s packet settles once when first touched, and never in Quiet', async ({ page }) => {
+  await open(page, '/press/home', 'gentle')
+  const counter = page.locator('.sp-counter')
+  await counter.hover()
+  await expect(page.locator('.sp-plate')).toHaveClass(/is-settling/)
+  await expect.poll(() => page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running').length)).toBe(0)
+
+  await open(page, '/press/home', 'quiet')
+  await page.locator('.sp-counter').hover()
+  await expect(page.locator('.sp-plate')).not.toHaveClass(/is-settling/)
+  expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
+})
+
+test.describe('without JavaScript', () => {
+  test.use({ javaScriptEnabled: false })
+
+  test('today’s packet is still on the counter, with its one go', async ({ page }) => {
+    await page.goto('/press/home')
+    const counter = page.getByRole('region', { name: 'Today’s packet' })
+    await expect(counter).toBeVisible()
+    await expect(counter.getByRole('heading', { level: 2 })).not.toBeEmpty()
+    await expect(counter.getByRole('link', { name: /Open today’s packet/ })).toHaveAttribute('href', /^\/games\//)
+  })
 })

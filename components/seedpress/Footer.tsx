@@ -14,7 +14,7 @@ const SHOP_LINKS = [
 /** The back of the packet: someone to talk to first, then the shop. The give column stays hidden until it has content. */
 export function Footer() {
   return (
-    <footer className="sp-footer">
+    <footer className="sp-footer" role="contentinfo">
       <div className="sp-shop sp-footer__cols">
         <section aria-labelledby="footer-talk" className="sp-footer__col">
           <h2 id="footer-talk" className="sp-footer__head">
