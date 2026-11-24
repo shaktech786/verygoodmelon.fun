@@ -38,6 +38,26 @@ const eslintConfig = [
       "@typescript-eslint/ban-ts-comment": "off",
     },
   },
+  {
+    // Seedpress replaces stock kits and icon sets (docs/design-system/PLAN.md §10.2). Warnings until
+    // the last lucide and next/font/google imports are gone, then errors.
+    files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.mjs"],
+    rules: {
+      "no-restricted-imports": ["warn", {
+        paths: [
+          { name: "lucide-react", message: "Use the seed stamps in components/seedpress/icons." },
+          { name: "next/font/google", message: "Fonts are self-hosted from app/fonts with next/font/local." },
+          { name: "class-variance-authority", message: "Use the components in components/seedpress." },
+          { name: "daisyui", message: "Use the components in components/seedpress." },
+          { name: "framer-motion", message: "Motion is CSS with the Seedpress motion tokens." },
+          { name: "motion", message: "Motion is CSS with the Seedpress motion tokens." },
+        ],
+        patterns: [
+          { group: ["@radix-ui/*", "@headlessui/*", "@mui/*", "@chakra-ui/*", "shadcn*", "motion/*"], message: "Use the components in components/seedpress." },
+        ],
+      }],
+    },
+  },
 ];
 
 export default eslintConfig;

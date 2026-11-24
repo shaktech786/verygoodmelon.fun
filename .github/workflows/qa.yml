@@ -39,8 +39,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Red only for actions
-        run: npm run check:red
+      - name: Design rules (flesh only for actions, no new design debt)
+        run: npm run check:design
 
       - name: Build
         run: npm run build

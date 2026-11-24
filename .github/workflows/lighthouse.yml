@@ -1,13 +1,20 @@
 name: Lighthouse CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
 
 jobs:
   lighthouse:
     name: Lighthouse Audit
     runs-on: ubuntu-latest
+    # Reported, not blocking, until Phase 2 of docs/design-system/PLAN.md raises the gates: it has never run on main before.
+    continue-on-error: true
 
     steps:
       - name: Checkout

@@ -24,11 +24,13 @@
     "test:visual": "playwright test __tests__/visual",
     "test:visual:ui": "playwright test __tests__/visual --ui",
     "playwright:install": "npx playwright install",
-    "qa": "npm run typecheck && npm run lint && npm run check:red && npm run build && npm run test:e2e",
-    "qa:full": "npm run typecheck && npm run lint && npm run check:red && npm run build && npm run test && npm run test:e2e",
+    "qa": "npm run typecheck && npm run lint && npm run check:design && npm run build && npm run test:e2e",
+    "qa:full": "npm run typecheck && npm run lint && npm run check:design && npm run build && npm run test && npm run test:e2e",
     "qa:quick": "npm run typecheck && npm run build",
     "prepare": "husky",
-    "check:red": "node scripts/check-red-states.mjs"
+    "check:design": "node scripts/check-design.mjs",
+    "check:red": "npm run -s check:design",
+    "build:tokens": "node --no-warnings scripts/build-tokens.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -45,7 +47,6 @@
     "@supabase/supabase-js": "^2.116.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.47.0",

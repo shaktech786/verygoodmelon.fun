@@ -1,0 +1,63 @@
+name: Visual
+
+# Screenshots differ by OS, so the baselines are made here on Linux. With no Linux baselines
+# committed yet (or when asked), the run writes them and uploads them to commit. Reported, not
+# blocking, until Phase 7 of docs/design-system/PLAN.md.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      update:
+        description: Rewrite the baselines
+        type: boolean
+        default: false
+
+jobs:
+  visual:
+    name: Visual snapshots
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    env:
+      GOOGLE_GEMINI_API_KEY: ${{ secrets.GOOGLE_GEMINI_API_KEY || '' }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://ci-placeholder.invalid' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-placeholder-anon-key' }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || '' }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY || '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Run visual tests
+        env:
+          UPDATE: ${{ inputs.update }}
+        run: |
+          if [ "$UPDATE" != "true" ] && ls __tests__/visual/*-snapshots/*-linux.png > /dev/null 2>&1; then
+            npx playwright test __tests__/visual --project=chromium
+          else
+            npx playwright test __tests__/visual --project=chromium --update-snapshots
+          fi
+
+      - name: Upload baselines and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-snapshots
+          path: |
+            __tests__/visual/*-snapshots/
+            playwright-report/
+          if-no-files-found: ignore

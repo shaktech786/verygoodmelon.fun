@@ -1,0 +1,315 @@
+{
+  "app/about/page.tsx": {
+    "animate": 1,
+    "banned-utility": 1
+  },
+  "app/games/[slug]/opengraph-image.tsx": {
+    "raw-colour": 11
+  },
+  "app/games/ancient-voices/page.tsx": {
+    "animate": 1
+  },
+  "app/games/final-breath/page.tsx": {
+    "animate": 1
+  },
+  "app/games/first-breath/page.tsx": {
+    "animate": 1
+  },
+  "app/games/page.tsx": {
+    "animate": 1
+  },
+  "app/games/quiet-grove/page.tsx": {
+    "animate": 1
+  },
+  "app/games/the-arena/page.tsx": {
+    "animate": 1
+  },
+  "app/games/the-long-breath/page.tsx": {
+    "animate": 1
+  },
+  "app/games/the-mutation/CascadeGame.tsx": {
+    "animate": 1,
+    "banned-utility": 3
+  },
+  "app/games/the-mutation/components/FinaleScreen.tsx": {
+    "animate": 1,
+    "banned-utility": 4
+  },
+  "app/games/the-mutation/components/TitleScreen.tsx": {
+    "animate": 1,
+    "banned-utility": 3
+  },
+  "app/games/the-mutation/engine/palette.ts": {
+    "raw-colour": 17
+  },
+  "app/games/the-silver-lining/page.tsx": {
+    "animate": 1
+  },
+  "app/games/the-slow-post/page.tsx": {
+    "animate": 1
+  },
+  "app/games/the-still-point/opengraph-image.tsx": {
+    "raw-colour": 7
+  },
+  "app/games/the-still-point/page.tsx": {
+    "animate": 1
+  },
+  "app/games/the-threshold/page.tsx": {
+    "animate": 1
+  },
+  "app/games/thought-pockets/components/BattleScreen.tsx": {
+    "banned-utility": 4
+  },
+  "app/games/thought-pockets/components/CardFace.tsx": {
+    "banned-utility": 6
+  },
+  "app/games/thought-pockets/components/MapScreen.tsx": {
+    "banned-utility": 5
+  },
+  "app/games/thought-pockets/components/MenuScreens.tsx": {
+    "banned-utility": 9
+  },
+  "app/games/thought-pockets/components/NodeScreens.tsx": {
+    "banned-utility": 4
+  },
+  "app/games/thought-pockets/components/RoundShow.tsx": {
+    "banned-utility": 2
+  },
+  "app/games/thought-pockets/components/Term.tsx": {
+    "banned-utility": 1
+  },
+  "app/games/thought-pockets/components/ThoughtPockets.tsx": {
+    "banned-utility": 2
+  },
+  "app/games/thought-pockets/components/WalkArgument.tsx": {
+    "banned-utility": 3
+  },
+  "app/global-error.tsx": {
+    "raw-colour": 2
+  },
+  "app/globals.css": {
+    "infinite": 2
+  },
+  "app/layout.tsx": {
+    "raw-colour": 1
+  },
+  "app/not-found.tsx": {
+    "animate": 1,
+    "banned-utility": 5
+  },
+  "app/page.tsx": {
+    "banned-utility": 1
+  },
+  "app/privacy/page.tsx": {
+    "banned-utility": 1
+  },
+  "app/support/page.tsx": {
+    "animate": 1,
+    "banned-utility": 1
+  },
+  "app/terms/page.tsx": {
+    "banned-utility": 1
+  },
+  "app/thoughts/[slug]/page.tsx": {
+    "animate": 1,
+    "banned-utility": 2
+  },
+  "app/thoughts/page.tsx": {
+    "animate": 1
+  },
+  "components/ErrorBoundary.tsx": {
+    "banned-utility": 1,
+    "infinite": 1
+  },
+  "components/FeedbackDialog.tsx": {
+    "animate": 2,
+    "banned-utility": 1
+  },
+  "components/accessibility/AccessibilityPanel.tsx": {
+    "banned-utility": 3
+  },
+  "components/games/BreathingPatterns.tsx": {
+    "animate": 1,
+    "arbitrary-colour": 2,
+    "raw-colour": 11
+  },
+  "components/games/CalmGarden.tsx": {
+    "animate": 3,
+    "arbitrary-colour": 1,
+    "raw-colour": 3
+  },
+  "components/games/CrossGameSuggestions.tsx": {
+    "banned-utility": 2
+  },
+  "components/games/FirstWords.tsx": {
+    "animate": 1,
+    "banned-utility": 2,
+    "raw-colour": 9
+  },
+  "components/games/GameCardShowcase.tsx": {
+    "arbitrary-colour": 2,
+    "banned-utility": 3
+  },
+  "components/games/GameDirectory.tsx": {
+    "banned-utility": 6
+  },
+  "components/games/HardChoices.tsx": {
+    "animate": 2,
+    "banned-utility": 3
+  },
+  "components/games/HardTalk.tsx": {
+    "animate": 1,
+    "banned-utility": 3
+  },
+  "components/games/HopeDaily.tsx": {
+    "animate": 1,
+    "banned-utility": 13
+  },
+  "components/games/IdeaLab.tsx": {
+    "animate": 3,
+    "banned-utility": 5
+  },
+  "components/games/LastWords.tsx": {
+    "animate": 1,
+    "banned-utility": 1
+  },
+  "components/games/MindDebate.tsx": {
+    "animate": 6,
+    "banned-utility": 1
+  },
+  "components/games/RequestThinkerModal.tsx": {
+    "animate": 3,
+    "banned-utility": 2
+  },
+  "components/games/TheUnrusher.tsx": {
+    "animate": 6,
+    "banned-utility": 3
+  },
+  "components/games/ThinkerPhoneBook.tsx": {
+    "animate": 1,
+    "banned-utility": 3
+  },
+  "components/games/TimelessMinds.tsx": {
+    "animate": 5,
+    "arbitrary-colour": 6,
+    "banned-utility": 9,
+    "raw-colour": 29
+  },
+  "components/games/TimelessMindsKeptLines.tsx": {
+    "animate": 1,
+    "banned-utility": 3
+  },
+  "components/games/WorryCapsule.tsx": {
+    "banned-utility": 1
+  },
+  "components/games/avatars/SimliAvatar.tsx": {
+    "animate": 2,
+    "banned-utility": 2,
+    "tailwind-palette": 1
+  },
+  "components/games/avatars/StaticAvatar.tsx": {
+    "banned-utility": 5,
+    "raw-colour": 5,
+    "tailwind-palette": 12
+  },
+  "components/games/avatars/TalkingHeadAvatar.tsx": {
+    "animate": 2,
+    "banned-utility": 2,
+    "tailwind-palette": 1
+  },
+  "components/games/calm-garden/draw.ts": {
+    "raw-colour": 138
+  },
+  "components/games/community-words/WritingParts.tsx": {
+    "banned-utility": 1
+  },
+  "components/games/idea-lab/GoldShelf.tsx": {
+    "banned-utility": 2
+  },
+  "components/games/idea-lab/IdeaCabinet.tsx": {
+    "animate": 1,
+    "banned-utility": 1
+  },
+  "components/games/idea-lab/LetterScene.tsx": {
+    "animate": 1
+  },
+  "components/games/worry-capsule/parts.tsx": {
+    "banned-utility": 2
+  },
+  "components/home/TodaysPick.tsx": {
+    "banned-utility": 3
+  },
+  "components/ui/AmbientParticles.tsx": {
+    "raw-colour": 4
+  },
+  "components/ui/Button.tsx": {
+    "banned-utility": 1
+  },
+  "components/ui/Header.tsx": {
+    "banned-utility": 1
+  },
+  "components/ui/LegalPage.tsx": {
+    "animate": 1
+  },
+  "lib/email/templates.ts": {
+    "raw-colour": 6
+  },
+  "lib/games/arena-pairings.ts": {
+    "raw-colour": 4
+  },
+  "lib/games/calm-garden/colours.ts": {
+    "raw-colour": 5
+  },
+  "lib/games/hope-daily/words.ts": {
+    "banned-utility": 1
+  },
+  "lib/keepsake/alchemist.ts": {
+    "banned-utility": 1
+  },
+  "lib/keepsake/arena.ts": {
+    "banned-utility": 2
+  },
+  "lib/keepsake/awakening.ts": {
+    "banned-utility": 1,
+    "raw-colour": 25
+  },
+  "lib/keepsake/dilemma.ts": {
+    "banned-utility": 1,
+    "raw-colour": 7
+  },
+  "lib/keepsake/final-word.ts": {
+    "raw-colour": 2
+  },
+  "lib/keepsake/gardener.ts": {
+    "raw-colour": 55
+  },
+  "lib/keepsake/harmonist.ts": {
+    "banned-utility": 1
+  },
+  "lib/keepsake/optimist.ts": {
+    "banned-utility": 1
+  },
+  "lib/keepsake/patient-one.ts": {
+    "banned-utility": 9,
+    "raw-colour": 6
+  },
+  "lib/keepsake/plain-speaker.ts": {
+    "banned-utility": 1
+  },
+  "lib/keepsake/plan.ts": {
+    "banned-utility": 2
+  },
+  "lib/keepsake/render.ts": {
+    "banned-utility": 2,
+    "raw-colour": 18
+  },
+  "lib/keepsake/shapeshifter.ts": {
+    "raw-colour": 12
+  },
+  "lib/utils/constants.ts": {
+    "infinite": 1
+  },
+  "lib/utils/typography.ts": {
+    "banned-utility": 18
+  }
+}
