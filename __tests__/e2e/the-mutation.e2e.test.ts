@@ -686,10 +686,11 @@ test.describe('The Shapeshifter', () => {
     expect(overlay.pointer).toBe('none')
 
     // Reduced motion, like Quiet, halves the glow
-    const neon = () => canvasOf(page).evaluate((canvas) => getComputedStyle(canvas).getPropertyValue('--game-screen-neon').trim())
-    expect(await neon()).toBe('1')
+    const neon = () => canvasOf(page).evaluate((canvas) => Number(getComputedStyle(canvas).getPropertyValue('--game-screen-neon').trim()))
+    expect(await neon()).toBe(1)
     await page.evaluate(() => document.documentElement.setAttribute('data-reduce-motion', 'true'))
-    expect(await neon()).toBe('0.5')
+    // Compared as a number: a production build writes 0.5 as .5
+    expect(await neon()).toBe(0.5)
   })
 
   test('every clue at a crossroads is drawn in the field where the engine says it grows', async ({ page }) => {
