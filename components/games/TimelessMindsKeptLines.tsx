@@ -45,34 +45,34 @@ export default function TimelessMindsKeptLines({ lines, onRemove, onClose, onKey
         aria-modal="true"
         aria-labelledby="kept-lines-title"
         onKeyDown={onKeyDown}
-        className="sage-room sage-paper rounded-2xl p-6 sm:p-8 max-w-lg w-full shadow-2xl animate-fade border my-8"
+        className="bg-card-bg text-foreground border-card-border rounded-2xl p-6 sm:p-8 max-w-lg w-full shadow-2xl animate-fade border my-8"
       >
         <h3
           id="kept-lines-title"
           ref={headingRef}
           tabIndex={-1}
-          className="text-sm font-semibold uppercase tracking-wide sage-ink-soft focus-visible:shadow-none!"
+          className="text-sm font-semibold uppercase tracking-wide text-foreground/70 focus-visible:shadow-none!"
         >
           Kept lines
         </h3>
-        <p className="mt-1 text-sm sage-ink-soft">Parting words you chose to keep. They stay on this device only.</p>
+        <p className="mt-1 text-sm text-foreground/70">Parting words you chose to keep. They stay on this device only.</p>
 
         {lines.length === 0 ? (
-          <p className="mt-6 sage-ink">Nothing kept yet. When someone says goodbye, you can keep their parting words here.</p>
+          <p className="mt-6">Nothing kept yet. When someone says goodbye, you can keep their parting words here.</p>
         ) : (
           <ul className="mt-5 space-y-3">
             {lines.map((line, index) => (
-              <li key={line.id} className="sage-note rounded-xl border px-4 py-3">
-                <blockquote className="font-serif text-base sm:text-lg leading-relaxed sage-ink">{line.text}</blockquote>
+              <li key={line.id} className="bg-background rounded-xl border border-card-border px-4 py-3">
+                <blockquote className="font-serif text-base sm:text-lg leading-relaxed">{line.text}</blockquote>
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                  <p className="text-sm sage-ink-soft">
+                  <p className="text-sm text-foreground/70">
                     {line.thinkerName}{line.keptOn && dayLabel(line.keptOn) ? `, kept ${dayLabel(line.keptOn)}` : ''}
                   </p>
                   <button
                     ref={element => { removeButtons.current[index] = element }}
                     type="button"
                     onClick={() => remove(index, line.id)}
-                    className="min-h-[44px] px-2 -mr-2 text-sm underline underline-offset-2 sage-ink-soft hover:opacity-80 rounded-lg"
+                    className="min-h-[44px] px-2 -mr-2 text-sm underline underline-offset-2 text-foreground/70 hover:opacity-80 rounded-lg"
                   >
                     Remove <span className="sr-only">the line from {line.thinkerName}</span>
                   </button>

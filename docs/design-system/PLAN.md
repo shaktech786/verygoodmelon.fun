@@ -1050,7 +1050,13 @@ For each game: its packet motif and inks, its chrome, and **its stimulating mome
 
 4. **The Sage** (`TimelessMinds.tsx` and family)
    - *Packet:* an open book with one leaf pressed in it; dusk and seed.
-   - *Chrome:* the thinker chooser uses stamp cards; the conversation uses `--sheet` bubbles. The visitor's bubbles are on the right, rind-wash with an ink "You" label; the thinker's are on the left, sheet with the name. Mic and sound use icon stamps with labels. The care panel is the Care block.
+   - *Conceit (keep it):* the game is a **modern video call with someone from history**. The owner calls this one of its beauties, and commit 3cb01b7's "sitting room" restyle that dropped it was reverted. Phase 4c re-inks the call; it never replaces it with a room, a page or a plain chat. The call keeps:
+     - **Tiles.** The thinker's large video tile with a **name label** (name and era) in its corner and a soft status pill ("Here with you", "Speaking", "Listening"). The visitor's own small **"You" tile** is a placeholder, never a camera. A speaking thinker gets a steady active-speaker ring, never a pulse.
+     - **Control bar.** A row of round, labelled call controls under the tiles: Speak (mic), Voice (sound, off until chosen), Portrait (the video toggle), Menu (directory, kept lines, request, say goodbye), and a clearly labelled **Leave** pill that opens the goodbye dialog.
+     - **Meeting chat.** An "In-call messages" side panel (below the tile on a phone) with sender names above each message, the imagined-conversation notice pinned at the top like a meeting's system note, and the message box at its foot.
+     - **Connecting.** A brief "Calling {name}…" moment on the tile as each call opens. It is decorative, `aria-hidden` and never blocks typing; Quiet shows it as a still frame.
+     - **House rules inside the conceit.** No call-duration clock, participant count or recording dot; no typing dots or "generating" text; no flashing; sound only when the visitor chooses it.
+   - *Chrome:* the call stage is a deep dusk sheet in both themes. Tiles are `--well` frames and the control bar's buttons are icon stamps with labels, all in Seedpress ink. Leave is the one clay pill, never flesh. The chat panel is `--sheet` with meeting-chat bubbles. The visitor's bubbles are on the right, rind-wash with an ink "You" label; the thinker's are on the left, sheet with the name. The thinker chooser is a pre-call list of stamp cards. The care panel is the Care block inside the chat panel.
    - *Art:* duotone portraits (§6.3). The 27 hex values are removed.
    - *Moment (S2):* the first reply arrives with the portrait's second ink settling into register. Never a typing indicator (the "AI is generating" rule): `.typing-dot` is deleted, and replies use the Loading seeds inside the bubble.
 5. **The Dilemma** (`HardChoices.tsx`)

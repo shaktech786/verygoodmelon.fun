@@ -190,10 +190,9 @@
     "banned-utility": 3
   },
   "components/games/TimelessMinds.tsx": {
-    "animate": 5,
-    "arbitrary-colour": 6,
-    "banned-utility": 9,
-    "raw-colour": 29
+    "animate": 2,
+    "banned-utility": 5,
+    "raw-colour": 16
   },
   "components/games/TimelessMindsKeptLines.tsx": {
     "animate": 1,

@@ -5,7 +5,7 @@ import type { AvatarComponentProps, AvatarHandle } from '@/lib/games/timeless-mi
 import type { AvatarEmotion } from '@/lib/games/timeless-minds/avatar-provider'
 
 /**
- * A portrait photograph that sits inside the Sage's picture frame:
+ * A portrait photograph that fills the thinker's video tile in the Sage's call:
  * - Slow breathing pulse (scale), still with reduced motion
  * - Speaking indicator ring
  * - A soft vignette, like an old print
