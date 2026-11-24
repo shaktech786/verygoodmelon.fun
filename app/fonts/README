@@ -1,0 +1,43 @@
+Seedpress fonts (docs/design-system/PLAN.md §5.2). Both are SIL Open Font License 1.1;
+each licence ships beside its font. Loaded with next/font/local; nothing is fetched from
+Google at runtime.
+
+Sources (google/fonts, main branch, fetched 2026-11-24):
+  ofl/atkinsonhyperlegiblenext/AtkinsonHyperlegibleNext[wght].ttf
+    sha256 5a455d1cfa099b601ab70751bb9673e8fe1854dc4500c80e1a220d0d75e31745
+  ofl/bricolagegrotesque/BricolageGrotesque[opsz,wdth,wght].ttf
+    sha256 413e7357809ddd12fd80a96a8a396de0e401638d4acd3cb3e37532f0472ac682
+
+Built with fontTools 4.63.0 (Python 3.12), in Python:
+
+  from fontTools.ttLib import TTFont
+  from fontTools.varLib import instancer
+  from fontTools import subset
+
+  def save(font, unicodes, path, features=('*',), hinting=True):
+      o = subset.Options(); o.flavor = 'woff2'; o.hinting = hinting
+      o.layout_features = list(features); o.name_IDs = ['*']; o.notdef_outline = True
+      s = subset.Subsetter(o); s.populate(unicodes=unicodes); s.subset(font)
+      font.flavor = 'woff2'; font.save(path)
+
+  r = lambda a, b: list(range(a, b + 1))
+
+  # Atkinson Hyperlegible Next: roman only, weight 200-800, the Latin range Google serves
+  latin = r(0x0000, 0x00FF) + [0x0131, 0x0152, 0x0153, 0x02BB, 0x02BC, 0x02C6, 0x02DA, 0x02DC,
+          0x0304, 0x0308, 0x0329] + r(0x2000, 0x206F) + [0x20AC, 0x2122, 0x2191, 0x2193,
+          0x2212, 0x2215, 0xFEFF, 0xFFFD]
+  save(TTFont('AtkinsonHyperlegibleNext[wght].ttf'), latin, 'AtkinsonHyperlegibleNext-wght.woff2')
+
+  # Bricolage Grotesque, display only: optical size and width pinned, weight 600-800,
+  # Basic Latin, Latin-1 punctuation and ’ “ ” – — …, unhinted (titles are 24 px and up)
+  display = r(0x0020, 0x007E) + r(0x00A0, 0x00BF) + [0x2018, 0x2019, 0x201C, 0x201D,
+            0x2013, 0x2014, 0x2026]
+  font = instancer.instantiateVariableFont(TTFont('BricolageGrotesque[opsz,wdth,wght].ttf'),
+                                           {'opsz': 36, 'wdth': 100, 'wght': (600, 800)})
+  save(font, display, 'BricolageGrotesque-display.woff2',
+       ('kern', 'ccmp', 'locl', 'mark', 'mkmk', 'case', 'lnum'), False)
+
+Output:
+  AtkinsonHyperlegibleNext-wght.woff2   34,044 B
+  BricolageGrotesque-display.woff2      25,044 B  (target was 30 KB or less)
+  Total                                 59,088 B  (budget 64 KB)

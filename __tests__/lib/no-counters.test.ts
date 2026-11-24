@@ -12,7 +12,7 @@ import { readsAsCounter } from '../e2e/helpers/counters'
 
 const ROOT = process.cwd()
 // Every page a visitor can reach, not only the games; the API routes send data, not text to read
-const SCANNED_DIRS = ['components/games', 'components/ui', 'app', 'lib/games', 'lib/keepsake']
+const SCANNED_DIRS = ['components/games', 'components/ui', 'components/seedpress', 'app', 'lib/games', 'lib/keepsake']
 const SKIPPED_DIRS = ['app/api']
 
 // "+{hidden}" in JSX, or "+${n}" in a template, standing alone is an overflow tally: some marks shown, "+3" more.
