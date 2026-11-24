@@ -10,7 +10,7 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     include: ['**/*.{test,spec}.{js,ts,tsx}'],
     css: true,
-    exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/__tests__/e2e/**', '**/__tests__/visual/**', '**/tests/integration/**'],
+    exclude: ['**/node_modules/**', '**/.claude/**', '**/dist/**', '**/.next/**', '**/__tests__/e2e/**', '**/__tests__/visual/**', '**/tests/integration/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
