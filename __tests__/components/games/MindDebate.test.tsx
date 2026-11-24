@@ -68,6 +68,9 @@ describe('The Arena, when a written question sounds like someone in danger', () 
     expect(await screen.findByRole('link', { name: '988' })).toBeInTheDocument()
     expect(screen.queryByText(REFUSAL)).not.toBeInTheDocument()
     expect(careStored()).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the start' }))
+    expect(screen.getByLabelText('Topic')).toHaveValue('')
   })
 
   it('still refuses a topic the server sets aside for other reasons', async () => {

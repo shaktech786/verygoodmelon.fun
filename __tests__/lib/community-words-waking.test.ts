@@ -29,6 +29,12 @@ describe('wakingLine', () => {
     )
   })
 
+  it('closes a quote that has no full stop of its own', () => {
+    expect(wakingLine({ words: 'Tell my sister I love her', intention: 'Call her', judgement: 'safe' })).toBe(
+      'Over there, you said “Tell my sister I love her.” You woke up with this:'
+    )
+  })
+
   it('never repeats words that sounded like someone in danger', () => {
     const line = wakingLine({ words: 'I never want to go back', intention: '', judgement: 'care' })
     expect(line).not.toContain('go back')

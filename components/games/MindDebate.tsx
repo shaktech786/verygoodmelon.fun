@@ -457,11 +457,11 @@ export default function MindDebate() {
 
   const backToSetup = (focus?: FocusTarget) => {
     resetDebate()
-    // Words that called for care are not left waiting in the boxes
+    // Words that called for care are not left waiting in the boxes; the topic goes too when the care came from the reply, since nothing here can tell which words prompted it
     if (phase === 'care') {
       if (soundsLikeDistress(person1)) setPerson1('')
       if (soundsLikeDistress(person2)) setPerson2('')
-      if (soundsLikeDistress(topic)) setTopic('')
+      setTopic('')
     }
     focusNextRef.current = focus ?? null
     setPhase('setup')
@@ -594,7 +594,7 @@ export default function MindDebate() {
             id="arena-care-heading"
             ref={careHeadingRef}
             tabIndex={-1}
-            className="text-xl sm:text-2xl font-semibold text-foreground focus:outline-none"
+            className="text-xl sm:text-2xl font-semibold text-foreground focus:outline-none focus-visible:shadow-none!"
           >
             You don&apos;t have to hold this alone
           </h2>

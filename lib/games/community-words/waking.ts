@@ -40,7 +40,8 @@ interface Waking {
 export function wakingLine({ words, intention, judgement }: Waking): string {
   if (judgement !== 'safe') return 'You came back. It is good to have you here, today.'
   const quoted = excerpt(words)
-  const said = quoted ? `Over there, you said “${quoted}”` : 'You came back.'
+  // A quote that trails off without its own full stop still closes the sentence before the next one
+  const said = quoted ? `Over there, you said “${quoted}${/[.!?…]$/.test(quoted) ? '' : '.'}”` : 'You came back.'
   return intention.trim()
     ? `${said} You woke up with this:`
     : `${said} Whatever you reached for there is within reach here, too.`

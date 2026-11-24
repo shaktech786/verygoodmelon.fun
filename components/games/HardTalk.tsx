@@ -544,7 +544,7 @@ function HardTalkGame() {
             nextLabel: null,
             body: (
               <>
-                {heading('Before any talk, you')}
+                {heading('You come first')}
                 <div className="mt-5">{support}</div>
                 {sub('The talk can wait. Go back to change what you wrote, or start over whenever you like.')}
               </>
@@ -690,7 +690,7 @@ function HardTalkGame() {
                 <span key={label} className={cn('h-1.5 w-5 rounded-full', i < stage ? 'bg-melon-green' : 'bg-foreground/15')} />
               ))}
             </div>
-            <p className="text-sm text-foreground/75">{session.step === 'carry' ? 'Here’s your line' : STAGES[stage - 1]}</p>
+            <p className="text-sm text-foreground/75">{session.step === 'carry' ? (distressed ? 'Before the talk' : 'Here’s your line') : STAGES[stage - 1]}</p>
           </div>
         ) : <span />}
         {canStartOver && session.step !== 'carry' && !confirmingStartOver && (
