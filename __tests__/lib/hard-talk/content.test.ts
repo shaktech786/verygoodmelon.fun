@@ -33,8 +33,11 @@ describe('content integrity', () => {
   it('has a complete, distinct set of content for every kind of talk', () => {
     for (const kind of TALK_KINDS) {
       const t = TALKS[kind]
-      expect(t.openings).toHaveLength(3)
-      expect(new Set(t.openings).size).toBe(3)
+      expect(t.openings.length).toBeGreaterThanOrEqual(2)
+      expect(new Set(t.openings).size).toBe(t.openings.length)
+      // No opener repeats a sentence of another, so the choices never read as near-duplicates
+      const said = t.openings.flatMap((line) => line.split(/(?<=[.?!])\s+/))
+      expect(new Set(said).size).toBe(said.length)
       expect(t.carry.length).toBeGreaterThanOrEqual(2)
       expect(t.them.named).toContain('{who}')
       expect(t.them.unnamed).not.toContain('{who}')

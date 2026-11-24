@@ -260,7 +260,7 @@ export function RewardScreen({ run }: { run: RunState }) {
               />
             ))}
           </div>
-          {!reward.cardTaken && (
+          {!reward.cardTaken && !study && (
             <button type="button" className={`${quietButton} mt-3`} onClick={() => act(skipCards)}>
               Skip the card
             </button>
@@ -272,10 +272,17 @@ export function RewardScreen({ run }: { run: RunState }) {
           This stretch of the walk is done. Your walk is saved, so this is a good place to stop and come back another day.
         </p>
       )}
-      <button type="button" className={`${primaryButton} mt-5`} onClick={() => act(leaveReward)} data-testid="continue">
-        {last ? 'Finish the walk' : reward.source === 'boss' ? 'On to the next floor' : study ? 'On to rest' : 'Continue'}
-        {(!reward.cardTaken || !reward.relicTaken) && (study ? ' without a card' : ' (leave the rest)')}
-      </button>
+      {study && !reward.cardTaken ? (
+        // One plain way past the card; the red button waits until a card is picked
+        <button type="button" className={`${quietButton} mt-5`} onClick={() => act(leaveReward)} data-testid="continue">
+          Skip the card and rest
+        </button>
+      ) : (
+        <button type="button" className={`${primaryButton} mt-5`} onClick={() => act(leaveReward)} data-testid="continue">
+          {last ? 'Finish the walk' : reward.source === 'boss' ? 'On to the next floor' : study ? 'On to rest' : 'Continue'}
+          {!study && (!reward.cardTaken || !reward.relicTaken) && ' (leave the rest)'}
+        </button>
+      )}
     </section>
   )
 }
@@ -285,13 +292,22 @@ export function ShopScreen({ run }: { run: RunState }) {
   const shop = run.shop
   if (run.pick) return <DeckPicker run={run} />
   if (!shop) return null
+  const prices = [
+    ...shop.cards.filter((item) => !item.sold).map((item) => item.price),
+    ...shop.relics.filter((item) => !item.sold).map((item) => item.price),
+    ...(shop.teaTaken ? [] : [shop.teaPrice]),
+    ...(shop.removed ? [] : [shop.removePrice]),
+  ]
+  const affordsSomething = prices.some((price) => price <= run.gold)
   return (
     <section className={panel} aria-labelledby="shop-title">
       <h2 id="shop-title" className="flex items-center gap-2 font-serif text-2xl font-semibold">
         <NodeGlyph type="shop" className="h-7 w-7 text-[var(--tp-logic)]" />
         The Bookshop
       </h2>
-      <p className="mt-1 text-sm">You have {run.gold} gold. You will not afford everything.</p>
+      <p className="mt-1 text-sm" data-testid="shop-purse">
+        You have {run.gold} gold. {affordsSomething ? 'You will not afford everything.' : 'Nothing here fits your purse today; that’s fine.'}
+      </p>
       <div className="mt-3 flex flex-wrap gap-3" data-testid="shop-cards">
         {shop.cards.map((item, i) => {
           const def = getCardDef(item.cardId)

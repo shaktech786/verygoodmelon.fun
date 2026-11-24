@@ -25,7 +25,12 @@ export function sealedDay(capsule: Capsule, todayKey: DateKey, style: 'long' | '
 export function ViewHeading({ focus, children, className }: { focus: boolean; children: ReactNode; className?: string }) {
   const ref = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
-    if (focus) ref.current?.focus()
+    const heading = ref.current
+    if (!focus || !heading) return
+    heading.focus()
+    // Focus only scrolls when the heading is off screen, and one tucked under the sticky header still counts as on screen
+    const headerBottom = document.querySelector('header[role="banner"]')?.getBoundingClientRect().bottom ?? 0
+    if (heading.getBoundingClientRect().top < headerBottom) heading.scrollIntoView({ block: 'start' })
   }, [focus])
   return (
     <h2

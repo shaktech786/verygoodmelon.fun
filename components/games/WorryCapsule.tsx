@@ -1,6 +1,7 @@
 'use client'
 
 import { type ReactNode, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { flushSync } from 'react-dom'
 import { Button } from '@/components/ui/Button'
 import { useCareMode } from '@/components/games/CareMode'
 import { HelplineSentence } from '@/components/games/HelplineSentence'
@@ -87,6 +88,8 @@ function placeInDay(position: number): string {
   return `${PLACES_IN_DAY[position - 1] ?? 'next'} that day`
 }
 const CEREMONY_NEIGHBOURS = 3
+/** Opened capsules listed before the rest wait behind "Show older". */
+const RECENT_OPENED = 10
 
 const panel = 'bg-card-bg border border-card-border rounded-lg px-5 py-8 sm:px-10 sm:py-10'
 const careAside = 'rounded-lg border border-card-border border-l-4 border-l-[var(--melon-green)] bg-background px-4 py-4 text-left text-foreground leading-relaxed'
@@ -101,6 +104,8 @@ export default function WorryCapsule() {
   const [quietNews, setQuietNews] = useState('')
   const [importMessage, setImportMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showOlder, setShowOlder] = useState(false)
+  const firstOlderRef = useRef<HTMLButtonElement>(null)
   const { care, enterCareMode } = useCareMode()
 
   if (!snapshot.loaded) {
@@ -380,6 +385,8 @@ export default function WorryCapsule() {
     const counts = tally(capsules)
     const waiting = [...shelf.ready, ...shelf.resting]
     const sameDay = sealedSameDay(waiting)
+    const hasOlder = shelf.opened.length > RECENT_OPENED
+    const listed = showOlder ? shelf.opened : shelf.opened.slice(0, RECENT_OPENED)
     body = (
       <div className="space-y-6">
         <div className="space-y-2">
@@ -432,9 +439,10 @@ export default function WorryCapsule() {
             <h3 id="keeper-opened" className="text-base font-semibold text-foreground mb-2">Looked back on</h3>
             <KeptShelf outcomes={shelfOutcomes(shelf.opened, SHELF_JARS)} motion={false} className="mx-auto mb-3" />
             <ul className="divide-y divide-card-border border-y border-card-border">
-              {shelf.opened.map((capsule) => capsule.opening && (
+              {listed.map((capsule, index) => capsule.opening && (
                 <li key={capsule.id}>
                   <button
+                    ref={index === RECENT_OPENED ? firstOlderRef : undefined}
                     type="button"
                     onClick={() => go({ kind: 'capsule', id: capsule.id })}
                     className="w-full flex items-center gap-3 px-2 py-3 text-left hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring transition-colors duration-75"
@@ -450,6 +458,20 @@ export default function WorryCapsule() {
                 </li>
               ))}
             </ul>
+            {hasOlder && !showOlder && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-3"
+                onClick={() => {
+                  // The button leaves with the press, so focus goes on to the first of the older ones
+                  flushSync(() => setShowOlder(true))
+                  firstOlderRef.current?.focus()
+                }}
+              >
+                Show older
+              </Button>
+            )}
           </section>
         )}
 

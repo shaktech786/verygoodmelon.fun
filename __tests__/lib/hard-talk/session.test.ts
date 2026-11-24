@@ -178,8 +178,8 @@ describe('what the player carries in', () => {
   })
 
   it('builds the line from what they most want understood, and begins with their first sentence', () => {
-    const notes = carryNotes(session({ kind: 'ask', understand: ' I have grown into this role ', openingPick: 2 }))
-    expect(notes).toEqual({ line: 'I have grown into this role.', ownWords: true, begin: TALKS.ask.openings[2] })
+    const notes = carryNotes(session({ kind: 'ask', understand: ' I have grown into this role ', openingPick: 0 }))
+    expect(notes).toEqual({ line: 'I have grown into this role.', ownWords: true, begin: TALKS.ask.openings[0] })
   })
 
   it('uses their own first sentence as the line when that is all they wrote', () => {

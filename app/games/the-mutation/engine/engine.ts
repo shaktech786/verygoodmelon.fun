@@ -50,7 +50,8 @@ const STILLNESS_EBB = 1
 const SEED_FEED = 0.2
 const SEED_REACH = 16
 const SEED_FIRST_OFFSET = 90
-const SEED_MIN_DISTANCE = 140
+// Far enough that trying out the controls does not wander into a choice
+const SEED_MIN_DISTANCE = 210
 const SEED_APART = 150
 const SEED_MARGIN = 50
 const CAPTION_ROOM = 30
@@ -991,6 +992,12 @@ function growSeeds(s: GameState, dt: number): void {
     return
   }
   s.beside = null
+  // Drifting away from a clue undoes the going-near, so passing close by is not a choice
+  for (const seed of s.seeds) {
+    const back = Math.min(seed.byNear, dt / SEED_NEAR_SECONDS)
+    seed.byNear -= back
+    seed.growth -= back
+  }
   if (!isResting(s)) {
     s.stillness = Math.max(0, s.stillness - (dt / LET_BE_SECONDS) * STILLNESS_EBB)
     return
@@ -1037,15 +1044,18 @@ export function cluePlaces(s: GameState): CluePlace[] {
 }
 
 function freeSpot(s: GameState, taken: ReadonlyArray<{ x: number; y: number }>): { x: number; y: number } {
-  // A crowded field takes the roomiest of the spots tried
+  // A crowded field takes the roomiest of the spots tried, and room from the orb matters most:
+  // two clues a little close together are fine, a clue the orb stumbles into is not
   let best = { x: s.w / 2, y: s.h / 2 }
   let bestRoom = -Infinity
-  for (let tries = 0; tries < 40; tries++) {
+  for (let tries = 0; tries < 80; tries++) {
     const x = SEED_MARGIN + Math.random() * (s.w - SEED_MARGIN * 2)
     // Kept clear of the caption along the bottom edge
     const y = SEED_MARGIN + Math.random() * (s.h - SEED_MARGIN * 2 - CAPTION_ROOM)
-    const room = Math.min(dist(x, y, s.px, s.py) - SEED_MIN_DISTANCE, ...taken.map(t => dist(x, y, t.x, t.y) - SEED_APART))
-    if (room >= 0) return { x, y }
+    const fromOrb = dist(x, y, s.px, s.py) - SEED_MIN_DISTANCE
+    const apart = Math.min(Infinity, ...taken.map(t => dist(x, y, t.x, t.y) - SEED_APART))
+    if (fromOrb >= 0 && apart >= 0) return { x, y }
+    const room = fromOrb >= 0 ? apart : fromOrb - s.w - s.h
     if (room > bestRoom) {
       best = { x, y }
       bestRoom = room

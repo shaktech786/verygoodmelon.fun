@@ -138,7 +138,7 @@ test.describe('The Plain Speaker', () => {
     await next(page)
 
     await expectStep(page, 'Choose a first sentence.')
-    await page.getByText('Could we have ten minutes?').click()
+    await page.getByText('Is now a good time?').click()
     await next(page)
     await expectStep(page, 'For your manager, today comes with its own pressures too.')
     await expect(page.getByText('Nearly there')).toBeVisible()
@@ -154,7 +154,7 @@ test.describe('The Plain Speaker', () => {
     // The opener is said first, so it reads first, as on the full-screen card
     const top = async (target: Locator) => (await target.boundingBox())!.y
     expect(await top(page.getByText('Begin with', { exact: true }))).toBeLessThan(await top(page.locator('blockquote')))
-    await expect(page.getByText('“Could we have ten minutes? There’s something I’d like to ask for.”', { exact: true })).toBeVisible()
+    await expect(page.getByText('“There’s something I’d like to ask for. Is now a good time?”', { exact: true })).toBeVisible()
     await expect(button(page, 'Next')).toHaveCount(0)
     await expect(page.locator('#hard-talk').getByText(/\bready\b|\bsafe\b/i)).toHaveCount(0)
 
@@ -454,7 +454,7 @@ test.describe('The Plain Speaker', () => {
     await page.getByRole('textbox').fill('I have grown into this role')
     await next(page)
     await next(page, 'Skip')
-    await page.getByText('Could we have ten minutes?').click()
+    await page.getByText('Is now a good time?').click()
     await next(page)
     await next(page)
     await next(page)
@@ -512,7 +512,7 @@ test.describe('The Plain Speaker', () => {
       await page.getByRole('textbox').fill('I have grown into this role')
       await next(page)
       await next(page, 'Skip')
-      await page.getByText('Could we have ten minutes?').click()
+      await page.getByText('Is now a good time?').click()
       await next(page)
       await next(page)
       await next(page)
@@ -529,7 +529,7 @@ test.describe('The Plain Speaker', () => {
       await expect(page.locator('#hard-talk button.bg-accent')).toHaveText('Keep this on screen')
       await expect(page.locator('#hard-talk button.text-lg')).toHaveCount(1)
       // The card's words are real text at a readable size
-      for (const text of [card.locator('blockquote'), card.getByText('“Could we have ten minutes? There’s something I’d like to ask for.”')]) {
+      for (const text of [card.locator('blockquote'), card.getByText('“There’s something I’d like to ask for. Is now a good time?”')]) {
         expect(parseFloat(await text.evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16)
       }
       await page.evaluate(() => window.scrollTo(0, 0))

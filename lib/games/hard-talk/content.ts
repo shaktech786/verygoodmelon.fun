@@ -20,7 +20,7 @@ export interface TalkContent {
   detail: string
   understand: { heading: string; example: string }
   worries: readonly [Worry, Worry, Worry]
-  openings: readonly [string, string, string]
+  openings: readonly string[]
   /** `named` holds {who}, the name or role the player typed: one person or several, so no verb may need to agree with it. */
   them: { named: string; unnamed: string; listen: string }
   carry: readonly string[]
@@ -42,7 +42,6 @@ export const TALKS: Record<TalkKind, TalkContent> = {
     openings: [
       'There’s something I’d like to ask for. Is now a good time?',
       'I’ve been thinking about this for a while, and I’d like to ask you something.',
-      'Could we have ten minutes? There’s something I’d like to ask for.',
     ],
     them: {
       named: 'For {who}, today comes with its own pressures too.',

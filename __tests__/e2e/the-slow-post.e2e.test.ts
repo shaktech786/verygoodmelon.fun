@@ -429,6 +429,45 @@ test.describe('The Keeper', () => {
     expect(errors).toEqual([])
   })
 
+  test('a long list of looked-back-on worries shows the latest first, and the rest only when asked', async ({ page }) => {
+    await openKeeper(page)
+    const opened = (daysAgo: number) => ({ at: new Date(T0 - daysAgo * DAY).toISOString(), outcome: 'no', note: '' })
+    await seed(page, Array.from({ length: 25 }, (_, i) => capsule(`o${i}`, -30, opened(i + 1))))
+    const list = page.getByRole('region', { name: 'Looked back on' }).getByRole('list').last()
+    await expect(list.getByRole('button')).toHaveCount(10)
+    await expect(list.getByRole('button').first()).toContainText('Worry number o0')
+    const older = page.getByRole('button', { name: 'Show older' })
+    await expect(older).toHaveText('Show older')
+    await older.focus()
+    await page.keyboard.press('Enter')
+    await expect(list.getByRole('button')).toHaveCount(25)
+    await expect(older).toHaveCount(0)
+    await expect(list.getByRole('button').nth(10)).toBeFocused()
+    await expect(list.getByRole('button').nth(10)).toContainText('Worry number o10')
+  })
+
+  test('the heading focused after closing a capsule is never tucked under the sticky header', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 640 })
+    await openKeeper(page)
+    await seed(page, [capsule('a', -1)])
+    await answerReady(page, 'Partly happened')
+    await expect(closedHeading(page)).toBeFocused()
+    await page.waitForTimeout(3000)
+    const header = await page.getByRole('banner').boundingBox()
+    const heading = await closedHeading(page).boundingBox()
+    expect(heading!.y).toBeGreaterThanOrEqual(header!.y + header!.height)
+
+    // From deep in a long list, the next view's heading still lands below the header
+    const opened = (daysAgo: number) => ({ at: new Date(T0 - daysAgo * DAY).toISOString(), outcome: 'no', note: '' })
+    await seed(page, Array.from({ length: 25 }, (_, i) => capsule(`o${i}`, -30, opened(i + 1))))
+    await page.getByRole('button', { name: 'Show older' }).click()
+    await page.getByRole('button', { name: /Worry number o24/ }).click()
+    const reread = page.getByRole('heading', { name: /you wrote:/ })
+    await expect(reread).toBeFocused()
+    const top = (await reread.boundingBox())!.y
+    expect(top).toBeGreaterThanOrEqual(header!.y + header!.height)
+  })
+
   test('the tally speaks plainly across many capsules, with no count that reads as a score', async ({ page }) => {
     await openKeeper(page)
     const opened = (outcome: string) => ({ at: new Date(T0 - DAY).toISOString(), outcome, note: '' })

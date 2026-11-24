@@ -91,7 +91,7 @@ describe('The Shapeshifter discovery', () => {
     if (planted.type !== 'planted') throw new Error('expected a crossroads')
     expect(planted.clues).toHaveLength(3)
     expect(planted.clues.map((c) => c.id)).toEqual(expect.arrayContaining(['stars', 'pulse_gems']))
-    for (const seed of s.seeds) expect(Math.hypot(seed.x - s.px, seed.y - s.py)).toBeGreaterThanOrEqual(140)
+    for (const seed of s.seeds) expect(Math.hypot(seed.x - s.px, seed.y - s.py)).toBeGreaterThanOrEqual(210)
     for (const a of s.seeds) for (const b of s.seeds) if (a !== b) expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(150)
     expect(placeInWords(s, s.px - 200, s.py - 200)).toBe('above and to the left of your orb')
     expect(placeInWords(s, s.px + 200, s.py)).toBe('to the right of your orb')
@@ -126,6 +126,30 @@ describe('The Shapeshifter discovery', () => {
     run(s, 0.4)
     expect(s.activeMechanics).toContain('pulse_gems')
     expect(s.foundBy).toEqual(['went'])
+  })
+
+  it('trying out the controls from the middle of the field never starts a clue growing', () => {
+    for (let i = 0; i < 200; i++) {
+      const s = withClues(['stars', 'pulse_gems', 'chasers'])
+      for (const seed of s.seeds) expect(Math.hypot(seed.x - s.px, seed.y - s.py)).toBeGreaterThanOrEqual(210)
+    }
+  })
+
+  it('drifting away from a clue before it opens undoes the going-near', () => {
+    const s = withClues(['pulse_gems', 'chasers'])
+    const seed = seedOf(s, 'pulse_gems')
+    Object.assign(seed, { x: 150, y: 200 })
+    Object.assign(seedOf(s, 'chasers'), { x: 550, y: 200 })
+    s.px = 90
+    s.py = 200
+    run(s, 0.8)
+    expect(seed.growth).toBeGreaterThan(0.5)
+    s.px = 350
+    run(s, 1)
+    expect(seed.growth).toBe(0)
+    s.px = 90
+    run(s, 0.8)
+    expect(s.activeMechanics).not.toContain('pulse_gems')
   })
 
   it('resting at a crossroads chooses nothing: the clues settle and sleep, and the game moves on', () => {

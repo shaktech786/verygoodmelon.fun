@@ -524,6 +524,18 @@ test.describe('The Philosopher', () => {
     await expect(page.getByTestId('shop-tea')).toBeDisabled()
   })
 
+  test('a purse too light for anything in the shop gets a kind line, not a warning', async ({ page }) => {
+    const shop = standingBefore(newRun('empiricist', 128), 'shop')
+    await fresh(page, 128, true)
+    await load(page, { ...shop.run, gold: 100 })
+    await page.locator('button[data-available]').and(page.getByTestId('node-shop')).first().click()
+    await expect(page.getByTestId('shop-purse')).toContainText('You will not afford everything.')
+    await load(page, { ...shop.run, gold: 1 })
+    await page.locator('button[data-available]').and(page.getByTestId('node-shop')).first().click()
+    await expect(page.getByTestId('shop-purse')).toContainText('Nothing here fits your purse today')
+    await expect(page.getByTestId('shop-purse')).not.toContainText('afford')
+  })
+
   test('the Conclusion is described with the count the engine uses: three times for an Empiricist’s Evidence, twice otherwise', async ({ page }) => {
     await fresh(page, 130)
     await load(page, inFirstBattle(130, (b) => ({ ...b, turn: 2 })))
@@ -1443,7 +1455,8 @@ test.describe('The Philosopher', () => {
     await expect(page.getByTestId('study-note')).toBeVisible()
     const choices = page.getByTestId('card-choices').getByRole('button')
     await expect(choices).toHaveCount(3)
-    await expect(page.getByTestId('continue')).toHaveText('On to rest without a card')
+    await expect(page.getByTestId('continue')).toHaveText('Skip the card and rest')
+    await expect(page.getByRole('button', { name: /skip/i })).toHaveCount(1)
     expect(await axeViolations(page)).toEqual([])
     await choices.first().click()
     await expect(page.getByTestId('continue')).toHaveText('On to rest')

@@ -4,7 +4,7 @@ import type { KeepsakeOp } from '@/lib/keepsake/plan'
 
 const day = new Date(2026, 10, 21)
 const LINE = 'I have grown into this role.'
-const BEGIN = 'Could we have ten minutes? There’s something I’d like to ask for.'
+const BEGIN = 'There’s something I’d like to ask for. Is now a good time?'
 const texts = (ops: KeepsakeOp[]) => ops.filter((op): op is Extract<KeepsakeOp, { kind: 'text' }> => op.kind === 'text')
 
 describe('plainSpeakerKeepsake', () => {

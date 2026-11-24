@@ -86,30 +86,30 @@ export function runInProgress(run: RunState | null): run is RunState {
 
 function Insights() {
   const beaten = useInsightStore((s) => s.beaten)
+  // Only what the player has met, in words: no empty slots waiting to be filled in
+  const met = ENEMIES.filter((enemy) => beaten.includes(enemy.id))
   return (
-    <section aria-labelledby="insights-title" className="rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-4">
+    <section aria-labelledby="insights-title" className="rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-4" data-testid="insights">
       <h2 id="insights-title" className="font-serif text-xl font-semibold">
-        Insights <span className="text-sm font-normal text-[var(--tp-muted)]">{beaten.length === 0 ? 'none yet' : beaten.length === ENEMIES.length ? 'all gathered' : 'a few gathered'}</span>
+        Insights
       </h2>
       <p className="text-sm text-[var(--tp-muted)]">
         Win an argument against a bias and you keep what it taught you. A bias you have named before starts every later fight Unsettled {KNOWN_UNSETTLE}.
       </p>
-      <ul className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-3" data-testid="insights">
-        {ENEMIES.map((enemy) =>
-          beaten.includes(enemy.id) ? (
-            <li key={enemy.id} className="col-span-2 flex gap-2 rounded-md bg-[var(--tp-ink)] p-2 text-sm lg:col-span-1">
+      {met.length === 0 ? (
+        <p className="mt-3 text-sm">Nothing kept yet. What the first bias teaches you will wait here.</p>
+      ) : (
+        <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {met.map((enemy) => (
+            <li key={enemy.id} className="flex gap-2 rounded-md bg-[var(--tp-ink)] p-2 text-sm">
               <BiasPortrait enemyId={enemy.id} tier={enemy.tier} className="h-10 w-10 shrink-0" />
               <span>
                 <span className="font-semibold">{enemy.name}.</span> {enemy.insight}
               </span>
             </li>
-          ) : (
-            <li key={enemy.id} className="rounded-md border border-dashed border-[var(--tp-line)] px-2 py-1.5 text-xs text-[var(--tp-muted)]">
-              Floor {enemy.floor}: not yet met
-            </li>
-          ),
-        )}
-      </ul>
+          ))}
+        </ul>
+      )}
     </section>
   )
 }
@@ -229,7 +229,6 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
                   {i === 0 && mode === 'gentle' ? 'Start here · ' : ''}
                   {mode === 'rigorous' ? `Rigorous ${level}: ` : ''}
                   {schoolDifficulty(school, mode, level)}
-                  {finishedWith.includes(school.id) && ' · finished'}
                 </span>
               </span>
               <span className="text-sm">{school.tagline}</span>
