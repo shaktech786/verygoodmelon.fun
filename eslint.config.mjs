@@ -11,6 +11,8 @@ const eslintConfig = [
       "next-env.d.ts",
       "scripts/**",
       "public/**",
+      // Other agents' checkouts, with their own build output
+      ".claude/worktrees/**",
     ],
   },
   {
