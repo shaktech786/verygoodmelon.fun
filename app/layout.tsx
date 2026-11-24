@@ -4,7 +4,6 @@ import "./globals.css";
 import { Header } from "@/components/ui/Header";
 import { Footer } from "@/components/ui/Footer";
 import { AccessibilityControls } from "@/components/accessibility/AccessibilityControls";
-import { ToastContainer } from "@/components/ui/Toast";
 import { SiteAnalytics } from "@/components/SiteAnalytics";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
@@ -104,7 +103,6 @@ export default function RootLayout({
         <Footer />
         <AccessibilityControls />
         <FeedbackDialog />
-        <ToastContainer />
         <SiteAnalytics />
         <ServiceWorkerRegistration />
       </body>
