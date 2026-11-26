@@ -846,7 +846,7 @@ export default function CalmGarden() {
                 'block w-full touch-none',
                 sitting
                   ? 'aspect-square sm:aspect-[16/10]'
-                  : 'aspect-[4/3] sm:aspect-[16/10] lg:max-h-[calc(100svh-15rem)] cursor-crosshair focus-visible:outline-4! focus-visible:outline-solid! focus-visible:outline-focus-ring! focus-visible:-outline-offset-4!',
+                  : 'aspect-[4/3] sm:aspect-[16/10] lg:max-h-[calc(100svh-15rem)] cursor-crosshair focus-visible:outline-4! focus-visible:outline-solid! focus-visible:-outline-offset-4!',
               )}
               role="application"
               aria-label="Your garden"

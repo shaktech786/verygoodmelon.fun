@@ -50,7 +50,7 @@ const PICKER_TEXT = {
 /** Encounter choices that take one of the cards on offer. */
 const CARD_CHOICES: Partial<Record<EventId, string>> = { lecture: 'attend', archive: 'dig', study_group: 'learn' }
 
-const panel = 'rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-4 text-[var(--tp-text)]'
+const panel = 'rounded-sheet border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-4 text-[var(--tp-text)]'
 /** The one go-action of a view: a melon-flesh slice. Every use also carries data-go. */
 export const primaryButton = 'sp-go'
 /** Everything else is a stamp. */
@@ -59,11 +59,11 @@ export const quietButton = 'sp-stamp'
 export function RelicTile({ relicId, children }: { relicId: RelicId; children?: React.ReactNode }) {
   const relic = getRelicDef(relicId)
   return (
-    <div className="flex w-full max-w-xs flex-col gap-1 rounded-md border-2 border-[var(--tp-logic)] bg-[var(--tp-paper)] p-3 text-[var(--tp-paper-ink)] tp-edge">
+    <div className="flex w-full max-w-xs flex-col gap-1 rounded-stamp border-2 border-[var(--tp-logic)] bg-[var(--tp-paper)] p-3 text-[var(--tp-paper-ink)] tp-edge">
       <p className="text-[0.7rem] font-semibold text-[var(--tp-paper-muted)]">{relic.ruleBending ? 'Relic · bends a rule' : 'Relic'}</p>
-      <p className="font-serif text-base font-semibold">{relic.name}</p>
-      <p className="text-sm leading-snug">{relic.text}</p>
-      <p className="text-xs text-[var(--tp-paper-muted)]">{relic.flavor}</p>
+      <p className="font-body text-small font-semibold">{relic.name}</p>
+      <p className="text-meta leading-snug">{relic.text}</p>
+      <p className="text-meta text-[var(--tp-paper-muted)]">{relic.flavor}</p>
       {children}
     </div>
   )
@@ -78,10 +78,10 @@ function DeckPicker({ run }: { run: RunState }) {
   const cards = run.deck.filter((c) => (upgrading ? canUpgrade(c) : purpose === 'copy' ? resolveCard(c).type !== 'doubt' : true))
   return (
     <section className={panel} aria-labelledby="picker-title">
-      <h2 id="picker-title" className="font-serif text-xl font-semibold">
+      <h2 id="picker-title" className="font-body text-lead font-semibold">
         {text.title}
       </h2>
-      <p className="mt-1 text-sm text-[var(--tp-muted)]">{text.note}</p>
+      <p className="mt-1 text-meta text-[var(--tp-muted)]">{text.note}</p>
       <div className="mt-3 flex flex-wrap justify-center gap-2" data-testid="deck-picker">
         {cards.map((card: CardInstance) => {
           const shown = upgrading ? resolveCard({ ...card, upgraded: true }) : resolveCard(card)
@@ -134,23 +134,23 @@ function FightEnd({ run, foe }: { run: RunState; foe: EnemyDef }) {
   return (
     <>
       {report && words && (
-        <div className="mt-2 rounded-md border border-[var(--tp-line)] p-2.5" data-testid="final-argument">
+        <div className="mt-2 rounded-stamp border border-[var(--tp-line)] p-2.5" data-testid="final-argument">
           <RoundShow report={report} show={show} reduced={reduced} aftermath={[`${foe.name} has no answer left.`]} title={words.title} noArgument={words.noArgument} />
         </div>
       )}
-      <div className="mt-2 flex items-center gap-3 rounded-md bg-[var(--tp-ink)] p-2" data-testid="insight" data-broken={broken || undefined}>
+      <div className="mt-2 flex items-center gap-3 rounded-stamp bg-[var(--tp-ink)] p-2" data-testid="insight" data-broken={broken || undefined}>
         <span className="relative shrink-0">
           <span key={broken ? 'broken' : 'whole'} className={`block ${moving ? 'tp-break' : ''}`}>
             <BiasPortrait enemyId={foe.id} tier={foe.tier} mood={broken ? 'gives' : 'shaken'} cracks={broken ? ALL_CRACKS : 0} className="h-12 w-12" />
           </span>
           {moving && <span className="tp-ring pointer-events-none absolute inset-0 border-2 border-[var(--tp-good)]" aria-hidden="true" />}
         </span>
-        <p className={`text-sm ${broken ? (moving ? 'tp-appear' : '') : 'text-[var(--tp-muted)]'}`}>
+        <p className={`text-meta ${broken ? (moving ? 'tp-appear' : '') : 'text-[var(--tp-muted)]'}`}>
           <span className="font-semibold">What {foe.name} taught you:</span> {foe.insight}
         </p>
       </div>
       {named.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--tp-muted)]" data-testid="named-so-far">
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-[var(--tp-muted)]" data-testid="named-so-far">
           <span>Named on this walk</span>
           <ul className="flex flex-wrap gap-1" aria-label="Biases named on this walk">
             {named.map((def) => {
@@ -201,12 +201,12 @@ export function RewardScreen({ run }: { run: RunState }) {
   const study = reward.source === 'rest'
   return (
     <section className={panel} aria-labelledby="reward-title">
-      <h2 id="reward-title" className={`font-serif text-2xl font-semibold ${study ? 'flex items-center gap-2' : ''}`}>
+      <h2 id="reward-title" className={`font-display text-h3 font-semibold ${study ? 'flex items-center gap-2' : ''}`}>
         {study && <NodeGlyph type="rest" className="h-7 w-7 text-[var(--tp-logic)]" />}
         {title}
       </h2>
       {study && (
-        <p className="mt-1 text-sm" data-testid="study-note">
+        <p className="mt-1 text-meta" data-testid="study-note">
           Before you rest, a moment to think. The problem ahead ends the walk, so this is your last card to build on. Then you rest.
         </p>
       )}
@@ -217,7 +217,7 @@ export function RewardScreen({ run }: { run: RunState }) {
         <div className="mt-4">
           <h3 className="font-semibold">{reward.relicChoices.length > 1 ? 'Choose a relic' : 'A relic'}</h3>
           {reward.source === 'boss' && reward.relicChoices.some((id) => getRelicDef(id).ruleBending) && (
-            <p className="text-sm text-[var(--tp-muted)]" data-testid="rule-bending-note">
+            <p className="text-meta text-[var(--tp-muted)]" data-testid="rule-bending-note">
               A philosophical problem leaves something stranger behind: relics that bend a rule of the game, for better and for worse.
             </p>
           )}
@@ -245,7 +245,7 @@ export function RewardScreen({ run }: { run: RunState }) {
               <LessonNote lesson={lesson} />
             </div>
           )}
-          <p className="text-sm text-[var(--tp-muted)]">
+          <p className="text-meta text-[var(--tp-muted)]">
             Your deck: {deckMix(run)}. Logic only multiplies the Weight that Evidence brings, and a smaller deck draws its best cards more often, so skipping is a real choice.
           </p>
           <div className="mt-2 flex flex-wrap gap-2" data-testid="card-choices">
@@ -268,7 +268,7 @@ export function RewardScreen({ run }: { run: RunState }) {
         </div>
       )}
       {reward.source === 'boss' && !last && (
-        <p className="mt-4 text-sm text-[var(--tp-muted)]" data-testid="pause-note">
+        <p className="mt-4 text-meta text-[var(--tp-muted)]" data-testid="pause-note">
           This stretch of the walk is done. Your walk is saved, so this is a good place to stop and come back another day.
         </p>
       )}
@@ -301,11 +301,11 @@ export function ShopScreen({ run }: { run: RunState }) {
   const affordsSomething = prices.some((price) => price <= run.gold)
   return (
     <section className={panel} aria-labelledby="shop-title">
-      <h2 id="shop-title" className="flex items-center gap-2 font-serif text-2xl font-semibold">
+      <h2 id="shop-title" className="flex items-center gap-2 font-display text-h3 font-semibold">
         <NodeGlyph type="shop" className="h-7 w-7 text-[var(--tp-logic)]" />
         The Bookshop
       </h2>
-      <p className="mt-1 text-sm" data-testid="shop-purse">
+      <p className="mt-1 text-meta" data-testid="shop-purse">
         You have {run.gold} gold. {affordsSomething ? 'You will not afford everything.' : 'Nothing here fits your purse today; that’s fine.'}
       </p>
       <div className="mt-3 flex flex-wrap gap-3" data-testid="shop-cards">
@@ -320,7 +320,7 @@ export function ShopScreen({ run }: { run: RunState }) {
                 fits={item.sold ? null : fitsLabel(item.cardId, run)}
                 onActivate={() => act((r) => buyCard(r, i))}
               />
-              <span className="text-sm">{item.sold ? 'Sold' : `${item.price} gold`}</span>
+              <span className="text-meta">{item.sold ? 'Sold' : `${item.price} gold`}</span>
             </div>
           )
         })}
@@ -367,11 +367,11 @@ export function RestScreen({ run }: { run: RunState }) {
   const heal = restAmount(run)
   return (
     <section className={panel} aria-labelledby="rest-title">
-      <h2 id="rest-title" className="flex items-center gap-2 font-serif text-2xl font-semibold">
+      <h2 id="rest-title" className="flex items-center gap-2 font-display text-h3 font-semibold">
         <NodeGlyph type="rest" className="h-7 w-7 text-[var(--tp-logic)]" />
         A quiet place
       </h2>
-      <p className="mt-1 text-sm">Choose one.</p>
+      <p className="mt-1 text-meta">Choose one.</p>
       <div className="mt-4 flex flex-wrap gap-3">
         <button data-go="" type="button" className={primaryButton} onClick={() => act(restHeal)} disabled={heal === 0} data-testid="rest-heal">
           {heal === 0 ? `Rest: no Resolve back at Rigorous ${run.rigor}` : `Rest: restore ${Math.min(heal, run.maxResolve - run.resolve)} Resolve`}
@@ -395,7 +395,7 @@ export function EventScreen({ run }: { run: RunState }) {
   const def = getEventDef(event.eventId)
   return (
     <section className={panel} aria-labelledby="event-title">
-      <h2 id="event-title" className="flex items-center gap-2 font-serif text-2xl font-semibold">
+      <h2 id="event-title" className="flex items-center gap-2 font-display text-h3 font-semibold">
         <NodeGlyph type="event" className="h-7 w-7 text-[var(--tp-logic)]" />
         {def.name}
       </h2>
@@ -422,7 +422,7 @@ export function EventScreen({ run }: { run: RunState }) {
               return (
                 <li key={choice.id}>
                   <p className="font-semibold">{choice.label}</p>
-                  <p className="text-sm text-[var(--tp-muted)]">{choice.detail}</p>
+                  <p className="text-meta text-[var(--tp-muted)]">{choice.detail}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {event.cardOffer.map((cardId) => (
                       <CardFace
@@ -448,7 +448,7 @@ export function EventScreen({ run }: { run: RunState }) {
                   data-testid={`choice-${choice.id}`}
                 >
                   <span className="block font-semibold">{choice.label}</span>
-                  <span className="block text-xs text-[var(--tp-muted)]">{choice.detail}</span>
+                  <span className="block text-meta text-[var(--tp-muted)]">{choice.detail}</span>
                 </button>
               </li>
             )

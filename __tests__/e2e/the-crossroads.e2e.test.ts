@@ -316,7 +316,7 @@ test.describe('reading it with a screen reader, and how it looks', () => {
       const root = getComputedStyle(document.documentElement)
       const chosen = document.querySelector('li:has(button[aria-pressed="true"])') as HTMLElement
       const probe = document.createElement('div')
-      probe.style.color = root.getPropertyValue('--accent')
+      probe.style.color = root.getPropertyValue('--flesh')
       document.body.appendChild(probe)
       const accent = getComputedStyle(probe).color
       probe.remove()

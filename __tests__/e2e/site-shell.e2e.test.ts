@@ -234,13 +234,6 @@ test.describe('Accessibility settings panel', () => {
     await expect(html).not.toHaveAttribute('data-colorblind-mode', /.*/)
     expect(await html.evaluate((el) => getComputedStyle(el).filter)).toBe('none')
   })
-
-  test('the old Monochrome mode becomes greyscale', async ({ page }) => {
-    await storeSettings(page, { colorblindMode: 'monochrome' })
-    await page.goto('/games')
-    await expect(page.locator('html')).toHaveAttribute('data-greyscale', 'true')
-    expect(await page.locator('html').evaluate((el) => getComputedStyle(el).filter)).toBe('grayscale(1)')
-  })
 })
 
 test.describe('Text size', () => {
@@ -630,7 +623,7 @@ test.describe('Homepage and header', () => {
           span.remove()
           return result
         }
-        return [getComputedStyle(el).color, probe('var(--ink)'), probe('var(--accent)')]
+        return [getComputedStyle(el).color, probe('var(--ink)'), probe('var(--flesh)')]
       })
       expect(colour).toBe(green)
       expect(colour).not.toBe(red)

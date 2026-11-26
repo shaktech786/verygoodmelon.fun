@@ -47,7 +47,7 @@ export function ViewHeading({ focus, children, className }: { focus: boolean; ch
 
 export function Slip({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
   return (
-    <figure className={cn('m-0 rounded-lg px-4 py-3 sm:px-5 text-left', styles.slip, className)}>
+    <figure className={cn('m-0 rounded-sheet px-4 py-3 sm:px-5 text-left', styles.slip, className)}>
       {label && <figcaption className="sr-only">{label}</figcaption>}
       <blockquote className="m-0 whitespace-pre-wrap">{children}</blockquote>
     </figure>
@@ -105,13 +105,13 @@ export function TallyCard({ counts, opened }: { counts: Tally; opened: Capsule[]
       <div className="flex flex-wrap gap-1.5" aria-hidden="true">
         {oldestFirst.length > shown.length && (
           // Older marks trail off rather than being tallied
-          <span className="mr-0.5 text-sm leading-none text-ink-soft">…</span>
+          <span className="mr-0.5 text-meta leading-none text-ink-soft">…</span>
         )}
         {shown.map((capsule) => capsule.opening && <OutcomeMark key={capsule.id} outcome={capsule.opening.outcome} className="w-4 h-4" />)}
       </div>
       <p className="m-0">{tallySummary(counts)}</p>
       {reflection && <p className="m-0 text-ink-soft">{reflection}</p>}
-      <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-sm text-ink-soft" aria-hidden="true">
+      <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-meta text-ink-soft" aria-hidden="true">
         {(['no', 'partly', 'yes'] as const).map((outcome) => (
           <li key={outcome} className="flex items-center gap-1.5">
             <OutcomeMark outcome={outcome} />

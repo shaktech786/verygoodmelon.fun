@@ -57,11 +57,11 @@ function lengthName(length: RunLength): string {
 function LengthPicker({ length, onLength, firstTime, disabled }: { length: RunLength; onLength: (l: RunLength) => void; firstTime: boolean; disabled: boolean }) {
   return (
     <fieldset className="mx-auto mt-3 grid max-w-3xl gap-2 sm:grid-cols-2" disabled={disabled} data-testid="lengths">
-      <legend className="mb-1 text-xs font-semibold text-[var(--tp-muted)]">How long a walk</legend>
+      <legend className="mb-1 text-meta font-semibold text-[var(--tp-muted)]">How long a walk</legend>
       {LENGTHS.map(({ id, name, text }) => (
         <label
           key={id}
-          className={`flex cursor-pointer gap-2 rounded-md border-2 p-3 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--tp-focus)] ${
+          className={`flex cursor-pointer gap-2 rounded-stamp border-2 p-3 text-meta has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--tp-focus)] ${
  length === id ? 'border-[var(--tp-good)] bg-[var(--tp-ink-2)]' : 'border-[var(--tp-line)]'
           }`}
         >
@@ -89,19 +89,19 @@ function Insights() {
   // Only what the player has met, in words: no empty slots waiting to be filled in
   const met = ENEMIES.filter((enemy) => beaten.includes(enemy.id))
   return (
-    <section aria-labelledby="insights-title" className="rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-4" data-testid="insights">
-      <h2 id="insights-title" className="font-serif text-xl font-semibold">
+    <section aria-labelledby="insights-title" className="rounded-sheet border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-4" data-testid="insights">
+      <h2 id="insights-title" className="font-body text-lead font-semibold">
         Insights
       </h2>
-      <p className="text-sm text-[var(--tp-muted)]">
+      <p className="text-meta text-[var(--tp-muted)]">
         Win an argument against a bias and you keep what it taught you. A bias you have named before starts every later fight Unsettled {KNOWN_UNSETTLE}.
       </p>
       {met.length === 0 ? (
-        <p className="mt-3 text-sm">Nothing kept yet. What the first bias teaches you will wait here.</p>
+        <p className="mt-3 text-meta">Nothing kept yet. What the first bias teaches you will wait here.</p>
       ) : (
         <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {met.map((enemy) => (
-            <li key={enemy.id} className="flex gap-2 rounded-md bg-[var(--tp-ink)] p-2 text-sm">
+            <li key={enemy.id} className="flex gap-2 rounded-stamp bg-[var(--tp-ink)] p-2 text-meta">
               <BiasPortrait enemyId={enemy.id} tier={enemy.tier} className="h-10 w-10 shrink-0" />
               <span>
                 <span className="font-semibold">{enemy.name}.</span> {enemy.insight}
@@ -127,7 +127,7 @@ function PacePicker({ mode, level, open, onMode, onLevel, disabled }: PaceProps)
   const option = (id: Mode, name: string, text: string) => (
     <label
       key={id}
-      className={`flex cursor-pointer gap-2 rounded-md border-2 p-3 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--tp-focus)] ${
+      className={`flex cursor-pointer gap-2 rounded-stamp border-2 p-3 text-meta has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--tp-focus)] ${
  mode === id ? 'border-[var(--tp-good)] bg-[var(--tp-ink-2)]' : 'border-[var(--tp-line)]'
       }`}
     >
@@ -140,17 +140,17 @@ function PacePicker({ mode, level, open, onMode, onLevel, disabled }: PaceProps)
   )
   return (
     <fieldset className="mx-auto mt-3 grid max-w-3xl gap-2 sm:grid-cols-2" disabled={disabled}>
-      <legend className="mb-1 text-xs font-semibold text-[var(--tp-muted)]">Pace</legend>
+      <legend className="mb-1 text-meta font-semibold text-[var(--tp-muted)]">Pace</legend>
       {option('gentle', 'Gentle', GENTLE_TEXT)}
       {option('rigorous', 'Rigorous', `For when you know the rules. ${RIGOR_LEVELS.length} levels, each adding one constraint. Either walk can be played at any open level; winning a level on the Long walk opens the next.`)}
       {mode === 'rigorous' && (
-        <fieldset className="rounded-md border border-[var(--tp-line)] p-3 text-sm sm:col-span-2" data-testid="rigor-levels">
+        <fieldset className="rounded-stamp border border-[var(--tp-line)] p-3 text-meta sm:col-span-2" data-testid="rigor-levels">
           <legend className="px-1 font-semibold">Rigorous level</legend>
           <div className="flex flex-wrap gap-2">
             {RIGOR_LEVELS.map(({ level: n }) => (
               <label
                 key={n}
-                className={`flex min-w-11 cursor-pointer items-center justify-center gap-1 rounded-md border-2 px-3 py-1.5 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--tp-focus)] ${
+                className={`flex min-w-11 cursor-pointer items-center justify-center gap-1 rounded-stamp border-2 px-3 py-1.5 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--tp-focus)] ${
  level === n ? 'border-[var(--tp-good)]' : 'border-[var(--tp-line)]'
                 }`}
               >
@@ -174,7 +174,7 @@ function PacePicker({ mode, level, open, onMode, onLevel, disabled }: PaceProps)
               <li key={rule}>{rule}</li>
             ))}
           </ol>
-          {open < MAX_RIGOR && <p className="mt-1 text-xs text-[var(--tp-muted)]">Win level {open} on the Long walk to open level {open + 1}.</p>}
+          {open < MAX_RIGOR && <p className="mt-1 text-meta text-[var(--tp-muted)]">Win level {open} on the Long walk to open level {open + 1}.</p>}
         </fieldset>
       )}
     </fieldset>
@@ -212,7 +212,7 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
     <>
       <LengthPicker length={length} onLength={setLength} firstTime={firstTime} disabled={inProgress} />
       <PacePicker mode={mode} level={level} open={open} onMode={setMode} onLevel={setLevel} disabled={inProgress} />
-      <p className="mx-auto mt-4 max-w-3xl text-xs font-semibold text-[var(--tp-muted)]">Then choose a school of thought</p>
+      <p className="mx-auto mt-4 max-w-3xl text-meta font-semibold text-[var(--tp-muted)]">Then choose a school of thought</p>
       <ul className="mt-1 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {SCHOOLS.map((school, i) => (
           <li key={school.id}>
@@ -221,21 +221,21 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
               onClick={() => begin(school.id)}
               disabled={inProgress}
               data-testid={`school-${school.id}`}
-              className="flex h-full w-full flex-col gap-1 rounded-md border-2 border-[var(--tp-line)] bg-[var(--tp-paper)] p-4 text-left text-[var(--tp-paper-ink)] tp-edge hover:border-[var(--tp-mark)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]"
+              className="flex h-full w-full flex-col gap-1 rounded-stamp border-2 border-[var(--tp-line)] bg-[var(--tp-paper)] p-4 text-left text-[var(--tp-paper-ink)] tp-edge hover:border-[var(--tp-mark)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]"
             >
               <span className="flex items-baseline justify-between gap-2">
-                <span className="font-serif text-lg font-semibold">{school.name}</span>
-                <span className="text-xs font-semibold text-[var(--tp-paper-muted)]" data-testid="school-difficulty">
+                <span className="font-body text-body font-semibold">{school.name}</span>
+                <span className="text-meta font-semibold text-[var(--tp-paper-muted)]" data-testid="school-difficulty">
                   {i === 0 && mode === 'gentle' ? 'Start here · ' : ''}
                   {mode === 'rigorous' ? `Rigorous ${level}: ` : ''}
                   {schoolDifficulty(school, mode, level)}
                 </span>
               </span>
-              <span className="text-sm">{school.tagline}</span>
-              <span className="text-sm">
+              <span className="text-meta">{school.tagline}</span>
+              <span className="text-meta">
                 <strong>Passive:</strong> {school.passive}
               </span>
-              <span className="text-xs text-[var(--tp-paper-muted)]">Starts with {deckSummary(school.deck)}.</span>
+              <span className="text-meta text-[var(--tp-paper-muted)]">Starts with {deckSummary(school.deck)}.</span>
             </button>
           </li>
         ))}
@@ -247,14 +247,14 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
     return (
       <div className="space-y-5 text-[var(--tp-text)]">
         <header className="text-center">
-          <h2 className="font-serif text-3xl font-semibold sm:text-4xl">The Philosopher</h2>
+          <h2 className="font-display text-h2 font-semibold">The Philosopher</h2>
           <p className="mx-auto mt-2 max-w-xl">Each turn you build one argument from cards. Each opponent is a bias with one rule. Out-think it, and keep what it teaches.</p>
         </header>
-        <section aria-labelledby="first-walk-title" className="mx-auto max-w-xl rounded-lg border border-[var(--tp-good)] bg-[var(--tp-ink-2)] p-5 text-center" data-testid="first-walk">
-          <h2 id="first-walk-title" className="font-serif text-xl font-semibold">
+        <section aria-labelledby="first-walk-title" className="mx-auto max-w-xl rounded-sheet border border-[var(--tp-good)] bg-[var(--tp-ink-2)] p-5 text-center" data-testid="first-walk">
+          <h2 id="first-walk-title" className="font-body text-lead font-semibold">
             Start here
           </h2>
-          <p className="mt-2 text-sm text-[var(--tp-muted)]">
+          <p className="mt-2 text-meta text-[var(--tp-muted)]">
             A Short walk at a Gentle pace, thinking as the {SCHOOLS[0].name}: {SCHOOLS[0].tagline} The first fight explains itself as you go, and the walk saves as you play.
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -267,7 +267,7 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
           </div>
         </section>
         <details className="group mx-auto max-w-5xl" data-testid="more-choices">
-          <summary className="mx-auto w-fit cursor-pointer rounded-md px-3 py-1.5 text-sm font-semibold text-[var(--tp-text)] underline decoration-dotted underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]">
+          <summary className="mx-auto w-fit cursor-pointer rounded-stamp px-3 py-1.5 text-meta font-semibold text-[var(--tp-text)] underline decoration-dotted underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]">
             More choices
             <span className="font-normal text-[var(--tp-muted)]"> · walk length, pace and school</span>
           </summary>
@@ -280,9 +280,9 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
   return (
     <div className="space-y-5 text-[var(--tp-text)]">
       <header className="text-center">
-        <h2 className="font-serif text-3xl font-semibold sm:text-4xl">The Philosopher</h2>
+        <h2 className="font-display text-h2 font-semibold">The Philosopher</h2>
         <p className="mx-auto mt-2 max-w-xl">Each turn you build one argument from cards. Each opponent is a bias with one rule. Out-think it, and keep what it teaches.</p>
-        <p className="mx-auto mt-1 max-w-xl text-sm text-[var(--tp-muted)]">
+        <p className="mx-auto mt-1 max-w-xl text-meta text-[var(--tp-muted)]">
           Choose how long a walk, how gentle a pace, then a school. Every run saves as you go.
         </p>
         <button type="button" className={`${quietButton} mt-3`} onClick={onHelp}>
@@ -291,8 +291,8 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
       </header>
 
       {inProgress && (
-        <section className="flex flex-wrap items-center justify-center gap-3 rounded-lg border border-[var(--tp-mark)] bg-[var(--tp-ink-2)] p-4" aria-label="Run in progress">
-          <p className="w-full text-center text-sm">
+        <section className="flex flex-wrap items-center justify-center gap-3 rounded-sheet border border-[var(--tp-mark)] bg-[var(--tp-ink-2)] p-4" aria-label="Run in progress">
+          <p className="w-full text-center text-meta">
             {SCHOOLS.find((s) => s.id === run.school)?.name}, {paceName(run)}, {lengthName(run.length)}
             {run.length === 'long' && `, ${WALK_STRETCH[run.floor].toLowerCase()}`}
             {run.screen === 'defeat' ? ', a lost argument you can still reconsider' : `, Resolve ${run.battle?.player.resolve ?? run.resolve}/${run.maxResolve}`}
@@ -321,11 +321,11 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
       )}
 
       <section aria-labelledby="schools-title">
-        <h2 id="schools-title" className="text-center font-serif text-xl font-semibold">
+        <h2 id="schools-title" className="text-center font-body text-lead font-semibold">
           {inProgress ? 'Or start again' : 'Start a walk'}
         </h2>
         {choices}
-        {inProgress && <p className="mt-2 text-center text-sm text-[var(--tp-muted)]">Abandon the current run to start a new one.</p>}
+        {inProgress && <p className="mt-2 text-center text-meta text-[var(--tp-muted)]">Abandon the current run to start a new one.</p>}
       </section>
 
       <Insights />
@@ -338,7 +338,7 @@ function Celebration({ run }: { run: RunState }) {
   const reduced = useReducedMotion()
   return (
     <div
-      className="relative overflow-hidden rounded-md border border-[var(--tp-line)] px-3 pb-3 pt-6"
+      className="relative overflow-hidden rounded-stamp border border-[var(--tp-line)] px-3 pb-3 pt-6"
       style={{ background: 'linear-gradient(to top, color-mix(in srgb, var(--clay) 30%, var(--tp-ink)), var(--tp-ink) 70%)' }}
       aria-hidden="true"
       data-testid="celebration"
@@ -378,7 +378,7 @@ function RunSummary({ run }: { run: RunState }) {
     ['Relics', run.relics.length === 0 ? 'None' : run.relics.map((id) => getRelicDef(id).name).join(', ')],
   ]
   return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm" data-testid="run-summary">
+    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-meta" data-testid="run-summary">
       {rows.map(([label, value]) => (
         <div key={label} className="contents">
           <dt className="font-semibold">{label}</dt>
@@ -405,12 +405,12 @@ export function EndScreen({ run, onMenu }: { run: RunState; onMenu: () => void }
     start(school, Math.floor(Math.random() * 2 ** 31), run.mode, level, length)
   }
   return (
-    <section className="space-y-4 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-5 text-[var(--tp-text)]" aria-labelledby="end-title">
+    <section className="space-y-4 rounded-sheet border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-5 text-[var(--tp-text)]" aria-labelledby="end-title">
       <style>{`@keyframes tp-settle { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } } @media (prefers-reduced-motion: no-preference) { html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-settle { animation: tp-settle 900ms ease-out both; } }`}</style>
       <div className="flex items-start gap-4">
         {foe && <BiasPortrait enemyId={foe.id} tier={foe.tier} className="h-16 w-16 shrink-0 sm:h-20 sm:w-20" />}
         <div>
-          <h2 id="end-title" className="font-serif text-2xl font-semibold sm:text-3xl">
+          <h2 id="end-title" className="font-display text-h3 font-semibold sm:text-h2">
             {won ? (short ? 'A short walk, well taken' : 'Every question answered, for now') : canReconsider ? 'That argument got away from you' : 'You ran out of Resolve'}
           </h2>
           {won && short ? (
@@ -440,19 +440,19 @@ export function EndScreen({ run, onMenu }: { run: RunState; onMenu: () => void }
       {won && <Celebration run={run} />}
       {won && <WalkArgument run={run} />}
       {nextLevel && (
-        <p className="rounded-md border border-[var(--tp-mark)] p-2 text-sm" data-testid="level-open">
+        <p className="rounded-stamp border border-[var(--tp-mark)] p-2 text-meta" data-testid="level-open">
           Rigorous level {nextLevel} is now open: {RIGOR_LEVELS[nextLevel - 1].text}
         </p>
       )}
       {won && short && run.mode === 'rigorous' && run.rigor < MAX_RIGOR && (
-        <p className="text-sm text-[var(--tp-muted)]" data-testid="level-note">
+        <p className="text-meta text-[var(--tp-muted)]" data-testid="level-note">
           Rigorous levels open on the Long walk: win level {run.rigor} there to open level {run.rigor + 1}.
         </p>
       )}
       {canReconsider && (
-        <div className="rounded-md border-2 border-[var(--tp-mark)] p-3">
+        <div className="rounded-stamp border-2 border-[var(--tp-mark)] p-3">
           <p className="font-semibold">Reconsider</p>
-          <p className="text-sm">
+          <p className="text-meta">
             Go back to the start of this argument with {reconsiderResolve(run)} Resolve
             {reconsiderResolve(run) > run.resolve ? ` (at least half, more than the ${run.resolve} you had)` : ', what you had then'} and a fresh shuffle, knowing
             what you know now. You can do this once per run.
@@ -466,7 +466,7 @@ export function EndScreen({ run, onMenu }: { run: RunState; onMenu: () => void }
       {run.beaten.length > 0 && (
         <div>
           <h3 className="font-semibold">{won ? 'What you understood on the way' : 'What you took from this run'}</h3>
-          <ul className="mt-2 space-y-1 text-sm" data-testid="run-insights">
+          <ul className="mt-2 space-y-1 text-meta" data-testid="run-insights">
             {run.beaten.map((id) => (
               <li key={id}>
                 <span className="font-semibold">{getEnemyDef(id).name}.</span> {getEnemyDef(id).insight}

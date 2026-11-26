@@ -37,11 +37,11 @@ export default function TitleScreen({ onStart, retroFont, isTouch, focusBegin }:
       aria-label="The Shapeshifter"
     >
       <div className="text-center max-w-sm">
-        <h2 className={`text-lg sm:text-3xl mb-3 leading-relaxed shapeshifter-title shapeshifter-title-wide ${retroFont}`}>
+        <h2 className={`text-body sm:text-h2 mb-3 leading-relaxed shapeshifter-title shapeshifter-title-wide ${retroFont}`}>
           THE SHAPESHIFTER
         </h2>
 
-        <p className="text-sm sm:text-base mb-6 sm:mb-8 shapeshifter-dim">
+        <p className="text-meta sm:text-small mb-6 sm:mb-8 shapeshifter-dim">
           a little game that keeps changing its mind
         </p>
 
@@ -53,10 +53,10 @@ export default function TitleScreen({ onStart, retroFont, isTouch, focusBegin }:
           BEGIN
         </button>
 
-        <p className="mt-6 sm:mt-8 text-sm leading-relaxed shapeshifter-dim">
+        <p className="mt-6 sm:mt-8 text-meta leading-relaxed shapeshifter-dim">
           A few rules are hidden in it. Play, wander or simply rest, and they will show themselves. Nothing here can hurt you.
         </p>
-        <p className="mt-1 text-xs shapeshifter-dim">
+        <p className="mt-1 text-meta shapeshifter-dim">
           {isTouch ? 'Tap to begin.' : 'Enter, Space or click to begin.'}
         </p>
       </div>

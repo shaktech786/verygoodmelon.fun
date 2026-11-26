@@ -389,7 +389,7 @@ test.describe('The Awakening', () => {
       await expect(wake).toBeVisible()
       const accent = await page.evaluate(() => {
         const probe = document.createElement('div')
-        probe.className = 'bg-accent'
+        probe.className = 'bg-flesh'
         document.body.append(probe)
         const color = getComputedStyle(probe).backgroundColor
         probe.remove()

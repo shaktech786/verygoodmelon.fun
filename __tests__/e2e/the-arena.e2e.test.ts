@@ -522,7 +522,7 @@ test.describe('The Arena', () => {
       .poll(() =>
         pairing.evaluate((el) => {
           const probe = document.createElement('span')
-          probe.style.color = 'var(--chosen-line)'
+          probe.style.color = 'var(--rind)'
           el.appendChild(probe)
           const chosen = getComputedStyle(probe).color
           probe.remove()
@@ -587,8 +587,8 @@ test.describe('The Arena', () => {
         probe.style.color = value
         return getComputedStyle(probe).color
       }
-      const red = [resolve('var(--accent)'), resolve('var(--melon-red)')]
-      const green = [resolve('var(--success)'), resolve('var(--melon-green)')]
+      const red = [resolve('var(--flesh)'), resolve('var(--flesh)')]
+      const green = [resolve('var(--rind)'), resolve('var(--rind)')]
       probe.remove()
       const bubbles = Array.from(log.querySelectorAll('.justify-start, .justify-end')).slice(0, 2)
       return {

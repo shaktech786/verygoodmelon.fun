@@ -96,7 +96,7 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
         label ??
         `${card.name}. ${TYPE_LABELS[card.type]}${school ? `, ${school} card` : ''}${card.rarity === 'rare' ? ', rare' : ''}${unplayable ? '' : `, costs ${card.cost} Focus${freeNote ? `, ${freeNote.toLowerCase()}` : ''}`}. ${lines.join(' ')}`
       }${fits ? `. ${fits}` : ''}`}
-      className={`relative flex flex-col overflow-hidden rounded-md border-2 bg-[var(--tp-paper)] text-left text-[var(--tp-paper-ink)] tp-edge focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] ${
+      className={`relative flex flex-col overflow-hidden rounded-stamp border-2 bg-[var(--tp-paper)] text-left text-[var(--tp-paper-ink)] tp-edge focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] ${
  hand
           ? 'w-full min-h-[5.75rem] sm:w-36 sm:min-h-[9.75rem]'
           : size === 'compact'
@@ -113,7 +113,7 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
         <span className="flex-1">{TYPE_LABELS[card.type]}</span>
         {!unplayable && (
           <span
-            className="flex h-6 min-w-6 items-center justify-center rounded-sm border-2 px-1 text-sm font-bold"
+            className="flex h-6 min-w-6 items-center justify-center rounded-stamp border-2 px-1 text-meta font-bold"
             style={{ borderColor: color }}
             aria-hidden="true"
           >
@@ -121,7 +121,7 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
           </span>
         )}
       </span>
-      <span className={`hyphens-auto px-1.5 pt-1 font-serif font-semibold leading-tight sm:px-2 sm:text-[0.95rem] ${hand ? 'text-[0.82rem]' : 'text-[0.9rem]'}`} lang="en">
+      <span className={`hyphens-auto px-1.5 pt-1 font-body font-semibold leading-tight sm:px-2 sm:text-[0.95rem] ${hand ? 'text-[0.82rem]' : 'text-[0.9rem]'}`} lang="en">
         {card.name}
       </span>
       {!hand && (school || card.rarity === 'rare') && (
@@ -131,7 +131,7 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
       )}
       {fits && (
         <span
-          className="mx-1.5 mt-1 self-start rounded-sm border border-[var(--tp-good)] px-1 text-[0.66rem] font-semibold leading-tight text-[var(--tp-good)] sm:mx-2"
+          className="mx-1.5 mt-1 self-start rounded-stamp border border-[var(--tp-good)] px-1 text-[0.66rem] font-semibold leading-tight text-[var(--tp-good)] sm:mx-2"
           aria-hidden="true"
           data-testid="card-fits"
         >
@@ -139,7 +139,7 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
         </span>
       )}
       {freeNote && (
-        <span className="mx-1.5 mt-1 self-start rounded-sm bg-[var(--tp-mark)] px-1 text-[0.66rem] font-semibold text-[var(--tp-on-mark)] sm:mx-2" aria-hidden="true">
+        <span className="mx-1.5 mt-1 self-start rounded-stamp bg-[var(--tp-mark)] px-1 text-[0.66rem] font-semibold text-[var(--tp-on-mark)] sm:mx-2" aria-hidden="true">
           {freeNote}
         </span>
       )}

@@ -191,13 +191,13 @@ interface RoundShowProps {
   testId?: string
 }
 
-const tallyBox = 'inline-flex items-baseline gap-1 rounded-sm border-2 px-1.5 py-0.5'
+const tallyBox = 'inline-flex items-baseline gap-1 rounded-stamp border-2 px-1.5 py-0.5'
 /** How far into the total's count it settles: once the number has all but arrived. */
 const SETTLE_AT = 0.6
 
 /** The total is set larger the harder the round hits, as the damage is. */
 export function totalSize(report: RoundReport): string {
-  return report.damage >= HUGE_HIT ? 'text-2xl' : report.damage >= BIG_HIT ? 'text-xl' : 'text-lg'
+  return report.damage >= HUGE_HIT ? 'text-h3' : report.damage >= BIG_HIT ? 'text-lead' : 'text-body'
 }
 
 /** The beat at which a bias that fell this round gave way: as its Shaken landed, as Unsettle took the rest, or as the argument landed. */
@@ -218,25 +218,25 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
   const previousWeight = lit >= 2 && lit !== Infinity ? running[lit - 2] : before
   const mults = multiplierSteps(report)
   const multShown = reached('mult') ? report.multiplier : mults[0]
-  const big = report.damage >= HUGE_HIT ? 'text-3xl' : report.damage >= BIG_HIT ? 'text-2xl' : 'text-xl'
+  const big = report.damage >= HUGE_HIT ? 'text-h2' : report.damage >= BIG_HIT ? 'text-h3' : 'text-lead'
   const appear = reduced ? '' : 'tp-appear'
   const reveal = (beat: Beat) => (reached(beat) ? appear : 'invisible')
   const pop = (beat: Beat) => (now === beat && !reduced ? 'tp-pop' : '')
   const stepIndex = lit === Infinity ? -1 : lit - 1
   return (
     <div
-      className="mt-1.5 text-sm text-[var(--tp-text)]"
+      className="mt-1.5 text-meta text-[var(--tp-text)]"
       data-testid={testId}
       data-show={show.done ? 'done' : 'playing'}
       onClick={show.done ? undefined : show.skip}
     >
-      <div className="flex min-h-5 items-baseline justify-between gap-2">
+      <div className="flex min-h-6 items-baseline justify-between gap-2">
         <p className="text-[0.68rem] text-[var(--tp-muted)]">{title}</p>
         {!show.done && (
           <button
             type="button"
             onClick={show.skip}
-            className="rounded-sm px-1.5 text-xs text-[var(--tp-muted)] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--tp-focus)]"
+            className="rounded-stamp px-1.5 text-meta text-[var(--tp-muted)] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--tp-focus)]"
             data-testid="skip-show"
           >
             Skip <span className="hidden sm:inline">(S)</span>
@@ -250,10 +250,10 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
       ) : (
         <>
           <ol className="mt-1 flex flex-wrap gap-1.5">
-            {report.carriedWeight > 0 && <li className="rounded-sm border border-dashed border-[var(--tp-line)] px-2 py-1 text-xs">Leftover Guard +{report.carriedWeight} Weight</li>}
-            {report.doubtWeight > 0 && <li className="rounded-sm border border-dashed border-[var(--tp-line)] px-2 py-1 text-xs">Doubts in hand +{report.doubtWeight} Weight</li>}
+            {report.carriedWeight > 0 && <li className="rounded-stamp border border-dashed border-[var(--tp-line)] px-2 py-1 text-meta">Leftover Guard +{report.carriedWeight} Weight</li>}
+            {report.doubtWeight > 0 && <li className="rounded-stamp border border-dashed border-[var(--tp-line)] px-2 py-1 text-meta">Doubts in hand +{report.doubtWeight} Weight</li>}
             {report.lastingMultiplier > 0 && (
-              <li className="rounded-sm border border-dashed border-[var(--tp-line)] px-2 py-1 text-xs">For this fight +{format(report.lastingMultiplier)} Multiplier</li>
+              <li className="rounded-stamp border border-dashed border-[var(--tp-line)] px-2 py-1 text-meta">For this fight +{format(report.lastingMultiplier)} Multiplier</li>
             )}
             {report.steps.map((step, i) => {
               const on = i < lit
@@ -263,7 +263,7 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
               return (
                 <li
                   key={step.uid}
-                  className={`rounded-sm border-l-4 bg-[var(--tp-paper)] px-2 py-1 text-xs text-[var(--tp-paper-ink)] ${on ? '' : 'invisible'} ${
+                  className={`rounded-stamp border-l-4 bg-[var(--tp-paper)] px-2 py-1 text-meta text-[var(--tp-paper-ink)] ${on ? '' : 'invisible'} ${
                     current || counted ? 'outline-2 outline-[var(--tp-mark)]' : ''
                   } ${current && !reduced ? 'tp-stamp' : ''}`}
                   style={{ borderLeftColor: TYPE_COLORS[step.type] }}
@@ -274,7 +274,7 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
                   {step.guard > 0 && <span> {step.guard} Guard</span>}
                   {step.unsettle > 0 && <span> Unsettle {step.unsettle}</span>}
                   {times > 1 && (
-                    <strong className={`ml-1 rounded-sm bg-[var(--tp-mark)] px-1 text-[var(--tp-on-mark)] ${current && !reduced ? 'tp-pop' : ''}`} data-testid="conclusion-count">
+                    <strong className={`ml-1 rounded-stamp bg-[var(--tp-mark)] px-1 text-[var(--tp-on-mark)] ${current && !reduced ? 'tp-pop' : ''}`} data-testid="conclusion-count">
                       Conclusion ×{times} → {step.weight > 0 ? `${step.weight} Weight` : `${format(step.multiplier)} Mult`}
                     </strong>
                   )}
@@ -282,21 +282,21 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
               )
             })}
           </ol>
-          <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-serif" data-testid="tally">
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-body" data-testid="tally">
             <span className={`${tallyBox} border-[var(--tp-evidence)]`}>
               Weight{' '}
-              <strong className={`text-base ${now === 'step' ? 'tp-tick' : ''}`} key={`w${lit}`}>
+              <strong className={`text-small ${now === 'step' ? 'tp-tick' : ''}`} key={`w${lit}`}>
                 <Counting from={previousWeight} to={shownWeight} ms={STEP_MS} running={now === 'step'} />
               </strong>
             </span>{' '}
             ×{' '}
             <span className={`${tallyBox} border-[var(--tp-logic)] ${pop('mult')}`}>
               Multiplier{' '}
-              <strong className="text-base" key={`m${now === 'mult'}`}>
+              <strong className="text-small" key={`m${now === 'mult'}`}>
                 <Counting from={0} to={multShown} ms={beatLength('mult', 0, report)} running={now === 'mult'} steps={mults} />
               </strong>
             </span>
-            {report.modifiers.length > 0 && reached('mult') && <span className={`text-xs ${pop('mult')}`}>({report.modifiers.join('; ')})</span>}
+            {report.modifiers.length > 0 && reached('mult') && <span className={`text-meta ${pop('mult')}`}>({report.modifiers.join('; ')})</span>}
             <span className={reveal('total')} data-testid="tally-total">
               {' '}={' '}
               <span
@@ -315,7 +315,7 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
                 <li key={`${i}-${step.kind}`}>
                   → {step.text}
                   {step.kind === 'guard' && report.guardBroken && (
-                    <strong className="ml-1 rounded-sm border border-[var(--tp-guard)] px-1 text-[var(--tp-guard)]">Guard broken</strong>
+                    <strong className="ml-1 rounded-stamp border border-[var(--tp-guard)] px-1 text-[var(--tp-guard)]">Guard broken</strong>
                   )}{' '}
                   = <strong>{step.after}</strong>
                 </li>
@@ -323,7 +323,7 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
             </ol>
           )}
           <p className={`mt-1 ${reveal('land')}`}>
-            <strong className={`${big} font-serif text-[var(--tp-mark)] ${landing && !reduced ? 'tp-pop tp-after-pause' : ''}`}>{report.damage} damage</strong>
+            <strong className={`${big} font-body text-[var(--tp-mark)] ${landing && !reduced ? 'tp-pop tp-after-pause' : ''}`}>{report.damage} damage</strong>
             {report.healedBack > 0 && <> (it recovered {report.healedBack})</>}
             {report.selfLoss > 0 && <>; you lost {report.selfLoss} to Backfire</>}
             {report.growth > 0 && <>; repeating yourself made its attacks +{report.growth}</>}
@@ -338,7 +338,7 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
       ))}
       {report.released > 0 && (
         <p className={`mt-1 font-semibold ${reveal('shift')}`} data-testid="release">
-          <strong className={`inline-block rounded-sm border-2 border-[var(--tp-good)] px-1.5 text-[var(--tp-good)] ${pop('shift')}`}>
+          <strong className={`inline-block rounded-stamp border-2 border-[var(--tp-good)] px-1.5 text-[var(--tp-good)] ${pop('shift')}`}>
             Shaken {report.released}: {releaseWords(report.released)}
           </strong>{' '}
           As it changed, everything that shook it landed at once.

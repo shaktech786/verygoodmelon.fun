@@ -90,17 +90,17 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
       ref={ref}
       onClose={onClose}
       aria-labelledby={`${title}-title`}
-      className="tp-root m-auto max-h-[85dvh] w-[min(42rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-5 text-[var(--tp-text)] tp-scrim"
+      className="tp-root m-auto max-h-[85dvh] w-[min(42rem,calc(100vw-2rem))] overflow-y-auto rounded-sheet border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-5 text-[var(--tp-text)] tp-scrim"
     >
       <div className="flex items-start justify-between gap-4">
-        <h2 id={`${title}-title`} className="font-serif text-2xl font-semibold">
+        <h2 id={`${title}-title`} className="font-display text-h3 font-semibold">
           {title}
         </h2>
         <button type="button" className={quietButton} onClick={onClose}>
           Close
         </button>
       </div>
-      <div className="mt-3 text-sm leading-relaxed">{children}</div>
+      <div className="mt-3 text-meta leading-relaxed">{children}</div>
     </dialog>
   )
 }
@@ -222,10 +222,10 @@ function DeckList({ run }: { run: RunState }) {
 function StatusBar({ run, shown, onMenu, onDeck, onHelp }: { run: RunState; shown: PlayerShown | null; onMenu: () => void; onDeck: () => void; onHelp: () => void }) {
   const live = run.battle?.player.resolve ?? run.resolve
   const fight = run.battle && shown
-  const small = `${quietButton} px-2.5 py-1 text-xs sm:px-3 sm:text-sm`
+  const small = `${quietButton} px-2.5 py-1 text-meta sm:px-3`
   return (
-    <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-[var(--tp-text)] sm:mb-3 sm:gap-x-4">
-      <p className="font-serif">
+    <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-meta text-[var(--tp-text)] sm:mb-3 sm:gap-x-4">
+      <p className="font-body">
         <span className="font-semibold">{run.length === 'short' ? 'Short walk' : WALK_STRETCH[run.floor]}</span>
         <span className="hidden text-[var(--tp-muted)] sm:inline"> · {FLOOR_NAMES[run.floor]}</span>
       </p>
@@ -236,7 +236,7 @@ function StatusBar({ run, shown, onMenu, onDeck, onHelp }: { run: RunState; show
       <p>
         Gold <strong data-testid="gold">{run.gold}</strong>
       </p>
-      {run.mode === 'rigorous' && <p className="text-xs font-semibold text-[var(--tp-muted)]">{paceName(run)}</p>}
+      {run.mode === 'rigorous' && <p className="text-meta font-semibold text-[var(--tp-muted)]">{paceName(run)}</p>}
       <div className="flex w-full gap-1.5 sm:ml-auto sm:w-auto sm:gap-2">
         <button type="button" className={small} onClick={onDeck} data-testid="open-deck">
           Deck {run.deck.length} · Relics {run.relics.length}

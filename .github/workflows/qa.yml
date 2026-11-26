@@ -39,11 +39,14 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Design rules (flesh only for actions, no new design debt)
+      - name: Design rules (flesh only for actions, no old habits)
         run: npm run check:design
 
       - name: Build
         run: npm run build
+
+      - name: Every utility class has a rule in the build
+        run: npm run check:classes
 
       - name: Install Playwright Chromium
         run: npx playwright install chromium --with-deps

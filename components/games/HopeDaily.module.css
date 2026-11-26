@@ -308,6 +308,8 @@
 }
 
 .waiting {
+  /* Holds the place of the story, so what follows the game does not jump when it arrives */
+  min-height: 90svh;
   padding-block: var(--s-6);
   color: var(--ink-soft);
   text-align: left;

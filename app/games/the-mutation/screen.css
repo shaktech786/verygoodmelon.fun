@@ -28,8 +28,6 @@
 
   /* Focus on the glass is the brass-gold ink, never the page's */
   --focus: var(--game-screen-star);
-  --focus-ring: var(--game-screen-star);
-  --color-focus-ring: var(--focus-ring);
 
   color-scheme: dark;
   background-color: var(--game-screen-field);

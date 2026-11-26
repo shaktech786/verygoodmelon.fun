@@ -27,46 +27,46 @@ export function WalkArgument({ run }: { run: RunState }) {
   }
   return (
     <section aria-labelledby="walk-argument-title" className="space-y-2" data-testid="walk-argument">
-      <div className="rounded-md border-2 border-[var(--tp-line)] bg-[var(--tp-paper)] p-1 text-[var(--tp-paper-ink)] tp-edge">
-        <div className="rounded-sm border-2 border-[var(--tp-mark)] p-3">
+      <div className="rounded-stamp border-2 border-[var(--tp-line)] bg-[var(--tp-paper)] p-1 text-[var(--tp-paper-ink)] tp-edge">
+        <div className="rounded-stamp border-2 border-[var(--tp-mark)] p-3">
           <div className="flex items-center gap-3">
             <BiasPortrait enemyId={foe.id} tier={foe.tier} mood="gives" className="h-12 w-12 shrink-0" />
             <div>
-              <h3 id="walk-argument-title" className="text-xs font-semibold text-[var(--tp-paper-muted)]">
+              <h3 id="walk-argument-title" className="text-meta font-semibold text-[var(--tp-paper-muted)]">
                 Argument of the walk
               </h3>
-              <p className="font-serif text-base font-semibold">Against {foe.name}</p>
+              <p className="font-body text-small font-semibold">Against {foe.name}</p>
             </div>
           </div>
           <ol className="mt-2 flex flex-wrap gap-1.5" aria-label="The cards, in order">
             {round.steps.map((step) => (
-              <li key={step.uid} className="rounded-sm border-l-4 border-y border-r border-[var(--tp-line)] bg-[var(--tp-ink-2)] px-2 py-1 text-xs text-[var(--tp-text)]" style={{ borderLeftColor: TYPE_COLORS[step.type] }}>
+              <li key={step.uid} className="rounded-stamp border-l-4 border-y border-r border-[var(--tp-line)] bg-[var(--tp-ink-2)] px-2 py-1 text-meta text-[var(--tp-text)]" style={{ borderLeftColor: TYPE_COLORS[step.type] }}>
                 <TypeMark type={step.type} />
                 {stepWords(step)}
               </li>
             ))}
           </ol>
-          <p className="mt-2 font-serif text-base">
+          <p className="mt-2 font-body text-small">
             Weight <strong>{round.weight}</strong> × Multiplier <strong>{format(round.multiplier)}</strong> = <strong>{round.product}</strong>
           </p>
           {round.chain.map((step, i) => (
-            <p key={`${i}-${step.kind}`} className="text-xs">
+            <p key={`${i}-${step.kind}`} className="text-meta">
               → {step.text}: <strong>{step.after}</strong>
             </p>
           ))}
-          <p className="mt-1 font-serif text-2xl font-semibold text-[var(--tp-mark)]">{round.damage} damage</p>
+          <p className="mt-1 font-display text-h3 font-semibold text-[var(--tp-mark)]">{round.damage} damage</p>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className={quietButton} onClick={copy} data-testid="copy-argument">
           Copy as text
         </button>
-        <p role="status" className="text-sm text-[var(--tp-muted)]" data-testid="copy-status">
+        <p role="status" className="text-meta text-[var(--tp-muted)]" data-testid="copy-status">
           {copied === 'copied' ? 'Copied. It is only on your clipboard; nothing was sent anywhere.' : copied === 'failed' ? 'This browser did not allow copying. The text is below to select.' : ''}
         </p>
       </div>
       {copied === 'failed' && (
-        <pre className="whitespace-pre-wrap rounded-md border border-[var(--tp-line)] p-2 text-xs" data-testid="argument-text">
+        <pre className="whitespace-pre-wrap rounded-stamp border border-[var(--tp-line)] p-2 text-meta" data-testid="argument-text">
           {text}
         </pre>
       )}

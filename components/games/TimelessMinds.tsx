@@ -680,7 +680,7 @@ export default function TimelessMinds() {
               )
             ) : (
               <div className="w-full h-full flex items-center justify-center" data-testid="portrait-hidden">
-                <span aria-hidden="true" className={cn(styles.hiddenPortrait, 'w-14 h-14 sm:w-28 sm:h-28 rounded-full flex items-center justify-center text-2xl sm:text-5xl font-bold')}>
+                <span aria-hidden="true" className={cn(styles.hiddenPortrait, 'w-14 h-14 sm:w-28 sm:h-28 rounded-full flex items-center justify-center text-h3 sm:text-h1 font-bold')}>
                   {thinker.name.charAt(0)}
                 </span>
               </div>
@@ -689,20 +689,20 @@ export default function TimelessMinds() {
 
           {/* A quiet moment of connecting as the call opens; the heading already tells screen readers who is here */}
           <div aria-hidden="true" className={cn(styles.connecting, connecting && styles.connectingOn, 'absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 sm:gap-4')}>
-            <span className={cn(styles.round, 'w-12 h-12 sm:w-24 sm:h-24 rounded-full flex items-center justify-center text-xl sm:text-4xl font-bold')}>
+            <span className={cn(styles.round, 'w-12 h-12 sm:w-24 sm:h-24 rounded-full flex items-center justify-center text-lead sm:text-h2 font-bold')}>
               {thinker.name.charAt(0)}
             </span>
-            <span className="text-sm sm:text-base">Calling {thinker.name}…</span>
+            <span className="text-meta sm:text-small">Calling {thinker.name}…</span>
           </div>
 
-          <p className={cn(styles.label, styles.status, 'absolute z-10 top-2 left-2 sm:top-3 sm:left-3 px-2 py-1 sm:px-2.5 text-[11px] sm:text-xs')}>
+          <p className={cn(styles.label, styles.status, 'absolute z-10 top-2 left-2 sm:top-3 sm:left-3 px-2 py-1 sm:px-2.5 text-[11px] sm:text-meta')}>
             <span className={cn(styles.statusDot, (isSpeaking || isListening) && styles.statusLive)} aria-hidden="true" />
             <span>{statusLabel}</span>
           </p>
 
           <div className={cn(styles.label, 'absolute z-10 bottom-2 left-2 sm:bottom-3 sm:left-3 max-w-[60%] px-2 py-1 sm:px-3 sm:py-1.5')}>
-            <p className="font-bold text-xs sm:text-sm truncate">{thinker.name}</p>
-            <p className={cn(styles.labelSoft, styles.era, 'text-[11px] sm:text-xs truncate')}>{thinker.era}</p>
+            <p className="font-bold text-meta truncate">{thinker.name}</p>
+            <p className={cn(styles.labelSoft, styles.era, 'text-[11px] sm:text-meta truncate')}>{thinker.era}</p>
           </div>
 
           {/* Your own tile: a placeholder, never a camera */}
@@ -710,7 +710,7 @@ export default function TimelessMinds() {
             <span className={cn(styles.round, 'w-7 h-7 sm:w-12 sm:h-12 rounded-full flex items-center justify-center')}>
               <Icon name="person" size={12} className="sm:w-6 sm:h-6" />
             </span>
-            <span className="absolute bottom-0.5 left-1.5 sm:bottom-1.5 sm:left-2 text-[10px] sm:text-xs font-bold">You</span>
+            <span className="absolute bottom-0.5 left-1.5 sm:bottom-1.5 sm:left-2 text-[10px] sm:text-meta font-bold">You</span>
           </div>
         </div>
 

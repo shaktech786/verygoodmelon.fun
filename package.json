@@ -25,12 +25,13 @@
     "test:visual": "playwright test __tests__/visual",
     "test:visual:ui": "playwright test __tests__/visual --ui",
     "playwright:install": "npx playwright install",
-    "qa": "npm run typecheck && npm run lint && npm run check:design && npm run build && npm run test:e2e",
-    "qa:full": "npm run typecheck && npm run lint && npm run check:design && npm run build && npm run test && npm run test:e2e",
+    "qa": "npm run typecheck && npm run lint && npm run check:design && npm run build && npm run check:classes && npm run test:e2e",
+    "qa:full": "npm run typecheck && npm run lint && npm run check:design && npm run build && npm run check:classes && npm run test && npm run test:e2e",
     "qa:quick": "npm run typecheck && npm run build",
     "prepare": "husky",
     "check:design": "node scripts/check-design.mjs",
     "check:red": "npm run -s check:design",
+    "check:classes": "node scripts/check-classes.mjs",
     "build:tokens": "node --no-warnings scripts/build-tokens.mjs"
   },
   "lint-staged": {

@@ -252,7 +252,7 @@ function argumentSummary(battle: BattleState, preview: ArgumentPreview, added: s
 
 function Bar({ value, max, color, label }: { value: number; max: number; color: string; label: string }) {
   return (
-    <div className="h-2.5 w-full overflow-hidden rounded-sm bg-[var(--tp-line)]" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value}>
+    <div className="h-2.5 w-full overflow-hidden rounded-stamp bg-[var(--tp-line)]" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value}>
       <div className="h-full motion-safe:transition-[width] motion-safe:duration-300" style={{ width: `${(100 * value) / max}%`, backgroundColor: color }} />
     </div>
   )
@@ -266,7 +266,7 @@ function Chip({ children, tone = 'plain' }: { children: React.ReactNode; tone?: 
     warn: 'border-[var(--tp-warn)] text-[var(--tp-warn)]',
     good: 'border-[var(--tp-good)] text-[var(--tp-good)]',
   }
-  return <span className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-xs font-semibold ${tones[tone]}`}>{children}</span>
+  return <span className={`inline-flex items-center gap-1 rounded-stamp border px-1.5 py-0.5 text-meta font-semibold ${tones[tone]}`}>{children}</span>
 }
 
 /** While the round plays out, the bias's Resolve counts down in step with the show. */
@@ -307,7 +307,7 @@ export const PlayerShownContext = createContext<(shown: PlayerShown | null) => v
 export function PlayerResolve({ resolve, max, hit, roundKey, bar = false }: { resolve: number; max: number; hit: number; roundKey: string | null; bar?: boolean }) {
   const hurt = hit > 0
   return (
-    <span key={hurt ? `hurt-${roundKey}` : 'still'} className={`inline-flex items-center gap-2 rounded-sm ${hurt ? 'tp-hurt' : ''}`} data-hit={hurt ? hit : undefined}>
+    <span key={hurt ? `hurt-${roundKey}` : 'still'} className={`inline-flex items-center gap-2 rounded-stamp ${hurt ? 'tp-hurt' : ''}`} data-hit={hurt ? hit : undefined}>
       <span>
         Resolve{' '}
         <strong>
@@ -316,7 +316,7 @@ export function PlayerResolve({ resolve, max, hit, roundKey, bar = false }: { re
         /{max}
       </span>
       {bar && (
-        <span className="hidden h-2 w-24 overflow-hidden rounded-sm bg-[var(--tp-line)] sm:block" aria-hidden="true">
+        <span className="hidden h-2 w-24 overflow-hidden rounded-stamp bg-[var(--tp-line)] sm:block" aria-hidden="true">
           <span className="block h-full bg-[var(--tp-player-bar)] motion-safe:transition-[width] motion-safe:duration-300" style={{ width: `${(100 * resolve) / max}%` }} />
         </span>
       )}
@@ -352,7 +352,7 @@ function ShakenMeter({ battle }: { battle: BattleState }) {
   if (shaken === 0) return null
   const cells = Math.max(OVERFLOW.max * 2, shaken)
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[var(--tp-text)]" data-testid="shaken">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-meta text-[var(--tp-text)]" data-testid="shaken">
       <span className="font-semibold text-[var(--tp-good)]">Shaken {shaken}</span>
       <span className="flex gap-px" aria-hidden="true">
         {Array.from({ length: cells }, (_, i) => (
@@ -370,13 +370,13 @@ function TiringNote({ battle }: { battle: BattleState }) {
   const now = tiringUnsettle(battle)
   if (now > 0)
     return (
-      <p className="mt-0.5 text-xs leading-snug text-[var(--tp-text)]" data-testid="tiring">
+      <p className="mt-0.5 text-meta leading-snug text-[var(--tp-text)]" data-testid="tiring">
         Turn {battle.turn}: this argument has gone on long enough that it is tiring. It took on Unsettle {now} this turn, and {now + TIRING.step} next turn.
       </p>
     )
   if (battle.turn + TIRING_NOTICE < battle.tiresFrom) return null
   return (
-    <p className="mt-0.5 text-xs leading-snug text-[var(--tp-muted)]" data-testid="tiring">
+    <p className="mt-0.5 text-meta leading-snug text-[var(--tp-muted)]" data-testid="tiring">
       Turn {battle.turn}. There is no turn limit: from turn {battle.tiresFrom} a long argument tires it, Unsettle {TIRING.step} more each turn.
     </p>
   )
@@ -438,7 +438,7 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
   const first = beforeItActs(view.preview)
   const big = hit >= BIG_HIT
   return (
-    <section aria-label="Opponent" className={`${big ? 'tp-nudge' : ''} grid gap-2 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-2.5 sm:grid-cols-[1fr_15rem] sm:gap-3 sm:p-4`} data-big-hit={big || undefined}>
+    <section aria-label="Opponent" className={`${big ? 'tp-nudge' : ''} grid gap-2 rounded-sheet border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-2.5 sm:grid-cols-[1fr_15rem] sm:gap-3 sm:p-4`} data-big-hit={big || undefined}>
       <div className="flex gap-3">
         <div className="relative shrink-0" data-testid="portrait">
           <div className={hit > 0 ? 'tp-recoil' : bursting ? 'tp-sink' : defeated ? 'tp-defeat' : ''} style={{ '--tp-recoil': `${RECOIL_PX[impact]}px` } as React.CSSProperties}>
@@ -453,7 +453,7 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
           </div>
           {hit > 0 && (
             <span
-              className={`tp-rise tp-after-pause pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded-sm bg-[var(--tp-ink)] px-1 font-serif font-bold text-[var(--tp-mark)] ${big ? 'text-3xl' : 'text-lg'}`}
+              className={`tp-rise tp-after-pause pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded-stamp bg-[var(--tp-ink)] px-1 font-display font-bold text-[var(--tp-mark)] ${big ? 'text-h2' : 'text-body'}`}
               aria-hidden="true"
             >
               −{hit}
@@ -474,28 +474,28 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
             {TIER_LABELS[def.tier]}
             {battle.enemy.phase === 2 && def.phase2 && ' · changed'}
           </p>
-          <h2 tabIndex={-1} data-focus-start className="font-serif text-lg font-semibold leading-tight text-[var(--tp-text)] outline-none sm:text-xl" data-testid="enemy-name">
+          <h2 tabIndex={-1} data-focus-start className="font-body text-body font-semibold leading-tight text-[var(--tp-text)] outline-none sm:text-lead" data-testid="enemy-name">
             {def.name}
           </h2>
           <div id="enemy-rules" className={more ? '' : 'max-sm:line-clamp-1'} data-testid="rule-block">
-            <p className="mt-0.5 text-[0.8rem] leading-snug text-[var(--tp-text)] sm:text-sm" data-testid="enemy-rule">
+            <p className="mt-0.5 text-[0.8rem] leading-snug text-[var(--tp-text)] sm:text-meta" data-testid="enemy-rule">
               {enemyRuleText(battle)}
             </p>
             {def.phase2 && (
-              <p className="mt-0.5 text-xs leading-snug text-[var(--tp-muted)]" data-testid="phase-warning">
+              <p className="mt-0.5 text-meta leading-snug text-[var(--tp-muted)]" data-testid="phase-warning">
                 {threshold !== null && `At half Resolve (${threshold}) it changes: ${def.phase2.ruleText} `}
                 {enemyRuleText(battle).includes(OVERFLOW_TEXT) ? PROBLEM_LINES : PROBLEM_RULE}
               </p>
             )}
             {lastOfWalk && (
-              <p className="mt-0.5 text-xs leading-snug text-[var(--tp-text)]" data-testid="holds-nothing-back">
+              <p className="mt-0.5 text-meta leading-snug text-[var(--tp-text)]" data-testid="holds-nothing-back">
                 {SHORT_WALK_BOSS_TEXT}
               </p>
             )}
           </div>
           <button
             type="button"
-            className="text-xs text-[var(--tp-muted)] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--tp-focus)] sm:hidden"
+            className="text-meta text-[var(--tp-muted)] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--tp-focus)] sm:hidden"
             aria-expanded={more}
             aria-controls="enemy-rules"
             onClick={() => setMore((m) => !m)}
@@ -505,14 +505,14 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
           </button>
           <TiringNote battle={view.intent} />
           {gamble && battle.enemy.misses >= 2 && (
-            <p className="mt-0.5 text-xs leading-snug text-[var(--tp-muted)]" data-testid="gamble-streak">
+            <p className="mt-0.5 text-meta leading-snug text-[var(--tp-muted)]" data-testid="gamble-streak">
               It has missed {battle.enemy.misses} rounds in a row and says it is due. The odds are still {odds(gamble.chance)}.
             </p>
           )}
         </div>
       </div>
       <div className="flex flex-col gap-1.5 sm:row-start-2">
-        <div className="flex items-center gap-2 text-sm text-[var(--tp-text)]">
+        <div className="flex items-center gap-2 text-meta text-[var(--tp-text)]">
           <span className="whitespace-nowrap">
             <Term word="Resolve" /> <span data-testid="enemy-resolve">{health}</span>/{battle.enemy.maxHealth}
           </span>
@@ -528,30 +528,30 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
           {battle.enemy.unsettle > 0 && <Chip tone="good">Unsettled {battle.enemy.unsettle}</Chip>}
           {battle.enemy.strength > 0 && <Chip tone="warn">Attacks +{battle.enemy.strength}</Chip>}
           {known && (
-            <span className="text-xs text-[var(--tp-muted)]" data-testid="known">
+            <span className="text-meta text-[var(--tp-muted)]" data-testid="known">
               You have named this one before, so it started Unsettled {KNOWN_UNSETTLE}.
             </span>
           )}
         </div>
       </div>
       <div
-        className="flex flex-wrap items-baseline gap-x-2 rounded-md border border-[var(--tp-line)] bg-[var(--tp-ink)] px-2.5 py-1.5 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:block sm:p-3"
+        className="flex flex-wrap items-baseline gap-x-2 rounded-stamp border border-[var(--tp-line)] bg-[var(--tp-ink)] px-2.5 py-1.5 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:block sm:p-3"
         data-testid="intent"
       >
         <p className="text-[0.68rem] text-[var(--tp-muted)]">Next, it will</p>
-        <p className="font-serif text-base font-semibold text-[var(--tp-text)] sm:text-lg" data-testid="intent-move">
+        <p className="font-body text-small font-semibold text-[var(--tp-text)] sm:text-body" data-testid="intent-move">
           {intentText(move, view.intent).join(' · ')}
         </p>
         {first.map((line, i) => (
-          <p key={`${i}-${line}`} className="w-full text-sm text-[var(--tp-text)]" data-testid="before-it-acts">
+          <p key={`${i}-${line}`} className="w-full text-meta text-[var(--tp-text)]" data-testid="before-it-acts">
             {line}
           </p>
         ))}
-        <p className="w-full text-sm text-[var(--tp-text)]" data-testid="incoming">
+        <p className="w-full text-meta text-[var(--tp-text)]" data-testid="incoming">
           {incomingLine(view.preview)}
         </p>
         {warning && (
-          <p className="mt-1 text-sm font-semibold text-[var(--tp-warn)]" data-testid="lethal-warning">
+          <p className="mt-1 text-meta font-semibold text-[var(--tp-warn)]" data-testid="lethal-warning">
             {warning.line}
           </p>
         )}
@@ -565,16 +565,16 @@ function ArgumentPanel({ battle, preview, show, reduced }: { battle: BattleState
   const report = battle.lastRound
   const def = getEnemyDef(battle.enemy.id)
   return (
-    <section aria-label="Your argument" className="rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-2.5 sm:p-4" data-testid="argument">
+    <section aria-label="Your argument" className="rounded-sheet border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-2.5 sm:p-4" data-testid="argument">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-serif text-base font-semibold text-[var(--tp-text)] sm:text-lg">Your argument</h2>
-        <p className="hidden text-xs text-[var(--tp-muted)] sm:block">
+        <h2 className="font-body text-small font-semibold text-[var(--tp-text)] sm:text-body">Your argument</h2>
+        <p className="hidden text-meta text-[var(--tp-muted)] sm:block">
           <Term word="Weight" /> × <Term word="Multiplier" />, last card is the <Term word="Conclusion" />
         </p>
       </div>
       {empty && report && show.done ? (
         <>
-          <details className="mt-1 text-sm text-[var(--tp-text)] sm:hidden">
+          <details className="mt-1 text-meta text-[var(--tp-text)] sm:hidden">
             <summary className="cursor-pointer">
               Last round: {report.damage} damage
               {report.unsettleLoss > 0 && `, Unsettle ${report.unsettleLoss}`}
@@ -592,18 +592,18 @@ function ArgumentPanel({ battle, preview, show, reduced }: { battle: BattleState
         <>
           <ol className="mt-1.5 flex min-h-[2rem] flex-wrap gap-1.5" aria-label="Cards in your argument, in order">
             {preview.carriedWeight > 0 && (
-              <li className="rounded-sm border border-dashed border-[var(--tp-line)] px-2 py-1 text-xs text-[var(--tp-text)]">Leftover Guard +{preview.carriedWeight} Weight</li>
+              <li className="rounded-stamp border border-dashed border-[var(--tp-line)] px-2 py-1 text-meta text-[var(--tp-text)]">Leftover Guard +{preview.carriedWeight} Weight</li>
             )}
             {preview.doubtWeight > 0 && (
-              <li className="rounded-sm border border-dashed border-[var(--tp-line)] px-2 py-1 text-xs text-[var(--tp-text)]">Doubts in hand +{preview.doubtWeight} Weight</li>
+              <li className="rounded-stamp border border-dashed border-[var(--tp-line)] px-2 py-1 text-meta text-[var(--tp-text)]">Doubts in hand +{preview.doubtWeight} Weight</li>
             )}
             {preview.lastingMultiplier > 0 && (
-              <li className="rounded-sm border border-dashed border-[var(--tp-line)] px-2 py-1 text-xs text-[var(--tp-text)]">For this fight +{format(preview.lastingMultiplier)} Multiplier</li>
+              <li className="rounded-stamp border border-dashed border-[var(--tp-line)] px-2 py-1 text-meta text-[var(--tp-text)]">For this fight +{format(preview.lastingMultiplier)} Multiplier</li>
             )}
             {preview.steps.map((step, i) => (
               <li
                 key={step.uid}
-                className={`tp-stamp rounded-sm border-l-4 bg-[var(--tp-paper)] px-2 py-1 text-xs text-[var(--tp-paper-ink)] ${step.conclusion ? 'outline-2 outline-[var(--tp-mark)]' : ''}`}
+                className={`tp-stamp rounded-stamp border-l-4 bg-[var(--tp-paper)] px-2 py-1 text-meta text-[var(--tp-paper-ink)] ${step.conclusion ? 'outline-2 outline-[var(--tp-mark)]' : ''}`}
                 data-testid="argument-step"
                 style={{ borderLeftColor: TYPE_COLORS[step.type] }}
               >
@@ -615,7 +615,7 @@ function ArgumentPanel({ battle, preview, show, reduced }: { battle: BattleState
                 {step.notes.length > 0 && <span className="block text-[0.68rem] text-[var(--tp-paper-muted)]">{step.notes.join(' · ')}</span>}
               </li>
             ))}
-            {empty && <li className="py-0.5 text-sm text-[var(--tp-muted)]">Play cards to build it. It lands when you end your turn.</li>}
+            {empty && <li className="py-0.5 text-meta text-[var(--tp-muted)]">Play cards to build it. It lands when you end your turn.</li>}
           </ol>
           <Equation preview={preview} />
         </>
@@ -638,7 +638,7 @@ function Equation({ preview }: { preview: ArgumentPreview }) {
     </>
   )
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--tp-text)]" data-testid="equation">
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-[var(--tp-text)]" data-testid="equation">
       <span>
         Weight{' '}
         <strong key={`weight-${preview.weight}`} className="tp-tick">
@@ -654,7 +654,7 @@ function Equation({ preview }: { preview: ArgumentPreview }) {
           <Chip>{m}</Chip>
         </span>
       ))}
-      <span className={preview.chain.length === 0 ? 'text-base' : ''}>
+      <span className={preview.chain.length === 0 ? 'text-small' : ''}>
         ={' '}
         {preview.chain.length === 0 ? (
           damage
@@ -668,7 +668,7 @@ function Equation({ preview }: { preview: ArgumentPreview }) {
         <span key={`${i}-${step.kind}`} className="contents" data-testid="chain-step">
           <span aria-hidden="true">→</span>
           <Chip tone={step.kind === 'guard' ? 'guard' : 'plain'}>{step.text}</Chip>
-          <span className={i === preview.chain.length - 1 ? 'text-base' : ''}>= {i === preview.chain.length - 1 ? damage : <strong>{step.after}</strong>}</span>
+          <span className={i === preview.chain.length - 1 ? 'text-small' : ''}>= {i === preview.chain.length - 1 ? damage : <strong>{step.after}</strong>}</span>
         </span>
       ))}
       {preview.steps.length > 0 && preview.weight === 0 && preview.multiplier > 1 && (
@@ -901,7 +901,7 @@ export function BattleScreen({ run }: { run: RunState }) {
         data-testid="hand-dock"
       >
         {hint && (
-          <p role="status" className={`${replaying ? 'max-sm:hidden' : ''} rounded-md border border-[var(--tp-good)] bg-[var(--tp-ink-2)] px-3 py-1.5 text-sm text-[var(--tp-text)]`} data-testid="hint">
+          <p role="status" className={`${replaying ? 'max-sm:hidden' : ''} rounded-stamp border border-[var(--tp-good)] bg-[var(--tp-ink-2)] px-3 py-1.5 text-meta text-[var(--tp-text)]`} data-testid="hint">
             {hint}
           </p>
         )}
@@ -927,9 +927,9 @@ export function BattleScreen({ run }: { run: RunState }) {
                 />
               )
             })}
-            {battle.hand.length === 0 && <p className="col-span-3 py-6 text-sm text-[var(--tp-muted)]">Your hand is empty.</p>}
+            {battle.hand.length === 0 && <p className="col-span-3 py-6 text-meta text-[var(--tp-muted)]">Your hand is empty.</p>}
           </div>
-          <div className="mt-1.5 min-h-[1.25rem] text-center text-xs text-[var(--tp-muted)]">
+          <div className="mt-1.5 min-h-[1.25rem] text-center text-meta text-[var(--tp-muted)]">
             {inspectedDef ? (
               <p className="max-sm:line-clamp-3">
                 <span className="sm:hidden">
@@ -950,16 +950,16 @@ export function BattleScreen({ run }: { run: RunState }) {
           </div>
         </section>
 
-        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 bg-[var(--tp-ink)] pb-2 pr-16 sm:sticky sm:bottom-0 sm:z-10 sm:rounded-lg sm:border sm:border-[var(--tp-line)] sm:py-3 sm:pl-4 sm:pr-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 bg-[var(--tp-ink)] pb-2 pr-16 sm:sticky sm:bottom-0 sm:z-10 sm:rounded-sheet sm:border sm:border-[var(--tp-line)] sm:py-3 sm:pl-4 sm:pr-4">
           {replaying && (
-            <p className="w-full text-sm text-[var(--tp-text)] sm:hidden" data-testid="dock-resolve">
+            <p className="w-full text-meta text-[var(--tp-text)] sm:hidden" data-testid="dock-resolve">
               <PlayerResolve resolve={playerResolve} max={battle.player.maxResolve} hit={playerHit} roundKey={roundKey} />
             </p>
           )}
-          <p className="w-full text-xs leading-snug text-[var(--tp-text)] sm:hidden" data-testid="intent-compact">
+          <p className="w-full text-meta leading-snug text-[var(--tp-text)] sm:hidden" data-testid="intent-compact">
             {compactIntent(view.intent, view.preview)}
           </p>
-          <div className={`${replaying ? 'max-sm:hidden' : ''} flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-[var(--tp-text)]`} data-testid="focus">
+          <div className={`${replaying ? 'max-sm:hidden' : ''} flex flex-wrap items-center gap-x-2 gap-y-0.5 text-meta text-[var(--tp-text)]`} data-testid="focus">
             <span className="mr-2 hidden sm:inline" data-testid="bar-resolve">
               <PlayerResolve resolve={playerResolve} max={battle.player.maxResolve} hit={playerHit} roundKey={roundKey} />
             </span>
@@ -970,10 +970,10 @@ export function BattleScreen({ run }: { run: RunState }) {
               ))}
             </span>
             <span>{battle.focus} left</span>
-            <span className="text-xs text-[var(--tp-muted)]" data-testid="turn">
+            <span className="text-meta text-[var(--tp-muted)]" data-testid="turn">
               Turn {battle.turn}
             </span>
-            <span className="hidden text-xs text-[var(--tp-muted)] sm:inline">
+            <span className="hidden text-meta text-[var(--tp-muted)] sm:inline">
               Draw pile {battle.drawPile.length} · Discard {battle.discardPile.length}
               {battle.exhausted.length > 0 && ` · Gone this fight ${battle.exhausted.length}`}
             </span>
@@ -983,9 +983,9 @@ export function BattleScreen({ run }: { run: RunState }) {
               type="button"
               onClick={() => act((r) => battleAction(r, undoPlay))}
               disabled={battle.undo.length === 0}
-              className="rounded-md border border-[var(--tp-line)] px-3 py-2 text-sm text-[var(--tp-text)] hover:bg-[var(--tp-ink-2)] disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] sm:px-4"
+              className="rounded-stamp border border-[var(--tp-line)] px-3 py-2 text-meta text-[var(--tp-text)] hover:bg-[var(--tp-ink-2)] disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] sm:px-4"
             >
-              Undo <span className="hidden text-xs text-[var(--tp-muted)] sm:inline">(U)</span>
+              Undo <span className="hidden text-meta text-[var(--tp-muted)] sm:inline">(U)</span>
             </button>
             <button
               ref={endRef}
@@ -1000,8 +1000,8 @@ export function BattleScreen({ run }: { run: RunState }) {
               data-testid="end-turn"
               data-danger={danger ? (danger.certain ? 'certain' : 'risk') : undefined}
             >
-              End turn <span className="hidden text-xs sm:inline">(E)</span>
-              <span className="block text-xs font-normal">
+              End turn <span className="hidden text-meta sm:inline">(E)</span>
+              <span className="block text-meta font-normal">
                 {action}
                 {danger && <strong className="font-semibold"> · {danger.short}</strong>}
               </span>

@@ -14,9 +14,9 @@ export function DevTimeTravel({ offsetDays, today }: { offsetDays: number; today
   return (
     <aside
       aria-label="Development time travel"
-      className="mt-8 rounded-lg border-2 border-dashed border-card-border p-4 text-left text-sm text-foreground/80"
+      className="mt-8 rounded-sheet border-2 border-dashed border-rule-strong p-4 text-left text-meta text-ink/80"
     >
-      <p className="font-medium text-foreground">Development only: pretend it is later</p>
+      <p className="font-medium text-ink">Development only: pretend it is later</p>
       <p className="mt-1" data-testid="dev-today">
         {offsetDays === 0 ? 'Using the real date.' : `Pretending it is ${today} (${offsetDays} days ahead).`}
       </p>
@@ -26,7 +26,7 @@ export function DevTimeTravel({ offsetDays, today }: { offsetDays: number; today
             key={step.label}
             type="button"
             onClick={() => setDevOffsetDays(offsetDays + step.days)}
-            className="rounded border border-card-border bg-background px-3 py-1.5 text-foreground hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            className="rounded-stamp border border-rule-strong bg-paper px-3 py-1.5 text-ink hover:bg-rind-wash focus:outline-none"
           >
             {step.label}
           </button>
@@ -34,7 +34,7 @@ export function DevTimeTravel({ offsetDays, today }: { offsetDays: number; today
         <button
           type="button"
           onClick={() => setDevOffsetDays(0)}
-          className="rounded border border-card-border bg-background px-3 py-1.5 text-foreground hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          className="rounded-stamp border border-rule-strong bg-paper px-3 py-1.5 text-ink hover:bg-rind-wash focus:outline-none"
         >
           Back to today
         </button>

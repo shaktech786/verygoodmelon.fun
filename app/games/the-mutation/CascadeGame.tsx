@@ -439,23 +439,23 @@ export default function CascadeGame() {
                 <div className="relative max-w-sm">
                 <span className="shapeshifter-bloom" aria-hidden="true" />
                 <div className={`shapeshifter-card relative text-center px-4 py-2.5 ${fade}`}>
-                  <p className={`flex items-center justify-center gap-2 text-[11px] sm:text-sm leading-relaxed break-words shapeshifter-title ${retroFont.className}`}>
+                  <p className={`flex items-center justify-center gap-2 text-[11px] sm:text-meta leading-relaxed break-words shapeshifter-title ${retroFont.className}`}>
                     <MechanicIcon id={named.id} />
                     {named.title}
                   </p>
-                  <p className="text-sm mt-1 break-words shapeshifter-text">{named.description}</p>
+                  <p className="text-meta mt-1 break-words shapeshifter-text">{named.description}</p>
                   {named.together.map(line => (
-                    <p key={line} className="text-sm mt-1 break-words shapeshifter-text" data-testid="rule-together">{line}</p>
+                    <p key={line} className="text-meta mt-1 break-words shapeshifter-text" data-testid="rule-together">{line}</p>
                   ))}
-                  {named.flavorText && <p className="text-xs mt-1 break-words shapeshifter-dim">{named.flavorText}</p>}
-                  <p className="text-xs mt-1 shapeshifter-dim">{named.hint}</p>
+                  {named.flavorText && <p className="text-meta mt-1 break-words shapeshifter-dim">{named.flavorText}</p>}
+                  <p className="text-meta mt-1 shapeshifter-dim">{named.hint}</p>
                 </div>
                 </div>
               </div>
             )}
 
             {phase === 'playing' && caption && (
-              <p className="absolute bottom-6 sm:bottom-8 inset-x-3 text-center text-sm shapeshifter-dim">
+              <p className="absolute bottom-6 sm:bottom-8 inset-x-3 text-center text-meta shapeshifter-dim">
                 <span className="shapeshifter-chip px-2 py-0.5">{caption}</span>
               </p>
             )}
@@ -468,8 +468,8 @@ export default function CascadeGame() {
             role="dialog"
             aria-label="Paused"
           >
-            <p className={`text-base shapeshifter-title shapeshifter-title-wide ${retroFont.className}`}>PAUSED</p>
-            <p className="text-sm shapeshifter-dim">Take as long as you like.</p>
+            <p className={`text-small shapeshifter-title shapeshifter-title-wide ${retroFont.className}`}>PAUSED</p>
+            <p className="text-meta shapeshifter-dim">Take as long as you like.</p>
             <button data-go=""
               type="button"
               onClick={resume}

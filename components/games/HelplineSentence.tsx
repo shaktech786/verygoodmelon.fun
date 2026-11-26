@@ -1,6 +1,6 @@
 import { DIRECTORY_LINE as directory, HELPLINES_AVAILABLE, UK_IE_LINE as ukIe, US_LINE as us, sentenceVerb } from '@/lib/care/helplines'
 
-const link = 'font-semibold text-foreground underline underline-offset-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
+const link = 'font-semibold text-ink underline underline-offset-4 rounded-stamp focus:outline-none'
 
 /** The free support lines, said the same way wherever the site offers them. */
 export function HelplineSentence({ lead }: { lead: string }) {

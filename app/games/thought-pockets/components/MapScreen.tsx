@@ -54,10 +54,10 @@ function ProblemSummary({ enemy, run }: { enemy: EnemyDef; run: RunState }) {
     <div className="flex gap-3">
       <BiasPortrait enemyId={enemy.id} tier="boss" className="h-14 w-14 shrink-0" />
       <div className="min-w-0">
-        <p className="font-serif text-base font-semibold leading-tight">{enemy.name}</p>
-        <p className="mt-0.5 text-xs leading-snug">{fullRuleText(enemy, run.rigor)}</p>
-        {enemy.phase2 && <p className="mt-0.5 text-xs leading-snug text-[var(--tp-muted)]">At half Resolve it changes: {enemy.phase2.ruleText}</p>}
-        {holdsNothingBack(run, enemy.id) && <p className="mt-0.5 text-xs leading-snug">{SHORT_WALK_BOSS_TEXT}</p>}
+        <p className="font-body text-small font-semibold leading-tight">{enemy.name}</p>
+        <p className="mt-0.5 text-meta leading-snug">{fullRuleText(enemy, run.rigor)}</p>
+        {enemy.phase2 && <p className="mt-0.5 text-meta leading-snug text-[var(--tp-muted)]">At half Resolve it changes: {enemy.phase2.ruleText}</p>}
+        {holdsNothingBack(run, enemy.id) && <p className="mt-0.5 text-meta leading-snug">{SHORT_WALK_BOSS_TEXT}</p>}
       </div>
     </div>
   )
@@ -97,10 +97,10 @@ export function MapScreen({ run }: { run: RunState }) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
-      <section aria-label="Map" className="rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3">
-        <p className="mb-1 text-center text-sm text-[var(--tp-muted)]">Choose where to go next. Paths only lead forward.</p>
+      <section aria-label="Map" className="rounded-sheet border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3">
+        <p className="mb-1 text-center text-meta text-[var(--tp-muted)]">Choose where to go next. Paths only lead forward.</p>
         {warnings.length > 0 && (
-          <div className="mx-auto mb-2 max-w-[520px] rounded-md border-2 border-[var(--tp-warn)] bg-[var(--tp-ink)] px-3 py-2 text-sm text-[var(--tp-text)]" data-testid="fight-warning">
+          <div className="mx-auto mb-2 max-w-[520px] rounded-stamp border-2 border-[var(--tp-warn)] bg-[var(--tp-ink)] px-3 py-2 text-meta text-[var(--tp-text)]" data-testid="fight-warning">
             <p className="font-semibold text-[var(--tp-warn)]">Low Resolve</p>
             {warnings.map((w) => (
               <p key={w.enemy.id}>{warningText(w)}</p>
@@ -111,7 +111,7 @@ export function MapScreen({ run }: { run: RunState }) {
           </div>
         )}
         {!heals && open.some((n) => n.type === 'elite') && (
-          <p className="mx-auto mb-2 max-w-[520px] rounded-md border border-[var(--tp-line)] bg-[var(--tp-ink)] px-3 py-2 text-sm text-[var(--tp-text)]" data-testid="hard-fight-note">
+          <p className="mx-auto mb-2 max-w-[520px] rounded-stamp border border-[var(--tp-line)] bg-[var(--tp-ink)] px-3 py-2 text-meta text-[var(--tp-text)]" data-testid="hard-fight-note">
             <strong>A hard fight is one of your next steps.</strong> At this level rests do not restore Resolve, so what it takes stays taken until tea, an
             encounter or the next floor.
           </p>
@@ -162,7 +162,7 @@ export function MapScreen({ run }: { run: RunState }) {
                     data-testid={`node-${node.type}`}
                     data-available={available || undefined}
                     data-focus-start={(!bossOpen && node.id === open[0]?.id) || undefined}
-                    className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-md border-2 sm:h-12 sm:w-12 ${portrait ? 'p-0.5' : ''} ${
+                    className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-stamp border-2 sm:h-12 sm:w-12 ${portrait ? 'p-0.5' : ''} ${
                       available
                         ? 'cursor-pointer border-[var(--tp-mark)] bg-[var(--tp-paper)] text-[var(--tp-paper-ink)] tp-ring-mark motion-safe:hover:scale-105'
                         : here
@@ -178,7 +178,7 @@ export function MapScreen({ run }: { run: RunState }) {
                       <NodeGlyph type={node.type} className="h-6 w-6" />
                     )}
                   </button>
-                  <span className={`mt-0.5 whitespace-nowrap text-[0.7rem] sm:text-xs ${available ? 'font-semibold text-[var(--tp-text)]' : 'text-[var(--tp-muted)]'}`} aria-hidden="true">
+                  <span className={`mt-0.5 whitespace-nowrap text-[0.7rem] sm:text-meta ${available ? 'font-semibold text-[var(--tp-text)]' : 'text-[var(--tp-muted)]'}`} aria-hidden="true">
                     {node.type === 'boss' ? 'Boss: one of two' : NODE_LABELS[node.type]}
                   </span>
                   {isFight(node) && node.enemyId && (
@@ -192,13 +192,13 @@ export function MapScreen({ run }: { run: RunState }) {
           </ol>
         </div>
         {bossOpen && (
-          <section ref={choiceRef} aria-labelledby="boss-choice-title" className="mx-auto mt-3 max-w-[520px] rounded-md border-2 border-[var(--tp-mark)] bg-[var(--tp-ink)] p-3 text-[var(--tp-text)]" data-testid="boss-choice">
-            <h2 id="boss-choice-title" className="font-serif text-lg font-semibold">
+          <section ref={choiceRef} aria-labelledby="boss-choice-title" className="mx-auto mt-3 max-w-[520px] rounded-stamp border-2 border-[var(--tp-mark)] bg-[var(--tp-ink)] p-3 text-[var(--tp-text)]" data-testid="boss-choice">
+            <h2 id="boss-choice-title" className="font-body text-body font-semibold">
               Two problems wait. Choose which to sit with.
             </h2>
             <ul className="mt-2 space-y-3">
               {problems.map((problem, i) => (
-                <li key={problem.id} className="rounded-md border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-2.5">
+                <li key={problem.id} className="rounded-stamp border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-2.5">
                   <ProblemSummary enemy={problem} run={run} />
                   <button
                     type="button"
@@ -215,10 +215,10 @@ export function MapScreen({ run }: { run: RunState }) {
           </section>
         )}
       </section>
-      <aside className="space-y-3 text-sm text-[var(--tp-text)]">
+      <aside className="space-y-3 text-meta text-[var(--tp-text)]">
         {!bossOpen && (
-          <section aria-labelledby="floor-problems" className="space-y-2.5 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3" data-testid="floor-problems">
-            <h2 id="floor-problems" className="text-xs text-[var(--tp-muted)]">
+          <section aria-labelledby="floor-problems" className="space-y-2.5 rounded-sheet border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3" data-testid="floor-problems">
+            <h2 id="floor-problems" className="text-meta text-[var(--tp-muted)]">
               At the end of this floor: one of two problems, your choice when you reach it
             </h2>
             {problems.map((problem) => (
@@ -226,8 +226,8 @@ export function MapScreen({ run }: { run: RunState }) {
             ))}
           </section>
         )}
-        <section aria-labelledby="floor-biases" className="rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3">
-          <h2 id="floor-biases" className="text-xs text-[var(--tp-muted)]">
+        <section aria-labelledby="floor-biases" className="rounded-sheet border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3">
+          <h2 id="floor-biases" className="text-meta text-[var(--tp-muted)]">
             Biases on this floor
           </h2>
           <ul className="mt-1.5 space-y-2" data-testid="floor-biases">
@@ -237,7 +237,7 @@ export function MapScreen({ run }: { run: RunState }) {
               return (
                 <li key={node.id} className="flex gap-2">
                   <BiasPortrait enemyId={foe.id} tier={foe.tier} className={`h-9 w-9 shrink-0 ${reachable.has(node.id) ? '' : 'opacity-50'}`} />
-                  <p className="text-xs leading-snug">
+                  <p className="text-meta leading-snug">
                     <span className="font-semibold">
                       Step {node.row + 1}, {NODE_LABELS[node.type].toLowerCase()}: {foe.name}.
                     </span>{' '}
@@ -254,7 +254,7 @@ export function MapScreen({ run }: { run: RunState }) {
             })}
           </ul>
         </section>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3 text-xs leading-snug">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 rounded-sheet border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3 text-meta leading-snug">
           <dt className="font-semibold">Fight</dt>
           <dd>A bias. Win a card.</dd>
           <dt className="font-semibold">Hard fight</dt>

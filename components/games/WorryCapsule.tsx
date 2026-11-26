@@ -719,7 +719,7 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: 
       <ViewHeading focus>On {sealedOn}, you wrote:</ViewHeading>
       <Slip label="Your worry" className="max-w-md">{capsule.worry}</Slip>
       <fieldset className="m-0 grid min-w-0 gap-3 border-0 p-0">
-        <legend className="mb-3 p-0 text-lg font-bold">How did it turn out?</legend>
+        <legend className="mb-3 p-0 text-body font-bold">How did it turn out?</legend>
         <div className="sp-stamp-row">
           {CHOICES.map((option) => (
             <label key={option.id} className="sp-choice">

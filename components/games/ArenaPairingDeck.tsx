@@ -86,7 +86,7 @@ export function PairingDeck({ selected, onPick, onWriteOwn }: PairingDeckProps) 
           >
             <span className={styles.pictures} aria-hidden="true">
               <Emblem id={pairing.emblems[0]} color={VOICE.a} />
-              <span className="font-bold text-sm">&amp;</span>
+              <span className="font-bold text-meta">&amp;</span>
               <Emblem id={pairing.emblems[1]} color={VOICE.b} />
             </span>
             <span className={styles.cardWords} aria-hidden="true">

@@ -1,30 +1,10 @@
 @import "tailwindcss";
 @import "./styles/tokens.css";
-@import "./styles/legacy-aliases.css";
 @import "./styles/base.css";
 
 @theme inline {
-  /* Legacy names, kept until Phase 7 so game code that still says bg-accent or text-foreground re-inks. */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-primary: var(--primary);
-  --color-primary-light: var(--primary-light);
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-soft: var(--accent-soft);
-  --color-success: var(--success);
-  --color-danger: var(--danger);
-  --color-warm: var(--warm);
-  --color-melon-green: var(--melon-green);
-  --color-melon-green-light: var(--melon-green-light);
-  --color-melon-red: var(--melon-red);
-  --color-card-bg: var(--card-bg);
-  --color-card-border: var(--card-border);
-  --color-hover-bg: var(--hover-bg);
-  --color-chosen: var(--chosen);
-  --color-chosen-line: var(--chosen-line);
-
   /* Seedpress system colours (docs/design-system/PLAN.md section 10.1). */
+  --color-*: initial;
   --color-paper: var(--paper);
   --color-sheet: var(--sheet);
   --color-well: var(--well);
@@ -44,47 +24,33 @@
   --color-clay: var(--clay);
   --color-brass: var(--brass);
 
+  --text-*: initial;
   --text-meta: var(--t-meta);
   --text-small: var(--t-small);
   --text-body: var(--t-body);
   --text-lead: var(--t-lead);
   --text-h3: var(--t-h3);
+  --text-h2: var(--t-h2);
+  --text-h1: var(--t-h1);
 }
 
 @theme {
-  /* Phase 2 resets only these three families; colours, eases and the rest follow in Phase 7. */
+  /* Tailwind's own defaults are switched off, so only system values exist: bg-gray-100, shadow-lg and rounded-lg generate nothing. */
   --shadow-*: initial;
   --radius-*: initial;
   --font-*: initial;
+  --ease-*: initial;
+  --animate-*: initial;
+  --drop-shadow-*: initial;
+  --blur-*: initial;
 
   --font-body: var(--font-atkinson), system-ui, sans-serif;
   --font-display: var(--font-bricolage), var(--font-atkinson), system-ui, sans-serif;
   --radius-sheet: 14px;
   --radius-stamp: 10px;
   --radius-slice: 999px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-stamp: cubic-bezier(0.3, 1.35, 0.5, 1);
-
-  /* Transition aliases until each game is restyled (Phase 4): the stock names untouched games still
-     use keep their old values, so nothing in a game squares off or changes face before its turn. */
-  --font-sans: var(--font-body);
-  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --shadow-2xs: 0 1px rgb(0 0 0 / 0.05);
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-  --radius: 0.25rem;
-  --radius-xs: 0.125rem;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
-  --radius-3xl: 1.5rem;
 }
 
 /* ============================================

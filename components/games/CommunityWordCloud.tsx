@@ -13,7 +13,7 @@ const MAX_WIDTH = 800
 const NARROW_WIDTH = 480
 const MIN_FONT_SIZE = 14
 const SPOKEN_WORD_COUNT = 10
-const FILLS = ['var(--foreground)', 'var(--accent)', 'var(--melon-green)', 'var(--primary-light)']
+const FILLS = ['var(--ink)', 'var(--moss)', 'var(--rind)', 'var(--ink-soft)']
 
 const upright = () => 0
 const fillByRank = (_: unknown, index: number) => FILLS[index % FILLS.length]

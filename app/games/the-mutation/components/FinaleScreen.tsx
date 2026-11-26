@@ -82,7 +82,7 @@ export default function FinaleScreen({
       <div className="w-full grid gap-x-8 gap-y-4 sm:grid-cols-[minmax(0,26rem)_1fr] sm:items-center">
         <div className="text-center sm:col-start-2 sm:row-start-1">
           {phase >= 1 && (
-            <p className={`text-sm mb-2 text-[var(--ink-soft)] ${fade}`} aria-hidden="true">
+            <p className={`text-meta mb-2 text-[var(--ink-soft)] ${fade}`} aria-hidden="true">
               Your game is finished. It is called
             </p>
           )}
@@ -92,19 +92,19 @@ export default function FinaleScreen({
               <h2
                 ref={headingRef}
                 tabIndex={-1}
-                className={`text-base sm:text-lg leading-relaxed mb-1 break-words text-[var(--rind)] focus:outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] rounded ${retroFont}`}
+                className={`text-small sm:text-body leading-relaxed mb-1 break-words text-[var(--rind)] focus:outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] rounded-stamp ${retroFont}`}
               >
                 <span className="sr-only">Your game is finished. It is called </span>
                 {gameName}
               </h2>
-              {tagline && <p className="text-base text-[var(--ink-soft)] break-words">{tagline}</p>}
+              {tagline && <p className="text-small text-[var(--ink-soft)] break-words">{tagline}</p>}
             </div>
           ) : (
-            phase >= 1 && <p className="text-sm text-[var(--ink-soft)] py-2">Finding its name…</p>
+            phase >= 1 && <p className="text-meta text-[var(--ink-soft)] py-2">Finding its name…</p>
           )}
 
           {phase >= 2 && (
-            <p className={`text-base mt-3 leading-relaxed ${fade}`}>{closingLine}</p>
+            <p className={`text-small mt-3 leading-relaxed ${fade}`}>{closingLine}</p>
           )}
 
           {canPlayAgain && (
@@ -116,7 +116,7 @@ export default function FinaleScreen({
               >
                 PLAY AGAIN
               </button>
-              <p className="text-base mt-2 text-[var(--ink-soft)]">
+              <p className="text-small mt-2 text-[var(--ink-soft)]">
                 Play again and choose other clues, or rest through them, and it will end another way.
               </p>
             </div>

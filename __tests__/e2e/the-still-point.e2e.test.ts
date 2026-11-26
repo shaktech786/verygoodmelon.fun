@@ -599,7 +599,7 @@ test.describe('The Harmonist on a phone with reduced motion', () => {
     const dot = page.getByRole('img', { name: 'Breathing visualization - Exhale' }).locator('circle').last()
     const accent = await page.evaluate(() => {
       const probe = document.createElement('i')
-      probe.style.color = 'var(--accent)'
+      probe.style.color = 'var(--flesh)'
       document.body.append(probe)
       const colour = getComputedStyle(probe).color
       probe.remove()

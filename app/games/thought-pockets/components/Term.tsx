@@ -28,7 +28,7 @@ export function Term({ word, children }: { word: Keyword; children?: React.React
       <span
         role="tooltip"
         id={id}
-        className={`pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-56 -translate-x-1/2 rounded-md border border-[var(--tp-line)] bg-[var(--tp-ink)] px-3 py-2 text-left text-xs font-normal leading-snug text-[var(--tp-text)] tp-edge group-hover:visible group-focus-within:visible ${open ? 'visible' : 'invisible'}`}
+        className={`pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-56 -translate-x-1/2 rounded-stamp border border-[var(--tp-line)] bg-[var(--tp-ink)] px-3 py-2 text-left text-meta font-normal leading-snug text-[var(--tp-text)] tp-edge group-hover:visible group-focus-within:visible ${open ? 'visible' : 'invisible'}`}
       >
         <strong className="text-[var(--tp-mark)]">{word}.</strong> {keywordText(word, school)}
       </span>
@@ -39,7 +39,7 @@ export function Term({ word, children }: { word: Keyword; children?: React.React
 /** A new idea, explained in one plain line the first time it comes up. */
 export function LessonNote({ lesson, className = '' }: { lesson: Lesson; className?: string }) {
   return (
-    <p className={`rounded-md border border-dashed border-[var(--tp-good)] bg-[var(--tp-ink)] px-3 py-1.5 text-sm text-[var(--tp-text)] ${className}`} data-testid="lesson">
+    <p className={`rounded-stamp border border-dashed border-[var(--tp-good)] bg-[var(--tp-ink)] px-3 py-1.5 text-meta text-[var(--tp-text)] ${className}`} data-testid="lesson">
       <strong>New: {LESSONS[lesson].term}.</strong> {LESSONS[lesson].line}
     </p>
   )
