@@ -5,8 +5,11 @@ import type { IconName } from './icons/glyphs'
 
 const GLYPH: Readonly<Record<MoodId, IconName>> = { restless: 'restless', heavy: 'heavy', play: 'playful' }
 
-/** Three ways in by mood. Each opens the games page filtered to that mood; the one on show is marked as chosen. */
-export function MoodStamps({ current }: { current?: MoodId }) {
+/**
+ * Three ways in by mood. Each opens the games page filtered to that mood; the one on show is marked as chosen.
+ * On the games page itself (`stay`) a mood only filters the rack, so the page keeps its place.
+ */
+export function MoodStamps({ current, stay = false }: { current?: MoodId; stay?: boolean }) {
   return (
     <nav aria-labelledby="mood-stamps-line" className="sp-moods">
       <p id="mood-stamps-line" className="sp-moods__line">
@@ -15,7 +18,7 @@ export function MoodStamps({ current }: { current?: MoodId }) {
       <ul className="sp-moods__row">
         {MOODS.map((mood) => (
           <li key={mood.id}>
-            <NextLink href={moodHref(mood.id)} className="sp-mood" aria-current={current === mood.id ? 'page' : undefined}>
+            <NextLink href={moodHref(mood.id)} scroll={stay ? false : undefined} className="sp-mood" aria-current={current === mood.id ? 'page' : undefined}>
               <Icon name={GLYPH[mood.id]} size={36} />
               <span>{mood.label}</span>
             </NextLink>

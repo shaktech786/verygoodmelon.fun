@@ -5,7 +5,7 @@ import { Icon } from './icons/Icon'
 import type { IconName } from './icons/glyphs'
 
 type StampProps = { children: ReactNode; icon?: IconName; className?: string } & (
-  | { href: string }
+  | { href: string; scroll?: boolean }
   | (Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'className'> & { href?: undefined })
 )
 
@@ -19,12 +19,12 @@ export function Stamp(props: StampProps) {
   )
   if (props.href !== undefined) {
     return (
-      <NextLink href={props.href} className={buttonClass('stamp', props.className)}>
+      <NextLink href={props.href} scroll={props.scroll} className={buttonClass('stamp', props.className)}>
         {content}
       </NextLink>
     )
   }
-  const { icon: _icon, children: _children, className, href: _href, ...rest } = props
+  const { icon: _icon, children: _children, className, href: _href, ...rest } = props as Extract<StampProps, { href?: undefined }>
   return (
     <button type="button" {...rest} className={buttonClass('stamp', className)}>
       {content}

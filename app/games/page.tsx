@@ -25,17 +25,24 @@ export default async function GamesPage({
           <h1 className="sp-h1">Games</h1>
           <p className="sp-sign__motto">Think deeply, feel lighter.</p>
         </div>
-        <MoodStamps current={mood} />
-        {chosen && (
-          <div className="sp-games-head__mood">
-            <p role="status">
-              <strong>{chosen.heading}.</strong> <span className="sp-soft">{chosen.line}</span>
-            </p>
-            <Stamp href="/games" icon="back">
+        <MoodStamps current={mood} stay />
+        {/* One status line for every view, so clearing the mood is announced as well as choosing one */}
+        <div className={chosen ? 'sp-games-head__mood' : 'sp-games-head__all'}>
+          <p role="status" className={chosen ? undefined : 'sr-only'}>
+            {chosen ? (
+              <>
+                <strong>{chosen.heading}.</strong> <span className="sp-soft">{chosen.line}</span>
+              </>
+            ) : (
+              'Every game'
+            )}
+          </p>
+          {chosen && (
+            <Stamp href="/games" scroll={false} icon="back">
               Show all games
             </Stamp>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       <GentleInCare />
       <Rack mood={mood} />

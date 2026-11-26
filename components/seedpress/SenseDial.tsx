@@ -7,7 +7,7 @@ import { useAccessibility } from '@/lib/hooks/useAccessibility'
 import { Icon } from './icons/Icon'
 import { useSenseDial } from './useSenseDial'
 
-const STOPS: Readonly<Record<Sense, { label: string; line: string; turn: number }>> = {
+export const STOPS: Readonly<Record<Sense, { label: string; line: string; turn: number }>> = {
   quiet: { label: 'Quiet', line: 'Nothing moves unless you move it. Softer colours.', turn: -60 },
   gentle: { label: 'Gentle', line: 'Small movements when you press things, and one moment of colour when you finish.', turn: 0 },
   lively: { label: 'Lively', line: 'A bit more bounce: packets lift higher and their inks settle as you pass.', turn: 60 },
@@ -16,7 +16,7 @@ const STOPS: Readonly<Record<Sense, { label: string; line: string; turn: number 
 /** The sensory dial: three native radios under a knob that shows where it is set. */
 export function SenseDial({ compact = false }: { compact?: boolean }) {
   const { sense, setSense } = useSenseDial()
-  const { settings } = useAccessibility()
+  const { settings, baseline } = useAccessibility()
   const lineId = useId()
   return (
     <fieldset className={compact ? 'sp-dial sp-dial--compact' : 'sp-dial'}>
@@ -44,7 +44,7 @@ export function SenseDial({ compact = false }: { compact?: boolean }) {
             </span>
           </label>
         ))}
-        {isOwnMix(settings) && <span className="sp-dial__mix">Your own mix</span>}
+        {isOwnMix(settings, baseline) && <span className="sp-dial__mix">Your own mix</span>}
       </div>
       <p id={lineId} className="sp-dial__line">
         {STOPS[sense].line}

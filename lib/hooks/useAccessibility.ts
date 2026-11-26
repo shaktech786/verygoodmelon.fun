@@ -115,9 +115,15 @@ function commit(next: AccessibilitySettings, persist: boolean): void {
   listeners.forEach((listener) => listener())
 }
 
+let device: AccessibilitySettings | null = null
+const getDevice = () => (device ??= detectSystemPreferences())
+const unchanging = () => () => {}
+
 /** One shared set of accessibility settings for the whole page, saved in localStorage. */
 export function useAccessibility() {
   const settings = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+  // Where a visitor starts and where reset returns them: the defaults plus what the device asks for
+  const baseline = useSyncExternalStore(unchanging, getDevice, getServerSnapshot)
 
   useEffect(() => {
     applySettings(settings)
@@ -136,5 +142,5 @@ export function useAccessibility() {
 
   const resetToDefaults = useCallback(() => commit(detectSystemPreferences(), false), [])
 
-  return { settings, updateSetting, updateSettings, resetToDefaults }
+  return { settings, baseline, updateSetting, updateSettings, resetToDefaults }
 }

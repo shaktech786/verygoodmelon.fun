@@ -50,7 +50,10 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: PALETTES.light.paper,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: PALETTES.light.paper },
+    { media: "(prefers-color-scheme: dark)", color: PALETTES.dark.paper },
+  ],
 };
 
 export default function RootLayout({

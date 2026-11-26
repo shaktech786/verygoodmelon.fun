@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useModalDialog } from '@/components/accessibility/useModalDialog'
 import { IconStamp } from '@/components/seedpress/IconStamp'
 import { Icon } from '@/components/seedpress/icons/Icon'
-import { SenseDial } from '@/components/seedpress/SenseDial'
+import { SenseDial, STOPS } from '@/components/seedpress/SenseDial'
 import { Stamp } from '@/components/seedpress/Stamp'
 import { isOwnMix } from '@/lib/accessibility/own-mix'
 import { useAmbientControl } from '@/lib/audio/ambient-choice'
@@ -116,7 +116,7 @@ function Switch({
 }
 
 export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps) {
-  const { settings, updateSetting, resetToDefaults } = useAccessibility()
+  const { settings, baseline, updateSetting, resetToDefaults } = useAccessibility()
   const panelRef = useRef<HTMLDivElement>(null)
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [announcement, setAnnouncement] = useState('')
@@ -147,10 +147,10 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
 
   // A fine-tune control the dial speaks for moving off its default is announced as the dial's fourth label
   const change = <K extends keyof AccessibilitySettings>(key: K, value: AccessibilitySettings[K]) => {
-    const before = isOwnMix(settings)
-    const after = isOwnMix({ ...settings, [key]: value })
+    const before = isOwnMix(settings, baseline)
+    const after = isOwnMix({ ...settings, [key]: value }, baseline)
     if (after && !before) setAnnouncement('The dial now reads Your own mix.')
-    else if (before && !after) setAnnouncement(`The dial is back to ${settings.sense}.`)
+    else if (before && !after) setAnnouncement(`The dial is back to ${STOPS[settings.sense].label}.`)
     updateSetting(key, value)
   }
 
@@ -168,12 +168,9 @@ export function AccessibilityPanel({ isOpen, onClose }: AccessibilityPanelProps)
         className="sp-drawer"
       >
         <div className="sp-drawer__bar">
-          <h2 className="sp-h3" aria-hidden="true">
-            Settings
+          <h2 id="accessibility-panel-title" className="sp-h3">
+            <span className="sr-only">Accessibility </span>Settings
           </h2>
-          <span id="accessibility-panel-title" className="sr-only">
-            Accessibility settings
-          </span>
           <IconStamp icon="close" label="Close accessibility settings" onClick={close} />
         </div>
 

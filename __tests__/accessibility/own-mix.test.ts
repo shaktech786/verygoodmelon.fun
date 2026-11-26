@@ -17,4 +17,10 @@ describe('isOwnMix', () => {
   ])('is true once %o moves away from the dial’s defaults', (change) => {
     expect(isOwnMix({ ...DEFAULT_ACCESSIBILITY_SETTINGS, ...change })).toBe(true)
   })
+
+  it('measures from what the device asks for, so device settings are not a mix', () => {
+    const device = { ...DEFAULT_ACCESSIBILITY_SETTINGS, reduceMotion: true, contrast: 'high' as const }
+    expect(isOwnMix(device, device)).toBe(false)
+    expect(isOwnMix({ ...device, reduceMotion: false }, device)).toBe(true)
+  })
 })

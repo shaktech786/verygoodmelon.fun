@@ -584,7 +584,7 @@ a.sp-packet:focus-visible .sp-print {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  :where(html:not([data-reduce-motion='true'])) :root[data-sense='lively'] a.sp-packet:is(:hover, :focus-visible) .ink-b {
+  :root:not([data-reduce-motion='true'])[data-sense='lively'] a.sp-packet:is(:hover, :focus-visible) .ink-b {
     animation: sp-reink calc(520ms * var(--motion)) var(--e-out) both;
   }
 }
@@ -1342,6 +1342,10 @@ a.sp-packet:focus-visible .sp-print {
   display: grid;
   justify-items: start;
   gap: var(--s-3);
+}
+
+.sp-games-head__all {
+  display: contents;
 }
 
 @media (min-width: 1024px) {
