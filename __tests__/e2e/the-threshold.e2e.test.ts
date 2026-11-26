@@ -539,9 +539,8 @@ test.describe('The Plain Speaker', () => {
       await expect(card.locator('svg[viewBox="0 0 160 100"]')).toHaveCount(1)
       await expect(page.locator('#hard-talk').getByText('I have grown into this role.', { exact: true })).toHaveCount(1)
       await expect(page.getByTestId('keepsake-canvas')).toHaveCount(0)
-      await expect(page.locator('#hard-talk button.bg-accent')).toHaveCount(1)
-      await expect(page.locator('#hard-talk button.bg-accent')).toHaveText('Keep this on screen')
-      await expect(page.locator('#hard-talk button.text-lg')).toHaveCount(1)
+      await expect(page.locator('#hard-talk [data-go]')).toHaveCount(1)
+      await expect(page.locator('#hard-talk [data-go]')).toHaveText('Keep this on screen')
       // The card's words are real text at a readable size
       for (const text of [card.locator('blockquote'), card.getByText('“There’s something I’d like to ask for. Is now a good time?”')]) {
         expect(parseFloat(await text.evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16)

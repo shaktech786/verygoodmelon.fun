@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { Button } from '@/components/ui/Button'
+import { NoteDialog } from '@/components/seedpress/NoteDialog'
+import { Stamp } from '@/components/seedpress/Stamp'
+import styles from './HardTalk.module.css'
 
 interface CarryScreenProps {
   line: string
@@ -9,13 +11,11 @@ interface CarryScreenProps {
   onClose: () => void
 }
 
-/** The line alone, large and still, to glance at on a phone held low on the way in. */
+/** The line alone, large and still on a small card, to glance at on a phone held low on the way in. */
 export function CarryScreen({ line, begin, onClose }: CarryScreenProps) {
-  const ref = useRef<HTMLDialogElement>(null)
+  const doneRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    const dialog = ref.current
-    if (dialog && !dialog.open) dialog.showModal()
     let lock: WakeLockSentinel | null = null
     let closed = false
     if ('wakeLock' in navigator) {
@@ -29,7 +29,6 @@ export function CarryScreen({ line, begin, onClose }: CarryScreenProps) {
           // Without the lock the screen may dim as usual; the line is still there.
         })
     }
-    // Closing here would fire onClose; unmounting removes the dialog from the top layer anyway.
     return () => {
       closed = true
       void lock?.release()
@@ -37,32 +36,26 @@ export function CarryScreen({ line, begin, onClose }: CarryScreenProps) {
   }, [])
 
   return (
-    <dialog
-      ref={ref}
-      aria-label="Your line to carry in"
+    <NoteDialog
+      title="Your line to carry in"
+      size="wide"
       onClose={onClose}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none overflow-y-auto bg-background p-0 text-foreground backdrop:bg-background"
-    >
-      <div className="flex min-h-full flex-col px-6 pb-8 pt-10 sm:px-12">
-        <div aria-hidden="true" className="mx-auto flex w-24 flex-col gap-1">
-          <span className="h-1.5 rounded-full bg-melon-green" />
-          <span className="h-1 rounded-full bg-success" />
-        </div>
-        <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-8 py-10">
-          {begin && (
-            <p className="text-xl sm:text-2xl leading-snug text-foreground/80 [overflow-wrap:anywhere]">
-              <span className="block text-base font-medium text-foreground/75">Begin with</span>
-              {begin}
-            </p>
-          )}
-          <p className="text-[clamp(2rem,9vw,4rem)] font-semibold leading-tight text-foreground [overflow-wrap:anywhere] [text-wrap:balance]">
-            {line}
-          </p>
-        </div>
-        <Button size="lg" variant="secondary" onClick={() => ref.current?.close()} className="mx-auto w-full max-w-xs">
+      initialFocusRef={doneRef}
+      actions={
+        <Stamp ref={doneRef} onClick={onClose}>
           Done
-        </Button>
-      </div>
-    </dialog>
+        </Stamp>
+      }
+    >
+      <figure className={styles.printCard}>
+        {begin && (
+          <p className={styles.printBegin}>
+            <span className={styles.printBeginLabel}>Begin with</span>
+            {begin}
+          </p>
+        )}
+        <p className={styles.printLine}>{line}</p>
+      </figure>
+    </NoteDialog>
   )
 }

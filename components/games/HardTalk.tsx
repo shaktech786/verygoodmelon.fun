@@ -1,19 +1,29 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { Button, buttonClassName } from '@/components/ui/Button'
 import { KeepsakeSave } from '@/components/games/Keepsake'
 import { useCareMode } from '@/components/games/CareMode'
-import { HelplineSentence } from '@/components/games/HelplineSentence'
 import { OwnSupportMark } from '@/components/games/OwnSupport'
-import { DIRECTORY_LINE } from '@/lib/care/helplines'
+import { CareBlock } from '@/components/seedpress/CareBlock'
+import { Go } from '@/components/seedpress/Go'
+import { Icon } from '@/components/seedpress/icons/Icon'
 import { InlineConfirm } from '@/components/seedpress/InlineConfirm'
+import { InkLink } from '@/components/seedpress/Link'
+import { Note } from '@/components/seedpress/Note'
+import { PlaceStamps } from '@/components/seedpress/PlaceStamps'
+import { QuietButton } from '@/components/seedpress/QuietButton'
+import { Stamp } from '@/components/seedpress/Stamp'
+import { StatusLine } from '@/components/seedpress/StatusLine'
+import { StickyTray } from '@/components/seedpress/StickyTray'
+import { WritingSlip } from '@/components/seedpress/WritingSlip'
+import { DIRECTORY_LINE } from '@/lib/care/helplines'
 import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
 import { CarryScreen } from '@/components/games/hard-talk/CarryScreen'
 import { BreathMelon, StepOutArt, ThresholdArt } from '@/components/games/hard-talk/ThresholdArt'
+import styles from '@/components/games/hard-talk/HardTalk.module.css'
 import { plainSpeakerKeepsake } from '@/lib/keepsake/plain-speaker'
 import { cn } from '@/lib/utils/cn'
-import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { useSense } from '@/lib/design/sense'
 import {
   CHECK_INS,
   KINDNESS,
@@ -52,21 +62,12 @@ function browserStorage(): Storage | null {
   }
 }
 
-const fieldClass =
-  'w-full rounded-lg border border-card-border bg-background px-4 py-3 text-base text-foreground [overflow-wrap:anywhere] focus:outline-none focus-visible:border-focus-ring'
-
-const optionClass = (selected: boolean) =>
-  cn(
-    'flex w-full cursor-pointer items-start gap-3 rounded-lg border-2 px-4 py-3 text-left text-foreground transition-colors duration-75',
-    'hover:bg-hover-bg has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-card-bg',
-    selected ? 'border-chosen-line bg-chosen' : 'border-card-border bg-card-bg',
-  )
-
-/** A shape, not only a colour, shows which option is chosen. */
-function ChoiceMark({ selected }: { selected: boolean }) {
+/** A shape, not only a colour, shows which option is chosen: the tick. */
+function ChoiceFace({ selected, children }: { selected: boolean; children: ReactNode }) {
   return (
-    <span aria-hidden="true" className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-foreground/60">
-      {selected && <span className="h-2.5 w-2.5 rounded-full bg-foreground" />}
+    <span className="sp-choice__face">
+      <span className="sp-choice__mark">{selected && <Icon name="done" />}</span>
+      <span>{children}</span>
     </span>
   )
 }
@@ -80,18 +81,14 @@ function keepInView(element: HTMLElement, smooth: boolean) {
   element.addEventListener('blur', () => viewport.removeEventListener('resize', onResize), { once: true })
 }
 
-function CharactersLeft({ value, max }: { value: string; max: number }) {
+function charactersLeft(value: string, max: number): ReactNode {
   const left = max - value.length
   if (left > NEAR_LIMIT) return null
-  return (
-    <p className="mt-1 text-right text-sm text-foreground/70" aria-live="polite">
-      {left === 0 ? 'That’s the most this box holds.' : `${left} characters left`}
-    </p>
-  )
+  return <span aria-live="polite">{left === 0 ? 'That’s the most this box holds.' : `${left} characters left`}</span>
 }
 
 function Quote({ children }: { children: ReactNode }) {
-  return <span className="whitespace-pre-line [overflow-wrap:anywhere]">“{children}”</span>
+  return <span className={styles.quote}>“{children}”</span>
 }
 
 interface Opening {
@@ -134,42 +131,30 @@ export default function HardTalk() {
   const hydrated = useSyncExternalStore(subscribeToNothing, () => true, () => false)
   const { care } = useCareMode()
   return (
-    <div id="hard-talk" className="mx-auto max-w-xl">
+    <div id="hard-talk" className={styles.root}>
       {hydrated ? (
         <HardTalkGame />
       ) : (
-        <section aria-label="Before the talk" aria-busy="true" className={cn(cardClass, 'min-h-[32rem]')} />
+        <section aria-label="Before the talk" aria-busy="true" className={cn(styles.card, styles.skeleton)} />
       )}
-      <p className="mt-4 text-center text-sm text-foreground/75">
-        What you write stays in this browser and is never sent anywhere. Starting over clears it.
-      </p>
+      <p className="sp-soft">What you write stays in this browser and is never sent anywhere. Starting over clears it.</p>
       {/* In care the page's own care block carries the helplines, so this note steps aside */}
       {!care && (
-        <aside
-          aria-label="Support"
-          className="mt-3 rounded-lg border border-card-border bg-card-bg px-4 py-3 text-center text-sm leading-relaxed text-foreground/80"
-        >
-          This is a moment to steady yourself, not a substitute for support. If a conversation could put your safety at
-          risk, you deserve help with it:{' '}
-          <a
-            href={DIRECTORY_LINE.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-foreground underline underline-offset-4 rounded"
-          >
-            {DIRECTORY_LINE.label}
-          <span className="sr-only"> (opens in a new tab)</span></a>{' '}
-          lists free, confidential support.
+        <aside aria-label="Support">
+          <Note>
+            This is a moment to steady yourself, not a substitute for support. If a conversation could put your safety at
+            risk, you deserve help with it: <InkLink href={DIRECTORY_LINE.href}>{DIRECTORY_LINE.label}</InkLink> lists
+            free, confidential support.
+          </Note>
         </aside>
       )}
     </div>
   )
 }
 
-const cardClass = 'rounded-2xl border border-card-border bg-card-bg px-5 py-6 sm:px-10 sm:py-8 soft-shadow'
-
 function HardTalkGame() {
-  const reducedMotion = useReducedMotion()
+  const { motionScale } = useSense()
+  const reducedMotion = motionScale === 0
   const [opening] = useState(openGame)
   const [view, setView] = useState<View>(opening.view)
   const [session, setSession] = useState<Session>(opening.session)
@@ -277,40 +262,25 @@ function HardTalkGame() {
   const canStartOver = view === 'steps' && (session.step !== 'kind' || hasWritten || session.kind !== null)
 
   const heading = (text: string) => (
-    <h2
-      ref={headingRef}
-      id="hard-talk-heading"
-      tabIndex={-1}
-      className="text-2xl sm:text-3xl font-semibold leading-snug text-foreground focus:outline-none [overflow-wrap:anywhere]"
-    >
+    <h2 ref={headingRef} id="hard-talk-heading" tabIndex={-1} className={cn('sp-h3', styles.heading)}>
       {text}
     </h2>
   )
-  const sub = (text: string) => <p id="hard-talk-sub" className="mt-3 text-base sm:text-lg text-foreground/75 leading-relaxed">{text}</p>
+  const sub = (text: string) => <p id="hard-talk-sub" className={styles.sub}>{text}</p>
 
   const optional = (filled: boolean) => (filled ? 'Next' : 'Skip')
 
   const support = (
-    <aside
-      aria-label="Support"
-      className="rounded-lg border border-card-border border-l-4 border-l-[var(--melon-green)] bg-background px-4 py-3 text-left leading-relaxed text-foreground"
-    >
+    <>
       <OwnSupportMark />
-      <p>
-        <HelplineSentence lead="What you wrote sounds very heavy. You don’t have to carry it alone." />
-      </p>
-    </aside>
+      <CareBlock lead="What you wrote sounds very heavy. You don’t have to carry it alone." />
+    </>
   )
 
   const keepOnScreenButton = (
-    <button data-go=""
-      ref={keepOnScreenRef}
-      type="button"
-      onClick={() => setOnScreen(true)}
-      className={buttonClassName('primary', 'lg', 'mt-6 w-full')}
-    >
+    <Go ref={keepOnScreenRef} onClick={() => setOnScreen(true)}>
       Keep this on screen
-    </button>
+    </Go>
   )
 
   const stepOut = () => {
@@ -328,19 +298,19 @@ function HardTalkGame() {
             <>
               {heading('What kind of talk is coming up?')}
               {sub('Pick the closest one. You can change it later.')}
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className={styles.picks}>
                 {TALK_KINDS.map((k) => (
                   <button
                     key={k}
                     type="button"
                     onClick={() => pickKind(k)}
                     aria-pressed={session.kind === k}
-                    className={optionClass(session.kind === k)}
+                    className={styles.pick}
                   >
-                    <ChoiceMark selected={session.kind === k} />
+                    <span className="sp-choice__mark">{session.kind === k && <Icon name="done" />}</span>
                     <span>
-                      <span className="block font-semibold">{TALKS[k].label}</span>
-                      <span className="block text-sm text-foreground/75">{TALKS[k].detail}</span>
+                      <span className={styles.pickTitle}>{TALKS[k].label}</span>
+                      <span className={styles.pickDetail}>{TALKS[k].detail}</span>
                     </span>
                   </button>
                 ))}
@@ -355,10 +325,10 @@ function HardTalkGame() {
             <>
               {heading('Who is it with?')}
               {sub('A name or a role, like “my manager”. Only you will see it.')}
-              <label htmlFor="hard-talk-who" className="sr-only">Who the talk is with</label>
-              <input
-                id="hard-talk-who"
-                type="text"
+              <WritingSlip
+                label="Who the talk is with"
+                labelHidden
+                line
                 ref={fieldRef}
                 autoComplete="off"
                 aria-describedby="hard-talk-sub"
@@ -372,7 +342,6 @@ function HardTalkGame() {
                     next()
                   }
                 }}
-                className={cn(fieldClass, 'mt-6')}
               />
             </>
           ),
@@ -392,19 +361,14 @@ function HardTalkGame() {
               {heading('If you like, take three slow breaths.')}
               {sub('Tap as you breathe in, and again as you breathe out. Let the out-breath be a little longer.')}
               <BreathMelon breathingIn={breathingIn} reducedMotion={reducedMotion} />
-              <div className="flex flex-col items-center gap-3">
-                <div className="flex gap-2" aria-hidden="true">
+              <div className={styles.breathing}>
+                <div className={styles.pips} aria-hidden="true">
                   {Array.from({ length: BREATHS_OFFERED }, (_, i) => (
-                    <span
-                      key={i}
-                      className={cn('h-4 w-2.5 rounded-full border-2 border-foreground/60', i < counted && 'bg-foreground/70')}
-                    />
+                    <span key={i} className={cn(styles.pip, i < counted && styles.pipDone)} />
                   ))}
                 </div>
-                <Button variant="secondary" size="lg" onClick={breathe} className="min-w-56">
-                  {breathingIn ? 'I’m breathing out' : 'I’m breathing in'}
-                </Button>
-                <p className="min-h-6 text-base text-foreground/75" aria-live="polite">
+                <Stamp onClick={breathe}>{breathingIn ? 'I’m breathing out' : 'I’m breathing in'}</Stamp>
+                <p className={styles.breathLine} aria-live="polite">
                   {breathingIn
                     ? 'In… and tap again as you let it go, slowly.'
                     : done
@@ -427,20 +391,19 @@ function HardTalkGame() {
             <>
               {heading(talk.understand.heading)}
               {sub('One sentence is plenty, or skip it.')}
-              <p id="hard-talk-example" className="mt-4 text-sm text-foreground/70">For example: {talk.understand.example}</p>
-              <label htmlFor="hard-talk-understand" className="sr-only">{talk.understand.heading}</label>
-              <textarea
+              <p id="hard-talk-example" className={styles.example}>For example: {talk.understand.example}</p>
+              <WritingSlip
+                label={talk.understand.heading}
+                labelHidden
                 ref={fieldRef}
-                id="hard-talk-understand"
                 rows={3}
                 maxLength={TEXT_MAX}
                 value={session.understand}
                 aria-describedby="hard-talk-sub hard-talk-example"
                 onChange={(e) => update((s) => ({ ...s, understand: e.target.value.slice(0, TEXT_MAX) }))}
                 onFocus={(e) => keepInView(e.currentTarget, !reducedMotion)}
-                className={cn(fieldClass, 'mt-2 resize-none')}
+                note={charactersLeft(session.understand, TEXT_MAX)}
               />
-              <CharactersLeft value={session.understand} max={TEXT_MAX} />
             </>
           ),
         }
@@ -453,34 +416,26 @@ function HardTalkGame() {
             <>
               {heading('Which moment worries you most?')}
               {sub('Pick one, and we’ll think it through.')}
-              <fieldset className="mt-6">
+              <fieldset className={styles.picks}>
                 <legend className="sr-only">The moment that worries you most</legend>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {worries.map((w) => (
-                    <label key={w.id} className={optionClass(session.worry === w.id)}>
-                      <input
-                        type="radio"
-                        name="hard-talk-worry"
-                        value={w.id}
-                        checked={session.worry === w.id}
-                        onChange={() => {
-                          revealResponse.current = true
-                          update((s) => ({ ...s, worry: w.id }))
-                        }}
-                        className="sr-only"
-                      />
-                      <ChoiceMark selected={session.worry === w.id} />
-                      <span className="font-medium">{w.label}</span>
-                    </label>
-                  ))}
-                </div>
+                {worries.map((w) => (
+                  <label key={w.id} className="sp-choice sp-choice--card">
+                    <input
+                      type="radio"
+                      name="hard-talk-worry"
+                      value={w.id}
+                      checked={session.worry === w.id}
+                      onChange={() => {
+                        revealResponse.current = true
+                        update((s) => ({ ...s, worry: w.id }))
+                      }}
+                    />
+                    <ChoiceFace selected={session.worry === w.id}>{w.label}</ChoiceFace>
+                  </label>
+                ))}
               </fieldset>
-              <div ref={responseRef} aria-live="polite" className="mt-5 min-h-6">
-                {chosen && (
-                  <p className="rounded-lg border-l-4 border-l-[var(--melon-green)] bg-background px-4 py-3 text-base sm:text-lg leading-relaxed text-foreground">
-                    {chosen.response}
-                  </p>
-                )}
+              <div ref={responseRef} aria-live="polite" className={styles.response}>
+                {chosen && <Note>{chosen.response}</Note>}
               </div>
             </>
           ),
@@ -493,49 +448,40 @@ function HardTalkGame() {
             <>
               {heading('Choose a first sentence.')}
               {sub('Starting with what you want makes the rest easier.')}
-              <fieldset className="mt-6">
+              <fieldset className={cn(styles.picks, styles.picksOne)}>
                 <legend className="sr-only">Your first sentence</legend>
-                <div className="flex flex-col gap-3">
-                  {talk.openings.map((line, i) => (
-                    <label key={line} className={optionClass(session.openingPick === i)}>
-                      <input
-                        type="radio"
-                        name="hard-talk-opening"
-                        checked={session.openingPick === i}
-                        onChange={() => update((s) => ({ ...s, openingPick: i }))}
-                        className="sr-only"
-                      />
-                      <ChoiceMark selected={session.openingPick === i} />
-                      <span>{line}</span>
-                    </label>
-                  ))}
-                  <label className={optionClass(session.openingPick === 'own')}>
+                {talk.openings.map((line, i) => (
+                  <label key={line} className="sp-choice sp-choice--card">
                     <input
                       type="radio"
                       name="hard-talk-opening"
-                      checked={session.openingPick === 'own'}
-                      onChange={() => update((s) => ({ ...s, openingPick: 'own' }))}
-                      className="sr-only"
+                      checked={session.openingPick === i}
+                      onChange={() => update((s) => ({ ...s, openingPick: i }))}
                     />
-                    <ChoiceMark selected={session.openingPick === 'own'} />
-                    <span className="font-medium">In my own words</span>
+                    <ChoiceFace selected={session.openingPick === i}>{line}</ChoiceFace>
                   </label>
-                </div>
+                ))}
+                <label className="sp-choice sp-choice--card">
+                  <input
+                    type="radio"
+                    name="hard-talk-opening"
+                    checked={session.openingPick === 'own'}
+                    onChange={() => update((s) => ({ ...s, openingPick: 'own' }))}
+                  />
+                  <ChoiceFace selected={session.openingPick === 'own'}>In my own words</ChoiceFace>
+                </label>
               </fieldset>
               {session.openingPick === 'own' && (
-                <div className="mt-3">
-                  <label htmlFor="hard-talk-own" className="sr-only">Your first sentence, in your own words</label>
-                  <textarea
-                    id="hard-talk-own"
-                    rows={2}
-                    maxLength={TEXT_MAX}
-                    value={session.ownOpening}
-                    onChange={(e) => update((s) => ({ ...s, ownOpening: e.target.value.slice(0, TEXT_MAX) }))}
-                    onFocus={(e) => keepInView(e.currentTarget, !reducedMotion)}
-                    className={cn(fieldClass, 'resize-none')}
-                  />
-                  <CharactersLeft value={session.ownOpening} max={TEXT_MAX} />
-                </div>
+                <WritingSlip
+                  label="Your first sentence, in your own words"
+                  labelHidden
+                  rows={2}
+                  maxLength={TEXT_MAX}
+                  value={session.ownOpening}
+                  onChange={(e) => update((s) => ({ ...s, ownOpening: e.target.value.slice(0, TEXT_MAX) }))}
+                  onFocus={(e) => keepInView(e.currentTarget, !reducedMotion)}
+                  note={charactersLeft(session.ownOpening, TEXT_MAX)}
+                />
               )}
             </>
           ),
@@ -553,7 +499,7 @@ function HardTalkGame() {
             body: (
               <>
                 {heading('You come first')}
-                <div className="mt-5">{support}</div>
+                {support}
                 {sub('The talk can wait. Go back to change what you wrote, or start over whenever you like.')}
               </>
             ),
@@ -566,28 +512,24 @@ function HardTalkGame() {
               {heading('One line to carry in')}
               {notes.ownWords && sub('In your own words.')}
               {/* The only pocket card: what to say first, the line, and the door. Save draws the same card as a picture. */}
-              <figure className="mt-5 overflow-hidden rounded-lg border-2 border-card-border bg-background text-center soft-shadow">
+              <figure className={styles.pocket}>
                 {notes.begin ? (
-                  <div className="bg-melon-green px-5 py-4 text-background">
-                    <p className="text-sm font-semibold uppercase tracking-wider">Begin with</p>
-                    <p className="mt-1 font-serif text-lg italic leading-snug"><Quote>{notes.begin}</Quote></p>
+                  <div className={styles.begin}>
+                    <p className={styles.beginLabel}>Begin with</p>
+                    <p className={styles.beginLine}><Quote>{notes.begin}</Quote></p>
                   </div>
-                ) : (
-                  <div aria-hidden="true" className="h-2 bg-melon-green" />
-                )}
-                <div aria-hidden="true" className="h-1.5 bg-success" />
-                <blockquote className="px-5 pt-6 pb-2 text-2xl sm:text-3xl font-semibold leading-snug text-foreground [overflow-wrap:anywhere]">
-                  {notes.line}
-                </blockquote>
-                <div className="px-6 pb-3 [&_svg]:max-w-[11rem]">
+                ) : null}
+                <div aria-hidden="true" className={styles.band} />
+                <blockquote className={styles.line}>{notes.line}</blockquote>
+                <div className={styles.pocketArt}>
                   <ThresholdArt progress={1} reducedMotion={reducedMotion} />
                 </div>
               </figure>
-              {keepOnScreenButton}
-              <Button variant="secondary" onClick={stepOut} className="mt-3 w-full">
-                I’m going in
-              </Button>
-              <KeepsakeSave plan={pocketCard} saveLabel="Save the card as a picture" className="mt-4" />
+              <div className={cn(styles.actions, styles['actions--row'])}>
+                {keepOnScreenButton}
+                <Stamp onClick={stepOut}>I’m going in</Stamp>
+              </div>
+              <KeepsakeSave plan={pocketCard} saveLabel="Save the card as a picture" />
             </>
           ),
         }
@@ -596,32 +538,32 @@ function HardTalkGame() {
 
   function renderStepOut() {
     return (
-      <>
-        <div className="mb-6"><StepOutArt reducedMotion={reducedMotion} /></div>
+      <div className={styles.step}>
+        <StepOutArt reducedMotion={reducedMotion} />
         {heading('Go in when you’re ready.')}
         {sub('One more slow breath first, if you like. If you come back afterwards, there’s a quiet place to say how it went.')}
-        {keepOnScreenButton}
-        <Button size="lg" variant="secondary" onClick={() => goTo('carry')} className="mt-3 w-full">
-          Back to my line
-        </Button>
-      </>
+        <div className={cn(styles.actions, styles['actions--row'])}>
+          {keepOnScreenButton}
+          <Stamp onClick={() => goTo('carry')}>Back to my line</Stamp>
+        </div>
+      </div>
     )
   }
 
   function renderOffer() {
     return (
-      <>
+      <div className={styles.step}>
         {heading('Welcome back.')}
         {sub(
           session.kind
             ? `You were part-way through getting set for a talk: ${TALKS[session.kind].label.toLowerCase()}. Carry on, or begin fresh for a different one.`
             : 'You were part-way through getting set for a talk. Carry on, or begin fresh for a different one.',
         )}
-        <div className="mt-8 flex flex-col sm:flex-row gap-3">
-          <Button size="lg" onClick={() => goTo(session.step)} className="w-full sm:w-auto">Carry on where I was</Button>
-          <Button size="lg" variant="secondary" onClick={startOver} className="w-full sm:w-auto">Start fresh</Button>
+        <div className={cn(styles.actions, styles['actions--row'])}>
+          <Go onClick={() => goTo(session.step)}>Carry on where I was</Go>
+          <Stamp onClick={startOver}>Start fresh</Stamp>
         </div>
-      </>
+      </div>
     )
   }
 
@@ -632,102 +574,84 @@ function HardTalkGame() {
       update((s) => ({ ...s, checkIn: id }))
     }
     return (
-      <>
+      <div className={styles.step}>
         {heading('Welcome back. How did it go?')}
         {distressed ? (
-          <div className="mt-5">{support}</div>
+          support
         ) : (
           <>
             {sub('Only if you’d like to say. Your line was:')}
-            <p className="mt-2 text-lg font-semibold text-foreground">{carryNotes(session).line}</p>
+            <p><strong>{carryNotes(session).line}</strong></p>
           </>
         )}
-        <fieldset className="mt-6">
+        <fieldset className={styles.picks}>
           <legend className="sr-only">How the talk went</legend>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {CHECK_INS.map((c) => (
-              <label key={c.id} className={optionClass(session.checkIn === c.id)}>
-                <input
-                  type="radio"
-                  name="hard-talk-check-in"
-                  checked={session.checkIn === c.id}
-                  onChange={() => setCheckIn(c.id)}
-                  className="sr-only"
-                />
-                <ChoiceMark selected={session.checkIn === c.id} />
-                <span className="font-medium">{c.label}</span>
-              </label>
-            ))}
-          </div>
+          {CHECK_INS.map((c) => (
+            <label key={c.id} className="sp-choice sp-choice--card">
+              <input
+                type="radio"
+                name="hard-talk-check-in"
+                checked={session.checkIn === c.id}
+                onChange={() => setCheckIn(c.id)}
+              />
+              <ChoiceFace selected={session.checkIn === c.id}>{c.label}</ChoiceFace>
+            </label>
+          ))}
         </fieldset>
-        <div ref={responseRef} aria-live="polite" className="mt-5 min-h-6">
-          {answer && (
-            <p className="rounded-lg border-l-4 border-l-[var(--melon-green)] bg-background px-4 py-3 text-base sm:text-lg leading-relaxed text-foreground">
-              {answer.response}
-            </p>
-          )}
+        <div ref={responseRef} aria-live="polite" className={styles.response}>
+          {answer && <Note>{answer.response}</Note>}
         </div>
-        <div className="mt-6 flex flex-col sm:flex-row gap-3">
-          <Button size="lg" variant="secondary" onClick={() => goTo('carry')} className="w-full sm:w-auto">See my notes again</Button>
-          <Button size="lg" onClick={startOver} className="w-full sm:w-auto">Start a new talk</Button>
+        <div className={cn(styles.actions, styles['actions--row'])}>
+          <Go onClick={startOver}>Start a new talk</Go>
+          <Stamp onClick={() => goTo('carry')}>See my notes again</Stamp>
         </div>
-      </>
+      </div>
     )
   }
 
   const startOverPanel = (
-    <div className="mt-4">
-      <InlineConfirm
-        question="Start over?"
-        why="Anything you’ve written will be cleared."
-        keepLabel="Keep going"
-        confirmLabel="Yes, start over"
-        onKeep={() => { setFocusRequest((n) => n + 1); setConfirmingStartOver(null) }}
-        onConfirm={startOver}
-      />
-    </div>
+    <InlineConfirm
+      question="Start over?"
+      why="Anything you’ve written will be cleared."
+      keepLabel="Keep going"
+      confirmLabel="Yes, start over"
+      onKeep={() => { setFocusRequest((n) => n + 1); setConfirmingStartOver(null) }}
+      onConfirm={startOver}
+    />
   )
 
   const step = view === 'steps' ? renderStep() : null
   const hasBack = view === 'steps' && previousStep(session.kind, session.step) !== null
 
   return (
-    <section aria-label="Before the talk" className={cardClass}>
-      <div className="flex min-h-11 items-center justify-between gap-3">
+    <section aria-label="Before the talk" className={styles.card}>
+      <div className={styles.head}>
         {view === 'steps' ? (
-          <div className="flex items-center gap-3">
-            <div className="flex gap-1" aria-hidden="true">
-              {STAGES.map((label, i) => (
-                <span key={label} className={cn('h-1.5 w-5 rounded-full', i < stage ? 'bg-melon-green' : 'bg-foreground/15')} />
-              ))}
-            </div>
-            <p className="text-sm text-foreground/75">{session.step === 'carry' ? (distressed ? 'Before the talk' : 'Here’s your line') : STAGES[stage - 1]}</p>
-          </div>
+          <PlaceStamps places={STAGES} here={session.step === 'carry' ? STAGES.length : stage - 1} label="Where you are" />
         ) : <span />}
         {canStartOver && session.step !== 'carry' && !confirmingStartOver && (
-          <Button variant="ghost" size="sm" onClick={() => setConfirmingStartOver('top')}>Start over</Button>
+          <QuietButton onClick={() => setConfirmingStartOver('top')}>Start over</QuietButton>
         )}
       </div>
+      {view === 'steps' && session.step === 'carry' && (
+        <p className="sp-soft">{distressed ? 'Before the talk' : 'Here’s your line'}</p>
+      )}
 
       {confirmingStartOver === 'top' && startOverPanel}
 
       {view !== 'step-out' && !(view === 'steps' && (session.step === 'breath' || session.step === 'carry')) && (
-        <div className="mt-2 mb-4"><ThresholdArt progress={progress} reducedMotion={reducedMotion} /></div>
+        <div className={styles.art}><ThresholdArt progress={progress} reducedMotion={reducedMotion} /></div>
       )}
 
-      {welcomeBack && (
-        <p role="status" className="mb-3 text-sm text-foreground/75">Welcome back. You were here.</p>
-      )}
+      <StatusLine>{welcomeBack ? 'Welcome back. You were here.' : null}</StatusLine>
       {!storageWorks && (
-        <p className="mb-3 text-sm text-foreground/75">
-          This browser isn’t keeping anything, so this will last only while the page is open.
-        </p>
+        <Note>This browser isn’t keeping anything, so this will last only while the page is open.</Note>
       )}
 
       {/* Support leads every later step too, once words have called for it */}
-      {distressed && view === 'steps' && session.step !== 'carry' && <div className="mb-5">{support}</div>}
+      {distressed && view === 'steps' && session.step !== 'carry' && support}
 
-      <div key={view === 'steps' ? session.step : view} className={cn(!reducedMotion && 'animate-fade')}>
+      <div key={view === 'steps' ? session.step : view} className={view === 'steps' ? styles.step : undefined}>
         {view === 'offer' && renderOffer()}
         {view === 'check-in' && renderCheckIn()}
         {view === 'step-out' && renderStepOut()}
@@ -735,13 +659,14 @@ function HardTalkGame() {
       </div>
 
       {view === 'steps' && (
-        <div className="mt-8 flex items-center gap-3">
-          {hasBack && <Button variant={session.step === 'carry' ? 'ghost' : 'secondary'} size={session.step === 'carry' ? 'md' : 'lg'} onClick={back}>Back</Button>}
-          {step?.nextLabel && <Button size="lg" onClick={next} className="flex-1">{step.nextLabel}</Button>}
+        <StickyTray pinned={Boolean(step?.nextLabel)} className="flex flex-wrap items-center gap-3">
+          {hasBack && <QuietButton onClick={back}>Back</QuietButton>}
+          {step?.nextLabel === 'Next' && <Go onClick={next}>Next</Go>}
+          {step?.nextLabel === 'Skip' && <Stamp onClick={next}>Skip</Stamp>}
           {session.step === 'carry' && !confirmingStartOver && (
-            <Button variant="ghost" onClick={() => setConfirmingStartOver('bottom')} className="ml-auto">Start over</Button>
+            <QuietButton onClick={() => setConfirmingStartOver('bottom')}>Start over</QuietButton>
           )}
-        </div>
+        </StickyTray>
       )}
       {confirmingStartOver === 'bottom' && startOverPanel}
       {onScreen && !distressed && (

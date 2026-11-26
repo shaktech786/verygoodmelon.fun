@@ -1,0 +1,302 @@
+/* The Plain Speaker. Colour comes from the Seedpress roles only: moss for the door, ink for its frame, clay for the light. */
+
+.root {
+  display: grid;
+  gap: var(--s-4);
+  max-width: var(--w-prose);
+  margin-inline: auto;
+}
+
+.card {
+  display: grid;
+  gap: var(--s-4);
+  padding: var(--s-5) var(--s-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+}
+
+@media (min-width: 640px) {
+  .card {
+    padding: var(--s-6);
+  }
+}
+
+.skeleton {
+  min-height: 32rem;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  min-height: 44px;
+}
+
+.step {
+  display: grid;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.step > * {
+  margin: 0;
+}
+
+.heading {
+  overflow-wrap: anywhere;
+}
+
+.heading:focus {
+  outline: none;
+}
+
+.sub {
+  color: var(--ink-soft);
+}
+
+.example {
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.art {
+  display: flex;
+  justify-content: center;
+}
+
+.picks {
+  display: grid;
+  gap: var(--s-3);
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .picks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.picksOne {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* A stamp card for a button that holds a choice: rind when it is the chosen one, never flesh */
+.pick {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--s-3) var(--s-4);
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-stamp);
+  background-color: var(--sheet);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--rule-strong);
+  overflow-wrap: anywhere;
+  transition:
+    transform calc(var(--d-tap) * var(--motion)) var(--e-stamp),
+    background-color calc(var(--d-quick) * var(--motion)) var(--e-out);
+}
+
+.pick:hover {
+  background-color: var(--rind-wash);
+}
+
+.pick:active {
+  transform: translateY(calc(3px * var(--motion)));
+}
+
+.pick:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.pick[aria-pressed='true'] {
+  border-color: var(--rind);
+  background-color: var(--rind-wash);
+  box-shadow:
+    inset 0 0 0 1px var(--rind),
+    0 3px 0 var(--rind);
+}
+
+.pick[aria-pressed='true'] svg {
+  color: var(--rind);
+}
+
+.pickTitle {
+  display: block;
+  font-weight: 700;
+}
+
+.pickDetail {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.breathing {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-3);
+}
+
+.pips {
+  display: flex;
+  gap: var(--s-2);
+}
+
+.pip {
+  width: 10px;
+  height: 16px;
+  border: 2px solid var(--rule-strong);
+  border-radius: 999px;
+}
+
+.pipDone {
+  border-color: var(--rind);
+  background-color: var(--rind);
+}
+
+.breathLine {
+  min-height: 1.6em;
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.response {
+  min-height: 1.6em;
+}
+
+.actions {
+  display: grid;
+  gap: var(--s-3);
+  justify-items: start;
+}
+
+@media (min-width: 640px) {
+  .actions--row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+}
+
+.callout {
+  margin: 0;
+}
+
+/* The pocket card: what to say first, the line, and the door. Save draws the same card as a picture. */
+.pocket {
+  margin: 0;
+  overflow: hidden;
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+  box-shadow: 0 3px 0 var(--rule-strong);
+  text-align: left;
+}
+
+.begin {
+  padding: var(--s-4) var(--s-5);
+  background-color: var(--rind);
+  color: var(--sheet);
+}
+
+.beginLabel {
+  margin: 0;
+  font-size: var(--t-small);
+  font-weight: 700;
+}
+
+.beginLine {
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-lead);
+  line-height: var(--lh-lead);
+  overflow-wrap: anywhere;
+}
+
+.band {
+  height: 6px;
+  background-color: var(--moss);
+}
+
+.line {
+  margin: 0;
+  padding: var(--s-5) var(--s-5) var(--s-3);
+  font-size: clamp(1.5rem, 5.5vw, 1.875rem);
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.pocketArt {
+  padding: 0 var(--s-5) var(--s-4);
+}
+
+.pocketArt svg {
+  max-width: 11rem;
+}
+
+.quote {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* In the carry dialog the line is printed onto a small card: the card is there first, then the ink settles */
+.printCard {
+  margin: 0;
+  display: grid;
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+  box-shadow: 0 3px 0 var(--rule-strong);
+  text-align: left;
+}
+
+.printBegin {
+  margin: 0;
+  padding: var(--s-4) var(--s-5) 0;
+  font-size: var(--t-lead);
+  line-height: var(--lh-lead);
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.printBeginLabel {
+  display: block;
+  font-size: var(--t-small);
+  font-weight: 700;
+}
+
+.printLine {
+  margin: 0;
+  padding: var(--s-5);
+  font-size: clamp(2rem, 8vw, 3.25rem);
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  animation: print-in calc(var(--d-flourish) * var(--motion)) var(--e-out) both;
+}
+
+@keyframes print-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

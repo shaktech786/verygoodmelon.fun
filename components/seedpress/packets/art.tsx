@@ -185,15 +185,15 @@ function plainSpeaker(s: Screens): PacketPrint {
     a: (
       <>
         <path d="M62 266 L62 60 L178 60 L178 266" {...ROUND} strokeWidth="12" />
-        <path d="M74 70 L124 70 L124 260 L74 260 Z" fill="currentColor" />
-        <path d="M134 70 L168 70 L168 260 L134 260 Z" fill={s.a} />
+        <path d="M74 70 L156 70 L156 260 L74 260 Z" fill="currentColor" />
       </>
     ),
     b: (
       <>
         <path d="M20 268 L220 268" {...ROUND} strokeWidth="6" />
+        <path d="M160 276 L166 276 L174 308 L152 308 Z" fill={s.b} />
         <path d="M129 268 L118 312 M129 268 L142 312" {...ROUND} strokeWidth="3" strokeDasharray="2 7" />
-        <circle cx="114" cy="168" r="6" fill="currentColor" />
+        <circle cx="144" cy="168" r="6" fill="currentColor" />
       </>
     ),
   }

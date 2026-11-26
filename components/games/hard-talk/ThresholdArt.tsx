@@ -20,38 +20,38 @@ export function ThresholdArt({ progress, reducedMotion }: ThresholdArtProps) {
 
   return (
     <svg viewBox="0 0 160 100" className="pixelated mx-auto h-auto w-full max-w-[15rem] sm:max-w-xs" aria-hidden="true" focusable="false">
-      <rect x="8" y={FLOOR_Y} width="144" height="3" className="fill-card-border" />
+      <rect x="8" y={FLOOR_Y} width="144" height="3" className="fill-rule-strong" />
 
       <path
         d={`M${DOOR_X} ${FLOOR_Y + 3} L${DOOR_X + DOOR_W} ${FLOOR_Y + 3} L${DOOR_X + DOOR_W + 4} 99 L${DOOR_X - 6 - 40 * open} 99 Z`}
-        className="fill-warm"
+        className="fill-clay"
         style={{ opacity: open * 0.45, transition: motion }}
       />
 
-      <rect x={DOOR_X} y={DOOR_TOP} width={DOOR_W} height={FLOOR_Y - DOOR_TOP} className="fill-warm" />
-      <rect x={DOOR_X + 4} y={DOOR_TOP + 4} width={DOOR_W - 8} height={FLOOR_Y - DOOR_TOP - 4} className="fill-background" style={{ opacity: 0.25 }} />
+      <rect x={DOOR_X} y={DOOR_TOP} width={DOOR_W} height={FLOOR_Y - DOOR_TOP} className="fill-clay" />
+      <rect x={DOOR_X + 4} y={DOOR_TOP + 4} width={DOOR_W - 8} height={FLOOR_Y - DOOR_TOP - 4} className="fill-sheet" style={{ opacity: 0.3 }} />
 
-      <rect x={DOOR_X + DOOR_W - panelW} y={DOOR_TOP} height={FLOOR_Y - DOOR_TOP} width={panelW} className="fill-melon-green" style={{ transition: motion }} />
+      <rect x={DOOR_X + DOOR_W - panelW} y={DOOR_TOP} height={FLOOR_Y - DOOR_TOP} width={panelW} className="fill-moss" style={{ transition: motion }} />
       <rect
         x={DOOR_X + DOOR_W - panelW + 3}
         y={DOOR_TOP + 4}
         height={FLOOR_Y - DOOR_TOP - 8}
         width={Math.max(0, panelW - 6)}
-        className="fill-success"
-        style={{ opacity: 0.5, transition: motion }}
+        className="fill-sheet"
+        style={{ opacity: 0.35, transition: motion }}
       />
       <rect
         x={DOOR_X + DOOR_W - panelW + 2}
         y={(DOOR_TOP + FLOOR_Y) / 2 + 2}
         width="2"
         height="4"
-        className="fill-foreground"
+        className="fill-ink"
         style={{ opacity: panelW > 8 ? 1 : 0, transition: motion }}
       />
 
-      <rect x={DOOR_X - 4} y={DOOR_TOP - 4} width="4" height={FLOOR_Y - DOOR_TOP + 4} className="fill-melon-green" />
-      <rect x={DOOR_X + DOOR_W} y={DOOR_TOP - 4} width="4" height={FLOOR_Y - DOOR_TOP + 4} className="fill-melon-green" />
-      <rect x={DOOR_X - 4} y={DOOR_TOP - 4} width={DOOR_W + 8} height="4" className="fill-melon-green" />
+      <rect x={DOOR_X - 4} y={DOOR_TOP - 4} width="4" height={FLOOR_Y - DOOR_TOP + 4} className="fill-ink" />
+      <rect x={DOOR_X + DOOR_W} y={DOOR_TOP - 4} width="4" height={FLOOR_Y - DOOR_TOP + 4} className="fill-ink" />
+      <rect x={DOOR_X - 4} y={DOOR_TOP - 4} width={DOOR_W + 8} height="4" className="fill-ink" />
 
       <g style={{ transform: `translateX(${walk}px)`, transition: motion }}>
         <Envoy />
@@ -64,21 +64,21 @@ export function ThresholdArt({ progress, reducedMotion }: ThresholdArtProps) {
 function Envoy() {
   return (
     <>
-      <rect x="30" y="73" width="3" height={FLOOR_Y - 73} className="fill-foreground" />
-      <rect x="43" y="73" width="3" height={FLOOR_Y - 73} className="fill-foreground" />
-      <path d="M20 56 A18 18 0 0 0 56 56 Z" className="fill-melon-green" />
-      <path d="M22 56 A16 16 0 0 0 54 56 Z" className="fill-success" />
-      <path d="M24.5 56 A13.5 13.5 0 0 0 51.5 56 Z" className="fill-melon-red" />
-      <rect x="30" y="59" width="2.5" height="3" className="fill-foreground" />
-      <rect x="43.5" y="59" width="2.5" height="3" className="fill-foreground" />
-      <path d="M34.5 64.5 Q38 67 41.5 64.5" className="fill-none stroke-foreground" strokeWidth="1.2" strokeLinecap="round" />
-      <ellipse cx="31" cy="66.5" rx="0.9" ry="1.4" className="fill-foreground" style={{ opacity: 0.7 }} />
-      <ellipse cx="45" cy="66.5" rx="0.9" ry="1.4" className="fill-foreground" style={{ opacity: 0.7 }} />
-      <ellipse cx="38" cy="69.5" rx="0.9" ry="1.4" className="fill-foreground" style={{ opacity: 0.7 }} />
-      <rect x="53" y="63" width="5" height="1.5" className="fill-melon-green" />
-      <rect x="57" y="58" width="11" height="9" className="fill-card-bg stroke-foreground" strokeWidth="1" />
-      <rect x="59" y="60.5" width="7" height="1" className="fill-foreground" style={{ opacity: 0.6 }} />
-      <rect x="59" y="63" width="5" height="1" className="fill-foreground" style={{ opacity: 0.6 }} />
+      <rect x="30" y="73" width="3" height={FLOOR_Y - 73} className="fill-ink" />
+      <rect x="43" y="73" width="3" height={FLOOR_Y - 73} className="fill-ink" />
+      <path d="M20 56 A18 18 0 0 0 56 56 Z" className="fill-rind" />
+      <path d="M22 56 A16 16 0 0 0 54 56 Z" className="fill-rind-wash" />
+      <path d="M24.5 56 A13.5 13.5 0 0 0 51.5 56 Z" className="fill-flesh" />
+      <rect x="30" y="59" width="2.5" height="3" className="fill-ink" />
+      <rect x="43.5" y="59" width="2.5" height="3" className="fill-ink" />
+      <path d="M34.5 64.5 Q38 67 41.5 64.5" className="fill-none stroke-ink" strokeWidth="1.2" strokeLinecap="round" />
+      <ellipse cx="31" cy="66.5" rx="0.9" ry="1.4" className="fill-ink" style={{ opacity: 0.7 }} />
+      <ellipse cx="45" cy="66.5" rx="0.9" ry="1.4" className="fill-ink" style={{ opacity: 0.7 }} />
+      <ellipse cx="38" cy="69.5" rx="0.9" ry="1.4" className="fill-ink" style={{ opacity: 0.7 }} />
+      <rect x="53" y="63" width="5" height="1.5" className="fill-rind" />
+      <rect x="57" y="58" width="11" height="9" className="fill-sheet stroke-ink" strokeWidth="1" />
+      <rect x="59" y="60.5" width="7" height="1" className="fill-ink" style={{ opacity: 0.6 }} />
+      <rect x="59" y="63" width="5" height="1" className="fill-ink" style={{ opacity: 0.6 }} />
     </>
   )
 }
@@ -103,21 +103,21 @@ export function StepOutArt({ reducedMotion }: { reducedMotion: boolean }) {
   return (
     <svg viewBox="0 0 140 100" className="pixelated mx-auto h-auto w-full max-w-[16rem] sm:max-w-xs" aria-hidden="true" focusable="false">
       {!reducedMotion && <style>{STEP_OUT_STYLE}</style>}
-      <rect x="4" y={FLOOR_Y} width="132" height="3" className="fill-card-border" />
+      <rect x="4" y={FLOOR_Y} width="132" height="3" className="fill-rule-strong" />
       <path
         d={`M${gap} ${FLOOR_Y + 3} L${STEP_DOOR_X + STEP_DOOR_W} ${FLOOR_Y + 3} L${STEP_DOOR_X + STEP_DOOR_W + 10} 99 L${gap - 14} 99 Z`}
-        className={cn('fill-warm', !reducedMotion && 'plain-speaker-spill')}
+        className={cn('fill-clay', !reducedMotion && 'plain-speaker-spill')}
         style={{ opacity: 0.5 }}
       />
-      <rect x={STEP_DOOR_X} y={STEP_DOOR_TOP} width={STEP_DOOR_W} height={FLOOR_Y - STEP_DOOR_TOP} className="fill-warm" />
+      <rect x={STEP_DOOR_X} y={STEP_DOOR_TOP} width={STEP_DOOR_W} height={FLOOR_Y - STEP_DOOR_TOP} className="fill-clay" />
       <g className={cn(!reducedMotion && 'plain-speaker-crack')} style={hinge}>
-        <rect x={STEP_DOOR_X} y={STEP_DOOR_TOP} width={STEP_DOOR_W} height={FLOOR_Y - STEP_DOOR_TOP} className="fill-melon-green" />
-        <rect x={STEP_DOOR_X + 4} y={STEP_DOOR_TOP + 5} width={STEP_DOOR_W - 8} height={FLOOR_Y - STEP_DOOR_TOP - 10} className="fill-success" style={{ opacity: 0.5 }} />
-        <rect x={STEP_DOOR_X + STEP_DOOR_W - 6} y={(STEP_DOOR_TOP + FLOOR_Y) / 2 + 2} width="2.5" height="5" className="fill-foreground" />
+        <rect x={STEP_DOOR_X} y={STEP_DOOR_TOP} width={STEP_DOOR_W} height={FLOOR_Y - STEP_DOOR_TOP} className="fill-moss" />
+        <rect x={STEP_DOOR_X + 4} y={STEP_DOOR_TOP + 5} width={STEP_DOOR_W - 8} height={FLOOR_Y - STEP_DOOR_TOP - 10} className="fill-sheet" style={{ opacity: 0.35 }} />
+        <rect x={STEP_DOOR_X + STEP_DOOR_W - 6} y={(STEP_DOOR_TOP + FLOOR_Y) / 2 + 2} width="2.5" height="5" className="fill-ink" />
       </g>
-      <rect x={STEP_DOOR_X - 4} y={STEP_DOOR_TOP - 4} width="4" height={FLOOR_Y - STEP_DOOR_TOP + 4} className="fill-melon-green" />
-      <rect x={STEP_DOOR_X + STEP_DOOR_W} y={STEP_DOOR_TOP - 4} width="4" height={FLOOR_Y - STEP_DOOR_TOP + 4} className="fill-melon-green" />
-      <rect x={STEP_DOOR_X - 4} y={STEP_DOOR_TOP - 4} width={STEP_DOOR_W + 8} height="4" className="fill-melon-green" />
+      <rect x={STEP_DOOR_X - 4} y={STEP_DOOR_TOP - 4} width="4" height={FLOOR_Y - STEP_DOOR_TOP + 4} className="fill-ink" />
+      <rect x={STEP_DOOR_X + STEP_DOOR_W} y={STEP_DOOR_TOP - 4} width="4" height={FLOOR_Y - STEP_DOOR_TOP + 4} className="fill-ink" />
+      <rect x={STEP_DOOR_X - 4} y={STEP_DOOR_TOP - 4} width={STEP_DOOR_W + 8} height="4" className="fill-ink" />
       <g transform="translate(8 0)">
         <Envoy />
       </g>
@@ -142,14 +142,14 @@ export function BreathMelon({ breathingIn, reducedMotion }: BreathMelonProps) {
           breathingIn ? 'scale-100' : 'scale-[0.72]',
         )}
       >
-        <circle cx="50" cy="50" r="46" className="fill-melon-green" />
-        <circle cx="50" cy="50" r="40" className="fill-success" />
-        <circle cx="50" cy="50" r="35" className="fill-melon-red" />
-        <ellipse cx="38" cy="40" rx="2.4" ry="3.6" className="fill-foreground" />
-        <ellipse cx="62" cy="40" rx="2.4" ry="3.6" className="fill-foreground" />
-        <ellipse cx="50" cy="60" rx="2.4" ry="3.6" className="fill-foreground" />
-        <ellipse cx="36" cy="62" rx="2.4" ry="3.6" className="fill-foreground" />
-        <ellipse cx="64" cy="62" rx="2.4" ry="3.6" className="fill-foreground" />
+        <circle cx="50" cy="50" r="46" className="fill-rind" />
+        <circle cx="50" cy="50" r="40" className="fill-rind-wash" />
+        <circle cx="50" cy="50" r="35" className="fill-flesh" />
+        <ellipse cx="38" cy="40" rx="2.4" ry="3.6" className="fill-ink" />
+        <ellipse cx="62" cy="40" rx="2.4" ry="3.6" className="fill-ink" />
+        <ellipse cx="50" cy="60" rx="2.4" ry="3.6" className="fill-ink" />
+        <ellipse cx="36" cy="62" rx="2.4" ry="3.6" className="fill-ink" />
+        <ellipse cx="64" cy="62" rx="2.4" ry="3.6" className="fill-ink" />
       </svg>
     </div>
   )

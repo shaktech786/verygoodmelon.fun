@@ -33,7 +33,7 @@ describe('The Plain Speaker, when the line sounds like someone in danger', () =>
   it('puts the helplines first and makes no keepsake to save or share', async () => {
     renderAtCarry('I’m planning to kill myself after we talk')
 
-    const helpline = await screen.findByRole('link', { name: '988' })
+    const helpline = await screen.findByRole('link', { name: /988/ })
     expect(helpline.closest('aside')).toHaveAccessibleName('Support')
     for (const action of keepsakeActions()) expect(action).not.toBeInTheDocument()
     expect(screen.queryByText(/planning to kill myself/i)).not.toBeInTheDocument()
@@ -45,7 +45,7 @@ describe('The Plain Speaker, when the line sounds like someone in danger', () =>
 
     expect(await screen.findByRole('button', { name: /Save the card as a picture/ })).toBeInTheDocument()
     expect(screen.getByText('I miss how we used to talk.')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: '988' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /988/ })).not.toBeInTheDocument()
     expect(localStorage.getItem('verygoodmelon:care')).toBeNull()
   })
 })
