@@ -1213,7 +1213,7 @@ Spacing keeps Tailwind's 4 px `--spacing` base, which already matches §5.3.
 | `--melon-orange`, `--melon-yellow`, `--warm` | `--clay` |
 | `--melon-pink` | `--flesh` |
 
-They live in `styles/legacy-aliases.css` and are deleted in Phase 7.
+They lived in `styles/legacy-aliases.css`, which Phase 7 deleted.
 
 ### 10.2 Enforcement
 
@@ -1441,6 +1441,17 @@ Each batch converts the buttons and choice cards to seedpress, moves art onto `g
 
 **Files:** `app/globals.css`, `app/styles/legacy-aliases.css`, `scripts/*`, `.github/workflows/*`, `lighthouserc.json`.
 
+**As built (Phase 7):**
+- `design-debt.json` is deleted and `check:design` is strict: every rule fails on any match (the ratchet and `--write-debt` are gone; `check:red` stays an alias). The five debt files were fixed, not recorded: `typography.ts`, `constants.ts` and their test were dead and deleted; the email templates take their colours from `PALETTES.light` in `lib/design/tokens.ts` (rind for the heading and link, the one flesh fill on the "Back to The Sage" button, so the old red text is gone); `ErrorBoundary` lost the word "infinite" from a comment; the `banned-utility` rule no longer reads a `/tracking-…` URL as a utility.
+- The full namespace reset is in `app/globals.css` (`--color-*`, `--text-*`, `--shadow-*`, `--radius-*`, `--font-*`, `--ease-*`, `--animate-*`, `--drop-shadow-*`, `--blur-*`). It maps only the system values, plus `--text-h2` and `--text-h1` from existing tokens, because the old `text-3xl`…`text-5xl` headings needed a size. `legacy-aliases.css` and every transition alias are gone; `globals.css` plus `styles/` is 572 lines and 14 KB source.
+- Classes converted so nothing silently vanished: `text-xs`/`text-sm` to `text-meta`, `text-base` `text-small`, `text-lg` `text-body`, `text-xl` `text-lead`, `text-2xl` `text-h3`, `text-3xl`/`text-4xl` `text-h2`, `text-5xl` `text-h1`; `rounded`/`-sm`/`-md` to `rounded-stamp`, `rounded-lg`/`-xl` `rounded-sheet`; `text-foreground`, `bg-background`, `bg-card-bg`, `border-card-border`, `hover:bg-hover-bg` to `text-ink`, `bg-paper`, `bg-sheet`, `border-rule-strong`, `hover:bg-rind-wash`; `font-serif` (The Philosopher) to `font-body`, or `font-display` for titles of 24 px and up. Dead classes (`focus-visible:ring-focus-ring`, `outline-focus-ring!`) were deleted; the one stock ease in a class became `ease-out`.
+- `scripts/check-classes.mjs` (`npm run check:classes`, run after the build in `qa` and CI) lists every utility-looking word in `app/` and `components/` that the build has no rule for. Words that only look like utilities are named in its `NOT_CLASSES` set.
+- Old settings: `migrateSettings` is now `parseSettings`, which reads only the current shape. On load, `shakfun:accessibility:settings`, the `verygoodmelon:press:sense` session key, and any field in the saved object that is no longer a setting (`pauseAnimations`, `colorblindMode`, `animationSpeed` and so on) are removed once.
+- `lighthouserc.json` runs `/`, `/games`, The Patient One, The Sage, The Optimist and `/support`, with performance at `error` 0.90 and accessibility, best practices and SEO at `error` 0.95. `/press/home` is out.
+- `__tests__/visual` is one file: `/press`, `/`, `/games` and one game per batch (The Patient One, The Final Word, The Sage, The Shapeshifter) at 390, 1440 and 2560 in Light, Dark and Light-Quiet, reduced motion forced. No baselines are committed; the Visual workflow writes the Linux ones when none exist. It stays `continue-on-error` until they are committed.
+- The Optimist's loading state holds 90svh so the "Continue your journey" block no longer jumps when today's story arrives (CLS 0.394 to 0.003).
+- Test edits: the First Breath care spec probes the red with `bg-flesh` instead of `bg-accent` (same colour, the old name no longer generates a rule); `round-feel.test.ts` expects the new size names.
+
 **Risk:** low. Anything the reset breaks shows as a visual diff.
 
 **Phase summary:**
@@ -1462,7 +1473,7 @@ Each batch converts the buttons and choice cards to seedpress, moves art onto `g
 
 ### 12.1 Accessibility gates (blocking from the phase that touches each surface)
 
-- axe reports zero violations, including `color-contrast` and `target-size`, on every route at 390 and 1440, across Light, Dark, Light-Quiet and High.
+- axe reports zero violations, including `color-contrast` and `target-size`, on every route at 390 and 1440, across Light, Dark, Light-Quiet and High. **Met in Phase 7 for the tested routes:** the e2e suite's axe runs pass; Lighthouse accessibility is 100 on all 18 URLs.
 - Every role pair passes in all six palettes (`tokens.test.ts`), and every keepsake glyph is at 4.5:1 or more (`contrast.test.ts`).
 - Keyboard-only completion of every game. The existing e2e specs already drive the games by keyboard; any that use a mouse get a keyboard twin.
 - Reduced motion produces no transform animations: `getAnimations()` shows only opacity transitions of 160 ms or less.
@@ -1473,12 +1484,12 @@ Each batch converts the buttons and choice cards to seedpress, moves art onto `g
 
 ### 12.2 Performance
 
-- Lighthouse mobile ≥90 for performance and ≥95 for accessibility, best practices and SEO, on `/`, `/games`, one game per shelf and `/support`. It runs on push, not only on PRs.
-- Fonts transfer ≤75 KB in total, and ≤64 KB if Bricolage instancing hits its target.
-- The homepage LCP element is the h1, under 2.5 s on Lighthouse's mobile profile.
-- CLS is under 0.05; font fallback metrics are adjusted.
+- Lighthouse mobile ≥90 for performance and ≥95 for accessibility, best practices and SEO, on `/`, `/games`, one game per shelf and `/support`. It runs on push, not only on PRs. **Met** on the six configured URLs (local production build, mobile profile): performance 100, 100, 100, 100, 100, 100; accessibility 100; best practices 96; SEO 100. Of the 18 URLs, four games not in the CI set score under 90 on performance: The Shapeshifter 84, The Keeper 80, The Plain Speaker 86, The Philosopher 86 (client-rendered, so the LCP element, a paragraph, arrives late at 4.0 to 4.3 s on the throttled profile). **Not met** for those four.
+- Fonts transfer ≤75 KB in total, and ≤64 KB if Bricolage instancing hits its target. **Met:** 58 KB on most pages, 70 KB on The Alchemist and The Shapeshifter (the ≤64 KB target is not met there).
+- The homepage LCP element is the h1, under 2.5 s on Lighthouse's mobile profile. **Met:** `h1.sp-sign__title`, 0.91 s.
+- CLS is under 0.05; font fallback metrics are adjusted. **Met on the configured URLs** (0.000 on `/`, `/games`, `/support`, The Patient One and The Sage; 0.003 on The Optimist). **Not met** on The Keeper (0.146), The Plain Speaker (0.075) and The Shapeshifter (0.073): their game stage grows after hydration and moves the block below it.
 - No JavaScript for decoration: AmbientParticles is gone, and all chrome motion is CSS. Client JavaScript on `/` does not grow against the pre-Phase-2 build (`next build` route sizes are recorded in the Phase 2 commit message).
-- `globals.css` plus the styles total under 30 KB minified, down from today's 1,421-line file.
+- `globals.css` plus the styles total under 30 KB minified, down from today's 1,421-line file. **Met:** 572 lines, 14 KB unminified (`globals.css`, `base.css`, `tokens.css`).
 
 ### 12.3 Owner sign-off checklist (Phase 1 at `/press`, Phase 7 site-wide)
 
