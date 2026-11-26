@@ -4,22 +4,24 @@ import { join } from 'node:path'
 import { Children, isValidElement, type ReactNode } from 'react'
 import { PRINTS } from '@/components/seedpress/packets/art'
 import { PACKET_INKS } from '@/components/seedpress/shelves'
+import { ALL_GAMES } from '@/lib/games/config'
 import { PALETTES, type ColorRole } from '@/lib/design/tokens'
 
-export const OG_SIZE = { width: 1200, height: 630 }
+const OG_SIZE = { width: 1200, height: 630 }
 
 // ImageResponse reads ttf, not woff2, so the faces in app/fonts are cut again as static ttf instances (app/fonts/README).
-const fonts = Promise.all(
-  [
-    ['AtkinsonHyperlegibleNext-Regular.ttf', 'Atkinson', 400],
-    ['AtkinsonHyperlegibleNext-Bold.ttf', 'Atkinson', 700],
-    ['BricolageGrotesque-ExtraBold.ttf', 'Bricolage', 800],
-  ] as const,
-).then((files) =>
-  Promise.all(
-    files.map(async ([file, name, weight]) => ({ name, weight, style: 'normal' as const, data: await readFile(join(process.cwd(), 'app/fonts/og', file)) })),
-  ),
-)
+// Literal paths, so the file tracer puts them in the function bundle; read per request, so a failed read is never cached.
+function loadFonts() {
+  return Promise.all([
+    readFile(join(process.cwd(), 'app/fonts/og/AtkinsonHyperlegibleNext-Regular.ttf')),
+    readFile(join(process.cwd(), 'app/fonts/og/AtkinsonHyperlegibleNext-Bold.ttf')),
+    readFile(join(process.cwd(), 'app/fonts/og/BricolageGrotesque-ExtraBold.ttf')),
+  ]).then(([regular, bold, display]) => [
+    { name: 'Atkinson', weight: 400 as const, style: 'normal' as const, data: regular },
+    { name: 'Atkinson', weight: 700 as const, style: 'normal' as const, data: bold },
+    { name: 'Bricolage', weight: 800 as const, style: 'normal' as const, data: display },
+  ])
+}
 
 const P = PALETTES.light
 const role = (name: string): string => P[name as ColorRole] ?? P.ink
@@ -62,7 +64,7 @@ interface GameCardProps {
 }
 
 /** A game's share image: the new paper, the title in Bricolage, the words in Atkinson and the game's two-ink packet print. */
-export async function gameCardImage({ title, description, gameId }: GameCardProps) {
+async function gameCardImage({ title, description, gameId }: GameCardProps) {
   const print = gameId ? printImage(gameId) : null
   return new ImageResponse(
     (
@@ -94,6 +96,12 @@ export async function gameCardImage({ title, description, gameId }: GameCardProp
         )}
       </div>
     ),
-    { ...OG_SIZE, fonts: await fonts },
+    { ...OG_SIZE, fonts: await loadFonts() },
   )
+}
+
+/** The share image for the game with this id, from its title and description in the game config. */
+export function gameImage(gameId: string) {
+  const game = ALL_GAMES.find((g) => g.id === gameId)
+  return gameCardImage({ title: game?.title ?? 'VeryGoodMelon.Fun', description: game?.description ?? 'Thoughtful games to reduce anxiety', gameId })
 }
