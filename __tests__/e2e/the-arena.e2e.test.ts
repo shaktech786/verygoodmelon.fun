@@ -496,15 +496,19 @@ test.describe('The Arena', () => {
     await expect(page.getByLabel('First debater')).toHaveValue('Jane Austen')
     await expect(page.getByLabel('Second debater')).toHaveValue('Sherlock Holmes')
     await expect(page.getByLabel('Topic')).toHaveValue('Can you reason your way into love?')
-    const colours = await pairing.evaluate((el) => {
-      const probe = document.createElement('span')
-      probe.style.color = 'var(--chosen-line)'
-      el.appendChild(probe)
-      const chosen = getComputedStyle(probe).color
-      probe.remove()
-      return { border: getComputedStyle(el).borderTopColor, chosen }
-    })
-    expect(colours.border).toBe(colours.chosen)
+    // Polled: the border eases to rind, so a single read under load can land mid-transition
+    await expect
+      .poll(() =>
+        pairing.evaluate((el) => {
+          const probe = document.createElement('span')
+          probe.style.color = 'var(--chosen-line)'
+          el.appendChild(probe)
+          const chosen = getComputedStyle(probe).color
+          probe.remove()
+          return getComputedStyle(el).borderTopColor === chosen
+        })
+      )
+      .toBe(true)
 
     // Changing a field by hand turns it into your own pairing
     await page.getByLabel('Topic').fill('Is love a kind of reasoning?')
