@@ -247,7 +247,7 @@ export default function PressSpecimen() {
           <h2 id="stamps-heading" className="sp-h2">
             Seed stamps
           </h2>
-          <p className="sp-soft">Drawn by hand on a 12 by 12 grid, each with one nicked cell, like a rubber stamp.</p>
+          <p className="sp-soft">Drawn by hand on a 12 by 12 grid, most with a nicked cell, like a rubber stamp.</p>
           <ul className="sp-glyphs">
             {(Object.keys(GLYPHS) as IconName[]).map((name) => (
               <li key={name} className="sp-glyph">

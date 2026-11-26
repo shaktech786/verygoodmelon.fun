@@ -1,8 +1,8 @@
 'use client'
 
 import { useRef } from 'react'
-import { Check, PenLine } from 'lucide-react'
 import { ARENA_VOICE_COLOURS, EMBLEM_ROWS, PAIRINGS, deckStep, type EmblemId } from '@/lib/games/arena-pairings'
+import { Icon } from '@/components/seedpress/icons/Icon'
 
 const { light, dark } = ARENA_VOICE_COLOURS
 
@@ -124,7 +124,7 @@ export function PairingDeck({ selected, onPick, onWriteOwn }: PairingDeckProps) 
                 className="absolute -top-2 -right-2 flex items-center justify-center w-6 h-6 rounded-full bg-chosen-line text-background"
                 aria-hidden="true"
               >
-                <Check size={14} strokeWidth={3} />
+                <Icon name="done" size={16} />
               </span>
             )}
           </button>
@@ -138,7 +138,7 @@ export function PairingDeck({ selected, onPick, onWriteOwn }: PairingDeckProps) 
         onClick={onWriteOwn}
         className={`${CARD} border-dashed sm:col-span-full flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 px-3 py-4 text-center`}
       >
-        <PenLine size={22} className="text-melon-green" aria-hidden="true" />
+        <Icon name="pen" size={24} className="text-melon-green" />
         <span className="text-sm font-semibold text-foreground">Write your own</span>
         <span className="text-[13px] text-foreground/75">any two minds, real or imagined</span>
         {selected === OWN_CARD && (
@@ -146,7 +146,7 @@ export function PairingDeck({ selected, onPick, onWriteOwn }: PairingDeckProps) 
             className="absolute -top-2 -right-2 flex items-center justify-center w-6 h-6 rounded-full bg-chosen-line text-background"
             aria-hidden="true"
           >
-            <Check size={14} strokeWidth={3} />
+            <Icon name="done" size={16} />
           </span>
         )}
       </button>

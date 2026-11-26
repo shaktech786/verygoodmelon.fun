@@ -1,7 +1,7 @@
 'use client'
 
-import { Shuffle, Video } from 'lucide-react'
 import { getThinkerById, type Thinker } from '@/lib/games/timeless-minds/thinkers'
+import { Icon } from '@/components/seedpress/icons/Icon'
 
 // A few warm, very different voices to start from; everyone else waits in the directory once talking
 const FIRST_CHOICES = ['socrates', 'buddha', 'marie-curie', 'maya-angelou']
@@ -42,7 +42,7 @@ export default function TimelessMindsChooser({ care, onChoose, onSurprise }: Tim
                 <span className="block font-semibold leading-tight text-foreground">{thinker.name}</span>
                 <span className="block text-sm text-foreground/70">{thinker.field}</span>
               </span>
-              <Video size={20} className="shrink-0 text-foreground/70" aria-hidden="true" />
+              <Icon name="camera" size={24} className="shrink-0 text-foreground/70" />
             </button>
           </li>
         ))}
@@ -53,7 +53,7 @@ export default function TimelessMindsChooser({ care, onChoose, onSurprise }: Tim
           onClick={onSurprise}
           className="bg-background text-foreground border-card-border min-h-[44px] inline-flex items-center gap-2 rounded-full border px-5 text-sm sm:text-base hover:border-chosen-line transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
-          <Shuffle size={18} aria-hidden="true" />
+          <Icon name="dice" size={16} />
           Surprise me
         </button>
       </div>

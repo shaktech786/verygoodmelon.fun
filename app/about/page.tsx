@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { ExternalLink } from 'lucide-react'
+import { Icon } from '@/components/seedpress/icons/Icon'
 
 export const metadata: Metadata = {
   title: 'About | VeryGoodMelon.Fun',
@@ -73,7 +73,7 @@ export default function AboutPage() {
                 className="inline-flex items-center gap-2 text-accent hover:underline transition-colors"
               >
                 Website
-                <ExternalLink size={16} />
+                <Icon name="external" size={16} />
               </a>
               <a
                 href="https://linkedin.com/in/shakeelbhamani"
@@ -82,7 +82,7 @@ export default function AboutPage() {
                 className="inline-flex items-center gap-2 text-accent hover:underline transition-colors"
               >
                 LinkedIn
-                <ExternalLink size={16} />
+                <Icon name="external" size={16} />
               </a>
               <a
                 href="https://github.com/shaktech786"
@@ -91,7 +91,7 @@ export default function AboutPage() {
                 className="inline-flex items-center gap-2 text-accent hover:underline transition-colors"
               >
                 GitHub
-                <ExternalLink size={16} />
+                <Icon name="external" size={16} />
               </a>
             </div>
           </div>

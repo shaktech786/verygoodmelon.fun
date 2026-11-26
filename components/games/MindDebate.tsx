@@ -4,7 +4,6 @@ import { REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Button, buttonClassName } from '@/components/ui/Button'
 import { StickyTray } from '@/components/seedpress/StickyTray'
-import { MessagesSquare, RotateCcw, Loader2, Square, Play, Shuffle, UserRound, HelpCircle, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { PAIRINGS, pairingIndexOf, type EmblemId } from '@/lib/games/arena-pairings'
 import { ARENA_VOICES_CSS, Emblem, OWN_CARD, PairingDeck, VOICE, VoiceMarker, voiceTint } from '@/components/games/ArenaPairingDeck'
@@ -14,6 +13,7 @@ import { useCareMode } from '@/components/games/CareMode'
 import { OwnSupportMark } from '@/components/games/OwnSupport'
 import { HelplineSentence } from '@/components/games/HelplineSentence'
 import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
+import { Icon } from '@/components/seedpress/icons/Icon'
 
 interface DebateEntry {
   speaker: string
@@ -566,7 +566,7 @@ export default function MindDebate() {
               disabled={!canStart}
               className={buttonClassName('primary', 'md', 'flex-1 flex items-center justify-center gap-2')}
             >
-              <MessagesSquare size={18} aria-hidden="true" />
+              <Icon name="chat" size={16} />
               Begin
             </button>
             <Button
@@ -575,7 +575,7 @@ export default function MindDebate() {
               onClick={handleSurprise}
               className="flex items-center justify-center gap-2"
             >
-              <Shuffle size={18} aria-hidden="true" />
+              <Icon name="dice" size={16} />
               Surprise me
             </Button>
           </StickyTray>
@@ -586,7 +586,7 @@ export default function MindDebate() {
 
   if (phase === 'care') {
     return (
-      <div className="max-w-2xl mx-auto animate-fade" role="region" aria-label="Support">
+      <div className="max-w-2xl mx-auto" role="region" aria-label="Support">
         <OwnSupportMark />
         <section
           aria-labelledby="arena-care-heading"
@@ -609,7 +609,7 @@ export default function MindDebate() {
         </section>
         <div className="mt-4 flex justify-center">
           <Button onClick={() => backToSetup('topic')} variant="secondary" className={ACTION}>
-            <RotateCcw size={16} aria-hidden="true" />
+            <Icon name="reset" size={16} />
             Back to the start
           </Button>
         </div>
@@ -692,7 +692,6 @@ export default function MindDebate() {
 
         {waitingForTurn && (
           <div className="flex items-center justify-center gap-2 py-3 text-foreground/75">
-            <Loader2 size={18} className={reducedMotion ? '' : 'animate-spin'} aria-hidden="true" />
             <span className="text-sm break-words">{nextSpeaker} is thinking...</span>
           </div>
         )}
@@ -711,7 +710,6 @@ export default function MindDebate() {
 
         {phase === 'judging' && (
           <div className="flex items-center justify-center gap-2 py-6 text-foreground/75">
-            <Loader2 size={18} className={reducedMotion ? '' : 'animate-spin'} aria-hidden="true" />
             <span className="text-sm">Letting it settle...</span>
           </div>
         )}
@@ -743,30 +741,30 @@ export default function MindDebate() {
             className={buttonClassName('primary', 'md', `${ACTION} aria-disabled:opacity-60 aria-disabled:cursor-default`)}
           >
             Next turn
-            <ChevronRight size={16} aria-hidden="true" />
+            <Icon name="next" size={16} />
           </button>
         )}
         {phase === 'debating' && (
           <button ref={stopRef} type="button" onClick={handleStop} className={buttonClassName('secondary', 'md', ACTION)}>
-            <Square size={16} aria-hidden="true" />
+            <Icon name="stop" size={16} />
             Stop
           </button>
         )}
         {phase === 'stopped' && history.length < TOTAL_ROUNDS && (
           <button ref={continueRef} type="button" onClick={runDebate} className={buttonClassName('primary', 'md', ACTION)}>
-            <Play size={16} aria-hidden="true" />
+            <Icon name="play" size={16} />
             {interruption ? 'Try again' : 'Continue'}
           </button>
         )}
         {phase === 'declined' && declineReason === 'voice' && (
           <button ref={declineActionRef} type="button" onClick={() => backToSetup('person1')} className={buttonClassName('primary', 'md', ACTION)}>
-            <UserRound size={16} aria-hidden="true" />
+            <Icon name="person" size={16} />
             Choose other voices
           </button>
         )}
         {phase === 'declined' && declineReason === 'topic' && (
           <button ref={declineActionRef} type="button" onClick={() => backToSetup('topic')} className={buttonClassName('primary', 'md', ACTION)}>
-            <HelpCircle size={16} aria-hidden="true" />
+            <Icon name="help" size={16} />
             Ask another question
           </button>
         )}
@@ -777,12 +775,12 @@ export default function MindDebate() {
             onClick={handleSurprise}
             className={buttonClassName(phase === 'declined' && declineReason === null ? 'primary' : 'secondary', 'md', ACTION)}
           >
-            <Shuffle size={16} aria-hidden="true" />
+            <Icon name="dice" size={16} />
             Surprise me
           </button>
         )}
         <Button onClick={() => backToSetup()} variant={phase === 'closing' ? 'primary' : 'secondary'} className={ACTION}>
-          <RotateCcw size={16} aria-hidden="true" />
+          <Icon name="reset" size={16} />
           New debate
         </Button>
       </StickyTray>

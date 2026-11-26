@@ -110,7 +110,7 @@
     "banned-utility": 1
   },
   "components/games/MindDebate.tsx": {
-    "animate": 6,
+    "animate": 3,
     "banned-utility": 1
   },
   "components/games/TheUnrusher.tsx": {

@@ -5,7 +5,6 @@ import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { NoteDialog } from '@/components/seedpress/NoteDialog'
 import { Stamp } from '@/components/seedpress/Stamp'
-import { Trash2, RotateCcw, FlaskConical } from 'lucide-react'
 import { BASE_CONCEPTS, findKnownCombination, type Concept } from '@/lib/games/idea-lab/concepts'
 import { WORK_TITLES, goldsFor, isGolden, type GoldenIdea } from '@/lib/games/idea-lab/golds'
 import {
@@ -15,6 +14,7 @@ import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { FRESH_GOLD_ID, GoldShelf } from '@/components/games/idea-lab/GoldShelf'
 import { LetterScene } from '@/components/games/idea-lab/LetterScene'
 import { IdeaCabinet } from '@/components/games/idea-lab/IdeaCabinet'
+import { Icon } from '@/components/seedpress/icons/Icon'
 
 interface CombinationResult {
   name: string
@@ -399,7 +399,7 @@ export default function IdeaLab() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="max-w-lg text-center animate-fade">
-          <FlaskConical className="mx-auto mb-6 text-warm" size={56} strokeWidth={1.5} aria-hidden="true" />
+          <Icon name="flask" size={48} className="mx-auto mb-6 text-warm" />
           <p className="text-lg text-foreground/80 mb-3 leading-relaxed">
             Seven of them are gold, each hidden behind a riddle, and the heaviest feelings are often the way there.
           </p>
@@ -462,7 +462,7 @@ export default function IdeaLab() {
     <div className={`${benchCell} ${compact ? 'rounded-lg' : 'rounded-xl'} ${resultTone}`}>
       {isCombining ? (
         <>
-          <FlaskConical className={`text-foreground/70 ${reducedMotion ? '' : 'animate-pulse'}`} size={compact ? 16 : 28} aria-hidden="true" />
+          <Icon name="flask" size={compact ? 16 : 24} className={`text-foreground/70 ${reducedMotion ? '' : 'animate-pulse'}`} />
           <span className="text-xs text-foreground/70 mt-1">Combining...</span>
         </>
       ) : lastResult ? (
@@ -493,7 +493,7 @@ export default function IdeaLab() {
 
   const clearButton = hasBench && !isCombining && (
     <Button onClick={handleClearSelection} variant="ghost" className="text-sm inline-flex items-center min-h-[44px]">
-      <Trash2 size={14} className="mr-2" aria-hidden="true" />
+      <Icon name="trash" size={16} className="mr-2" />
       Clear
     </Button>
   )
@@ -516,7 +516,7 @@ export default function IdeaLab() {
                   className="p-2 min-w-[44px] min-h-[44px]"
                   aria-label="Reset all discoveries"
                 >
-                  <RotateCcw size={18} aria-hidden="true" />
+                  <Icon name="reset" size={16} />
                 </Button>
               </div>
             </div>

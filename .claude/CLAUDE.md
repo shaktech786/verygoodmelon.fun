@@ -86,7 +86,7 @@ The site is moving to **Seedpress**, a two-ink print-shop system. The spec is `d
 - **Shapes**: sheet (14 px radius), stamp (10 px, 2 px edge, 3 px printed bottom), slice (the Go only). No blurred shadows: height is a printed edge.
 - **Motion budget** (PLAN.md §4): S0 still, S1 responds to a press (≤160 ms, ≤4 px), S2 one local flourish, S3 one earned showpiece per session. Chrome never loops. Multiply durations by `--motion`, which Quiet and reduced motion set to 0.
 - **The sensory dial** (Quiet, Gentle default, Lively) sets `data-sense`; Quiet must feel softer, not broken.
-- **Icons are seed stamps** (`components/seedpress/icons`, 12×12 ASCII grids), not lucide.
+- **Icons are seed stamps** (`components/seedpress/icons`, 12×12 ASCII grids). Lucide is removed.
 - **Game art** reads its colours from tokens, never hex; each game is a two-ink packet print (`components/seedpress/packets/art.tsx`).
 - **Every new game ships** a packet print, a game ink map and its one stimulating moment written into PLAN.md §9 before its first commit.
 

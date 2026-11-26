@@ -1,9 +1,9 @@
 import { forwardRef, useMemo, useState } from 'react'
-import { FlaskConical } from 'lucide-react'
 import { Keepsake } from '@/components/games/Keepsake'
 import type { Concept } from '@/lib/games/idea-lab/concepts'
 import { composeLetter } from '@/lib/games/idea-lab/golds'
 import { alchemistKeepsake } from '@/lib/keepsake/alchemist'
+import { Icon } from '@/components/seedpress/icons/Icon'
 
 interface LetterSceneProps {
   work: number
@@ -29,7 +29,7 @@ export const LetterScene = forwardRef<HTMLHeadingElement, LetterSceneProps>(func
       aria-labelledby="idea-lab-letter-title"
       className={`mb-6 rounded-xl border-2 border-warm bg-warm/10 px-5 py-6 sm:px-10 sm:py-8 ${reducedMotion ? '' : 'animate-fade'}`}
     >
-      <FlaskConical className="mx-auto mb-3 text-foreground/70" size={32} strokeWidth={1.5} aria-hidden="true" />
+      <Icon name="flask" size={36} className="mx-auto mb-3 text-foreground/70" />
       <h2
         id="idea-lab-letter-title"
         ref={headingRef}

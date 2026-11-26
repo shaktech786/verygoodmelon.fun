@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { StickyTray } from '@/components/seedpress/StickyTray'
 import { useRealtimeVotes } from '@/lib/hooks/useRealtimeVotes'
@@ -10,6 +9,7 @@ import { DILEMMAS, type Choice, type ChoiceId } from '@/lib/games/hard-choices/d
 import { keepKnownAnswers, keepKnownIds, type Answer, type Answers } from '@/lib/games/hard-choices/answers'
 import { dilemmaConstellation, dilemmaKeepsake } from '@/lib/keepsake/dilemma'
 import { Keepsake } from './Keepsake'
+import { Icon } from '@/components/seedpress/icons/Icon'
 
 const ANSWERS_KEY = 'hardChoicesVotes'
 const COUNTED_KEY = 'hardChoicesCounted'
@@ -451,7 +451,7 @@ export default function HardChoices() {
                               selected ? 'border-melon-green bg-melon-green text-background' : 'border-foreground/25 text-foreground/75'
                             }`}
                           >
-                            {selected ? <Check size={18} strokeWidth={3} /> : id}
+                            {selected ? <Icon name="done" size={16} /> : id}
                           </span>
                           <span className="flex-1 pt-0.5 text-lg">
                             {choice.text}

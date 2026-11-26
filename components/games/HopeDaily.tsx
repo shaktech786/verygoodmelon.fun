@@ -2,7 +2,6 @@
 
 import { EXTRA_TIMEOUT_MS, REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 import { useState, useEffect, useMemo, useRef, useId, type FormEvent } from 'react'
-import { Share2 } from 'lucide-react'
 import { Keepsake } from '@/components/games/Keepsake'
 import { optimistKeepsake } from '@/lib/keepsake/optimist'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
@@ -30,6 +29,7 @@ import {
   letterDropDelayMs,
   lettersLandAfterSeconds,
 } from '@/lib/games/hope-daily/solved'
+import { Icon } from '@/components/seedpress/icons/Icon'
 
 interface Puzzle {
   category: string
@@ -678,7 +678,7 @@ function EndingStory({ reveal, fadeIn, shareNote, onShare }: EndingStoryProps) {
           onClick={() => onShare(reveal)}
           className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-melon-green text-background hover:opacity-90 transition-opacity"
         >
-          <Share2 size={16} aria-hidden="true" />
+          <Icon name="share" size={16} />
           Pass the good news on
         </button>
         <p className="text-sm text-foreground/70" role="status" aria-live="polite">{shareNote}</p>

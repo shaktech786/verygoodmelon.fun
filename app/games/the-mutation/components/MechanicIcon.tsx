@@ -1,20 +1,20 @@
-import { Move, MousePointer2, Star, Gem, Ghost, Waves, Sparkles, Wind, Music2, Magnet, Flower2, type LucideIcon } from 'lucide-react'
+import { Icon } from '@/components/seedpress/icons/Icon'
+import type { IconName } from '@/components/seedpress/icons/glyphs'
 
-const ICONS: Record<string, LucideIcon> = {
-  arrow_keys: Move,
-  mouse_follow: MousePointer2,
-  stars: Star,
-  pulse_gems: Gem,
-  chasers: Ghost,
-  sweepers: Waves,
-  blaster: Sparkles,
-  phase_dash: Wind,
-  combo_chain: Music2,
-  gravity_well: Magnet,
-  score_rush: Flower2,
+const ICONS: Record<string, IconName> = {
+  arrow_keys: 'move',
+  mouse_follow: 'cursor',
+  stars: 'star',
+  pulse_gems: 'gem',
+  chasers: 'ghost',
+  sweepers: 'waves',
+  blaster: 'sparkles',
+  phase_dash: 'wind',
+  combo_chain: 'music',
+  gravity_well: 'magnet',
+  score_rush: 'flower',
 }
 
-export function MechanicIcon({ id, size = 16 }: { id: string; size?: number }) {
-  const Icon = ICONS[id] ?? Sparkles
-  return <Icon size={size} aria-hidden="true" />
+export function MechanicIcon({ id }: { id: string }) {
+  return <Icon name={ICONS[id] ?? 'sparkles'} size={16} />
 }

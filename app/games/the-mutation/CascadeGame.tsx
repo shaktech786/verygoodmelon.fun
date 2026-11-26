@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
 import localFont from 'next/font/local'
-import { Pause } from 'lucide-react'
 import type { CluePlace, DiscoveryEvent, GameState, MutationResult, MutationRecord, PathPoint, Sleeping } from './engine/types'
 import { DEFAULT_PARAMS, GAME_W, GAME_H, ENDING } from './engine/types'
 import { cluePlaces, getProfileSummary } from './engine/engine'
@@ -16,6 +15,7 @@ import TitleScreen from './components/TitleScreen'
 import FinaleScreen from './components/FinaleScreen'
 import { isControlTarget } from './components/controls'
 import { MechanicIcon } from './components/MechanicIcon'
+import { Icon } from '@/components/seedpress/icons/Icon'
 import './screen.css'
 
 // The Shapeshifter's arcade screen keeps its pixel face, self-hosted like the Seedpress fonts (app/fonts/README)
@@ -434,7 +434,7 @@ export default function CascadeGame() {
               <div className="absolute top-8 inset-x-3 flex justify-center" data-testid="rule-named">
                 <div className={`max-w-sm text-center rounded-lg border border-card-border bg-card-bg/90 px-4 py-2.5 ${fade}`}>
                   <p className={`flex items-center justify-center gap-2 text-[11px] sm:text-sm leading-relaxed text-melon-green break-words shapeshifter-neon ${retroFont.className}`}>
-                    <MechanicIcon id={named.id} size={16} />
+                    <MechanicIcon id={named.id} />
                     {named.title}
                   </p>
                   <p className="text-sm text-foreground mt-1 break-words">{named.description}</p>
@@ -511,7 +511,7 @@ export default function CascadeGame() {
               onClick={pause}
               className="inline-flex items-center gap-2 min-h-11 px-4 rounded-lg border border-card-border bg-card-bg text-sm text-foreground/85 hover:text-foreground cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
-              <Pause size={16} aria-hidden="true" />
+              <Icon name="pause" size={16} />
               Pause
             </button>
             {!isTouch && <KeyHints>Esc or P also pauses. C tells you where the clues are.</KeyHints>}

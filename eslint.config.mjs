@@ -45,7 +45,7 @@ const eslintConfig = [
     // the last lucide and next/font/google imports are gone, then errors.
     files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.mjs"],
     rules: {
-      "no-restricted-imports": ["warn", {
+      "no-restricted-imports": ["error", {
         paths: [
           { name: "lucide-react", message: "Use the seed stamps in components/seedpress/icons." },
           { name: "next/font/google", message: "Fonts are self-hosted from app/fonts with next/font/local." },

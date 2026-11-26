@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { pickRandomThinker, thinkers as allThinkers, getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
-import { Hand, Send, Mic, MicOff, Video, VideoOff, Volume2, VolumeX, Users, Plus, MoreHorizontal, Library, PhoneOff, UserRound } from 'lucide-react'
 import ThinkerPhoneBook from './ThinkerPhoneBook'
 import RequestThinkerModal from './RequestThinkerModal'
 import { Button } from '@/components/ui/Button'
@@ -27,6 +26,7 @@ import { isKept, keepLine, loadKeptLines, removeLine, saveKeptLines, type KeptLi
 import TimelessMindsKeptLines from './TimelessMindsKeptLines'
 import TimelessMindsChooser from './TimelessMindsChooser'
 import { REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
+import { Icon } from '@/components/seedpress/icons/Icon'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -733,7 +733,7 @@ export default function TimelessMinds() {
           {/* Your own tile: a placeholder, never a camera */}
           <div aria-hidden="true" className="call-self absolute z-10 bottom-2 right-2 sm:bottom-3 sm:right-3 w-16 h-12 sm:w-40 sm:h-24 rounded-lg flex items-center justify-center">
             <span className="call-avatar w-7 h-7 sm:w-12 sm:h-12 rounded-full flex items-center justify-center">
-              <UserRound className="w-4 h-4 sm:w-6 sm:h-6" />
+              <Icon name="person" size={16} className="sm:w-6 sm:h-6" />
             </span>
             <span className="absolute bottom-0.5 left-1.5 sm:bottom-1.5 sm:left-2 text-[10px] sm:text-xs font-semibold">You</span>
           </div>
@@ -828,7 +828,7 @@ export default function TimelessMinds() {
                 onClick={() => handleEndCall(goodbyeButtonRef)}
                 className="inline-flex items-center gap-1.5 min-h-11 px-3 text-sm text-foreground underline underline-offset-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
-                <Hand size={16} aria-hidden="true" />
+                <Icon name="hand" size={16} />
                 Say goodbye<span className="sr-only"> to {thinker.name}</span>
               </button>
             </div>
@@ -874,7 +874,7 @@ export default function TimelessMinds() {
                 className="px-3 py-2 sm:px-4 min-w-[44px] rounded-full"
                 aria-label="Send message"
               >
-                <Send size={16} aria-hidden="true" />
+                <Icon name="next" size={16} />
               </Button>
             </div>
           </div>
@@ -895,7 +895,7 @@ export default function TimelessMinds() {
             className={callButton}
           >
             <span className={`${callCircle} ${isListening ? 'bg-melon-green text-background' : 'call-control'}`}>
-              {isListening ? <MicOff size={20} aria-hidden="true" /> : <Mic size={20} aria-hidden="true" />}
+              {isListening ? <Icon name="mic-off" size={24} /> : <Icon name="mic" size={24} />}
             </span>
             <span className={callLabel}>{isListening ? 'Stop' : 'Speak'}</span>
           </button>
@@ -908,7 +908,7 @@ export default function TimelessMinds() {
             className={callButton}
           >
             <span className={`${callCircle} ${audioEnabled ? 'call-control-on' : 'call-control'}`}>
-              {audioEnabled ? <Volume2 size={20} aria-hidden="true" /> : <VolumeX size={20} aria-hidden="true" />}
+              {audioEnabled ? <Icon name="sound-on" size={24} /> : <Icon name="sound-off" size={24} />}
             </span>
             <span className={callLabel}>{audioEnabled ? 'Voice on' : 'Voice off'}</span>
           </button>
@@ -920,7 +920,7 @@ export default function TimelessMinds() {
             className={callButton}
           >
             <span className={`${callCircle} call-control`}>
-              {videoEnabled ? <Video size={20} aria-hidden="true" /> : <VideoOff size={20} aria-hidden="true" />}
+              {videoEnabled ? <Icon name="camera" size={24} /> : <Icon name="camera-off" size={24} />}
             </span>
             <span className={callLabel}>{videoEnabled ? 'Portrait' : 'Portrait off'}</span>
           </button>
@@ -935,7 +935,7 @@ export default function TimelessMinds() {
               className={callButton}
             >
               <span className={`${callCircle} ${menuOpen ? 'call-control-on' : 'call-control'}`}>
-                <MoreHorizontal size={20} aria-hidden="true" />
+                <Icon name="more" size={24} />
               </span>
               <span className={callLabel}>Menu</span>
             </button>
@@ -945,22 +945,22 @@ export default function TimelessMinds() {
                 className="absolute right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2 z-30 w-64 rounded-xl border border-card-border bg-card-bg p-1.5 shadow-xl"
               >
                 <button type="button" className={menuItem} onClick={fromMenu(() => setShowPhoneBook(true))}>
-                  <Users size={18} className={menuIcon} aria-hidden="true" />
+                  <Icon name="people" size={16} className={menuIcon} />
                   Choose who to talk with
                 </button>
                 <button type="button" className={menuItem} onClick={fromMenu(() => setShowKeptLines(true))}>
-                  <Library size={18} className={menuIcon} aria-hidden="true" />
+                  <Icon name="library" size={16} className={menuIcon} />
                   Kept lines
                 </button>
                 {requestsAvailable && (
                   <button type="button" className={menuItem} onClick={fromMenu(() => setShowRequestModal(true))}>
-                    <Plus size={18} className={menuIcon} aria-hidden="true" />
+                    <Icon name="plus" size={16} className={menuIcon} />
                     Request
                   </button>
                 )}
                 <div className="my-1 border-t border-card-border" />
                 <button type="button" className={menuItem} onClick={endCallFromMenu}>
-                  <Hand size={18} className={menuIcon} aria-hidden="true" />
+                  <Icon name="hand" size={16} className={menuIcon} />
                   Say goodbye
                 </button>
               </div>
@@ -974,7 +974,7 @@ export default function TimelessMinds() {
             className={callButton}
           >
             <span className="call-leave w-14 h-11 sm:w-16 sm:h-12 rounded-full flex items-center justify-center">
-              <PhoneOff size={20} aria-hidden="true" />
+              <Icon name="hang-up" size={24} />
             </span>
             <span className={callLabel}>Leave</span>
           </button>

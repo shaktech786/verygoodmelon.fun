@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { Icon } from '@/components/seedpress/icons/Icon'
 
 export const metadata: Metadata = {
   title: 'About these conversations - The Sage | VeryGoodMelon.Fun',
@@ -14,7 +14,7 @@ export default function DisclaimerPage() {
         href="/games/ancient-voices"
         className="inline-flex items-center gap-2 min-h-11 text-foreground underline underline-offset-2 hover:no-underline mb-6"
       >
-        <ArrowLeft size={16} aria-hidden="true" />
+        <Icon name="back" size={16} />
         Back to The Sage
       </Link>
 

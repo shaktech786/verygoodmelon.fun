@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { THOUGHTS } from '@/lib/thoughts/thoughts-data'
 import { ThoughtsList } from './ThoughtsList'
 import { SubmitThought } from './SubmitThought'
+import { Icon } from '@/components/seedpress/icons/Icon'
 
 export const metadata: Metadata = {
   title: 'Thoughts - VeryGoodMelon.Fun',
@@ -47,7 +47,7 @@ export default function ThoughtsPage() {
             href="/"
             className="inline-flex items-center gap-2 text-primary-light hover:text-foreground transition-colors text-sm"
           >
-            <ArrowLeft size={16} aria-hidden="true" />
+            <Icon name="back" size={16} />
             Back home
           </Link>
         </div>

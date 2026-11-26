@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
 import { THOUGHTS, getThoughtBySlug, getRelatedThought } from '@/lib/thoughts/thoughts-data'
+import { Icon } from '@/components/seedpress/icons/Icon'
 
 const THEME_LABELS: Record<string, string> = {
   patience: 'Patience',
@@ -80,7 +80,7 @@ export default async function ThoughtPage({ params }: PageProps) {
           href="/thoughts"
           className="inline-flex items-center gap-2 text-primary-light hover:text-foreground transition-colors text-sm mb-8"
         >
-          <ArrowLeft size={16} aria-hidden="true" />
+          <Icon name="back" size={16} />
           All thoughts
         </Link>
 
@@ -140,7 +140,7 @@ export default async function ThoughtPage({ params }: PageProps) {
             href="/thoughts"
             className="inline-flex items-center gap-2 text-primary-light hover:text-foreground transition-colors text-sm"
           >
-            <ArrowLeft size={16} aria-hidden="true" />
+            <Icon name="back" size={16} />
             All thoughts
           </Link>
           <Link

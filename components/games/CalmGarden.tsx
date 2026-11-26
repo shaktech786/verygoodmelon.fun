@@ -2,7 +2,6 @@
 
 import { EXTRA_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Undo2, Trash2, Sunset } from 'lucide-react'
 import { Button, buttonClassName } from '@/components/ui/Button'
 import { cn } from '@/lib/utils/cn'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
@@ -51,6 +50,7 @@ import { gardenerKeepsake } from '@/lib/keepsake/gardener'
 import type { KeepsakePlan } from '@/lib/keepsake/plan'
 import { Keepsake } from '@/components/games/Keepsake'
 import { drawGround, drawMarker, drawNewGrowth, drawPlant, drawSitLight, drawSky, drawVisitor } from './calm-garden/draw'
+import { Icon } from '@/components/seedpress/icons/Icon'
 
 const SUGGEST_EVERY = 3
 const MAX_SUGGESTIONS = 5
@@ -943,12 +943,12 @@ export default function CalmGarden() {
 
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-card-border pt-3">
           <Button variant="ghost" size="sm" onClick={undo} disabled={history.length === 0} aria-label="Undo last change">
-            <Undo2 className="inline w-4 h-4 mr-1 -mt-0.5" aria-hidden="true" />
+            <Icon name="undo" size={16} className="inline mr-1 -mt-0.5" />
             Undo
           </Button>
           {!showClearConfirm ? (
             <Button variant="ghost" size="sm" onClick={() => setShowClearConfirm(true)} disabled={plants.length === 0} aria-label="Clear garden">
-              <Trash2 className="inline w-4 h-4 mr-1 -mt-0.5" aria-hidden="true" />
+              <Icon name="trash" size={16} className="inline mr-1 -mt-0.5" />
               Clear
             </Button>
           ) : (
@@ -972,7 +972,7 @@ export default function CalmGarden() {
             canSit ? 'bg-melon-green text-background hover:opacity-90' : 'bg-foreground/10 text-foreground/60 cursor-not-allowed',
           )}
         >
-          <Sunset className="h-4 w-4" aria-hidden="true" />
+          <Icon name="sunset" size={16} />
           Sit with your garden
         </button>
         <p id="sit-hint" className="mt-1 text-center text-xs text-foreground/70">
