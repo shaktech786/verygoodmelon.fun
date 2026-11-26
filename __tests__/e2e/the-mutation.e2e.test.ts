@@ -354,6 +354,21 @@ async function ending(page: Page): Promise<{ name: string; words: string }> {
 }
 
 test.describe('The Shapeshifter', () => {
+  for (const width of [390, 1440, 2560]) {
+    test(`at ${width}px the title fits inside the arcade screen`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await openGame(page)
+      const screen = await title(page).boundingBox()
+      const heading = title(page).getByRole('heading', { name: 'THE SHAPESHIFTER' })
+      const fits = await heading.evaluate((el) => {
+        const range = document.createRange()
+        range.selectNodeContents(el)
+        return range.getBoundingClientRect()
+      })
+      expect(screen && fits.left >= screen.x && fits.right <= screen.x + screen.width, 'the whole title is on the screen').toBe(true)
+    })
+  }
+
   test('a keyboard-only player chooses each clue by steering to it, hears where they are, and ends when they choose', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
