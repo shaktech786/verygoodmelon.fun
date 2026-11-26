@@ -35,7 +35,8 @@ export default defineConfig({
       ],
 
   webServer: {
-    command: 'npm run dev',
+    // The Visual workflow sets this to serve a production build, so snapshots carry no dev-only overlays
+    command: process.env.PLAYWRIGHT_SERVER ?? 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
   },

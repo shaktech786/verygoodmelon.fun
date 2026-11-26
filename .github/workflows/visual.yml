@@ -40,9 +40,13 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install chromium --with-deps
 
+      - name: Build
+        run: npm run build
+
       - name: Run visual tests
         env:
           UPDATE: ${{ inputs.update }}
+          PLAYWRIGHT_SERVER: npm run start
         run: |
           if [ "$UPDATE" != "true" ] && ls __tests__/visual/*-snapshots/*-linux.png > /dev/null 2>&1; then
             npx playwright test __tests__/visual --project=chromium
