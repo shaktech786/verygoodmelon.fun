@@ -200,7 +200,9 @@ test.describe('The Plain Speaker', () => {
       await expect(target).toBeFocused()
       const ring = await target.evaluate((el) => {
         // A radio is visually hidden, so its focus ring is drawn on the label around it.
-        return getComputedStyle(el.closest('label') ?? el).boxShadow
+        const own = getComputedStyle(el)
+        const label = getComputedStyle(el.closest('label') ?? el)
+        return own.outlineStyle !== 'none' ? own.outlineStyle : label.boxShadow
       })
       expect(ring, 'keyboard focus is visible').not.toBe('none')
     }

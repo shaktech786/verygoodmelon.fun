@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { CareHelpline } from '@/components/games/CareHelpline'
-import { GameCardShowcase } from '@/components/games/GameCardShowcase'
+import { Go } from '@/components/seedpress/Go'
+import { Packet } from '@/components/seedpress/Packet'
+import { Stamp } from '@/components/seedpress/Stamp'
 import { SHOWCASE_GAMES } from '@/lib/games/config'
 
 export const metadata: Metadata = {
@@ -12,40 +13,26 @@ const CALM_GAMES = SHOWCASE_GAMES.filter((game) => game.category === 'Calm')
 
 export default function NotFound() {
   return (
-    <div className="container mx-auto px-6 py-16 max-w-3xl">
-      <div className="text-center mb-12 animate-fade">
-        <p className="text-sm uppercase tracking-widest text-primary-light mb-3">404</p>
-        <h1 className="text-3xl sm:text-4xl font-light text-foreground mb-4">
-          This path leads nowhere, and that&apos;s okay
-        </h1>
-        <p className="text-primary-light max-w-md mx-auto">
-          The page you were looking for isn&apos;t here. Take a breath, then pick somewhere to go.
-        </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link
-            href="/"
-            className="px-5 py-2.5 rounded-lg bg-accent text-white font-medium hover:bg-accent/90 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            Back home
-          </Link>
-          <Link
-            href="/games"
-            className="px-5 py-2.5 rounded-lg border border-card-border text-foreground font-medium hover:bg-hover-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            All games
-          </Link>
+    <div className="sp-shop sp-home">
+      <div className="sp-sign">
+        <p className="sp-soft">404</p>
+        <h1 className="sp-h1 mt-2 max-w-[20ch]">This path leads nowhere, and that&apos;s okay</h1>
+        <p className="sp-sign__motto max-w-prose">The page you were looking for isn&apos;t here. Take a breath, then pick somewhere to go.</p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Go href="/">Back home</Go>
+          <Stamp href="/games">All games</Stamp>
         </div>
       </div>
 
       <section aria-labelledby="calm-games-heading">
-        <h2 id="calm-games-heading" className="text-sm font-semibold uppercase tracking-wider text-foreground mb-4">
+        <h2 id="calm-games-heading" className="sp-h3">
           Or slow down for a minute
         </h2>
-        <CareHelpline className="-mt-2 mb-4" />
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          {CALM_GAMES.map((game) => (
+        <CareHelpline className="mt-2" />
+        <ul className="sp-shelf__packets mt-5" style={{ maxWidth: `${CALM_GAMES.length * 15}rem` }}>
+          {CALM_GAMES.map((game, index) => (
             <li key={game.id}>
-              <GameCardShowcase game={game} showCategory={false} />
+              <Packet game={game} order={index} />
             </li>
           ))}
         </ul>

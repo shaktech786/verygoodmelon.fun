@@ -57,16 +57,16 @@ test.describe('Homepage and games page', () => {
   test('the homepage offers one game, three moods and every game once, as does the games page', async ({ page }) => {
     await page.goto('/')
     await expect(page).toHaveTitle(/VeryGoodMelon/)
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('lighter')
-    await expect(page.getByRole('region', { name: "Today's pick" }).locator('a[href^="/games/"]')).toHaveCount(1)
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('busy mind')
+    await expect(page.getByRole('region', { name: 'Today’s packet' }).locator('a[href^="/games/"]')).toHaveCount(1)
     await expect(page.locator('main a[href^="/games?mood="]')).toHaveCount(3)
     for (const game of SHOWCASE_GAMES) {
-      await expect(page.getByRole('region', { name: 'Every game' }).locator(`a[href="/games/${game.slug}"]`)).toHaveCount(1)
+      await expect(page.getByRole('region', { name: 'The rack' }).locator(`a[href="/games/${game.slug}"]`)).toHaveCount(1)
     }
 
     await page.goto('/games')
     for (const game of SHOWCASE_GAMES) {
-      await expect(page.locator(`main section[aria-labelledby^="category-"] a[href="/games/${game.slug}"]`)).toHaveCount(1)
+      await expect(page.getByRole('region', { name: 'The rack' }).locator(`a[href="/games/${game.slug}"]`)).toHaveCount(1)
     }
   })
 })

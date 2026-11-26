@@ -2,8 +2,8 @@
 
 import { ALL_GAMES, type GameConfig } from '@/lib/games/config'
 import { useCareMode } from '@/components/games/CareMode'
-import { GameCardShowcase } from '@/components/games/GameCardShowcase'
 import { HelplineSentence } from '@/components/games/HelplineSentence'
+import { Packet } from '@/components/seedpress/Packet'
 
 /** Each game's closest neighbour, offered once at the foot of its page. */
 const RELATED_GAME: Record<string, string> = {
@@ -51,18 +51,18 @@ interface SuggestionRowProps {
 function SuggestionRow({ heading, games, className, helplines = false }: SuggestionRowProps) {
   return (
     <section aria-labelledby="related-games-heading" className={className}>
-      <h2 id="related-games-heading" className="text-sm font-semibold uppercase tracking-wider text-foreground mb-4">
+      <h2 id="related-games-heading" className="sp-h3">
         {heading}
       </h2>
       {helplines && (
-        <p className="-mt-2 mb-4 text-sm text-foreground/80 leading-relaxed">
+        <p className="mt-2 max-w-prose">
           <HelplineSentence lead="If things feel too heavy right now, you can talk to someone." />
         </p>
       )}
-      <ul className={`grid grid-cols-1 gap-3 sm:gap-4 ${games.length > 1 ? 'sm:grid-cols-2' : 'sm:max-w-sm'}`}>
-        {games.map((game) => (
+      <ul className="sp-shelf__packets mt-5" style={{ maxWidth: `${games.length * 15}rem` }}>
+        {games.map((game, index) => (
           <li key={game.id}>
-            <GameCardShowcase game={game} showCategory={false} />
+            <Packet game={game} order={index} />
           </li>
         ))}
       </ul>
@@ -84,7 +84,7 @@ interface CrossGameSuggestionsProps {
 
 export function CrossGameSuggestions({ currentGameId }: CrossGameSuggestionsProps) {
   const { care, awaitingJudgement } = useCareMode()
-  const className = 'mt-12 pt-8 border-t border-card-border'
+  const className = 'mt-12 pt-8 border-t border-rule'
 
   if (care) return <GentleGames className={className} helplines={!OWN_HELPLINES.has(currentGameId)} />
   if (awaitingJudgement) return null

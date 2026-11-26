@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
-import { GameDirectory } from '@/components/games/GameDirectory'
-import { parseMood } from '@/lib/games/moods'
+import { GentleInCare } from '@/components/seedpress/GentleInCare'
+import { MoodStamps } from '@/components/seedpress/MoodStamps'
+import { Rack } from '@/components/seedpress/Rack'
+import { Stamp } from '@/components/seedpress/Stamp'
+import { getMood, parseMood } from '@/lib/games/moods'
 
 export const metadata: Metadata = {
   title: 'Games | VeryGoodMelon.Fun',
@@ -13,19 +16,29 @@ export default async function GamesPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const mood = parseMood((await searchParams).mood)
+  const chosen = mood ? getMood(mood) : undefined
 
   return (
-    <div className="container mx-auto px-6 py-12 max-w-4xl">
-      <div className="mb-8 animate-fade">
-        <h1 className="text-4xl md:text-5xl font-semibold text-foreground mb-3">
-          Games
-        </h1>
-        <p className="text-lg text-primary-light">
-          Small, quiet games for a busy mind, to play at your own pace.
-        </p>
+    <div className="sp-shop sp-home">
+      <div className="sp-games-head">
+        <div className="sp-sign">
+          <h1 className="sp-h1">Games</h1>
+          <p className="sp-sign__motto">Think deeply, feel lighter.</p>
+        </div>
+        <MoodStamps current={mood} />
+        {chosen && (
+          <div className="sp-games-head__mood">
+            <p role="status">
+              <strong>{chosen.heading}.</strong> <span className="sp-soft">{chosen.line}</span>
+            </p>
+            <Stamp href="/games" icon="back">
+              Show all games
+            </Stamp>
+          </div>
+        )}
       </div>
-
-      <GameDirectory mood={mood} />
+      <GentleInCare />
+      <Rack mood={mood} />
     </div>
   )
 }

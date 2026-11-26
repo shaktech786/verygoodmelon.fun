@@ -134,6 +134,31 @@ test.describe('Accessibility settings panel', () => {
     expect(unnamed).toEqual([])
   })
 
+  test('the dial and Spacing change the page at once, are saved, and the dial says when the rest is your own mix', async ({ page }) => {
+    await page.goto('/about')
+    const html = page.locator('html')
+    await expect(html).toHaveAttribute('data-sense', 'gentle')
+    await expect(html).toHaveAttribute('data-spacing', 'standard')
+    const panel = await openSettings(page)
+    const dial = panel.getByRole('group', { name: 'How it feels' })
+    await expect(dial.getByRole('radio')).toHaveCount(3)
+
+    await dial.locator('label.sp-choice', { hasText: 'Quiet' }).click()
+    await expect(html).toHaveAttribute('data-sense', 'quiet')
+    await panel.getByRole('group', { name: 'Spacing' }).locator('label.sp-choice', { hasText: 'Roomy' }).click()
+    await expect(html).toHaveAttribute('data-spacing', 'roomy')
+    expect(await page.locator('main p').first().evaluate((el) => getComputedStyle(el).wordSpacing)).not.toBe('normal')
+
+    await expect(dial.getByText('Your own mix')).toHaveCount(0)
+    await panel.getByRole('switch', { name: 'Greyscale' }).click()
+    await expect(dial.getByText('Your own mix')).toBeVisible()
+    await expect(panel.getByRole('status')).toHaveText(/Your own mix/)
+
+    await page.reload()
+    await expect(html).toHaveAttribute('data-sense', 'quiet')
+    await expect(html).toHaveAttribute('data-spacing', 'roomy')
+  })
+
   test('keeps focus inside, closes on Escape and gives focus back', async ({ page }) => {
     await page.goto('/about')
     const opener = page.getByRole('button', { name: 'Open accessibility settings' })
@@ -160,9 +185,9 @@ test.describe('Accessibility settings panel', () => {
     const panel = await openSettings(page)
     const html = page.locator('html')
 
-    await panel.getByText('Highest').click()
+    await panel.locator('label.sp-choice', { hasText: 'Highest' }).click()
     await expect(html).toHaveAttribute('data-contrast', 'extra-high')
-    await panel.getByText('Dark', { exact: true }).click()
+    await panel.locator('label.sp-choice', { hasText: /^Dark$/ }).click()
     await expect(html).toHaveAttribute('data-theme', 'dark')
     await panel.getByRole('switch', { name: 'Greyscale' }).click()
     await expect(html).toHaveAttribute('data-greyscale', 'true')
@@ -223,7 +248,7 @@ test.describe('Text size', () => {
     await page.setViewportSize(PHONE)
     await page.goto('/about')
     const panel = await openSettings(page)
-    await panel.getByText('Larger').click()
+    await panel.locator('label.sp-choice', { hasText: 'Larger' }).click()
     await panel.getByRole('button', { name: 'Close accessibility settings' }).click()
 
     const rootSize = await page.locator('html').evaluate((el) => getComputedStyle(el).fontSize)
@@ -305,9 +330,9 @@ test.describe('Hydration', () => {
     await page.route(/\/api\/(game-events|site-visits)/, (route) => route.fulfill({ json: {} }))
 
     await page.goto('/')
-    await expect(page.getByRole('region', { name: 'Every game' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'The rack' })).toBeVisible()
     await page.reload()
-    await expect(page.getByRole('region', { name: 'Every game' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'The rack' })).toBeVisible()
     await page.waitForLoadState('networkidle')
     expect(problems).toEqual([])
   })
@@ -326,7 +351,8 @@ test.describe('Finding your way', () => {
       await page.setViewportSize(viewport)
       await page.goto('/games/the-threshold')
       const nav = page.getByRole('navigation', { name: 'Main navigation' })
-      await expect(nav.getByRole('link')).toHaveText(['VeryGoodMelon.Fun', 'Games'])
+      await expect(page.getByRole('banner').getByRole('link')).toHaveText(['VeryGoodMelon.Fun', 'Games'])
+      await expect(nav.getByRole('link')).toHaveText(['Games'])
       await expect(nav.getByRole('button')).toHaveCount(1)
       const gear = nav.getByRole('button', { name: 'Open accessibility settings' })
       await expect(gear).toBeVisible()
@@ -351,18 +377,20 @@ test.describe('Finding your way', () => {
       await page.setViewportSize(viewport)
       await page.goto('/games')
       const footer = page.getByRole('contentinfo')
-      await expect(footer.getByRole('list', { name: 'Support' }).getByRole('link')).toHaveText(['Need to talk?'])
-      await expect(footer.getByRole('list', { name: 'Site' }).getByRole('listitem')).toHaveText([
+      const columns = footer.getByRole('region')
+      await expect(columns.first().getByRole('heading', { level: 2 })).toHaveText('Talk to someone')
+      await expect(columns.first().getByRole('link')).toHaveText(['Need to talk?'])
+      await expect(columns.nth(1).getByRole('listitem')).toHaveText([
+        'About',
+        'Thoughts',
         'Privacy',
         'Terms',
         'Feedback',
-        'Thoughts',
-        'About',
         'GitHub (opens in a new tab)',
       ])
       await expect(footer).not.toContainText('|')
       await expect(footer).not.toContainText('Made with purpose')
-      await expect(footer.getByText(/^©/)).toHaveCount(1)
+      await expect(footer.getByText(/©/)).toHaveCount(1)
       expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0)
     }
   })
@@ -412,17 +440,17 @@ test.describe('Finding your way', () => {
     await page.clock.setFixedTime(noon)
     await page.goto('/')
     await expect(page.getByRole('main')).toContainText('quiet games for a busy mind')
-    await expect(page.getByRole('main')).not.toContainText(/think deeply|see every game/i)
+    await expect(page.getByRole('main')).not.toContainText(/see every game/i)
     const everyGame = await page
-      .getByRole('region', { name: 'Every game' })
+      .getByRole('region', { name: 'The rack' })
       .locator('a[href^="/games/"]')
       .evaluateAll((links) => links.map((a) => a.getAttribute('href')))
     expect(everyGame).toEqual(SHOWCASE_GROUPS.flatMap((group) => group.games.map((game) => `/games/${game.slug}`)))
 
     const expected = dailyPick(noon)
     if (!expected) throw new Error('no calm games to pick from')
-    const hero = page.getByRole('region', { name: "Today's pick" })
-    const pick = hero.getByRole('link', { name: /^Today's pick: / })
+    const hero = page.getByRole('region', { name: 'Today’s packet' })
+    const pick = hero.getByRole('link', { name: /^Open today’s packet/ })
     await expect(pick).toBeVisible()
     await expect(pick).toHaveAttribute('href', `/games/${expected.game.slug}`)
     await expect(hero).toContainText(expected.game.title)
@@ -442,39 +470,41 @@ test.describe('Finding your way', () => {
 
   test('a mood on the homepage opens the games page filtered to it, changeable there, with a way back to all', async ({ page }) => {
     await page.goto('/')
-    const moods = page.getByRole('region', { name: 'Or start from how you feel' })
-    await expect(moods.getByRole('link')).toHaveText(['Restless: for a restless mind', 'Heavy: for when it feels heavy', 'Want to play: for when you want to play'])
-    await moods.getByRole('link', { name: /^Restless/ }).focus()
+    const moods = page.getByRole('navigation', { name: 'Start from how you feel' })
+    await expect(moods.getByRole('link')).toHaveText(['Restless', 'Heavy', 'Want to play'])
+    await moods.getByRole('link', { name: 'Restless' }).focus()
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/\/games\?mood=restless$/)
 
-    const filter = page.getByRole('navigation', { name: 'Games by mood' })
+    // A mood keeps the games it names, in the rack's one order
+    const rackOrder = SHOWCASE_GROUPS.flatMap((group) => group.games.map((game) => `/games/${game.slug}`))
+    const expectedFor = (id: Parameters<typeof gamesForMood>[0]) => {
+      const named = new Set(gamesForMood(id).map((g) => `/games/${g.slug}`))
+      return rackOrder.filter((href) => named.has(href))
+    }
     const readList = () =>
-      page.locator('main section[aria-labelledby="mood-heading"] a[href^="/games/"]').evaluateAll((links) => links.map((a) => a.getAttribute('href')))
-    await expect(page.getByRole('heading', { level: 2, name: 'For a restless mind' })).toBeVisible()
-    await expect(filter.getByRole('link', { name: 'Restless' })).toHaveAttribute('aria-current', 'page')
-    expect(await readList()).toEqual(gamesForMood('restless').map((g) => `/games/${g.slug}`))
-    await expect(page.locator('main section[aria-labelledby^="category-"]')).toHaveCount(0)
+      page.getByRole('region', { name: 'The rack' }).locator('a[href^="/games/"]').evaluateAll((links) => links.map((a) => a.getAttribute('href')))
+    await expect(page.getByRole('main').getByRole('status')).toContainText('For a restless mind')
+    await expect(moods.getByRole('link', { name: 'Restless' })).toHaveAttribute('aria-current', 'page')
+    expect(await readList()).toEqual(expectedFor('restless'))
 
-    await filter.getByRole('link', { name: 'Heavy' }).click()
+    await moods.getByRole('link', { name: 'Heavy' }).click()
     await expect(page).toHaveURL(/\/games\?mood=heavy$/)
-    await expect(page.getByRole('heading', { level: 2, name: 'For when it feels heavy' })).toBeVisible()
-    await expect(filter.getByRole('link', { name: 'Heavy' })).toHaveAttribute('aria-current', 'page')
-    await expect(filter.getByRole('link', { name: 'Restless' })).not.toHaveAttribute('aria-current', /.*/)
-    expect(await readList()).toEqual(gamesForMood('heavy').map((g) => `/games/${g.slug}`))
+    await expect(page.getByRole('main').getByRole('status')).toContainText('For when it feels heavy')
+    await expect(moods.getByRole('link', { name: 'Heavy' })).toHaveAttribute('aria-current', 'page')
+    await expect(moods.getByRole('link', { name: 'Restless' })).not.toHaveAttribute('aria-current', /.*/)
+    expect(await readList()).toEqual(expectedFor('heavy'))
     // Someone who feels heavy is never pointed at the games about death
     await expect(page.locator('main a[href="/games/final-breath"], main a[href="/games/first-breath"]')).toHaveCount(0)
-    await expect(page.getByRole('main').getByRole('status')).toContainText('For when it feels heavy')
 
     await page.getByRole('link', { name: 'Show all games' }).click()
     await expect(page).toHaveURL(/\/games$/)
-    await expect(filter.getByRole('link', { name: 'All games' })).toHaveAttribute('aria-current', 'page')
-    await expect(page.locator('main section[aria-labelledby^="category-"]')).toHaveCount(SHOWCASE_GROUPS.length)
+    await expect(moods.locator('[aria-current]')).toHaveCount(0)
+    expect(await readList()).toEqual(rackOrder)
 
     // An address with a mood the site does not know shows everything
     await page.goto('/games?mood=sideways')
-    await expect(filter.getByRole('link', { name: 'All games' })).toHaveAttribute('aria-current', 'page')
-    await expect(page.locator('main section[aria-labelledby^="category-"]')).toHaveCount(SHOWCASE_GROUPS.length)
+    expect(await readList()).toEqual(rackOrder)
   })
 
   test('the games page groups and orders games the one way the config does', async ({ page }) => {
@@ -483,8 +513,8 @@ test.describe('Finding your way', () => {
       games: group.games.map((game) => `/games/${game.slug}`),
     }))
     await page.goto('/games')
-    await expect(page.locator('main section h2').first()).toBeVisible()
-    const groups = await page.locator('main section[aria-labelledby^="category-"]').evaluateAll((sections) =>
+    await expect(page.getByRole('region', { name: 'The rack' }).getByRole('heading', { level: 2 }).first()).toBeVisible()
+    const groups = await page.locator('section[aria-label="The rack"] > section').evaluateAll((sections) =>
       sections.map((section) => ({
         heading: section.querySelector('h2')?.textContent?.trim() ?? '',
         games: Array.from(section.querySelectorAll('a[href^="/games/"]')).map((a) => a.getAttribute('href')),
@@ -563,12 +593,12 @@ test.describe('Care and support', () => {
 })
 
 test.describe('Homepage and header', () => {
-  test('"lighter" is rind green or the text colour, never the red kept for actions, in both themes', async ({ page }) => {
+  test('the homepage sign is set in the ink colour, never the red kept for actions, in both themes', async ({ page }) => {
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme })
       await page.goto('/')
-      const lighter = page.getByRole('heading', { level: 1 }).locator('span')
-      await expect(lighter).toHaveText('lighter')
+      const lighter = page.getByRole('heading', { level: 1 })
+      await expect(lighter).toHaveText('Small, quiet games for a busy mind')
       const [colour, green, red] = await lighter.evaluate((el) => {
         const probe = (value: string) => {
           const span = document.createElement('span')
@@ -578,7 +608,7 @@ test.describe('Homepage and header', () => {
           span.remove()
           return result
         }
-        return [getComputedStyle(el).color, probe('var(--melon-green)'), probe('var(--accent)')]
+        return [getComputedStyle(el).color, probe('var(--ink)'), probe('var(--accent)')]
       })
       expect(colour).toBe(green)
       expect(colour).not.toBe(red)
@@ -588,9 +618,9 @@ test.describe('Homepage and header', () => {
   test('on desktop the logo sits at the left edge of the header row, the nav at the right', async ({ page }) => {
     await page.setViewportSize(DESKTOP)
     await page.goto('/')
-    const nav = page.getByRole('navigation', { name: 'Main navigation' })
-    const logo = await nav.getByRole('link', { name: 'VeryGoodMelon.Fun home' }).boundingBox()
-    const games = await nav.getByRole('link', { name: 'Games', exact: true }).boundingBox()
+    const header = page.getByRole('banner')
+    const logo = await header.getByRole('link', { name: 'VeryGoodMelon.Fun home' }).boundingBox()
+    const games = await header.getByRole('link', { name: 'Games', exact: true }).boundingBox()
     expect(logo!.x).toBeLessThan(DESKTOP.width * 0.2)
     expect(games!.x).toBeGreaterThan(DESKTOP.width * 0.5)
   })

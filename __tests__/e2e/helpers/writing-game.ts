@@ -602,7 +602,7 @@ export function describeWritingGame(config: WritingGameConfig) {
     await page.keyboard.press('Tab')
     const control = page.locator(':focus')
     expect(await control.evaluate((el) => el.tagName)).toMatch(/^(BUTTON|A|INPUT|TEXTAREA)$/)
-    expect(await control.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
+    expect(await control.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none')
   })
 
   test('the question changes only when the player asks for another', async ({ page }) => {

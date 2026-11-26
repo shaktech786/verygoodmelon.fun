@@ -15,9 +15,6 @@
   "app/games/first-breath/page.tsx": {
     "animate": 1
   },
-  "app/games/page.tsx": {
-    "animate": 1
-  },
   "app/games/quiet-grove/page.tsx": {
     "animate": 1
   },
@@ -90,16 +87,6 @@
   "app/globals.css": {
     "infinite": 2
   },
-  "app/layout.tsx": {
-    "raw-colour": 1
-  },
-  "app/not-found.tsx": {
-    "animate": 1,
-    "banned-utility": 5
-  },
-  "app/page.tsx": {
-    "banned-utility": 1
-  },
   "app/privacy/page.tsx": {
     "banned-utility": 1
   },
@@ -125,9 +112,6 @@
     "animate": 2,
     "banned-utility": 1
   },
-  "components/accessibility/AccessibilityPanel.tsx": {
-    "banned-utility": 3
-  },
   "components/games/BreathingPatterns.tsx": {
     "animate": 1,
     "arbitrary-colour": 2,
@@ -138,20 +122,10 @@
     "arbitrary-colour": 1,
     "raw-colour": 3
   },
-  "components/games/CrossGameSuggestions.tsx": {
-    "banned-utility": 2
-  },
   "components/games/FirstWords.tsx": {
     "animate": 1,
     "banned-utility": 2,
     "raw-colour": 9
-  },
-  "components/games/GameCardShowcase.tsx": {
-    "arbitrary-colour": 2,
-    "banned-utility": 3
-  },
-  "components/games/GameDirectory.tsx": {
-    "banned-utility": 6
   },
   "components/games/HardChoices.tsx": {
     "animate": 2,
@@ -235,16 +209,7 @@
   "components/games/worry-capsule/parts.tsx": {
     "banned-utility": 2
   },
-  "components/home/TodaysPick.tsx": {
-    "banned-utility": 3
-  },
-  "components/ui/AmbientParticles.tsx": {
-    "raw-colour": 4
-  },
   "components/ui/Button.tsx": {
-    "banned-utility": 1
-  },
-  "components/ui/Header.tsx": {
     "banned-utility": 1
   },
   "components/ui/LegalPage.tsx": {

@@ -392,7 +392,8 @@ test.describe('the ending on a phone', () => {
     const ending = page.getByRole('heading', { name: ENDING })
     await expect(ending).toBeFocused()
     await expect(async () => {
-      const headerBottom = await page.locator('header[role="banner"]').evaluate((el) => el.getBoundingClientRect().bottom)
+      // The header scrolls away, so once it has gone the top of the screen is the line
+      const headerBottom = Math.max(0, await page.getByRole('banner').evaluate((el) => el.getBoundingClientRect().bottom))
       const top = (await ending.boundingBox())!.y
       expect(top).toBeGreaterThanOrEqual(headerBottom - 1)
       expect(top).toBeLessThanOrEqual(headerBottom + 50)

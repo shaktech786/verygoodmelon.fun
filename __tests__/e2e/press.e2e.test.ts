@@ -11,7 +11,7 @@ import { expectOneGo } from './helpers/design'
  */
 
 const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
-const SENSE_KEY = 'verygoodmelon:press:sense'
+const SETTINGS_KEY = 'verygoodmelon:accessibility:settings'
 const WIDTHS = [390, 1024, 1440, 2560] as const
 const LOOKS = [
   { name: 'light', scheme: 'light', sense: 'gentle' },
@@ -34,9 +34,15 @@ async function axeViolations(page: Page): Promise<string[]> {
 }
 
 async function open(page: Page, url: string, sense: string) {
-  await page.addInitScript(([key, value]) => window.sessionStorage.setItem(key, value), [SENSE_KEY, sense] as const)
+  await page.addInitScript(
+    ([key, value]) => {
+      const saved = JSON.parse(window.localStorage.getItem(key) ?? '{}')
+      window.localStorage.setItem(key, JSON.stringify({ ...saved, sense: value }))
+    },
+    [SETTINGS_KEY, sense] as const
+  )
   await page.goto(url)
-  await expect(page.locator('.press')).toHaveAttribute('data-sense', sense)
+  await expect(page.locator('html')).toHaveAttribute('data-sense', sense)
   await page.evaluate(() => document.fonts.ready)
 }
 
@@ -85,22 +91,22 @@ test('the rack shows every game on its shelf, with today’s packet as the one g
   await expect(page.getByRole('navigation', { name: 'Start from how you feel' }).getByRole('link')).toHaveCount(3)
 })
 
-test('the dial turns the page Quiet, Gentle or Lively for the visit, by keyboard', async ({ page }) => {
+test('the dial turns the page Quiet, Gentle or Lively, by keyboard, and keeps its place after a reload', async ({ page }) => {
   await page.goto('/press')
   // Gentle is the default sense
-  await expect(page.locator('.press')).toHaveAttribute('data-sense', 'gentle')
+  await expect(page.locator('html')).toHaveAttribute('data-sense', 'gentle')
   const dial = page.getByRole('group', { name: 'How it feels' }).last()
   await dial.getByRole('radio', { name: 'Gentle' }).focus()
   await page.keyboard.press('ArrowLeft')
   await expect(dial.getByRole('radio', { name: 'Quiet' })).toBeChecked()
-  await expect(page.locator('.press')).toHaveAttribute('data-sense', 'quiet')
-  await expect(page.locator('.press a.sp-packet').first()).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)')
+  await expect(page.locator('html')).toHaveAttribute('data-sense', 'quiet')
+  await expect(page.locator('a.sp-packet').first()).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)')
   await page.reload()
-  await expect(page.locator('.press')).toHaveAttribute('data-sense', 'quiet')
+  await expect(page.locator('html')).toHaveAttribute('data-sense', 'quiet')
   await dial.getByRole('radio', { name: 'Quiet' }).focus()
   await page.keyboard.press('ArrowRight')
   await page.keyboard.press('ArrowRight')
-  await expect(page.locator('.press')).toHaveAttribute('data-sense', 'lively')
+  await expect(page.locator('html')).toHaveAttribute('data-sense', 'lively')
 })
 
 test('nothing moves on arrival, and Quiet has no motion at all', async ({ page }) => {
@@ -110,10 +116,10 @@ test('nothing moves on arrival, and Quiet has no motion at all', async ({ page }
   expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
 })
 
-test('the header gear opens the settings, and the old chrome stays out of the way', async ({ page }) => {
+test('the site header and footer are the only ones, and the gear opens the settings', async ({ page }) => {
   await open(page, '/press/home', 'gentle')
-  await expect(page.locator('body > header[role="banner"]')).toBeHidden()
-  await expect(page.locator('body > footer[role="contentinfo"]')).toBeHidden()
+  await expect(page.getByRole('banner')).toHaveCount(1)
+  await expect(page.getByRole('contentinfo')).toHaveCount(1)
   const panel = page.getByRole('dialog', { name: 'Accessibility settings' })
   await expect(async () => {
     if (!(await panel.isVisible())) await page.getByRole('button', { name: 'Open accessibility settings' }).click()
