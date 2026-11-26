@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vgm-v4'
+const CACHE_NAME = 'vgm-v5'
 const OFFLINE_URL = '/offline'
 
 // Pages and assets to pre-cache for offline use
@@ -9,36 +9,52 @@ const PRECACHE_URLS = [
   '/logo.png',
 ]
 
-// Game routes that work offline (no server/API dependency)
-const OFFLINE_GAME_ROUTES = [
-  '/games/the-still-point',   // Breathing Patterns — pure client-side
-  '/games/the-long-breath',   // The Unrusher — pure client-side
-  '/games/thought-pockets',   // Thought Pockets — pure client-side (Zustand state)
-]
+// Game pages a visitor has opened are kept (newest last) so they can be opened again offline.
+const GAME_PAGE = /^\/games\/[^/]+$/
+const MAX_GAME_PAGES = 20
 
 // The offline page is only useful if its stylesheets, fonts and scripts are there too. Read them from the
 // page itself (and the fonts out of its stylesheets) so the list can never drift from what the build emits.
 const STATIC_ASSET = /\/_next\/static\/[^"'()\s\\]+/g
+const CSS_URL = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g
+
+const pathOf = (url) => new URL(url, self.location.origin).pathname
+const isStylesheet = (url) => pathOf(url).endsWith('.css')
+
+// Every font or image a stylesheet names, resolved against the stylesheet's own address
+function assetsInCss(css, cssUrl) {
+  const found = []
+  for (const match of css.matchAll(CSS_URL)) {
+    try {
+      const asset = new URL(match[2], new URL(cssUrl, self.location.origin))
+      if (asset.origin === self.location.origin && asset.pathname.startsWith('/_next/static/')) found.push(asset.href)
+    } catch {}
+  }
+  return found
+}
 
 async function precacheOfflineAssets(cache) {
   const page = await cache.match(OFFLINE_URL)
   if (!page) return
-  const urls = new Set((await page.text()).match(STATIC_ASSET) || [])
-  const stylesheets = [...urls].filter((url) => url.endsWith('.css'))
+  const urls = new Set(((await page.text()).match(STATIC_ASSET) || []).map((url) => new URL(url, self.location.origin).href))
   await Promise.all(
-    stylesheets.map(async (url) => {
+    [...urls].filter(isStylesheet).map(async (url) => {
       try {
         const response = await fetch(url)
         if (!response.ok) return
-        const css = await response.clone().text()
-        for (const asset of css.match(STATIC_ASSET) || []) urls.add(asset)
+        for (const asset of assetsInCss(await response.clone().text(), url)) urls.add(asset)
         await cache.put(url, response)
       } catch {}
     })
   )
-  await Promise.all(
-    [...urls].filter((url) => !url.endsWith('.css')).map((url) => cache.add(url).catch(() => {}))
-  )
+  await Promise.all([...urls].filter((url) => !isStylesheet(url)).map((url) => cache.add(url).catch(() => {})))
+}
+
+async function keepGamePage(request, response) {
+  const cache = await caches.open(CACHE_NAME)
+  await cache.put(request, response)
+  const pages = (await cache.keys()).filter((key) => GAME_PAGE.test(pathOf(key.url)))
+  await Promise.all(pages.slice(0, Math.max(0, pages.length - MAX_GAME_PAGES)).map((key) => cache.delete(key)))
 }
 
 self.addEventListener('install', (event) => {
@@ -60,20 +76,25 @@ self.addEventListener('activate', (event) => {
   self.clients.claim()
 })
 
+const STATIC_FILE = /\.(?:svg|png|jpe?g|webp|avif|woff2)$/
+
 self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
+
+  // Framework data requests (RSC payloads, prefetches) are never kept: they go straight to the network
+  if (request.headers.has('RSC') || url.searchParams.has('_rsc')) return
 
   // Navigation requests: network-first, cache fallback
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Cache successful navigation responses for offline game routes
-          const isOfflineGame = OFFLINE_GAME_ROUTES.some((route) => url.pathname.startsWith(route))
-          if (response.ok && (isOfflineGame || url.pathname === '/')) {
+          if (response.ok && GAME_PAGE.test(url.pathname)) {
+            event.waitUntil(keepGamePage(request, response.clone()))
+          } else if (response.ok && url.pathname === '/') {
             const cloned = response.clone()
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned))
+            event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned)))
           }
           return response
         })
@@ -86,13 +107,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Static assets (JS, CSS, images, fonts): cache-first for performance
-  if (
-    url.pathname.startsWith('/_next/static/') ||
-    url.pathname.startsWith('/games/') ||
-    url.pathname.endsWith('.svg') ||
-    url.pathname.endsWith('.png') ||
-    url.pathname.endsWith('.woff2')
-  ) {
+  if (url.pathname.startsWith('/_next/static/') || STATIC_FILE.test(url.pathname)) {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached
@@ -116,6 +131,6 @@ self.addEventListener('fetch', (event) => {
 
   // Everything else: network-first
   event.respondWith(
-    fetch(request).catch(() => caches.match(request))
+    fetch(request).catch(() => caches.match(request).then((cached) => cached || Response.error()))
   )
 })
