@@ -416,7 +416,6 @@ export default function IdeaLab() {
       <div className="min-h-[60vh] bg-background flex items-center justify-center px-6">
         <div className="max-w-lg text-center animate-fade">
           <FlaskConical className="mx-auto mb-6 text-warm" size={56} strokeWidth={1.5} aria-hidden="true" />
-          <h1 className="text-4xl font-semibold mb-4">The Alchemist</h1>
           <p className="text-lg text-foreground/80 mb-3 leading-relaxed">
             Mix two ideas and see what they become. Seven of them are gold, each hidden behind a riddle, and the heaviest feelings are often the way there.
           </p>
@@ -520,13 +519,7 @@ export default function IdeaLab() {
       <style>{GOLD_MOMENT_CSS}</style>
       <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 max-w-6xl">
         <div className={reducedMotion ? '' : 'animate-fade'}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
-            <div>
-                <h1 className="text-3xl sm:text-4xl font-semibold mb-2">The Alchemist</h1>
-                <p className="text-foreground/75">
-                  Mix two ideas and see what they become.
-                </p>
-              </div>
+          <div className="flex justify-end gap-4 mb-6 sm:mb-8">
               <div className="flex items-center gap-3">
                 <Button
                   id={RESET_BUTTON_ID}

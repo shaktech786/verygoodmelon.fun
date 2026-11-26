@@ -9,7 +9,7 @@ interface GameVisitTrackerProps {
 
 /**
  * Invisible component that records anonymous game opens and time spent.
- * Drop into GamePageWrapper to auto-track all game pages.
+ * GameStage mounts it, so every game page is tracked.
  */
 export function GameVisitTracker({ gameId }: GameVisitTrackerProps) {
   const startTime = useRef(0)
@@ -34,7 +34,7 @@ export function GameVisitTracker({ gameId }: GameVisitTrackerProps) {
       close()
     }
     // Only run on mount/unmount for this gameId
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [gameId])
 
   return null

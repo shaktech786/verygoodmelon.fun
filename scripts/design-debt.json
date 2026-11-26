@@ -6,24 +6,6 @@
   "app/games/[slug]/opengraph-image.tsx": {
     "raw-colour": 11
   },
-  "app/games/ancient-voices/page.tsx": {
-    "animate": 1
-  },
-  "app/games/final-breath/page.tsx": {
-    "animate": 1
-  },
-  "app/games/first-breath/page.tsx": {
-    "animate": 1
-  },
-  "app/games/quiet-grove/page.tsx": {
-    "animate": 1
-  },
-  "app/games/the-arena/page.tsx": {
-    "animate": 1
-  },
-  "app/games/the-long-breath/page.tsx": {
-    "animate": 1
-  },
   "app/games/the-mutation/CascadeGame.tsx": {
     "animate": 1,
     "banned-utility": 3
@@ -39,20 +21,8 @@
   "app/games/the-mutation/engine/palette.ts": {
     "raw-colour": 17
   },
-  "app/games/the-silver-lining/page.tsx": {
-    "animate": 1
-  },
-  "app/games/the-slow-post/page.tsx": {
-    "animate": 1
-  },
   "app/games/the-still-point/opengraph-image.tsx": {
     "raw-colour": 7
-  },
-  "app/games/the-still-point/page.tsx": {
-    "animate": 1
-  },
-  "app/games/the-threshold/page.tsx": {
-    "animate": 1
   },
   "app/games/thought-pockets/components/BattleScreen.tsx": {
     "banned-utility": 4

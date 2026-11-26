@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import IdeaLab from '@/components/games/IdeaLab'
-import { GamePageWrapper } from '@/components/games/GamePageWrapper'
+import { GameStage } from '@/components/seedpress/GameStage'
 
 export const metadata: Metadata = {
   title: 'The Alchemist | VeryGoodMelon.Fun',
@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 
 export default function IdeaLabPage() {
   return (
-    <GamePageWrapper gameId="idea-lab">
+    <GameStage gameId="idea-lab" title="The Alchemist" lead="Mix two ideas and see what they become." sound>
       <IdeaLab />
-    </GamePageWrapper>
+    </GameStage>
   )
 }

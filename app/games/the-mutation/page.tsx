@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import CascadeGame from './CascadeGame'
-import { GamePageWrapper } from '@/components/games/GamePageWrapper'
+import { GameStage } from '@/components/seedpress/GameStage'
 
 export const metadata: Metadata = {
   title: 'The Shapeshifter | VeryGoodMelon.Fun',
@@ -10,10 +10,14 @@ export const metadata: Metadata = {
 
 export default function CascadePage() {
   return (
-    <GamePageWrapper gameId="cascade">
-      <div className="container mx-auto px-4 py-4 sm:py-6 max-w-4xl">
-        <CascadeGame />
-      </div>
-    </GamePageWrapper>
+    <GameStage
+      gameId="cascade"
+      title="The Shapeshifter"
+      lead="A calm arcade game that learns six new rules, in a new order each time."
+      wide
+      sound
+    >
+      <CascadeGame />
+    </GameStage>
   )
 }

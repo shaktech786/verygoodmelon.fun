@@ -11,7 +11,6 @@ import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { COMPOSURE_GUARD } from '@/lib/games/thought-pockets/engine/battle'
 import { PROBLEM_RULE, slowGroundText } from '@/lib/games/thought-pockets/data/enemies'
 import { TIRING } from '@/lib/games/thought-pockets/data/pace'
-import { AmbientSoundscape } from '@/components/ui/AmbientSoundscape'
 import { BattleScreen, PlayerResolve, PlayerShown, PlayerShownContext } from './BattleScreen'
 import { MapScreen, FLOOR_NAMES, WALK_STRETCH } from './MapScreen'
 import { EventScreen, RestScreen, RewardScreen, ShopScreen, quietButton } from './NodeScreens'
@@ -285,7 +284,6 @@ export function ThoughtPockets() {
     <div className="tp-root min-h-[calc(100dvh-4rem)] bg-[var(--tp-ink)] px-4 py-3 sm:py-6">
       <style>{THEME_CSS}</style>
       <div className="mx-auto max-w-5xl">
-        <h1 className="sr-only">The Philosopher</h1>
         {!hydrated ? (
           <p className="py-24 text-center text-[var(--tp-muted)]">Opening your notebook…</p>
         ) : (
@@ -313,7 +311,6 @@ export function ThoughtPockets() {
       <Modal open={dialog === 'deck' && Boolean(run)} onClose={() => setDialog(null)} title="Your deck">
         {run && <DeckList run={run} />}
       </Modal>
-      <AmbientSoundscape gameId="thought-pockets" />
     </div>
   )
 }

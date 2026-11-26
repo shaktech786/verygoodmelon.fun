@@ -324,12 +324,12 @@ test.describe('reading it with a screen reader, and how it looks', () => {
     expect(colours.border).not.toBe(colours.accent)
   })
 
-  test('the header is centred like every other game and the category reads as a word', async ({ page }) => {
+  test('the title sits in the game strip, left-aligned like every other game, and the category reads as a word', async ({ page }) => {
     await databaseDown(page)
     await page.goto('/games/the-crossroads')
 
     const title = page.getByRole('heading', { level: 1, name: 'The Dilemma' })
-    await expect(title).toHaveCSS('text-align', 'center')
+    await expect(title).toHaveCSS('text-align', 'start')
     await expect(page.locator('main')).toMatchAriaSnapshot('- text: Near the start Meaning')
   })
 

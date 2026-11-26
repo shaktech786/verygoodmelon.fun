@@ -37,8 +37,9 @@ describe('HardChoices', () => {
 
   it('displays dilemma scenario text', () => {
     render(<HardChoices />)
-    // Should show the title
-    expect(screen.getByText('The Dilemma')).toBeInTheDocument()
+    // The title belongs to the page's game strip, so the game itself draws no heading
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+    expect(screen.getByText('Meaning', { selector: 'span' })).toBeInTheDocument()
   })
 
   it('shows the category label capitalised, as it is read aloud', () => {

@@ -4,7 +4,6 @@ import { EXTRA_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Undo2, Trash2, Sunset } from 'lucide-react'
 import { Button, buttonClassName } from '@/components/ui/Button'
-import { KeyHints } from '@/components/ui/KeyHints'
 import { cn } from '@/lib/utils/cn'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import {
@@ -1017,9 +1016,6 @@ export default function CalmGarden() {
           ))}
         </details>
 
-        <KeyHints className="mt-3 text-foreground/70">
-          Tab to the garden, arrows move, Enter plants, Ctrl+Z undoes.
-        </KeyHints>
       </section>
     </div>
   )

@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import dynamic from 'next/dynamic'
-import { GamePageWrapper } from '@/components/games/GamePageWrapper'
+import { GameStage } from '@/components/seedpress/GameStage'
+import { Loading } from '@/components/seedpress/Loading'
 
 const TimelessMinds = dynamic(() => import('@/components/games/TimelessMinds'), {
-  loading: () => <div className="min-h-[400px] flex items-center justify-center text-foreground/70">Loading...</div>,
+  loading: () => <Loading />,
 })
 
 export const metadata: Metadata = {
@@ -13,21 +14,8 @@ export const metadata: Metadata = {
 
 export default function TheSagePage() {
   return (
-    <GamePageWrapper gameId="timeless-minds">
-      <div className="container mx-auto px-4 py-3 sm:py-4">
-        <div className="animate-fade">
-          <div className="text-center mb-3 sm:mb-4">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-1 sm:mb-2 text-foreground">
-              The Sage
-            </h1>
-            <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl mx-auto">
-              Talk through what is on your mind with a great thinker from history
-            </p>
-          </div>
-
-          <TimelessMinds />
-        </div>
-      </div>
-    </GamePageWrapper>
+    <GameStage gameId="timeless-minds" title="The Sage" lead="Talk through what is on your mind with a great thinker from history" sound>
+      <TimelessMinds />
+    </GameStage>
   )
 }

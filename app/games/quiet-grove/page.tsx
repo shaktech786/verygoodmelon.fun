@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import CalmGarden from '@/components/games/CalmGarden'
-import { GamePageWrapper } from '@/components/games/GamePageWrapper'
+import { GameStage } from '@/components/seedpress/GameStage'
 
 export const metadata: Metadata = {
   title: 'The Gardener | VeryGoodMelon.Fun',
@@ -10,21 +10,15 @@ export const metadata: Metadata = {
 
 export default function QuietGrovePage() {
   return (
-    <GamePageWrapper gameId="calm-garden">
-      <div className="container mx-auto px-4 py-4 sm:py-6 max-w-4xl lg:max-w-6xl">
-        <div className="animate-fade">
-          <div className="text-center mb-4">
-            <h1 className="text-2xl sm:text-3xl font-semibold mb-1 text-foreground">
-              The Gardener
-            </h1>
-            <p className="text-sm sm:text-base text-foreground/70 max-w-2xl mx-auto">
-              Plant what feels right, then sit with it a while.
-            </p>
-          </div>
-
-          <CalmGarden />
-        </div>
-      </div>
-    </GamePageWrapper>
+    <GameStage
+      gameId="calm-garden"
+      title="The Gardener"
+      lead="Plant what feels right, then sit with it a while."
+      keys="Tab to the garden, arrows move, Enter plants, Ctrl+Z undoes."
+      wide
+      sound
+    >
+      <CalmGarden />
+    </GameStage>
   )
 }

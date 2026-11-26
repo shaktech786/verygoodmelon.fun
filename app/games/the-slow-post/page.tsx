@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import WorryCapsule from '@/components/games/WorryCapsule'
-import { GamePageWrapper } from '@/components/games/GamePageWrapper'
+import { GameStage } from '@/components/seedpress/GameStage'
 
 export const metadata: Metadata = {
   title: 'The Keeper | VeryGoodMelon.Fun',
@@ -9,21 +9,8 @@ export const metadata: Metadata = {
 
 export default function TheKeeperPage() {
   return (
-    <GamePageWrapper gameId="worry-capsule">
-      <div className="container mx-auto px-4 py-4 sm:py-6 max-w-4xl">
-        <div className="animate-fade">
-          <div className="text-center mb-4 sm:mb-6">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-2 text-foreground">
-              The Keeper
-            </h1>
-            <p className="text-sm sm:text-base md:text-lg text-foreground/70 max-w-2xl mx-auto">
-              Set a worry down. It will wait for you.
-            </p>
-          </div>
-
-          <WorryCapsule />
-        </div>
-      </div>
-    </GamePageWrapper>
+    <GameStage gameId="worry-capsule" title="The Keeper" lead="Set a worry down. It will wait for you." sound>
+      <WorryCapsule />
+    </GameStage>
   )
 }

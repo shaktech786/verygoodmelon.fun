@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import HardChoices from '@/components/games/HardChoices'
-import { GamePageWrapper } from '@/components/games/GamePageWrapper'
+import { GameStage } from '@/components/seedpress/GameStage'
 
 export const metadata: Metadata = {
   title: 'The Dilemma | VeryGoodMelon.Fun',
@@ -9,8 +9,13 @@ export const metadata: Metadata = {
 
 export default function HardChoicesPage() {
   return (
-    <GamePageWrapper gameId="hard-choices">
+    <GameStage
+      gameId="hard-choices"
+      title="The Dilemma"
+      lead="Twelve everyday questions with no right answer. Choose, skip or change your mind, and at the end see what you chose to protect."
+      sound
+    >
       <HardChoices />
-    </GamePageWrapper>
+    </GameStage>
   )
 }
