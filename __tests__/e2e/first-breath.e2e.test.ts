@@ -241,7 +241,8 @@ test.describe('The Awakening', () => {
     const panel = page.getByRole('dialog', { name: 'Accessibility settings' })
     await expect(panel).toBeVisible()
     const before = await page.evaluate(() => window.scrollY)
-    await panel.getByRole('radio', { name: 'Quiet' }).check({ force: true })
+    // The real control is the visible stamp; its radio is an overlay, and the drawer may still be sliding in
+    await panel.getByRole('group', { name: 'How it feels' }).locator('label.sp-choice', { hasText: 'Quiet' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-sense', 'quiet')
     await expect(async () => {
       expect(Math.abs((await page.evaluate(() => window.scrollY)) - before)).toBeLessThan(2)
