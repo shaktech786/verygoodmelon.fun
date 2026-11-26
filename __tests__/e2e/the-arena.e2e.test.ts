@@ -574,7 +574,7 @@ test.describe('The Arena', () => {
       probe.remove()
       const bubbles = Array.from(log.querySelectorAll('.justify-start, .justify-end')).slice(0, 2)
       return {
-        names: bubbles.map((b) => getComputedStyle(b.querySelector('.font-semibold') as Element).color),
+        names: bubbles.map((b) => getComputedStyle(b.querySelector('.font-bold') as Element).color),
         markers: bubbles.map((b) => (b.querySelector('[aria-hidden="true"]') as Element).className.includes('rotate-45')),
         red,
         green,
@@ -712,8 +712,8 @@ test.describe('The Arena', () => {
       expect(await bar.evaluate((el) => getComputedStyle(el).position)).not.toBe('sticky')
       const newDebate = debate(page).getByRole('button', { name: 'New debate' })
       const surprise = debate(page).getByRole('button', { name: 'Surprise me' })
-      await expect(newDebate).toHaveClass(/bg-accent/)
-      await expect(surprise).not.toHaveClass(/bg-accent/)
+      await expect(newDebate).toHaveAttribute('data-go', '')
+      await expect(surprise).not.toHaveAttribute('data-go')
     })
 
     test('long names and a long topic wrap without sideways scrolling', async ({ page }) => {

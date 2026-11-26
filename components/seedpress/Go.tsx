@@ -52,7 +52,7 @@ export function Go(props: GoProps) {
       {...rest}
       data-go=""
       className={buttonClass('go', className)}
-      aria-disabled={unavailable || loading ? true : undefined}
+      aria-disabled={unavailable || loading ? true : rest['aria-disabled']}
       aria-describedby={reasonId ?? rest['aria-describedby']}
       aria-busy={loading || undefined}
       onClick={(event) => {

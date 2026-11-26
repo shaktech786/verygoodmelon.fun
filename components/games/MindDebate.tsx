@@ -2,18 +2,22 @@
 
 import { REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { Button, buttonClassName } from '@/components/ui/Button'
+import { Go } from '@/components/seedpress/Go'
+import { Stamp } from '@/components/seedpress/Stamp'
+import { QuietButton } from '@/components/seedpress/QuietButton'
+import { Loading } from '@/components/seedpress/Loading'
+import { CareBlock } from '@/components/seedpress/CareBlock'
 import { StickyTray } from '@/components/seedpress/StickyTray'
+import { cn } from '@/lib/utils/cn'
+import styles from './Arena.module.css'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { PAIRINGS, pairingIndexOf, type EmblemId } from '@/lib/games/arena-pairings'
-import { ARENA_VOICES_CSS, Emblem, OWN_CARD, PairingDeck, VOICE, VoiceMarker, voiceTint } from '@/components/games/ArenaPairingDeck'
+import { Emblem, OWN_CARD, PairingDeck, VOICE, VoiceMarker, voiceTint } from '@/components/games/ArenaPairingDeck'
 import { Keepsake } from '@/components/games/Keepsake'
 import { arenaKeepsake } from '@/lib/keepsake/arena'
 import { useCareMode } from '@/components/games/CareMode'
 import { OwnSupportMark } from '@/components/games/OwnSupport'
-import { HelplineSentence } from '@/components/games/HelplineSentence'
 import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
-import { Icon } from '@/components/seedpress/icons/Icon'
 
 interface DebateEntry {
   speaker: string
@@ -40,13 +44,11 @@ const WORD_DELAY_MS = 300
 const TURN_PAUSE_MS = 1500
 const NAME_MAX = 60
 const TOPIC_MAX = 120
-const STICK_TO_BOTTOM_PX = 48
+// The row that says a turn is on its way sits below the last turn and grows the page by itself, so a little room below still counts as the bottom
+const STICK_TO_BOTTOM_PX = 160
 // Below this width the transcript grows with the page instead of scrolling in a box of its own
 const TRANSCRIPT_BOX_QUERY = '(min-width: 640px)'
 const ABORTED = Symbol('aborted')
-const ACTION = 'flex items-center gap-2'
-const FIELD =
-  'w-full px-4 py-2.5 rounded-lg border border-card-border bg-card-bg text-foreground placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring transition-colors'
 
 /** Where the debate stands, in words, so nothing on screen or in a screen reader counts rounds. */
 function debateInWords(finished: number, currentRound: number): string {
@@ -181,7 +183,7 @@ export default function MindDebate() {
     }
     const hidden = el.getBoundingClientRect().bottom - visibleBottom(barRef.current)
     if (hidden > 0) window.scrollBy({ top: hidden })
-  }, [history, typingText, phase])
+  }, [history, typingText, phase, currentRound, awaitingReader])
 
   // Whatever control was just pressed usually disappears with the phase it belonged to, so focus moves to the next sensible place
   useEffect(() => {
@@ -496,19 +498,20 @@ export default function MindDebate() {
 
   if (phase === 'setup') {
     return (
-      <div className="arena-voices max-w-3xl mx-auto animate-fade" role="region" aria-label="Debate setup">
-        <style>{ARENA_VOICES_CSS}</style>
-        <p id="deck-hint" className="text-center text-sm sm:text-base text-foreground/80 mb-3 sm:mb-4">
+      <div className={cn(styles.arena, 'max-w-3xl mx-auto')} role="region" aria-label="Debate setup">
+        <p id="deck-hint" className="text-center mb-3 sm:mb-4">
           Pick two minds and a question, or write your own.
         </p>
         <PairingDeck selected={selectedCard} onPick={pickPairing} onWriteOwn={writeOwn} />
 
         <form onSubmit={handleStart} className="mt-5 sm:mt-6 max-w-xl mx-auto space-y-4">
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div className="min-w-0">
-              <label htmlFor="person1" className="flex items-center gap-1.5 text-sm font-medium text-foreground/80 mb-1.5">
-                <VoiceMarker second={false} />
-                First debater
+            <div className="sp-slip min-w-0">
+              <label htmlFor="person1" className="sp-slip__label">
+                <span className={styles.fieldLabel}>
+                  <VoiceMarker second={false} />
+                  First debater
+                </span>
               </label>
               <input
                 ref={person1Ref}
@@ -518,14 +521,16 @@ export default function MindDebate() {
                 onChange={(e) => setPerson1(e.target.value)}
                 placeholder="e.g. Socrates"
                 maxLength={NAME_MAX}
-                className={FIELD}
+                className="sp-slip__input"
                 autoComplete="off"
               />
             </div>
-            <div className="min-w-0">
-              <label htmlFor="person2" className="flex items-center gap-1.5 text-sm font-medium text-foreground/80 mb-1.5">
-                <VoiceMarker second />
-                Second debater
+            <div className="sp-slip min-w-0">
+              <label htmlFor="person2" className="sp-slip__label">
+                <span className={styles.fieldLabel}>
+                  <VoiceMarker second />
+                  Second debater
+                </span>
               </label>
               <input
                 id="person2"
@@ -534,14 +539,14 @@ export default function MindDebate() {
                 onChange={(e) => setPerson2(e.target.value)}
                 placeholder="e.g. Nietzsche"
                 maxLength={NAME_MAX}
-                className={FIELD}
+                className="sp-slip__input"
                 autoComplete="off"
               />
             </div>
           </div>
 
-          <div>
-            <label htmlFor="topic" className="block text-sm font-medium text-foreground/80 mb-1.5">
+          <div className="sp-slip">
+            <label htmlFor="topic" className="sp-slip__label">
               Topic
             </label>
             <input
@@ -552,32 +557,20 @@ export default function MindDebate() {
               onChange={(e) => setTopic(e.target.value)}
               placeholder="e.g. Is free will an illusion?"
               maxLength={TOPIC_MAX}
-              className={FIELD}
+              className="sp-slip__input"
               autoComplete="off"
             />
           </div>
 
           <PaceToggle checked={turnByTurn} onChange={chooseTurnByTurn} />
 
-          <StickyTray className="flex gap-3">
-            <button data-go=""
-              ref={startRef}
-              type="submit"
-              disabled={!canStart}
-              className={buttonClassName('primary', 'md', 'flex-1 flex items-center justify-center gap-2')}
-            >
-              <Icon name="chat" size={24} />
+          <StickyTray className="flex flex-wrap items-center gap-3">
+            <Go ref={startRef} type="submit" unavailable={canStart ? undefined : 'Pick two minds and a question first.'}>
               Begin
-            </button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleSurprise}
-              className="flex items-center justify-center gap-2"
-            >
-              <Icon name="dice" size={24} />
+            </Go>
+            <Stamp icon="dice" onClick={handleSurprise}>
               Surprise me
-            </Button>
+            </Stamp>
           </StickyTray>
         </form>
       </div>
@@ -588,30 +581,15 @@ export default function MindDebate() {
     return (
       <div className="max-w-2xl mx-auto" role="region" aria-label="Support">
         <OwnSupportMark />
-        <section
-          aria-labelledby="arena-care-heading"
-          className="scroll-mt-20 rounded-xl border border-card-border border-l-4 border-l-[var(--melon-green)] bg-card-bg px-5 py-6 sm:px-8 text-left text-foreground leading-relaxed"
-        >
-          <h2
-            id="arena-care-heading"
-            ref={careHeadingRef}
-            tabIndex={-1}
-            className="text-xl sm:text-2xl font-semibold text-foreground focus:outline-none focus-visible:shadow-none!"
-          >
+        <div className="grid gap-4">
+          <h2 id="arena-care-heading" ref={careHeadingRef} tabIndex={-1} className={cn(styles.careTitle, 'scroll-mt-20')}>
             You don&apos;t have to hold this alone
           </h2>
-          <p className="mt-3">
-            <HelplineSentence lead="If this question is close to home, please talk to someone who can listen." />
-          </p>
-          <p className="mt-3 text-foreground/85">
-            This is not one for a debate. The Arena will be here whenever you want a lighter question.
-          </p>
-        </section>
-        <div className="mt-4 flex justify-center">
-          <Button onClick={() => backToSetup('topic')} variant="secondary" className={ACTION}>
-            <Icon name="reset" size={24} />
-            Back to the start
-          </Button>
+          <CareBlock lead="If this question is close to home, please talk to someone who can listen." />
+          <p className="m-0">This is not one for a debate. The Arena will be here whenever you want a lighter question.</p>
+          <div>
+            <QuietButton onClick={() => backToSetup('topic')}>Back to the start</QuietButton>
+          </div>
         </div>
       </div>
     )
@@ -627,41 +605,34 @@ export default function MindDebate() {
   return (
     <div
       ref={regionRef}
-      className="arena-voices max-w-4xl mx-auto animate-fade"
+      className={cn(styles.arena, 'max-w-4xl mx-auto')}
       role="region"
       aria-label={`Debate: ${person1Name} and ${person2Name}`}
     >
-      <style>{ARENA_VOICES_CSS}</style>
-      <section
-        aria-labelledby="arena-question"
-        className="bg-card-bg border border-card-border rounded-xl px-4 pt-3 pb-3 sm:px-8 sm:pt-6 sm:pb-4 mb-3 sm:mb-4"
-      >
-        <p className="hidden sm:block text-sm text-foreground/75 text-center">The question</p>
-        <h2 id="arena-question" className="sm:mt-1 text-xl sm:text-2xl font-semibold text-center text-foreground break-words">
+      <section aria-labelledby="arena-question" className={cn(styles.sheet, styles.stage, 'mb-3 sm:mb-4')}>
+        <p className={cn(styles.caption, 'hidden sm:block')}>The question</p>
+        <h2 id="arena-question" className={cn(styles.question, 'sm:mt-1')}>
           {/* A question turned down for what it says is not echoed back in large type */}
           {phase === 'declined' && declineReason === 'topic' ? 'A question set aside' : <>&ldquo;{topicName}&rdquo;</>}
         </h2>
         <div className="mt-2 sm:mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 sm:gap-6">
-          <Speaker name={person1Name} side="left" emblem={emblems?.[0]} state={activeSide === 'left' ? activeState : null} reducedMotion={reducedMotion} />
-          <span className="self-center pb-6 sm:pb-8 text-xl sm:text-2xl font-semibold text-foreground/60" aria-hidden="true">&amp;</span>
-          <Speaker name={person2Name} side="right" emblem={emblems?.[1]} state={activeSide === 'right' ? activeState : null} reducedMotion={reducedMotion} />
+          <Speaker name={person1Name} side="left" emblem={emblems?.[0]} state={activeSide === 'left' ? activeState : null} />
+          <span className={cn(styles.amp, 'pb-6 sm:pb-8')} aria-hidden="true">&amp;</span>
+          <Speaker name={person2Name} side="right" emblem={emblems?.[1]} state={activeSide === 'right' ? activeState : null} />
         </div>
-        <p className="mt-1 sm:mt-3 text-sm text-foreground/75 text-center">Imagined voices, not real quotes.</p>
+        <p className={cn(styles.caption, 'mt-1 sm:mt-3')}>Imagined voices, not real quotes.</p>
       </section>
 
       {(phase === 'debating' || phase === 'stopped') && (
         <div className="flex items-center justify-center mb-3">
           <div
-            className="flex gap-1.5"
+            className={styles.marks}
             role="img"
             data-testid="debate-dots"
             aria-label={debateInWords(history.length, currentRound)}
           >
             {Array.from({ length: TOTAL_ROUNDS }, (_, i) => (
-              <div
-                key={i}
-                className={`w-2 h-2 rounded-full transition-colors ${i < history.length ? 'bg-melon-green' : 'bg-foreground/15'}`}
-              />
+              <div key={i} className={cn(styles.mark, i < history.length && styles.markDone)} />
             ))}
           </div>
         </div>
@@ -674,7 +645,7 @@ export default function MindDebate() {
         role="log"
         aria-live="polite"
         aria-label="Debate transcript"
-        className="bg-card-bg border border-card-border rounded-xl p-4 sm:p-6 min-h-[160px] sm:min-h-[240px] sm:max-h-[60vh] sm:overflow-y-auto space-y-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+        className={cn(styles.sheet, styles.transcript, 'sm:max-h-[60vh] sm:overflow-y-auto space-y-4')}
       >
         {history.map((entry) => (
           <DebateBubble key={entry.round} entry={entry} side={sideOf(entry.round)} />
@@ -685,38 +656,37 @@ export default function MindDebate() {
             <DebateBubble
               entry={{ speaker: nextSpeaker, argument: typingText, round: currentRound }}
               side={sideOf(currentRound)}
-              typing
             />
           </div>
         )}
 
         {waitingForTurn && (
-          <div className="flex items-center justify-center gap-2 py-3 text-foreground/75">
-            <span className="text-sm break-words">{nextSpeaker} is thinking...</span>
+          <div className={cn(styles.waiting, 'flex justify-center')}>
+            <Loading>{`${nextSpeaker} is thinking...`}</Loading>
           </div>
         )}
 
         {phase === 'stopped' && (
-          <p className="text-center text-sm text-foreground/80 py-3">
+          <p className={cn(styles.note, 'py-3')}>
             {interruption ?? 'The debate is paused.'}
           </p>
         )}
 
         {phase === 'declined' && (
-          <p className="text-center text-sm text-foreground/80 leading-relaxed py-4 max-w-md mx-auto">
+          <p className={cn(styles.note, 'py-4')}>
             {DECLINE_LINES[declineReason ?? 'unknown']}
           </p>
         )}
 
         {phase === 'judging' && (
-          <div className="flex items-center justify-center gap-2 py-6 text-foreground/75">
-            <span className="text-sm">Letting it settle...</span>
+          <div className={cn(styles.waiting, 'flex justify-center py-4')}>
+            <Loading>Letting it settle...</Loading>
           </div>
         )}
       </div>
 
       {phase === 'debating' && awaitingReader && !turnByTurn && (
-        <p className="mt-3 text-center text-sm text-foreground/80">
+        <p className={cn(styles.note, 'mt-3')}>
           Paused while you read back. Scroll down, or press Next turn, to go on.
         </p>
       )}
@@ -732,58 +702,52 @@ export default function MindDebate() {
         />
       )}
 
-      <StickyTray ref={barRef} pinned={phase !== 'closing'} className="mt-2 sm:mt-3 flex flex-wrap justify-center gap-3">
+      <StickyTray ref={barRef} pinned={phase !== 'closing'} className="mt-2 sm:mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+        {phase === 'closing' && (
+          <Stamp icon="dice" onClick={handleSurprise}>
+            Surprise me
+          </Stamp>
+        )}
+        {phase === 'declined' && declineReason !== null && (
+          <Stamp icon="dice" onClick={handleSurprise}>
+            Surprise me
+          </Stamp>
+        )}
         {phase === 'debating' && (turnByTurn || awaitingReader) && (
-          <button data-go=""
-            type="button"
-            onClick={handleNextTurn}
-            aria-disabled={!awaitingReader}
-            className={buttonClassName('primary', 'md', `${ACTION} aria-disabled:opacity-60 aria-disabled:cursor-default`)}
-          >
+          <Go onClick={handleNextTurn} aria-disabled={awaitingReader ? undefined : true}>
             Next turn
-            <Icon name="next" size={24} />
-          </button>
+          </Go>
         )}
         {phase === 'debating' && (
-          <button ref={stopRef} type="button" onClick={handleStop} className={buttonClassName('secondary', 'md', ACTION)}>
-            <Icon name="stop" size={24} />
+          <Stamp ref={stopRef} icon="stop" onClick={handleStop}>
             Stop
-          </button>
+          </Stamp>
         )}
         {phase === 'stopped' && history.length < TOTAL_ROUNDS && (
-          <button data-go="" ref={continueRef} type="button" onClick={runDebate} className={buttonClassName('primary', 'md', ACTION)}>
-            <Icon name="play" size={24} />
+          <Go ref={continueRef} onClick={runDebate}>
             {interruption ? 'Try again' : 'Continue'}
-          </button>
+          </Go>
         )}
         {phase === 'declined' && declineReason === 'voice' && (
-          <button data-go="" ref={declineActionRef} type="button" onClick={() => backToSetup('person1')} className={buttonClassName('primary', 'md', ACTION)}>
-            <Icon name="person" size={24} />
+          <Go ref={declineActionRef} onClick={() => backToSetup('person1')}>
             Choose other voices
-          </button>
+          </Go>
         )}
         {phase === 'declined' && declineReason === 'topic' && (
-          <button data-go="" ref={declineActionRef} type="button" onClick={() => backToSetup('topic')} className={buttonClassName('primary', 'md', ACTION)}>
-            <Icon name="help" size={24} />
+          <Go ref={declineActionRef} onClick={() => backToSetup('topic')}>
             Ask another question
-          </button>
+          </Go>
         )}
-        {(phase === 'declined' || phase === 'closing') && (
-          <button
-            ref={phase === 'declined' && declineReason === null ? declineActionRef : undefined}
-            type="button"
-            onClick={handleSurprise}
-            {...(phase === 'declined' && declineReason === null ? { 'data-go': '' } : {})}
-            className={buttonClassName(phase === 'declined' && declineReason === null ? 'primary' : 'secondary', 'md', ACTION)}
-          >
-            <Icon name="dice" size={24} />
+        {phase === 'declined' && declineReason === null && (
+          <Go ref={declineActionRef} onClick={handleSurprise}>
             Surprise me
-          </button>
+          </Go>
         )}
-        <Button onClick={() => backToSetup()} variant={phase === 'closing' ? 'primary' : 'secondary'} className={ACTION}>
-          <Icon name="reset" size={24} />
-          New debate
-        </Button>
+        {phase === 'closing' ? (
+          <Go onClick={() => backToSetup()}>New debate</Go>
+        ) : (
+          <QuietButton onClick={() => backToSetup()}>New debate</QuietButton>
+        )}
       </StickyTray>
 
       {(phase === 'debating' || phase === 'stopped') && (
@@ -797,15 +761,10 @@ export default function MindDebate() {
 
 function PaceToggle({ checked, onChange }: { checked: boolean; onChange: (on: boolean) => void }) {
   return (
-    <label className="flex items-center gap-2.5 py-2 text-sm text-foreground/80 cursor-pointer">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 shrink-0 accent-chosen-line focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-      />
+    <label className={styles.pace}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       <span>
-        Turn by turn <span className="text-foreground/75">(each reply waits for Next turn)</span>
+        Turn by turn <span className={styles.soft}>(each reply waits for Next turn)</span>
       </span>
     </label>
   )
@@ -843,6 +802,7 @@ const FLESH = pixelPath('RO')
 const SEEDS = pixelPath('SEM')
 const OPEN_MOUTH = pixelPath('O')
 
+/** A written-by-hand pairing gets the melon, printed in the speaker's own ink. */
 function Medallion({ side, speaking }: { side: Side; speaking: boolean }) {
   return (
     <svg
@@ -852,11 +812,11 @@ function Medallion({ side, speaking }: { side: Side; speaking: boolean }) {
       style={side === 'right' ? { transform: 'scaleX(-1)' } : undefined}
       aria-hidden="true"
     >
-      <path d={RIND} fill="var(--melon-green)" />
-      <path d={INNER_RIND} fill="var(--melon-green-light)" />
-      <path d={FLESH} fill="var(--melon-red)" />
-      <path d={SEEDS} fill="var(--foreground)" />
-      {speaking && <path d={OPEN_MOUTH} fill="var(--foreground)" />}
+      <path d={RIND} style={{ fill: 'var(--voice)' }} />
+      <path d={INNER_RIND} style={{ fill: voiceTint('var(--voice)', 40) }} />
+      <path d={FLESH} style={{ fill: voiceTint('var(--voice)', 14) }} />
+      <path d={SEEDS} style={{ fill: 'var(--ink)' }} />
+      {speaking && <path d={OPEN_MOUTH} style={{ fill: 'var(--ink)' }} />}
     </svg>
   )
 }
@@ -866,36 +826,29 @@ function Speaker({
   side,
   emblem,
   state,
-  reducedMotion,
 }: {
   name: string
   side: Side
   /** The picture from the pairing's card; a pairing written by hand gets the melon. */
   emblem?: EmblemId
   state: 'speaking' | 'thinking' | null
-  reducedMotion: boolean
 }) {
   const active = state !== null
   const voice = side === 'left' ? VOICE.a : VOICE.b
   return (
-    <div className="flex flex-col items-center text-center min-w-0">
-      <div
-        className={`rounded-full p-1.5 border-2 ${reducedMotion ? '' : 'transition-transform duration-300'} ${
-          active && !reducedMotion ? '-translate-y-1' : ''
-        }`}
-        style={{ borderColor: active ? voice : 'transparent', background: voiceTint(voice, active ? 16 : 8) }}
-      >
+    <div className={cn(styles.speaker, side === 'left' ? styles.tintA : styles.tintB)}>
+      <div className={cn(styles.medal, active && styles.medalActive)}>
         {emblem ? (
           <Emblem id={emblem} color={voice} className="w-12 h-12 sm:w-24 sm:h-24" />
         ) : (
           <Medallion side={side} speaking={state === 'speaking'} />
         )}
       </div>
-      <p className="mt-1 sm:mt-2 flex items-center justify-center gap-2 text-base sm:text-lg font-medium text-foreground break-words max-w-full">
+      <p className={cn(styles.voiceName, 'mt-1 sm:mt-2')}>
         <VoiceMarker second={side === 'right'} />
-        <span className="min-w-0 break-words" style={{ color: voice }}>{name}</span>
+        <span className={styles.voiceText}>{name}</span>
       </p>
-      <p className="text-sm text-foreground/75 min-h-[1.25rem]" aria-hidden="true">
+      <p className={styles.state} aria-hidden="true">
         {state === 'speaking' ? 'speaking' : state === 'thinking' ? 'thinking' : ''}
       </p>
     </div>
@@ -923,35 +876,27 @@ function ClosingThoughts({
     [first, second, topic, closing.question, emblems, day],
   )
   return (
-    <section
-      aria-labelledby="closing-heading"
-      className="mt-6 scroll-mt-20 bg-card-bg border border-card-border rounded-xl px-4 py-6 sm:px-8 sm:py-8 space-y-6 animate-fade"
-    >
-      <h2
-        id="closing-heading"
-        ref={headingRef}
-        tabIndex={-1}
-        className="text-xl sm:text-2xl font-semibold text-center text-foreground focus:outline-none focus-visible:shadow-none!"
-      >
+    <section aria-labelledby="closing-heading" className={cn(styles.sheet, styles.closing)}>
+      <h2 id="closing-heading" ref={headingRef} tabIndex={-1} className={styles.closingTitle}>
         Closing thoughts
       </h2>
 
       <div>
-        <h3 className="text-base font-semibold text-foreground/80 text-center mb-3">What each got right</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <h3 className={styles.partTitle}>What each got right</h3>
+        <div className={styles.insights}>
           <Insight name={first} insight={closing.firstInsight} second={false} />
           <Insight name={second} insight={closing.secondInsight} second />
         </div>
       </div>
 
-      <div className="text-center max-w-xl mx-auto">
-        <h3 className="text-base font-semibold text-foreground/80 mb-2">What the conversation revealed</h3>
-        <p className="text-base text-foreground/90 leading-relaxed break-words">{closing.revealed}</p>
+      <div>
+        <h3 className={styles.partTitle}>What the conversation revealed</h3>
+        <p className={styles.readable}>{closing.revealed}</p>
       </div>
 
-      <div className="text-center max-w-xl mx-auto">
-        <h3 className="text-base font-semibold text-foreground/80 mb-2">To take with you</h3>
-        <p className="text-lg text-foreground italic leading-relaxed break-words">{closing.question}</p>
+      <div>
+        <h3 className={styles.partTitle}>To take with you</h3>
+        <p className={styles.question2}>{closing.question}</p>
       </div>
 
       <Keepsake plan={plan} label="A keepsake of this debate" />
@@ -960,40 +905,27 @@ function ClosingThoughts({
 }
 
 function Insight({ name, insight, second }: { name: string; insight: string; second: boolean }) {
-  const voice = second ? VOICE.b : VOICE.a
   return (
-    <div
-      className="rounded-lg border px-4 py-3 min-w-0"
-      style={{ borderColor: voiceTint(voice, 40), background: voiceTint(voice, 7) }}
-    >
-      <p className="flex items-center gap-2 text-base font-semibold break-words mb-1">
+    <div className={cn(styles.insight, second && styles.insightSecond, second ? styles.tintB : styles.tintA)}>
+      <p className={styles.insightName}>
         <VoiceMarker second={second} />
-        <span className="min-w-0 break-words" style={{ color: voice }}>{name}</span>
+        <span className={styles.voiceText}>{name}</span>
       </p>
-      <p className="text-base text-foreground/90 leading-relaxed break-words">{insight}</p>
+      <p className="m-0 leading-relaxed">{insight}</p>
     </div>
   )
 }
 
-function DebateBubble({ entry, side, typing = false }: { entry: DebateEntry; side: Side; typing?: boolean }) {
+function DebateBubble({ entry, side }: { entry: DebateEntry; side: Side }) {
   const isLeft = side === 'left'
-  const voice = isLeft ? VOICE.a : VOICE.b
   return (
     <div className={`flex ${isLeft ? 'justify-start' : 'justify-end'}`}>
-      <div
-        className={`max-w-[88%] sm:max-w-[72%] min-w-0 rounded-xl border px-4 py-3 ${isLeft ? 'rounded-tl-sm' : 'rounded-tr-sm'}`}
-        style={{ background: voiceTint(voice, 8), borderColor: voiceTint(voice, 30) }}
-      >
-        <div className="flex items-center gap-2 mb-1.5 min-w-0">
+      <div className={cn(styles.bubble, isLeft ? styles.bubbleLeft : styles.bubbleRight, isLeft ? styles.tintA : styles.tintB)}>
+        <div className={styles.bubbleHead}>
           <VoiceMarker second={!isLeft} />
-          <span className="text-sm font-semibold break-words min-w-0" style={{ color: voice }}>
-            {entry.speaker}
-          </span>
+          <span className={cn(styles.bubbleName, styles.voiceText, 'font-bold')}>{entry.speaker}</span>
         </div>
-        <p className="text-[15px] sm:text-base text-foreground/90 leading-relaxed break-words">
-          {entry.argument}
-          {typing && <span className="inline-block w-0.5 h-4 bg-foreground/40 ml-0.5 align-middle" />}
-        </p>
+        <p className={styles.bubbleText}>{entry.argument}</p>
       </div>
     </div>
   )

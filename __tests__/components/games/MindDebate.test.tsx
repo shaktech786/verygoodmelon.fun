@@ -38,7 +38,7 @@ describe('The Arena, when a written question sounds like someone in danger', () 
     startDebate('Should I just end my life tonight?')
 
     const support = screen.getByRole('region', { name: 'Support' })
-    expect(support).toContainElement(screen.getByRole('link', { name: '988' }))
+    expect(support).toContainElement(screen.getByRole('link', { name: /988/ }))
     expect(screen.getByRole('heading', { name: "You don't have to hold this alone" })).toHaveFocus()
     expect(screen.queryByText(REFUSAL)).not.toBeInTheDocument()
     expect(screen.queryByText(/end my life/)).not.toBeInTheDocument()
@@ -49,7 +49,7 @@ describe('The Arena, when a written question sounds like someone in danger', () 
   it('checks the debaters’ names too', () => {
     startDebate('Is free will an illusion?', 'Socrates', 'I want to kill myself')
 
-    expect(screen.getByRole('link', { name: '988' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /988/ })).toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -65,7 +65,7 @@ describe('The Arena, when a written question sounds like someone in danger', () 
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ declined: true, reason: 'care' }) })
     startDebate('Is it ever right to give up?')
 
-    expect(await screen.findByRole('link', { name: '988' })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: /988/ })).toBeInTheDocument()
     expect(screen.queryByText(REFUSAL)).not.toBeInTheDocument()
     expect(careStored()).toBe(true)
 
@@ -78,7 +78,7 @@ describe('The Arena, when a written question sounds like someone in danger', () 
     startDebate('Which group deserves less?')
 
     expect(await screen.findByText(REFUSAL)).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: '988' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /988/ })).not.toBeInTheDocument()
     expect(careStored()).toBe(false)
   })
 })
