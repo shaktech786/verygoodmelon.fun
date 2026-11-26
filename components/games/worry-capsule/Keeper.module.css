@@ -1,20 +1,23 @@
 /* The Keeper's two set pieces. Every element's resting style is its final position, and the
-   keyframes only describe where it comes from, so with motion off the same scene is simply there. */
+   keyframes only describe where it comes from, so with motion off the same scene is simply there.
+   Colour is the Seedpress roles only: clay for paper, rind for the lid and plank, moss for the glass.
+   The seal is the one showpiece (a 1,600 ms sequence): the lid presses down, then a paper label prints with
+   the day. Opening later just reads the label. Durations are multiplied by --motion. */
 
 .paperFill {
-  fill: color-mix(in srgb, var(--warm) 32%, var(--card-bg));
+  fill: color-mix(in oklab, var(--clay) 22%, var(--sheet));
 }
 
 .inkFill {
-  fill: color-mix(in srgb, var(--foreground) 35%, transparent);
+  fill: color-mix(in oklab, var(--ink) 35%, transparent);
 }
 
 .inkFaint {
-  fill: color-mix(in srgb, var(--foreground) 18%, transparent);
+  fill: color-mix(in oklab, var(--ink) 18%, transparent);
 }
 
 .ruleFill {
-  fill: color-mix(in srgb, var(--warm) 35%, transparent);
+  fill: color-mix(in oklab, var(--clay) 35%, transparent);
 }
 
 /* A line of writing appears on the page beside the jar as the worry grows. */
@@ -29,22 +32,28 @@
 }
 
 .motion .inkLine {
-  transition: transform 320ms ease-out;
+  transition: transform calc(var(--d-quick) * var(--motion)) var(--e-out);
 }
 
+/* The worry, shown back on a slip of ruled paper. The ruled lines are off in Quiet and Highest contrast. */
 .slip {
-  background-color: color-mix(in srgb, var(--warm) 13%, var(--card-bg));
+  background-color: color-mix(in oklab, var(--clay) 12%, var(--sheet));
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
     transparent 1.7rem,
-    color-mix(in srgb, var(--warm) 30%, transparent) 1.7rem,
-    color-mix(in srgb, var(--warm) 30%, transparent) calc(1.7rem + 1px)
+    color-mix(in oklab, var(--clay) 30%, transparent) 1.7rem,
+    color-mix(in oklab, var(--clay) 30%, transparent) calc(1.7rem + 1px)
   );
   background-position: 0 0.55rem;
-  border: 1px solid color-mix(in srgb, var(--warm) 45%, var(--card-border));
+  border: 1px solid color-mix(in oklab, var(--clay) 40%, var(--rule));
   line-height: 1.7rem;
   overflow-wrap: anywhere;
+}
+
+:global(:root[data-sense='quiet']) .slip,
+:global(:root[data-contrast='extra-high']) .slip {
+  background-image: none;
 }
 
 .part {
@@ -60,44 +69,17 @@
   transform: translate(15px, -7px) rotate(22deg);
 }
 
-/* Sealing, one beat at a time: the page folds in half, drops in, the jar takes its weight,
-   the lid comes down and the wax is pressed. Slow enough to watch, quick enough not to wait on. */
-.flap {
-  transform-box: fill-box;
-  transform-origin: bottom center;
-  transform: scaleY(-1);
-}
-
-/* The sealing scene's viewBox starts 30 units above the jar, and view-box origins count from there. */
-.dropIn {
-  transform-box: view-box;
-  transform-origin: 40px 85px;
-}
-
-.motion .foldFlap {
-  animation: fold 750ms ease-in-out 300ms both;
-}
-
-.motion .dropIn {
-  animation: drop-in 850ms cubic-bezier(0.5, 0, 0.6, 1) 1150ms both;
-}
-
-.motion .jarSettle {
-  transform-box: fill-box;
-  transform-origin: bottom center;
-  animation: jar-settle 280ms ease-out 1850ms both;
-}
-
+/* Sealing, one beat at a time: the lid presses down, then the label is printed with the day. */
 .motion .lidDown {
-  animation: lid-down 600ms cubic-bezier(0.4, 0, 0.3, 1) 2150ms both;
+  animation: lid-down calc(600ms * var(--motion)) var(--e-stamp) both;
 }
 
-.motion .stamp {
-  animation: stamp 420ms ease-out 2800ms both;
+.motion .labelPrint {
+  animation: label-print calc(700ms * var(--motion)) var(--e-out) calc(600ms * var(--motion)) both;
 }
 
 .motion .afterSeal {
-  animation: settle 600ms ease-out 3150ms both;
+  animation: settle calc(300ms * var(--motion)) var(--e-out) calc(1300ms * var(--motion)) both;
 }
 
 .reveal {
@@ -113,7 +95,7 @@
 }
 
 .motion .reveal {
-  animation: open-up 500ms ease-out 3050ms both;
+  animation: open-up calc(300ms * var(--motion)) var(--e-out) calc(1250ms * var(--motion)) both;
 }
 
 @keyframes open-up {
@@ -125,57 +107,8 @@
   }
 }
 
-/* Opening: the seal lifts away, the lid comes off, the slip rises and unfolds. */
-.motion .sealAway {
-  animation: seal-away 400ms ease-in both;
-}
-
-.motion .lidUp {
-  animation: lid-up 600ms cubic-bezier(0.3, 0, 0.3, 1) 300ms both;
-}
-
-.motion .slipRise {
-  animation: slip-rise 550ms ease-in 850ms both;
-}
-
-.motion .unfold {
-  transform-origin: top center;
-  animation: unfold 650ms cubic-bezier(0.2, 0.8, 0.3, 1) 1200ms both;
-}
-
-.motion .afterOpen {
-  animation: settle 500ms ease-out 1700ms both;
-}
-
 .glow {
-  fill: color-mix(in srgb, var(--warm) 30%, transparent);
-}
-
-@keyframes fold {
-  from {
-    transform: scaleY(1);
-  }
-  to {
-    transform: scaleY(-1);
-  }
-}
-
-@keyframes drop-in {
-  from {
-    transform: translate(0, -52px) scale(1.4);
-  }
-  80% {
-    transform: translate(0, 1px) scale(1);
-  }
-  to {
-    transform: none;
-  }
-}
-
-@keyframes jar-settle {
-  50% {
-    transform: scale(1.02, 0.97);
-  }
+  fill: color-mix(in oklab, var(--clay) 24%, transparent);
 }
 
 @keyframes lid-down {
@@ -190,180 +123,68 @@
   }
 }
 
-@keyframes stamp {
+/* The label is printed: the paper settles into place from a few units above, never scaling or spinning. */
+@keyframes label-print {
   from {
-    transform: scale(0);
+    transform: translate(0, -3px);
     opacity: 0;
   }
-  70% {
-    transform: scale(1.25);
-    opacity: 1;
-  }
   to {
-    transform: scale(1);
+    transform: none;
+    opacity: 1;
   }
 }
 
 @keyframes settle {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
     transform: none;
-  }
-}
-
-@keyframes seal-away {
-  from {
-    transform: none;
-    opacity: 1;
-  }
-  to {
-    transform: translateY(10px) scale(0.6);
-    opacity: 0;
-  }
-}
-
-@keyframes lid-up {
-  from {
-    transform: none;
-  }
-  to {
-    transform: translate(15px, -7px) rotate(22deg);
-  }
-}
-
-@keyframes slip-rise {
-  from {
-    transform: none;
-    opacity: 1;
-  }
-  to {
-    transform: translateY(-30px) scale(1.2);
-    opacity: 0;
-  }
-}
-
-@keyframes unfold {
-  from {
-    transform: scaleY(0.12);
-    opacity: 0;
-  }
-  40% {
-    opacity: 1;
-  }
-  to {
-    transform: none;
-    opacity: 1;
   }
 }
 
 /* Three outcomes, each its own shape and colour, none of them a verdict. */
 .markNo {
-  fill: color-mix(in srgb, var(--melon-green) 22%, transparent);
-  stroke: var(--melon-green);
+  fill: color-mix(in oklab, var(--moss) 22%, transparent);
+  stroke: var(--moss);
 }
 
 .markPartly {
   fill: none;
-  stroke: color-mix(in srgb, var(--warm) 62%, var(--foreground));
+  stroke: var(--clay);
 }
 
 .markPartlyFill {
-  fill: color-mix(in srgb, var(--warm) 62%, var(--foreground));
+  fill: var(--clay);
 }
 
 .markYes {
-  fill: color-mix(in srgb, var(--melon-blue) 22%, transparent);
-  stroke: var(--melon-blue);
+  fill: color-mix(in oklab, var(--dusk) 22%, transparent);
+  stroke: var(--dusk);
 }
 
-/* Closing, once a capsule is answered: the slip folds and drops in, the lid goes back on, the
-   label is marked, and the jar glides down to join the others on the shelf. Under three seconds. */
+/* Closing, once a capsule is answered: the jar already stands on the shelf and its label is printed. */
 .tintNo {
-  fill: color-mix(in srgb, var(--melon-green) 20%, transparent);
+  fill: color-mix(in oklab, var(--moss) 20%, transparent);
 }
 
 .tintPartly {
-  fill: color-mix(in srgb, var(--warm) 30%, transparent);
+  fill: color-mix(in oklab, var(--clay) 24%, transparent);
 }
 
 .tintYes {
-  fill: color-mix(in srgb, var(--melon-blue) 18%, transparent);
-}
-
-.stageFrame {
-  height: var(--landed-height);
-}
-
-.motion .stageFrame {
-  animation: frame-close 700ms cubic-bezier(0.45, 0, 0.25, 1) 1800ms both;
-}
-
-.motion .closeFold {
-  animation: fold 500ms ease-in-out 150ms both;
-}
-
-.motion .closeDrop {
-  transform-box: fill-box;
-  animation: drop-short 450ms cubic-bezier(0.5, 0, 0.6, 1) 650ms both;
-}
-
-.motion .closeLid {
-  animation: lid-down 400ms cubic-bezier(0.4, 0, 0.3, 1) 1100ms both;
+  fill: color-mix(in oklab, var(--dusk) 20%, transparent);
 }
 
 .motion .closeLabel {
-  animation: stamp 300ms ease-out 1500ms both;
-}
-
-/* The jar's resting place is its transform attribute; while moving, both poses are full transforms
-   measured from the picture's top-left corner. */
-.motion .closeTravel {
-  transform-box: view-box;
-  transform-origin: 0 0;
-  animation: travel 700ms cubic-bezier(0.45, 0, 0.25, 1) 1800ms both;
-}
-
-.motion .closeSettle {
-  transform-origin: bottom center;
-  animation: jar-settle 250ms ease-out 2500ms both;
+  animation: label-print calc(700ms * var(--motion)) var(--e-out) both;
 }
 
 .motion .afterClose {
-  animation: settle 450ms ease-out 2450ms both;
-}
-
-@keyframes drop-short {
-  from {
-    transform: translateY(-50px);
-  }
-  80% {
-    transform: translateY(1px);
-  }
-  to {
-    transform: none;
-  }
-}
-
-@keyframes frame-close {
-  from {
-    height: var(--stage-height);
-  }
-  to {
-    height: var(--landed-height);
-  }
-}
-
-@keyframes travel {
-  from {
-    transform: var(--stage);
-  }
-  to {
-    transform: var(--place);
-  }
+  animation: settle calc(300ms * var(--motion)) var(--e-out) calc(600ms * var(--motion)) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -371,4 +192,112 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* The shelf of sealed jars: each stands on a rind plank, a stamp card to press */
+.jarList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 440px) {
+  .jarList {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 640px) {
+  .jarList {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.jarItem {
+  border-bottom: 4px solid color-mix(in oklab, var(--rind) 40%, transparent);
+  padding-top: var(--s-2);
+}
+
+.jarButton {
+  display: block;
+  width: 100%;
+  padding: 0 var(--s-1) var(--s-1);
+  border: 0;
+  border-radius: var(--r-stamp);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-meta);
+  text-align: center;
+  cursor: pointer;
+}
+
+.jarButton:hover {
+  background-color: var(--rind-wash);
+}
+
+.jarButton:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.jarReady {
+  font-weight: 700;
+}
+
+.jarSoft {
+  display: block;
+  color: var(--ink-soft);
+}
+
+/* Looked back on: a ruled list of answered worries */
+.openedList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block: 1px solid var(--rule);
+}
+
+.openedList li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.openedRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--s-2);
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.openedRow:hover {
+  background-color: var(--rind-wash);
+}
+
+.openedRow:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.openedWorry {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.openedMeta {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--t-meta);
 }

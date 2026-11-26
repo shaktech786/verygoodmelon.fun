@@ -35,7 +35,7 @@ describe('The Keeper, when a worry sounds like someone in danger', () => {
     await foldUp('I don’t want to be alive anymore')
 
     const support = screen.getByRole('complementary', { name: 'Support' })
-    const helpline = screen.getByRole('link', { name: '988' })
+    const helpline = screen.getByRole('link', { name: /988/ })
     expect(support).toContainElement(helpline)
     expect(screen.queryByRole('heading', { name: 'Ready to seal it?' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Seal it' })).not.toBeInTheDocument()
@@ -51,7 +51,7 @@ describe('The Keeper, when a worry sounds like someone in danger', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Keep it in a jar anyway' }))
 
     expect(await screen.findByRole('heading', { name: 'It is kept' })).toBeInTheDocument()
-    expect(screen.getByRole('complementary', { name: 'Support' })).toContainElement(screen.getByRole('link', { name: '988' }))
+    expect(screen.getByRole('complementary', { name: 'Support' })).toContainElement(screen.getByRole('link', { name: /988/ }))
     for (const line of SEALED_LINES) expect(screen.queryByText(line)).not.toBeInTheDocument()
   })
 
@@ -77,6 +77,6 @@ describe('The Keeper in care mode', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Seal it' }))
 
     expect(await screen.findByRole('heading', { name: 'It is kept' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '988' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /988/ })).toBeInTheDocument()
   })
 })

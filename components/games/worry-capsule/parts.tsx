@@ -1,5 +1,6 @@
 'use client'
 
+import { InkLink } from '@/components/seedpress/Link'
 import { DIRECTORY_LINE } from '@/lib/care/helplines'
 import { type ReactNode, useEffect, useRef } from 'react'
 import type { Capsule, Outcome, Tally } from '@/lib/games/worry-capsule/capsules'
@@ -37,7 +38,7 @@ export function ViewHeading({ focus, children, className }: { focus: boolean; ch
     <h2
       ref={ref}
       tabIndex={-1}
-      className={cn('text-xl sm:text-2xl font-semibold text-foreground focus:outline-none scroll-mt-24', className)}
+      className={cn('sp-h3 focus:outline-none scroll-mt-24', className)}
     >
       {children}
     </h2>
@@ -46,22 +47,17 @@ export function ViewHeading({ focus, children, className }: { focus: boolean; ch
 
 export function Slip({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
   return (
-    <figure className={cn('rounded-md px-4 py-3 sm:px-5 text-left shadow-sm', styles.slip, className)}>
+    <figure className={cn('m-0 rounded-lg px-4 py-3 sm:px-5 text-left', styles.slip, className)}>
       {label && <figcaption className="sr-only">{label}</figcaption>}
-      <blockquote className="text-base sm:text-lg text-foreground whitespace-pre-wrap">{children}</blockquote>
+      <blockquote className="m-0 whitespace-pre-wrap">{children}</blockquote>
     </figure>
   )
 }
 
-const link = 'underline underline-offset-2 text-foreground hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-sm'
-
 export function HelpLine() {
   return (
-    <p className="text-xs sm:text-sm text-foreground/70 leading-relaxed">
-      If a worry feels too heavy to hold alone,{' '}
-      <a href={DIRECTORY_LINE.href} target="_blank" rel="noopener noreferrer" className={link}>
-        {DIRECTORY_LINE.label}
-      <span className="sr-only"> (opens in a new tab)</span></a>{' '}
+    <p className="sp-soft m-0 text-left">
+      If a worry feels too heavy to hold alone, <InkLink href={DIRECTORY_LINE.href}>{DIRECTORY_LINE.label}</InkLink>{' '}
       lists free, confidential support near you, at any hour.
     </p>
   )
@@ -104,18 +100,18 @@ export function TallyCard({ counts, opened }: { counts: Tally; opened: Capsule[]
   const oldestFirst = [...opened].reverse()
   const shown = oldestFirst.slice(-MAX_MARKS)
   return (
-    <section aria-labelledby="keeper-tally" className="rounded-lg border border-card-border bg-card-bg p-5 text-left">
-      <h3 id="keeper-tally" className="text-base font-semibold text-foreground mb-3">How they turned out</h3>
-      <div className="flex flex-wrap gap-1.5 mb-3" aria-hidden="true">
+    <section aria-labelledby="keeper-tally" className="sp-sheet grid gap-3 text-left">
+      <h3 id="keeper-tally" className="sp-h3 m-0">How they turned out</h3>
+      <div className="flex flex-wrap gap-1.5" aria-hidden="true">
         {oldestFirst.length > shown.length && (
           // Older marks trail off rather than being tallied
-          <span className="text-sm leading-none text-foreground/70 mr-0.5">…</span>
+          <span className="mr-0.5 text-sm leading-none text-ink-soft">…</span>
         )}
         {shown.map((capsule) => capsule.opening && <OutcomeMark key={capsule.id} outcome={capsule.opening.outcome} className="w-4 h-4" />)}
       </div>
-      <p className="text-sm sm:text-base text-foreground">{tallySummary(counts)}</p>
-      {reflection && <p className="mt-1 text-sm sm:text-base text-foreground/80 italic">{reflection}</p>}
-      <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-foreground/70" aria-hidden="true">
+      <p className="m-0">{tallySummary(counts)}</p>
+      {reflection && <p className="m-0 text-ink-soft">{reflection}</p>}
+      <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-sm text-ink-soft" aria-hidden="true">
         {(['no', 'partly', 'yes'] as const).map((outcome) => (
           <li key={outcome} className="flex items-center gap-1.5">
             <OutcomeMark outcome={outcome} />

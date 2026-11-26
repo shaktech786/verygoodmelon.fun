@@ -2,12 +2,20 @@
 
 import { type ReactNode, useId, useRef, useState, useSyncExternalStore } from 'react'
 import { flushSync } from 'react-dom'
-import { Button } from '@/components/ui/Button'
 import { useCareMode } from '@/components/games/CareMode'
 import { OwnSupportMark } from '@/components/games/OwnSupport'
-import { HelplineSentence } from '@/components/games/HelplineSentence'
+import { CareBlock } from '@/components/seedpress/CareBlock'
+import { Go } from '@/components/seedpress/Go'
+import { Icon } from '@/components/seedpress/icons/Icon'
+import { InlineConfirm } from '@/components/seedpress/InlineConfirm'
+import { Note } from '@/components/seedpress/Note'
+import { QuietButton } from '@/components/seedpress/QuietButton'
+import { Stamp } from '@/components/seedpress/Stamp'
+import { StatusLine } from '@/components/seedpress/StatusLine'
+import { StickyTray } from '@/components/seedpress/StickyTray'
+import { WritingSlip } from '@/components/seedpress/WritingSlip'
+import { useSense } from '@/lib/design/sense'
 import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
-import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { cn } from '@/lib/utils/cn'
 import { type ArchiveProblem, MAX_ARCHIVE_CHARS, type Merge, mergeCapsules, readArchive, writeArchive } from '@/lib/games/worry-capsule/archive'
 import {
@@ -34,7 +42,7 @@ import { type DateKey, localDateKey } from '@/lib/games/worry-capsule/dates'
 import type { WorryDraft as Draft } from '@/lib/games/worry-capsule/draft'
 import { shelfOutcomes } from '@/lib/games/worry-capsule/shelf'
 import { DevTimeTravel } from './worry-capsule/DevTimeTravel'
-import { ComposeArt, Jar, KeptShelf, SealSteps } from './worry-capsule/Jar'
+import { ComposeArt, Jar, KeptShelf } from './worry-capsule/Jar'
 import styles from './worry-capsule/Keeper.module.css'
 import {
   type KeeperSnapshot,
@@ -92,13 +100,23 @@ const CEREMONY_NEIGHBOURS = 3
 /** Opened capsules listed before the rest wait behind "Show older". */
 const RECENT_OPENED = 10
 
-const panel = 'bg-card-bg border border-card-border rounded-lg px-5 py-8 sm:px-10 sm:py-10'
-const careAside = 'rounded-lg border border-card-border border-l-4 border-l-[var(--melon-green)] bg-background px-4 py-4 text-left text-foreground leading-relaxed'
-const muted = 'text-sm sm:text-base text-foreground/75'
+const stack = 'grid gap-4 justify-items-start'
+const actions = 'flex flex-wrap items-center gap-3'
+
+/** The helplines first, as the care block: sealing stays possible, but quietly, and never as the next step. */
+function KeeperCare({ lead }: { lead: string }) {
+  return (
+    <>
+      <OwnSupportMark />
+      <CareBlock lead={lead} />
+    </>
+  )
+}
 
 export default function WorryCapsule() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
-  const motion = !useReducedMotion()
+  const { motionScale } = useSense()
+  const motion = motionScale === 1
   const [view, setView] = useState<View | null>(null)
   const [navigated, setNavigated] = useState(false)
   const [announcement, setAnnouncement] = useState('')
@@ -111,8 +129,8 @@ export default function WorryCapsule() {
 
   if (!snapshot.loaded) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className={cn(panel, 'min-h-[460px]')} aria-busy="true">
+      <div className="mx-auto max-w-2xl">
+        <div className="sp-sheet min-h-[460px]" aria-busy="true">
           <p className="sr-only">Opening the shelf</p>
         </div>
       </div>
@@ -209,11 +227,7 @@ export default function WorryCapsule() {
     />
   )
   const chooseFile = () => fileInputRef.current?.click()
-  const importStatus = (
-    <p role="status" className={cn('text-sm text-foreground', importMessage && 'mt-3')}>
-      {importMessage}
-    </p>
-  )
+  const importStatus = <StatusLine>{importMessage}</StatusLine>
 
   let body: ReactNode
   let bodyKey: string = current.kind
@@ -243,13 +257,13 @@ export default function WorryCapsule() {
         onCancel={capsules.length > 0 ? () => go({ kind: 'shelf' }) : undefined}
         restore={
           capsules.length === 0 && (
-            <div className="mt-6 border-t border-card-border pt-5">
-              <p className="text-sm text-foreground/75">
+            <div className="grid gap-2 border-t border-rule pt-5">
+              <p className="sp-soft m-0">
                 Sealed some before, on another device or before this browser was cleared? They can come back from a saved copy.
               </p>
-              <Button variant="ghost" size="sm" className="mt-2" onClick={chooseFile}>
-                Restore from a copy
-              </Button>
+              <div>
+                <QuietButton onClick={chooseFile}>Restore from a copy</QuietButton>
+              </div>
               {importStatus}
             </div>
           )
@@ -260,36 +274,31 @@ export default function WorryCapsule() {
     const { draft } = current
     // Words like these are met with support first; sealing stays possible, but quietly, and never as the next step
     body = (
-      <div className="space-y-5">
+      <div className="grid gap-5">
         <ViewHeading focus={navigated}>You don’t have to hold this alone</ViewHeading>
-        <aside aria-label="Support" className={careAside}>
-          <OwnSupportMark />
-          <p>
-            <HelplineSentence lead="What you wrote sounds very heavy. Please talk to someone who can be with you in it." />
-          </p>
-        </aside>
-        <p className={muted}>Your words are safe here, and nothing is sealed unless you choose it.</p>
-        <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center pt-1">
-          <Button variant="ghost" onClick={() => seal(draft)}>Keep it in a jar anyway</Button>
-          <Button variant="secondary" onClick={() => go({ kind: 'compose', draft })}>Change it</Button>
+        <KeeperCare lead="What you wrote sounds very heavy. Please talk to someone who can be with you in it." />
+        <p className="sp-soft m-0">Your words are safe here, and nothing is sealed unless you choose it.</p>
+        <div className={actions}>
+          <Stamp onClick={() => go({ kind: 'compose', draft })}>Change it</Stamp>
+          <QuietButton onClick={() => seal(draft)}>Keep it in a jar anyway</QuietButton>
         </div>
       </div>
     )
   } else if (current.kind === 'review') {
     const { draft } = current
     body = (
-      <div className="space-y-5">
+      <div className="grid gap-5">
         <ViewHeading focus={navigated}>Ready to seal it?</ViewHeading>
-        <Slip label="Your worry" className="max-w-md mx-auto">{draft.text.trim()}</Slip>
-        <Jar scene="waiting" motion={motion} className="w-28 h-24 mx-auto" />
-        <p className={muted}>
-          It comes back to you on <strong className="font-semibold text-foreground">{formatDay(opensOnFor(today, draft.horizon), today)}</strong>.
+        <Slip label="Your worry" className="max-w-md">{draft.text.trim()}</Slip>
+        <Jar scene="waiting" motion={motion} className="mx-auto h-24 w-28" />
+        <p className="sp-soft m-0">
+          It comes back to you on <strong className="font-bold text-ink">{formatDay(opensOnFor(today, draft.horizon), today)}</strong>.
         </p>
-        <p className="text-sm text-foreground/75">It lives only in this browser, on this device.</p>
-        <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center pt-1">
-          <Button variant="secondary" onClick={() => go({ kind: 'compose', draft })}>Change it</Button>
-          <Button onClick={() => seal(draft)}>Seal it</Button>
-        </div>
+        <p className="sp-soft m-0">It lives only in this browser, on this device.</p>
+        <StickyTray className={actions}>
+          <Stamp onClick={() => go({ kind: 'compose', draft })}>Change it</Stamp>
+          <Go onClick={() => seal(draft)}>Seal it</Go>
+        </StickyTray>
       </div>
     )
   } else if (current.kind === 'sealed') {
@@ -298,41 +307,32 @@ export default function WorryCapsule() {
     const supportFirst = capsule !== undefined && (care || soundsLikeDistress(capsule.worry))
     body = capsule && supportFirst ? (
       // No sealing ceremony and no settling line here: support comes first, then the plain facts
-      <div className="space-y-4">
+      <div className="grid gap-4">
         <ViewHeading focus={navigated}>It is kept</ViewHeading>
-        <aside aria-label="Support" className={careAside}>
-          <OwnSupportMark />
-          <p>
-            <HelplineSentence lead="If things feel too heavy right now, you can talk to someone." />
-          </p>
-        </aside>
-        <p className={muted}>
-          It comes back on <strong className="font-semibold text-foreground">{formatDay(capsule.opensOn, today)}</strong>. Only this browser keeps it.
+        <KeeperCare lead="If things feel too heavy right now, you can talk to someone." />
+        <p className="sp-soft m-0">
+          It comes back on <strong className="font-bold text-ink">{formatDay(capsule.opensOn, today)}</strong>. Only this browser keeps it.
         </p>
-        <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center pt-1">
-          <Button variant="secondary" onClick={() => exportAll()}>Save a copy</Button>
-          <Button variant="secondary" onClick={() => go({ kind: 'shelf' })}>Back to the shelf</Button>
+        <div className={actions}>
+          <Stamp onClick={() => exportAll()}>Save a copy</Stamp>
+          <Stamp onClick={() => go({ kind: 'shelf' })}>Back to the shelf</Stamp>
         </div>
       </div>
     ) : capsule ? (
       <div className={cn(motion && styles.motion)}>
-        {motion ? (
-          <Jar scene="sealing" motion className="w-44 h-56 mx-auto mb-2" />
-        ) : (
-          <SealSteps className="mb-5" />
-        )}
-        {/* The words take no room until the wax is pressed, so the jar is not left above an empty card */}
+        <Jar scene="sealing" motion={motion} label={sealedDay(capsule, today, 'short')} className="mx-auto mb-2 h-40 w-44" />
+        {/* The words take no room until the label is printed, so the jar is not left above an empty card */}
         <div className={styles.reveal}>
-          <div className={cn('space-y-4', styles.revealInner, styles.afterSeal)}>
+          <div className={cn('grid gap-4', styles.revealInner, styles.afterSeal)}>
             <ViewHeading focus={navigated}>Sealed.</ViewHeading>
-            <p className="text-base sm:text-lg text-foreground">{pickLine(SEALED_LINES, capsule.id)}</p>
-            <p className={muted}>
-              It comes back on <strong className="font-semibold text-foreground">{formatDay(capsule.opensOn, today)}</strong>. Any time after that, it will be ready here.
+            <p className="sp-lead m-0">{pickLine(SEALED_LINES, capsule.id)}</p>
+            <p className="sp-soft m-0">
+              It comes back on <strong className="font-bold text-ink">{formatDay(capsule.opensOn, today)}</strong>. Any time after that, it will be ready here.
             </p>
-            <p className="text-sm text-foreground/75">Only this browser keeps it. A saved copy can move it or keep it safe.</p>
-            <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center pt-1">
-              <Button variant="secondary" onClick={() => exportAll()}>Save a copy</Button>
-              <Button onClick={() => go({ kind: 'shelf' })}>Done</Button>
+            <p className="sp-soft m-0">Only this browser keeps it. A saved copy can move it or keep it safe.</p>
+            <div className={actions}>
+              <Stamp onClick={() => exportAll()}>Save a copy</Stamp>
+              <Go onClick={() => go({ kind: 'shelf' })}>Done</Go>
             </div>
           </div>
         </div>
@@ -346,26 +346,24 @@ export default function WorryCapsule() {
     if (capsule?.opening) {
       const others = shelve(capsules.filter((c) => c.id !== capsule.id), nowDate).opened
       body = (
-        <div className={cn('space-y-4', motion && styles.motion)}>
+        <div className={cn('grid gap-4', motion && styles.motion)}>
           <KeptShelf
-            outcomes={[...shelfOutcomes(others, CEREMONY_NEIGHBOURS), ...(motion ? [] : [capsule.opening.outcome])]}
-            arriving={motion ? capsule.opening.outcome : undefined}
+            outcomes={[...shelfOutcomes(others, CEREMONY_NEIGHBOURS), capsule.opening.outcome]}
+            printingLast={motion}
             motion={motion}
             zoom={1.6}
             className="mx-auto"
           />
-          <div className={cn('space-y-4', styles.afterClose)}>
+          <div className={cn('grid gap-4 justify-items-start', styles.afterClose)}>
             <ViewHeading focus={navigated}>Closed.</ViewHeading>
-            <p className="text-base sm:text-lg text-foreground max-w-md mx-auto">{closedLine(capsule.id, current.first)}</p>
-            <p className="text-sm text-foreground/75">
-              <span className="inline-flex items-center justify-center gap-2">
+            <p className="sp-lead m-0 max-w-md">{closedLine(capsule.id, current.first)}</p>
+            <p className="sp-soft m-0">
+              <span className="inline-flex items-center gap-2">
                 <OutcomeMark outcome={capsule.opening.outcome} className="w-4 h-4" />
                 {OUTCOME_WORDS[capsule.opening.outcome]}
               </span>
             </p>
-            <div className="pt-1">
-              <Button onClick={() => go({ kind: 'shelf' })}>Back to the shelf</Button>
-            </div>
+            <Go onClick={() => go({ kind: 'shelf' })}>Back to the shelf</Go>
           </div>
         </div>
       )
@@ -391,10 +389,10 @@ export default function WorryCapsule() {
     const hasOlder = shelf.opened.length > RECENT_OPENED
     const listed = showOlder ? shelf.opened : shelf.opened.slice(0, RECENT_OPENED)
     body = (
-      <div className="space-y-6">
-        <div className="space-y-2">
+      <div className="grid gap-6">
+        <div className="grid gap-2">
           <ViewHeading focus={navigated}>Kept for you</ViewHeading>
-          <p className={muted}>
+          <p className="sp-soft m-0">
             {shelf.ready.length > 0
               ? `${shelf.ready.length === 1 ? 'One capsule is' : `${shelf.ready.length} capsules are`} ready to open, whenever you like.`
               : waiting.length > 0
@@ -404,24 +402,24 @@ export default function WorryCapsule() {
         </div>
 
         {waiting.length > 0 && (
-          <ul className="grid grid-cols-3 min-[440px]:grid-cols-4 sm:grid-cols-5" aria-label="Sealed capsules">
+          <ul className={styles.jarList} aria-label="Sealed capsules">
             {waiting.map((capsule) => {
               const ready = capsuleStatus(capsule, nowDate) === 'ready'
               const place = sameDay.get(capsule.id)
               const sealedOn = `${sealedDay(capsule, today)}${place && place.of > 1 ? `, the ${placeInDay(place.position)}` : ''}`
               return (
-                <li key={capsule.id} className="border-b-4 border-melon-green/40 px-1 pt-2">
+                <li key={capsule.id} className={styles.jarItem}>
                   <button
                     type="button"
                     onClick={() => go({ kind: 'capsule', id: capsule.id })}
                     aria-label={ready ? `Ready to open, sealed ${sealedOn}` : `Opens ${formatDay(capsule.opensOn, today)}, sealed ${sealedOn}`}
-                    className="group w-full rounded-md pb-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring hover:bg-hover-bg transition-colors duration-75"
+                    className={styles.jarButton}
                   >
-                    <Jar scene={ready ? 'ready' : 'sealed'} motion={false} plank={false} className="w-20 h-[4.5rem] sm:w-24 sm:h-[5.4rem] mx-auto" />
-                    <span className={cn('block text-xs sm:text-sm', ready ? 'font-semibold text-foreground' : 'text-foreground/75')}>
+                    <Jar scene={ready ? 'ready' : 'sealed'} motion={false} plank={false} className="mx-auto h-[4.5rem] w-20 sm:h-[5.4rem] sm:w-24" />
+                    <span className={cn('block', ready && styles.jarReady)}>
                       {ready ? 'Ready' : `Opens ${formatDay(capsule.opensOn, today, 'short')}`}
                     </span>
-                    <span className="block text-xs text-foreground/75">
+                    <span className={styles.jarSoft}>
                       sealed {sealedDay(capsule, today, 'short')}
                       {/* The words stay sealed until it opens, so jars from one day are told apart by their order alone */}
                       {place && place.of > 1 && <span className="block">{placeInDay(place.position)}</span>}
@@ -433,27 +431,29 @@ export default function WorryCapsule() {
           </ul>
         )}
 
-        <Button onClick={() => go(composeView)}>{snapshot.draft ? 'Finish the worry you started' : 'Seal another worry'}</Button>
+        <div>
+          <Go onClick={() => go(composeView)}>{snapshot.draft ? 'Finish the worry you started' : 'Seal another worry'}</Go>
+        </div>
 
         {counts.total > 0 && <TallyCard counts={counts} opened={shelf.opened} />}
 
         {shelf.opened.length > 0 && (
-          <section aria-labelledby="keeper-opened" className="text-left">
-            <h3 id="keeper-opened" className="text-base font-semibold text-foreground mb-2">Looked back on</h3>
-            <KeptShelf outcomes={shelfOutcomes(shelf.opened, SHELF_JARS)} motion={false} className="mx-auto mb-3" />
-            <ul className="divide-y divide-card-border border-y border-card-border">
+          <section aria-labelledby="keeper-opened" className="grid gap-3 text-left">
+            <h3 id="keeper-opened" className="sp-h3 m-0">Looked back on</h3>
+            <KeptShelf outcomes={shelfOutcomes(shelf.opened, SHELF_JARS)} motion={false} />
+            <ul className={styles.openedList}>
               {listed.map((capsule, index) => capsule.opening && (
                 <li key={capsule.id}>
                   <button
                     ref={index === RECENT_OPENED ? firstOlderRef : undefined}
                     type="button"
                     onClick={() => go({ kind: 'capsule', id: capsule.id })}
-                    className="w-full flex items-center gap-3 px-2 py-3 text-left hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring transition-colors duration-75"
+                    className={styles.openedRow}
                   >
                     <OutcomeMark outcome={capsule.opening.outcome} className="w-4 h-4" />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-foreground">{capsule.worry}</span>
-                      <span className="block text-xs text-foreground/75">
+                      <span className={styles.openedWorry}>{capsule.worry}</span>
+                      <span className={styles.openedMeta}>
                         Sealed {sealedDay(capsule, today, 'short')} · {OUTCOME_WORDS[capsule.opening.outcome]}
                       </span>
                     </span>
@@ -462,30 +462,29 @@ export default function WorryCapsule() {
               ))}
             </ul>
             {hasOlder && !showOlder && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-3"
-                onClick={() => {
-                  // The button leaves with the press, so focus goes on to the first of the older ones
-                  flushSync(() => setShowOlder(true))
-                  firstOlderRef.current?.focus()
-                }}
-              >
-                Show older
-              </Button>
+              <div>
+                <QuietButton
+                  onClick={() => {
+                    // The button leaves with the press, so focus goes on to the first of the older ones
+                    flushSync(() => setShowOlder(true))
+                    firstOlderRef.current?.focus()
+                  }}
+                >
+                  Show older
+                </QuietButton>
+              </div>
             )}
           </section>
         )}
 
-        <section aria-labelledby="keeper-copy" className="rounded-lg bg-hover-bg p-5 text-left">
-          <h3 id="keeper-copy" className="text-base font-semibold text-foreground">Keep a copy</h3>
-          <p className="mt-1 text-sm text-foreground/75">
+        <section aria-labelledby="keeper-copy" className="sp-sheet grid gap-3 text-left">
+          <h3 id="keeper-copy" className="sp-h3 m-0">Keep a copy</h3>
+          <p className="sp-soft m-0">
             Your capsules live only in this browser. A saved copy can restore them here or on another device.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button variant="secondary" size="sm" onClick={() => exportAll()}>Save a copy</Button>
-            <Button variant="secondary" size="sm" onClick={chooseFile}>Restore from a copy</Button>
+          <div className="sp-stamp-row">
+            <Stamp icon="save" onClick={() => exportAll()}>Save a copy</Stamp>
+            <Stamp onClick={chooseFile}>Restore from a copy</Stamp>
           </div>
           {importStatus}
           <StorageNotes snapshot={snapshot} />
@@ -495,11 +494,9 @@ export default function WorryCapsule() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className={cn(panel, 'text-center')}>
-        <p aria-live="polite" className={announcement ? 'mb-5 rounded-lg bg-success/15 px-4 py-2.5 text-sm text-foreground' : 'sr-only'}>
-          {announcement}
-        </p>
+    <div className="mx-auto max-w-2xl">
+      <div className="sp-sheet text-left">
+        <div aria-live="polite">{announcement && <Note className="mb-5">{announcement}</Note>}</div>
         <p aria-live="polite" className="sr-only">{quietNews}</p>
         <div key={bodyKey}>{body}</div>
       </div>
@@ -515,14 +512,10 @@ function StorageNotes({ snapshot }: { snapshot: KeeperSnapshot }) {
   return (
     <>
       {!snapshot.writable && (
-        <p className="mt-3 text-sm text-foreground">
-          This browser isn’t keeping anything new right now. Saving a copy keeps what’s here safe.
-        </p>
+        <Note tone="look">This browser isn’t keeping anything new right now. Saving a copy keeps what’s here safe.</Note>
       )}
       {snapshot.storage === 'unreadable' && (
-        <p className="mt-3 text-sm text-foreground">
-          Something saved here earlier couldn’t be read. It has been set aside untouched rather than overwritten.
-        </p>
+        <Note tone="look">Something saved here earlier couldn’t be read. It has been set aside untouched rather than overwritten.</Note>
       )}
     </>
   )
@@ -549,100 +542,82 @@ function Composer({ draft, restored, today, snapshot, motion, focus, onChange, o
   const left = MAX_WORRY_LENGTH - draft.text.length
   return (
     <form
-      className="space-y-5"
+      className="grid gap-5"
       onSubmit={(event) => {
         event.preventDefault()
         if (ready) onNext(draft)
       }}
     >
-      <ComposeArt text={draft.text} motion={motion} className="w-44 h-24 sm:w-56 sm:h-32 mx-auto" />
-      <div className="space-y-2">
+      <ComposeArt text={draft.text} motion={motion} className="mx-auto h-24 w-44 sm:h-32 sm:w-56" />
+      <div className="grid gap-2">
         <ViewHeading focus={focus}>What’s on your mind?</ViewHeading>
-        <p className={cn(muted, 'max-w-md mx-auto')}>
+        <p className="sp-soft m-0 max-w-md">
           Write down one worry and seal it away. It comes back on the day you choose, so you can see how it turned out.
         </p>
       </div>
 
       {restored && draft.text && (
-        <div className="flex flex-col items-center gap-1 rounded-lg bg-hover-bg px-4 py-3 sm:flex-row sm:justify-between sm:text-left">
-          <p className="text-sm text-foreground">You were partway through this. It was kept for you, just as you left it.</p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="shrink-0"
+        <Note>
+          <span className="block">You were partway through this. It was kept for you, just as you left it.</span>
+          <QuietButton
             onClick={() => {
               onDiscard()
               boxRef.current?.focus()
             }}
           >
             Start a blank page
-          </Button>
-        </div>
+          </QuietButton>
+        </Note>
       )}
 
-      <div className="text-left">
-        <label htmlFor={`${id}-worry`} className="block text-sm font-medium text-foreground mb-1.5">Your worry</label>
-        <textarea
-          ref={boxRef}
-          id={`${id}-worry`}
-          value={draft.text}
-          maxLength={MAX_WORRY_LENGTH}
-          rows={4}
-          placeholder="I’m worried that…"
-          onChange={(event) => onChange({ ...draft, text: event.target.value })}
-          aria-describedby={left <= 100 ? `${id}-left` : undefined}
-          className="w-full rounded-lg border border-card-border bg-background px-3.5 py-3 text-base text-foreground placeholder:text-foreground/50 focus:outline-none focus:ring-2 focus:ring-focus-ring resize-y"
-        />
-        {left <= 100 && (
-          <p id={`${id}-left`} className="mt-1 text-xs text-foreground/75 text-right">{left} characters left</p>
-        )}
-      </div>
+      <WritingSlip
+        label="Your worry"
+        ref={boxRef}
+        value={draft.text}
+        maxLength={MAX_WORRY_LENGTH}
+        rows={4}
+        placeholder="I’m worried that…"
+        onChange={(event) => onChange({ ...draft, text: event.target.value })}
+        note={left <= 100 ? `${left} characters left` : null}
+      />
 
-      <fieldset className="text-left">
-        <legend className="text-sm font-medium text-foreground mb-1.5">When should it come back?</legend>
-        <div className="grid gap-2 sm:grid-cols-3">
+      <fieldset className="m-0 grid min-w-0 gap-2 border-0 p-0">
+        <legend className="mb-2 p-0 font-bold">When should it come back?</legend>
+        <div className="grid gap-3 sm:grid-cols-3">
           {HORIZONS.map((horizon) => (
-            <label
-              key={horizon.id}
-              className="flex items-start gap-2.5 rounded-lg border border-card-border bg-background px-3 py-2.5 cursor-pointer transition-colors duration-75 hover:bg-hover-bg has-[:checked]:border-chosen-line has-[:checked]:bg-chosen has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent"
-            >
+            <label key={horizon.id} className="sp-choice sp-choice--card">
               <input
                 type="radio"
                 name={`${id}-horizon`}
                 value={horizon.id}
                 checked={draft.horizon === horizon.id}
                 onChange={() => onChange({ ...draft, horizon: horizon.id })}
-                className="mt-1 accent-chosen-line focus:outline-none"
               />
-              <span>
-                <span className="block text-sm font-medium text-foreground">{horizon.label}</span>
-                <span className="block text-xs text-foreground/75">{formatDay(opensOnFor(today, horizon.id), today, 'short')}</span>
+              <span className="sp-choice__face">
+                <span className="sp-choice__mark">{draft.horizon === horizon.id && <Icon name="done" />}</span>
+                <span>
+                  <span className="sp-choice__title">{horizon.label}</span>
+                  <span className="sp-choice__detail">{formatDay(opensOnFor(today, horizon.id), today, 'short')}</span>
+                </span>
               </span>
             </label>
           ))}
         </div>
       </fieldset>
 
-      {(!snapshot.writable || snapshot.storage === 'unreadable') && (
-        <div className="text-left rounded-lg bg-hover-bg px-4 py-3">
-          {!snapshot.writable && (
-            <p className="text-sm text-foreground">
-              This browser isn’t keeping things right now, perhaps a private window. You can still write, and you’ll be offered a way to keep your words.
-            </p>
-          )}
-          {snapshot.storage === 'unreadable' && (
-            <p className="text-sm text-foreground">
-              Something saved here earlier couldn’t be read. It has been set aside untouched rather than overwritten.
-            </p>
-          )}
-        </div>
+      {!snapshot.writable && (
+        <Note tone="look">
+          This browser isn’t keeping things right now, perhaps a private window. You can still write, and you’ll be offered a way to keep your words.
+        </Note>
+      )}
+      {snapshot.storage === 'unreadable' && (
+        <Note tone="look">Something saved here earlier couldn’t be read. It has been set aside untouched rather than overwritten.</Note>
       )}
 
-      <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center">
-        {onCancel && <Button type="button" variant="secondary" onClick={onCancel}>Back to the shelf</Button>}
-        <Button type="submit" disabled={!ready}>Fold it up</Button>
-      </div>
+      <StickyTray className={actions}>
+        {onCancel && <QuietButton onClick={onCancel}>Back to the shelf</QuietButton>}
+        <Go type="submit" unavailable={ready ? undefined : 'Write your worry first.'}>Fold it up</Go>
+      </StickyTray>
 
       <HelpLine />
       {restore}
@@ -662,18 +637,19 @@ function LetGo({ onLetGo, opened }: { onLetGo: () => boolean; opened: boolean })
   const [asking, setAsking] = useState(false)
   const [failed, setFailed] = useState(false)
   if (!asking) {
-    return <Button variant="ghost" onClick={() => setAsking(true)}>Let it go</Button>
+    return <QuietButton onClick={() => setAsking(true)}>Let it go</QuietButton>
   }
   return (
-    <div role="group" aria-label="Let it go" className="w-full rounded-lg bg-hover-bg px-4 py-3 space-y-3">
-      <p className="text-sm text-foreground">
-        {opened ? 'Let this one go? It leaves your shelf too, for good.' : 'Let it go without opening it? It will be gone for good.'}
-      </p>
-      {failed && <p role="alert" className="text-sm text-foreground">This browser couldn’t change anything just now. It is still kept.</p>}
-      <div className="flex flex-wrap gap-2 justify-center">
-        <Button variant="secondary" size="sm" autoFocus onClick={() => setAsking(false)}>Keep it</Button>
-        <Button variant="secondary" size="sm" onClick={() => setFailed(!onLetGo())}>Let it go</Button>
-      </div>
+    <div className="grid w-full gap-3">
+      {failed && <Note tone="look" role="alert">This browser couldn’t change anything just now. It is still kept.</Note>}
+      <InlineConfirm
+        question={opened ? 'Let this one go?' : 'Let it go without opening it?'}
+        why={opened ? 'It leaves your shelf too, for good.' : 'It will be gone for good.'}
+        keepLabel="Keep it"
+        confirmLabel="Let it go"
+        onKeep={() => setAsking(false)}
+        onConfirm={() => setFailed(!onLetGo())}
+      />
     </div>
   )
 }
@@ -681,21 +657,21 @@ function LetGo({ onLetGo, opened }: { onLetGo: () => boolean; opened: boolean })
 function Resting({ capsule, today, motion, focus, onBack, onLetGo }: CapsuleViewProps & { onLetGo: () => boolean }) {
   const lastLook = capsule.lookedIn.at(-1)
   return (
-    <div className="space-y-4">
-      <Jar scene="sealed" motion={motion} className="w-40 h-36 mx-auto" />
+    <div className={stack}>
+      <Jar scene="sealed" motion={motion} label={sealedDay(capsule, today, 'short')} className="mx-auto h-36 w-40" />
       <ViewHeading focus={focus}>Still resting</ViewHeading>
-      <p className="text-base sm:text-lg text-foreground">{pickLine(RESTING_LINES, capsule.id)}</p>
-      <p className={cn(muted, 'max-w-md mx-auto')}>
+      <p className="sp-lead m-0">{pickLine(RESTING_LINES, capsule.id)}</p>
+      <p className="sp-soft m-0 max-w-md">
         You sealed it on {sealedDay(capsule, today)}. It comes back to you on{' '}
-        <strong className="font-semibold text-foreground">{formatDay(capsule.opensOn, today)}</strong>. Nothing to do until then.
+        <strong className="font-bold text-ink">{formatDay(capsule.opensOn, today)}</strong>. Nothing to do until then.
       </p>
       {lastLook && (
-        <p className={cn(muted, 'max-w-md mx-auto')}>
+        <p className="sp-soft m-0 max-w-md">
           You looked in on {formatDay(localDateKey(new Date(lastLook)), today)}, and it was too soon to tell, so it has more time.
         </p>
       )}
-      <div className="flex flex-col items-center gap-3 pt-1">
-        <Button onClick={onBack}>Back to the shelf</Button>
+      <div className={stack}>
+        <Go onClick={onBack}>Back to the shelf</Go>
         <LetGo onLetGo={onLetGo} opened={false} />
       </div>
     </div>
@@ -719,150 +695,143 @@ function Opening({ capsule, today, motion, focus, onBack, onAnswer, onReseal }: 
   const [note, setNote] = useState('')
   const [failed, setFailed] = useState(false)
   const sealedOn = sealedDay(capsule, today)
+  const label = sealedDay(capsule, today, 'short')
 
   if (!open) {
     return (
-      <div className="space-y-4">
-        <Jar scene="ready" motion={motion} className="w-44 h-40 mx-auto" />
+      <div className={stack}>
+        <Jar scene="ready" motion={motion} label={label} className="mx-auto h-40 w-44" />
         <ViewHeading focus={focus}>This one is ready</ViewHeading>
-        <p className={muted}>You sealed it on {sealedOn}. Open it whenever you like.</p>
-        <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center pt-1">
-          <Button variant="secondary" onClick={onBack}>Back to the shelf</Button>
-          <Button onClick={() => setOpen(true)}>Open it</Button>
+        <p className="sp-soft m-0">You sealed it on {sealedOn}. Open it whenever you like.</p>
+        <div className={actions}>
+          <Stamp onClick={onBack}>Back to the shelf</Stamp>
+          <Go onClick={() => setOpen(true)}>Open it</Go>
         </div>
       </div>
     )
   }
 
+  // Opening only reads the label: the lid is simply off and the worry is there, with no theatrics
   return (
-    <div key="open" className="space-y-5">
-      <Jar scene="opening" motion={motion} className="w-40 h-36 mx-auto" />
+    <div key="open" className="grid gap-5">
+      <Jar scene="opened" motion={false} className="mx-auto h-36 w-40" />
       <ViewHeading focus>On {sealedOn}, you wrote:</ViewHeading>
-      <div className={cn(motion && styles.motion)}>
-        <div className={styles.unfold}>
-          <Slip label="Your worry" className="max-w-md mx-auto">{capsule.worry}</Slip>
-        </div>
-      </div>
-      <div className={cn('space-y-5', motion && styles.motion)}>
-        <div className={cn('space-y-5', styles.afterOpen)}>
-          <fieldset>
-            <legend className="mx-auto text-lg font-semibold text-foreground mb-3">How did it turn out?</legend>
-            <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
-              {CHOICES.map((option) => (
-                <label
-                  key={option.id}
-                  className="min-w-[5.5rem] rounded-full border-2 border-card-border bg-background px-4 py-2 text-base font-medium text-foreground cursor-pointer transition-colors duration-75 hover:bg-hover-bg has-[:checked]:border-chosen-line has-[:checked]:bg-chosen has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:focus-visible]:ring-offset-2"
-                >
-                  <input
-                    type="radio"
-                    name={`${id}-outcome`}
-                    value={option.id}
-                    checked={outcome === option.id}
-                    onChange={() => setOutcome(option.id)}
-                    className="sr-only"
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <div aria-live="polite">
-            {outcome && (
-              <p className="text-base sm:text-lg text-foreground max-w-md mx-auto">
-                {outcome === 'not-yet' ? pickLine(NOT_YET_LINES, capsule.id) : outcomeResponse(outcome, capsule.id)}
-              </p>
-            )}
-          </div>
-
-          {outcome === 'not-yet' && (
-            <fieldset className="text-left max-w-md mx-auto">
-              <legend className="text-sm font-medium text-foreground mb-1.5">Look again in</legend>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {RESEAL_HORIZONS.map((horizon) => (
-                  <label
-                    key={horizon.id}
-                    className="flex items-start gap-2.5 rounded-lg border border-card-border bg-background px-3 py-2.5 cursor-pointer transition-colors duration-75 hover:bg-hover-bg has-[:checked]:border-chosen-line has-[:checked]:bg-chosen has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent"
-                  >
-                    <input
-                      type="radio"
-                      name={`${id}-again`}
-                      value={horizon.id}
-                      checked={again === horizon.id}
-                      onChange={() => setAgain(horizon.id)}
-                      className="mt-1 accent-chosen-line focus:outline-none"
-                    />
-                    <span>
-                      <span className="block text-sm font-medium text-foreground">{horizon.label}</span>
-                      <span className="block text-xs text-foreground/75">{formatDay(opensOnFor(today, horizon.id), today, 'short')}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-              <p className="mt-2 text-sm text-foreground/75">It won’t join the answers on your shelf until you can say how it went.</p>
-            </fieldset>
-          )}
-
-          {outcome && outcome !== 'not-yet' && (
-            <div className="text-left max-w-md mx-auto">
-              <label htmlFor={`${id}-note`} className="block text-sm font-medium text-foreground mb-1.5">
-                A line to your past self <span className="font-normal text-foreground/75">(optional)</span>
-              </label>
-              <textarea
-                id={`${id}-note`}
-                value={note}
-                maxLength={MAX_NOTE_LENGTH}
-                rows={2}
-                onChange={(event) => setNote(event.target.value)}
-                className="w-full rounded-lg border border-card-border bg-background px-3.5 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-focus-ring resize-y"
+      <Slip label="Your worry" className="max-w-md">{capsule.worry}</Slip>
+      <fieldset className="m-0 grid min-w-0 gap-3 border-0 p-0">
+        <legend className="mb-3 p-0 text-lg font-bold">How did it turn out?</legend>
+        <div className="sp-stamp-row">
+          {CHOICES.map((option) => (
+            <label key={option.id} className="sp-choice">
+              <input
+                type="radio"
+                name={`${id}-outcome`}
+                value={option.id}
+                checked={outcome === option.id}
+                onChange={() => setOutcome(option.id)}
               />
-            </div>
-          )}
-
-          {failed && (
-            <p role="alert" className="text-sm text-foreground max-w-md mx-auto">
-              This browser couldn’t keep your answer just now. It is still on screen; try again in a moment.
-            </p>
-          )}
-
-          <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center">
-            <Button variant="secondary" onClick={onBack}>Back to the shelf</Button>
-            {outcome === 'not-yet' ? (
-              <Button onClick={() => setFailed(!onReseal(again))}>Seal it again</Button>
-            ) : (
-              <Button disabled={!outcome} onClick={() => outcome && setFailed(!onAnswer(outcome, note))}>Close the capsule</Button>
-            )}
-          </div>
-          <HelpLine />
+              <span className="sp-choice__face">
+                {outcome === option.id && <Icon name="done" />}
+                {option.label}
+              </span>
+            </label>
+          ))}
         </div>
+      </fieldset>
+
+      <div aria-live="polite">
+        {outcome && (
+          <p className="sp-lead m-0 max-w-md">
+            {outcome === 'not-yet' ? pickLine(NOT_YET_LINES, capsule.id) : outcomeResponse(outcome, capsule.id)}
+          </p>
+        )}
       </div>
+
+      {outcome === 'not-yet' && (
+        <fieldset className="m-0 grid min-w-0 max-w-md gap-2 border-0 p-0">
+          <legend className="mb-2 p-0 font-bold">Look again in</legend>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {RESEAL_HORIZONS.map((horizon) => (
+              <label key={horizon.id} className="sp-choice sp-choice--card">
+                <input
+                  type="radio"
+                  name={`${id}-again`}
+                  value={horizon.id}
+                  checked={again === horizon.id}
+                  onChange={() => setAgain(horizon.id)}
+                />
+                <span className="sp-choice__face">
+                  <span className="sp-choice__mark">{again === horizon.id && <Icon name="done" />}</span>
+                  <span>
+                    <span className="sp-choice__title">{horizon.label}</span>
+                    <span className="sp-choice__detail">{formatDay(opensOnFor(today, horizon.id), today, 'short')}</span>
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="sp-soft m-0">It won’t join the answers on your shelf until you can say how it went.</p>
+        </fieldset>
+      )}
+
+      {outcome && outcome !== 'not-yet' && (
+        <div className="max-w-md">
+          <WritingSlip
+            label="A line to your past self (optional)"
+            value={note}
+            maxLength={MAX_NOTE_LENGTH}
+            rows={2}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </div>
+      )}
+
+      {failed && (
+        <Note tone="look" role="alert">
+          This browser couldn’t keep your answer just now. It is still on screen; try again in a moment.
+        </Note>
+      )}
+
+      <StickyTray className={actions}>
+        <QuietButton onClick={onBack}>Back to the shelf</QuietButton>
+        {outcome === 'not-yet' ? (
+          <Go onClick={() => setFailed(!onReseal(again))}>Seal it again</Go>
+        ) : (
+          <Go
+            unavailable={outcome ? undefined : 'Say how it turned out first.'}
+            onClick={() => outcome && setFailed(!onAnswer(outcome, note))}
+          >
+            Close the capsule
+          </Go>
+        )}
+      </StickyTray>
+      <HelpLine />
     </div>
   )
 }
 
-function Reread({ capsule, today, motion, focus, onBack, onLetGo }: CapsuleViewProps & { onLetGo: () => boolean }) {
+function Reread({ capsule, today, focus, onBack, onLetGo }: CapsuleViewProps & { onLetGo: () => boolean }) {
   const opening = capsule.opening
   if (!opening) return null
   return (
-    <div className="space-y-4">
-      <Jar scene="opened" motion={motion} className="w-36 h-32 mx-auto" />
+    <div className={stack}>
+      <Jar scene="opened" motion={false} className="mx-auto h-32 w-36" />
       <ViewHeading focus={focus}>On {sealedDay(capsule, today)}, you wrote:</ViewHeading>
-      <Slip label="Your worry" className="max-w-md mx-auto">{capsule.worry}</Slip>
-      <p className="flex items-center justify-center gap-2 text-base text-foreground">
+      <Slip label="Your worry" className="max-w-md">{capsule.worry}</Slip>
+      <p className="m-0 flex items-center gap-2">
         <OutcomeMark outcome={opening.outcome} className="w-4 h-4" />
         <span>
           Opened {formatDay(localDateKey(new Date(opening.at)), today)}: {OUTCOME_WORDS[opening.outcome].toLowerCase()}.
         </span>
       </p>
-      <p className={cn(muted, 'italic max-w-md mx-auto')}>{outcomeResponse(opening.outcome, capsule.id)}</p>
+      <p className="sp-soft m-0 max-w-md">{outcomeResponse(opening.outcome, capsule.id)}</p>
       {opening.note && (
-        <div className="space-y-2">
-          <p className="text-sm text-foreground/75">You wrote back:</p>
-          <Slip label="Your note to your past self" className="max-w-md mx-auto">{opening.note}</Slip>
+        <div className="grid gap-2">
+          <p className="sp-soft m-0">You wrote back:</p>
+          <Slip label="Your note to your past self" className="max-w-md">{opening.note}</Slip>
         </div>
       )}
-      <div className="flex flex-col items-center gap-3 pt-1">
-        <Button onClick={onBack}>Back to the shelf</Button>
+      <div className={stack}>
+        <Go onClick={onBack}>Back to the shelf</Go>
         <LetGo onLetGo={onLetGo} opened />
       </div>
       <HelpLine />
@@ -880,7 +849,6 @@ interface RescueProps {
 }
 
 function Rescue({ draft, reason, today, focus, onRetry, onBack }: RescueProps) {
-  const id = useId()
   const [copied, setCopied] = useState('')
   const worry = draft.text.trim()
   const copyWords = async () => {
@@ -896,32 +864,28 @@ function Rescue({ draft, reason, today, focus, onRetry, onBack }: RescueProps) {
     saveTextFile(copyFileName(today), writeArchive([capsule], now()))
   }
   return (
-    <div className="space-y-4 text-left">
-      <ViewHeading focus={focus} className="text-center">This browser couldn’t keep it</ViewHeading>
-      <p className={muted}>
+    <div className="grid gap-4 text-left">
+      <ViewHeading focus={focus}>This browser couldn’t keep it</ViewHeading>
+      <p className="sp-soft m-0">
         {reason === 'full' ? 'Its storage is full.' : 'It may be a private window, or storage may be switched off.'} Your words are
         still here, so nothing is lost.
       </p>
-      <div>
-        <label htmlFor={`${id}-words`} className="block text-sm font-medium text-foreground mb-1.5">Your worry</label>
-        <textarea
-          id={`${id}-words`}
-          readOnly
-          value={worry}
-          rows={3}
-          onFocus={(event) => event.target.select()}
-          className="w-full rounded-lg border border-card-border bg-background px-3.5 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-focus-ring"
-        />
+      <WritingSlip
+        label="Your worry"
+        readOnly
+        value={worry}
+        rows={3}
+        onFocus={(event) => event.target.select()}
+      />
+      <div className="sp-stamp-row">
+        <Stamp icon="copy" onClick={copyWords}>Copy the words</Stamp>
+        <Stamp icon="save" onClick={saveFile}>Save it as a file</Stamp>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" size="sm" onClick={copyWords}>Copy the words</Button>
-        <Button variant="secondary" size="sm" onClick={saveFile}>Save it as a file</Button>
-        <Button variant="secondary" size="sm" onClick={onRetry}>Try again</Button>
-      </div>
-      <p role="status" className="text-sm text-foreground">{copied}</p>
-      <p className="text-sm text-foreground/75">A saved file can be brought back here later with “Restore from a copy”.</p>
-      <div className="text-center pt-1">
-        <Button variant="ghost" onClick={onBack}>Back</Button>
+      <StatusLine>{copied}</StatusLine>
+      <p className="sp-soft m-0">A saved file can be brought back here later with “Restore from a copy”.</p>
+      <div className={actions}>
+        <QuietButton onClick={onBack}>Back</QuietButton>
+        <Go onClick={onRetry}>Try again</Go>
       </div>
       <HelpLine />
     </div>

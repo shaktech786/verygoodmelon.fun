@@ -211,7 +211,7 @@ test.describe('The Keeper', () => {
     await expect(shelfHeading(page)).toBeVisible()
   })
 
-  test('sealing is one slow beat: fold, drop, lid, wax, and only then the words', async ({ page }) => {
+  test('sealing is one beat of under 1.6 seconds: the lid presses down, the label is printed, and only then the words', async ({ page }) => {
     await openKeeper(page)
     await page.getByLabel('Your worry').fill(WORRY)
     await page.getByRole('button', { name: 'Fold it up' }).click()
@@ -225,12 +225,10 @@ test.describe('The Keeper', () => {
       })),
     )
     const at = (name: string) => beat.find((b) => b.name.replace(/^.*__/, '') === name)
-    for (const name of ['fold', 'drop-in', 'lid-down', 'stamp', 'settle']) expect(at(name), name).toBeDefined()
-    expect(at('fold')!.end).toBeLessThanOrEqual(at('drop-in')!.start)
-    expect(at('drop-in')!.end).toBeLessThanOrEqual(at('lid-down')!.start)
-    expect(at('lid-down')!.end).toBeLessThanOrEqual(at('stamp')!.start)
-    expect(at('settle')!.start).toBeGreaterThanOrEqual(3000)
-    expect(at('settle')!.end).toBeLessThanOrEqual(4000)
+    for (const name of ['lid-down', 'label-print', 'settle']) expect(at(name), name).toBeDefined()
+    expect(at('lid-down')!.end).toBeLessThanOrEqual(at('label-print')!.start)
+    expect(at('label-print')!.end).toBeLessThanOrEqual(at('settle')!.start)
+    expect(Math.max(...beat.map((b) => b.end))).toBeLessThanOrEqual(1600)
   })
 
   test('while it seals on a phone, the card holds the jar and no empty room beneath it', async ({ page }) => {
@@ -241,9 +239,9 @@ test.describe('The Keeper', () => {
     await page.getByRole('button', { name: 'Seal it' }).click()
     const sealed = page.getByRole('heading', { name: 'Sealed.' })
     await expect(sealed).toBeFocused()
-    const cardHeight = () => sealed.evaluate((h) => h.closest('.text-center')!.getBoundingClientRect().height)
+    const cardHeight = () => sealed.evaluate((h) => h.closest('.sp-sheet')!.getBoundingClientRect().height)
     const whileSealing = await cardHeight()
-    // The jar is 224px tall and the card's padding 64px
+    // The jar is 160px tall and the card's padding 48px
     expect(whileSealing).toBeLessThan(340)
     await expect(page.getByRole('button', { name: 'Done' })).toBeInViewport({ timeout: 6000 })
     expect(await cardHeight()).toBeGreaterThan(whileSealing + 150)
@@ -292,7 +290,7 @@ test.describe('The Keeper', () => {
     expect(new Set(shapes).size).toBe(3)
   })
 
-  test('closing is one calm beat: fold, drop, lid, label, then the jar settles onto the shelf beside the others', async ({ page }) => {
+  test('closing is one calm beat: the jar already stands on the shelf beside the others and its label is printed', async ({ page }) => {
     const errors = collectPageErrors(page)
     await openKeeper(page)
     const opened = (outcome: string) => ({ at: new Date(T0 - DAY).toISOString(), outcome, note: '' })
@@ -306,13 +304,9 @@ test.describe('The Keeper', () => {
       })),
     )
     const at = (name: string) => beat.find((b) => b.name.replace(/^.*__/, '') === name)
-    for (const name of ['fold', 'drop-short', 'lid-down', 'stamp', 'travel', 'jar-settle', 'settle']) expect(at(name), name).toBeDefined()
-    expect(at('fold')!.end).toBeLessThanOrEqual(at('drop-short')!.start)
-    expect(at('drop-short')!.end).toBeLessThanOrEqual(at('lid-down')!.start)
-    expect(at('lid-down')!.end).toBeLessThanOrEqual(at('stamp')!.start)
-    expect(at('stamp')!.end).toBeLessThanOrEqual(at('travel')!.start)
-    expect(at('travel')!.end).toBeLessThanOrEqual(at('jar-settle')!.start)
-    expect(Math.max(...beat.map((b) => b.end))).toBeLessThanOrEqual(3000)
+    for (const name of ['label-print', 'settle']) expect(at(name), name).toBeDefined()
+    expect(at('label-print')!.end).toBeLessThanOrEqual(1000)
+    expect(Math.max(...beat.map((b) => b.end))).toBeLessThanOrEqual(1000)
     // The new jar stands last, after the older answers, each with its own label shape
     const shapes = await shelfShapes(page)
     expect(shapes).toHaveLength(3)
@@ -610,7 +604,7 @@ test.describe('The Keeper', () => {
     await page.getByRole('button', { name: 'Keep it' }).click()
     expect(await stored(page)).toHaveLength(1)
     await page.getByRole('button', { name: 'Let it go' }).click()
-    await page.getByRole('group', { name: 'Let it go' }).getByRole('button', { name: 'Let it go' }).click()
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Let it go' }).click()
     await expect(composerHeading(page)).toBeFocused()
     expect(await stored(page)).toEqual([])
   })
@@ -707,7 +701,6 @@ test.describe('The Keeper with reduced motion on a phone', () => {
     await sealWorry(page)
     const sealedText = page.getByText('It comes back on Saturday, November 28.')
     await expect(sealedText).toBeVisible()
-    for (const frame of ['Folded', 'Set inside', 'Sealed']) await expect(page.getByText(frame, { exact: true })).toBeVisible()
     const motion = await page.evaluate(() =>
       [...document.querySelectorAll('svg *, p, h2')].filter((el) => getComputedStyle(el).animationName !== 'none').length,
     )
