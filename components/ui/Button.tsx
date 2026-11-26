@@ -42,6 +42,7 @@ export function Button({
     <button
       className={buttonClassName(variant, size, className)}
       disabled={disabled}
+      {...(variant === 'primary' ? { 'data-go': '' } : {})}
       {...props}
     >
       {children}

@@ -514,7 +514,7 @@ export default function HopeDaily() {
                 aria-describedby={hintId}
                 className="min-w-0 flex-1 rounded-lg border-2 border-foreground/30 bg-background px-3 py-2 font-mono text-lg uppercase tracking-[0.2em] text-foreground focus:border-foreground"
               />
-              <button
+              <button data-go=""
                 type="submit"
                 disabled={busy}
                 className="shrink-0 rounded-lg bg-melon-green px-4 py-2 min-h-[44px] font-medium text-background hover:opacity-90 transition-opacity disabled:opacity-60"
@@ -673,12 +673,12 @@ function EndingStory({ reveal, fadeIn, shareNote, onShare }: EndingStoryProps) {
       <p className="mt-5 border-l-4 border-melon-green pl-4 text-base text-foreground">{reveal.reflection}</p>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <button
+        <button data-go=""
           type="button"
           onClick={() => onShare(reveal)}
           className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-melon-green text-background hover:opacity-90 transition-opacity"
         >
-          <Icon name="share" size={24} />
+          <Icon name="share" size={12} />
           Pass the good news on
         </button>
         <p className="text-sm text-foreground/70" role="status" aria-live="polite">{shareNote}</p>

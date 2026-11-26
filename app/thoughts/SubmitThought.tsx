@@ -230,7 +230,7 @@ export function SubmitThought() {
         )}
 
         {/* Submit */}
-        <button
+        <button data-go=""
           type="submit"
           disabled={state === 'submitting' || !isValidLength || !theme}
           className="

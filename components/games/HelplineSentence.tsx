@@ -10,7 +10,7 @@ export function HelplineSentence({ lead }: { lead: string }) {
       <a href={ukIe.href} className={link}>{ukIe.label}</a> ({ukIe.region}), or{' '}
       <a href={directory.href} target="_blank" rel="noopener noreferrer" className={link}>
         {directory.label}
-      </a>
+      <span className="sr-only"> (opens in a new tab)</span></a>
       .
     </>
   )

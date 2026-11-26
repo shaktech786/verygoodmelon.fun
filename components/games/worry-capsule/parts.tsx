@@ -61,7 +61,7 @@ export function HelpLine() {
       If a worry feels too heavy to hold alone,{' '}
       <a href={DIRECTORY_LINE.href} target="_blank" rel="noopener noreferrer" className={link}>
         {DIRECTORY_LINE.label}
-      </a>{' '}
+      <span className="sr-only"> (opens in a new tab)</span></a>{' '}
       lists free, confidential support near you, at any hour.
     </p>
   )

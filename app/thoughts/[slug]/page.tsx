@@ -80,7 +80,7 @@ export default async function ThoughtPage({ params }: PageProps) {
           href="/thoughts"
           className="inline-flex items-center gap-2 text-primary-light hover:text-foreground transition-colors text-sm mb-8"
         >
-          <Icon name="back" size={24} />
+          <Icon name="back" size={12} />
           All thoughts
         </Link>
 
@@ -140,7 +140,7 @@ export default async function ThoughtPage({ params }: PageProps) {
             href="/thoughts"
             className="inline-flex items-center gap-2 text-primary-light hover:text-foreground transition-colors text-sm"
           >
-            <Icon name="back" size={24} />
+            <Icon name="back" size={12} />
             All thoughts
           </Link>
           <Link

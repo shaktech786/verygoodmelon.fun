@@ -206,7 +206,7 @@ export default function DisclaimerPage() {
         </section>
 
         <div className="text-center pt-2">
-          <Link
+          <Link data-go=""
             href="/games/ancient-voices"
             className="inline-block px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
           >

@@ -560,7 +560,7 @@ export default function MindDebate() {
           <PaceToggle checked={turnByTurn} onChange={chooseTurnByTurn} />
 
           <StickyTray className="flex gap-3">
-            <button
+            <button data-go=""
               ref={startRef}
               type="submit"
               disabled={!canStart}
@@ -734,7 +734,7 @@ export default function MindDebate() {
 
       <StickyTray ref={barRef} pinned={phase !== 'closing'} className="mt-2 sm:mt-3 flex flex-wrap justify-center gap-3">
         {phase === 'debating' && (turnByTurn || awaitingReader) && (
-          <button
+          <button data-go=""
             type="button"
             onClick={handleNextTurn}
             aria-disabled={!awaitingReader}
@@ -751,19 +751,19 @@ export default function MindDebate() {
           </button>
         )}
         {phase === 'stopped' && history.length < TOTAL_ROUNDS && (
-          <button ref={continueRef} type="button" onClick={runDebate} className={buttonClassName('primary', 'md', ACTION)}>
+          <button data-go="" ref={continueRef} type="button" onClick={runDebate} className={buttonClassName('primary', 'md', ACTION)}>
             <Icon name="play" size={24} />
             {interruption ? 'Try again' : 'Continue'}
           </button>
         )}
         {phase === 'declined' && declineReason === 'voice' && (
-          <button ref={declineActionRef} type="button" onClick={() => backToSetup('person1')} className={buttonClassName('primary', 'md', ACTION)}>
+          <button data-go="" ref={declineActionRef} type="button" onClick={() => backToSetup('person1')} className={buttonClassName('primary', 'md', ACTION)}>
             <Icon name="person" size={24} />
             Choose other voices
           </button>
         )}
         {phase === 'declined' && declineReason === 'topic' && (
-          <button ref={declineActionRef} type="button" onClick={() => backToSetup('topic')} className={buttonClassName('primary', 'md', ACTION)}>
+          <button data-go="" ref={declineActionRef} type="button" onClick={() => backToSetup('topic')} className={buttonClassName('primary', 'md', ACTION)}>
             <Icon name="help" size={24} />
             Ask another question
           </button>
@@ -773,6 +773,7 @@ export default function MindDebate() {
             ref={phase === 'declined' && declineReason === null ? declineActionRef : undefined}
             type="button"
             onClick={handleSurprise}
+            {...(phase === 'declined' && declineReason === null ? { 'data-go': '' } : {})}
             className={buttonClassName(phase === 'declined' && declineReason === null ? 'primary' : 'secondary', 'md', ACTION)}
           >
             <Icon name="dice" size={24} />

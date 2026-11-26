@@ -762,7 +762,7 @@ export default function CalmGarden() {
   // ---------------------------------------------------------------------------
 
   const smallButton = 'rounded-md px-3 py-1.5 font-medium hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
-  const mainButton = 'rounded-md px-3 py-1.5 font-medium bg-melon-green text-background hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-1'
+  const mainButton = 'rounded-md px-3 py-1.5 font-medium border border-card-border bg-card-bg text-foreground hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-1'
 
   let status: React.ReactNode = null
   if (movingPlant) {
@@ -943,12 +943,12 @@ export default function CalmGarden() {
 
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-card-border pt-3">
           <Button variant="ghost" size="sm" onClick={undo} disabled={history.length === 0} aria-label="Undo last change">
-            <Icon name="undo" size={24} className="inline mr-1 -mt-0.5" />
+            <Icon name="undo" size={12} className="inline mr-1 -mt-0.5" />
             Undo
           </Button>
           {!showClearConfirm ? (
             <Button variant="ghost" size="sm" onClick={() => setShowClearConfirm(true)} disabled={plants.length === 0} aria-label="Clear garden">
-              <Icon name="trash" size={24} className="inline mr-1 -mt-0.5" />
+              <Icon name="trash" size={12} className="inline mr-1 -mt-0.5" />
               Clear
             </Button>
           ) : (
@@ -960,7 +960,7 @@ export default function CalmGarden() {
           )}
         </div>
 
-        <button
+        <button data-go=""
           ref={sitButtonRef}
           type="button"
           onClick={startSit}

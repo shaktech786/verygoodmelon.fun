@@ -463,7 +463,7 @@ export default function CascadeGame() {
           >
             <p className={`text-base tracking-[0.3em] text-melon-green shapeshifter-neon ${retroFont.className}`}>PAUSED</p>
             <p className="text-sm text-foreground/80">Take as long as you like.</p>
-            <button
+            <button data-go=""
               type="button"
               onClick={resume}
               autoFocus

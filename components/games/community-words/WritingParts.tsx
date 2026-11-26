@@ -128,7 +128,7 @@ export function QuietSupport() {
       <a href={UK_IE_LINE.href} className={HELPLINE_LINK}>{UK_IE_LINE.label}</a> in the {UK_IE_LINE.region}, or find a line near you at{' '}
       <a href={DIRECTORY_LINE.href} target="_blank" rel="noopener noreferrer" className={HELPLINE_LINK}>
         {DIRECTORY_LINE.label}
-      </a>
+      <span className="sr-only"> (opens in a new tab)</span></a>
       .
     </p>
   )
@@ -149,7 +149,7 @@ export function CarePanel() {
         Free, confidential support at any hour:{' '}
         <a href={DIRECTORY_LINE.href} target="_blank" rel="noopener noreferrer" className={HELPLINE_LINK}>
           {DIRECTORY_LINE.label}
-        </a>{' '}
+        <span className="sr-only"> (opens in a new tab)</span></a>{' '}
         lists lines in most countries. In the {US_LINE.region}, call or text <a href={US_LINE.href} className={HELPLINE_LINK}>{US_LINE.label}</a>. In the {UK_IE_LINE.region}, call <a href={UK_IE_LINE.href} className={HELPLINE_LINK}>{UK_IE_LINE.label}</a>.
       </p>
     </aside>

@@ -733,7 +733,7 @@ export default function TimelessMinds() {
           {/* Your own tile: a placeholder, never a camera */}
           <div aria-hidden="true" className="call-self absolute z-10 bottom-2 right-2 sm:bottom-3 sm:right-3 w-16 h-12 sm:w-40 sm:h-24 rounded-lg flex items-center justify-center">
             <span className="call-avatar w-7 h-7 sm:w-12 sm:h-12 rounded-full flex items-center justify-center">
-              <Icon name="person" size={24} />
+              <Icon name="person" size={12} className="sm:w-6 sm:h-6" />
             </span>
             <span className="absolute bottom-0.5 left-1.5 sm:bottom-1.5 sm:left-2 text-[10px] sm:text-xs font-semibold">You</span>
           </div>

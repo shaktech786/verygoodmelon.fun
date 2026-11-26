@@ -48,7 +48,7 @@ export default function AboutPage() {
                 className="text-accent underline underline-offset-2 hover:no-underline font-medium"
               >
                 Neal Agarwal
-              </a>
+              <span className="sr-only"> (opens in a new tab)</span></a>
               {' '}from{' '}
               <a
                 href="https://neal.fun"
@@ -57,7 +57,7 @@ export default function AboutPage() {
                 className="text-accent underline underline-offset-2 hover:no-underline"
               >
                 neal.fun
-              </a>
+              <span className="sr-only"> (opens in a new tab)</span></a>
               . His creative, purposeful web experiments inspired me to build this site and stick to
               creating things that matter. If you haven&apos;t explored neal.fun yet, you&apos;re in for a treat.
             </p>
@@ -73,8 +73,8 @@ export default function AboutPage() {
                 className="inline-flex items-center gap-2 text-accent hover:underline transition-colors"
               >
                 Website
-                <Icon name="external" size={24} />
-              </a>
+                <Icon name="external" size={12} />
+              <span className="sr-only"> (opens in a new tab)</span></a>
               <a
                 href="https://linkedin.com/in/shakeelbhamani"
                 target="_blank"
@@ -82,8 +82,8 @@ export default function AboutPage() {
                 className="inline-flex items-center gap-2 text-accent hover:underline transition-colors"
               >
                 LinkedIn
-                <Icon name="external" size={24} />
-              </a>
+                <Icon name="external" size={12} />
+              <span className="sr-only"> (opens in a new tab)</span></a>
               <a
                 href="https://github.com/shaktech786"
                 target="_blank"
@@ -91,8 +91,8 @@ export default function AboutPage() {
                 className="inline-flex items-center gap-2 text-accent hover:underline transition-colors"
               >
                 GitHub
-                <Icon name="external" size={24} />
-              </a>
+                <Icon name="external" size={12} />
+              <span className="sr-only"> (opens in a new tab)</span></a>
             </div>
           </div>
 

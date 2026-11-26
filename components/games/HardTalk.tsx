@@ -158,7 +158,7 @@ export default function HardTalk() {
             className="font-medium text-foreground underline underline-offset-4 rounded"
           >
             {DIRECTORY_LINE.label}
-          </a>{' '}
+          <span className="sr-only"> (opens in a new tab)</span></a>{' '}
           lists free, confidential support.
         </aside>
       )}
@@ -303,7 +303,7 @@ function HardTalkGame() {
   )
 
   const keepOnScreenButton = (
-    <button
+    <button data-go=""
       ref={keepOnScreenRef}
       type="button"
       onClick={() => setOnScreen(true)}
