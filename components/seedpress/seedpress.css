@@ -1530,3 +1530,253 @@ a.sp-packet:focus-visible .sp-print {
     transform: translateX(100%);
   }
 }
+
+/* ---------- Status, notes and loading (PLAN.md sections 7.16 to 7.18) ---------- */
+
+.sp-status {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 1.75rem;
+  font-size: var(--t-small);
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.sp-status__mark {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--rind);
+}
+
+.sp-note {
+  --note-ink: var(--rind);
+  display: flex;
+  gap: var(--s-3);
+  max-width: var(--w-prose);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--note-ink);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+  color: var(--ink);
+}
+
+.sp-note--look {
+  --note-ink: var(--seed);
+}
+
+.sp-note__mark {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--note-ink);
+}
+
+.sp-loading {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--s-2);
+  min-height: 12rem;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.sp-loading__seeds {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.sp-loading__seeds i {
+  width: 6px;
+  height: 6px;
+  background-color: currentColor;
+  animation: sp-settle calc(1200ms * var(--motion)) steps(4, end) infinite;
+}
+
+.sp-loading__seeds i:nth-child(2) {
+  animation-delay: calc(160ms * var(--motion));
+}
+
+.sp-loading__seeds i:nth-child(3) {
+  animation-delay: calc(320ms * var(--motion));
+}
+
+@keyframes sp-settle {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-6px);
+  }
+}
+
+/* ---------- Keys and keycaps (PLAN.md section 7.23) ---------- */
+
+.sp-keycap {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 2px solid var(--rule-strong);
+  border-radius: 6px;
+  background-color: var(--sheet);
+  box-shadow: 0 2px 0 var(--rule-strong);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--t-meta);
+  color: var(--ink);
+}
+
+.sp-keys.is-waiting {
+  display: none;
+}
+
+@media (pointer: fine) {
+  .sp-keys.is-waiting {
+    display: block;
+  }
+}
+
+.sp-keys__summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.sp-keys__summary::-webkit-details-marker {
+  display: none;
+}
+
+.sp-keys__body {
+  max-width: 28rem;
+  margin-top: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+  font-size: var(--t-small);
+}
+
+/* ---------- Sticky tray (PLAN.md section 7.24) ---------- */
+
+.sp-tray.is-pinned {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  padding-top: var(--s-3);
+  padding-bottom: max(var(--s-3), env(safe-area-inset-bottom));
+  border-top: 1px solid var(--rule);
+  background-color: var(--paper);
+}
+
+.sp-tray.is-pinned::before {
+  content: '';
+  position: absolute;
+  inset: -12px 0 auto;
+  height: 12px;
+  background: linear-gradient(to bottom, transparent, var(--paper));
+  pointer-events: none;
+}
+
+/* ---------- The game page: strip, stage, after (PLAN.md section 8.2) ---------- */
+
+.sp-game {
+  --game-w: var(--w-stage);
+  --game-gutter: 16px;
+  width: 100%;
+  max-width: calc(var(--game-w) + 2 * var(--game-gutter));
+  margin-inline: auto;
+  padding: var(--s-5) var(--game-gutter) var(--s-8);
+}
+
+.sp-game--wide {
+  --game-w: 90rem;
+}
+
+@media (min-width: 640px) {
+  .sp-game {
+    --game-gutter: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sp-game {
+    --game-gutter: 48px;
+  }
+}
+
+.sp-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-5);
+  padding-left: var(--s-4);
+  border-left: 6px solid var(--shelf-ink);
+}
+
+.sp-strip__words {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+  flex: 1 1 24rem;
+}
+
+.sp-strip__back {
+  justify-self: start;
+  gap: var(--s-1);
+  font-size: var(--t-small);
+}
+
+.sp-strip__title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.sp-strip__glyph {
+  flex-shrink: 0;
+  color: var(--shelf-ink);
+}
+
+.sp-strip__lead {
+  max-width: var(--w-prose);
+  color: var(--ink-soft);
+}
+
+.sp-strip__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.sp-stage {
+  padding: var(--s-4);
+  border: 2px solid var(--rind);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+}
+
+@media (min-width: 640px) {
+  .sp-stage {
+    padding: var(--s-5);
+  }
+}
+
+@media (max-width: 639px) {
+  .sp-game--wide .sp-stage {
+    margin-inline: calc(-1 * var(--game-gutter));
+    padding-inline: 0;
+    border-inline: 0;
+    border-radius: 0;
+  }
+}
+
+.sp-after {
+  margin-top: var(--s-6);
+}

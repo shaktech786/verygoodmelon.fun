@@ -1,9 +1,9 @@
 import { render } from '@testing-library/react'
 import { axe, toHaveNoViolations } from 'jest-axe'
 import { Button } from '@/components/ui/Button'
-import { KeyHints } from '@/components/ui/KeyHints'
+import { KeyHints } from '@/components/seedpress/KeyHints'
 import { LegalPage, LegalSection } from '@/components/ui/LegalPage'
-import { StickyActionBar } from '@/components/ui/StickyActionBar'
+import { StickyTray } from '@/components/seedpress/StickyTray'
 import { expect } from 'vitest'
 
 expect.extend(toHaveNoViolations)
@@ -58,12 +58,12 @@ describe('Accessibility Tests', () => {
   })
 
   describe('Keyboard Navigation', () => {
-    it('interactive elements in an action bar should be keyboard focusable', async () => {
+    it('interactive elements in an tray should be keyboard focusable', async () => {
       const { container } = render(
-        <StickyActionBar>
+        <StickyTray>
           <Button>Button 1</Button>
           <Button variant="secondary">Button 2</Button>
-        </StickyActionBar>,
+        </StickyTray>,
       )
       const results = await axe(container)
       expect(results).toHaveNoViolations()

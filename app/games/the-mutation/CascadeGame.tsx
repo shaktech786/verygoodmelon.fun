@@ -10,7 +10,7 @@ import { endingKind, fallbackName, fallbackTagline, reflection, type RunStory } 
 import { categoryOf } from './engine/plan'
 import { fallbackRule, discovery, hintFor, listed, shortName, togetherNow } from './engine/rules'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
-import { KeyHints } from '@/components/ui/KeyHints'
+import { KeyHints } from '@/components/seedpress/KeyHints'
 import GameCanvas from './components/GameCanvas'
 import TitleScreen from './components/TitleScreen'
 import FinaleScreen from './components/FinaleScreen'
@@ -405,7 +405,6 @@ export default function CascadeGame() {
   return (
     // The finished game takes the page's width, so its map and legend are drawn large enough to read
     <div className={`w-full mx-auto ${phase === 'finale' ? 'max-w-3xl' : 'max-w-[640px]'}`} onKeyDown={keepKeysInGame}>
-      <h1 className="sr-only">The Shapeshifter</h1>
       {/* Overlays share the canvas's grid cell so a tall screen grows the box instead of being clipped.
           Play happens on a dark arcade screen in a bezel; the finished game is printed back on the site's paper. */}
       <div ref={boxRef} className={`grid rounded-xl overflow-hidden border border-card-border bg-card-bg scroll-mt-20 ${phase === 'finale' ? '' : 'shapeshifter-screen'}`}>

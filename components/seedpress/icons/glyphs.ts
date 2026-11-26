@@ -227,6 +227,20 @@ export const GLYPHS = {
     '.XXXXXXXXX..',
     '............',
   ],
+  keys: [
+    '............',
+    '............',
+    '.XXXXXXXXXX.',
+    '.X.X.X.X.X.X',
+    '.XXXXXXXXXX.',
+    '.X.X.X.X.XX.',
+    '.XXXXXXXXXX.',
+    '.X.XXXXXX.X.',
+    '.XXXXXXXXXX.',
+    '............',
+    '............',
+    '............',
+  ],
 } as const satisfies Record<string, readonly string[]>
 
 export type IconName = keyof typeof GLYPHS

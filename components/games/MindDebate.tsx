@@ -3,7 +3,7 @@
 import { REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Button, buttonClassName } from '@/components/ui/Button'
-import { StickyActionBar } from '@/components/ui/StickyActionBar'
+import { StickyTray } from '@/components/seedpress/StickyTray'
 import { MessagesSquare, RotateCcw, Loader2, Square, Play, Shuffle, UserRound, HelpCircle, ChevronRight } from 'lucide-react'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { PAIRINGS, pairingIndexOf, type EmblemId } from '@/lib/games/arena-pairings'
@@ -558,7 +558,7 @@ export default function MindDebate() {
 
           <PaceToggle checked={turnByTurn} onChange={chooseTurnByTurn} />
 
-          <StickyActionBar className="flex gap-3">
+          <StickyTray className="flex gap-3">
             <button
               ref={startRef}
               type="submit"
@@ -577,7 +577,7 @@ export default function MindDebate() {
               <Shuffle size={18} aria-hidden="true" />
               Surprise me
             </Button>
-          </StickyActionBar>
+          </StickyTray>
         </form>
       </div>
     )
@@ -732,7 +732,7 @@ export default function MindDebate() {
         />
       )}
 
-      <StickyActionBar ref={barRef} pinned={phase !== 'closing'} className="mt-2 sm:mt-3 flex flex-wrap justify-center gap-3">
+      <StickyTray ref={barRef} pinned={phase !== 'closing'} className="mt-2 sm:mt-3 flex flex-wrap justify-center gap-3">
         {phase === 'debating' && (turnByTurn || awaitingReader) && (
           <button
             type="button"
@@ -783,7 +783,7 @@ export default function MindDebate() {
           <RotateCcw size={16} aria-hidden="true" />
           New debate
         </Button>
-      </StickyActionBar>
+      </StickyTray>
 
       {(phase === 'debating' || phase === 'stopped') && (
         <div className="mt-2 flex justify-center">

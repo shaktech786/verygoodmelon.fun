@@ -29,7 +29,7 @@ import { keywordText } from '@/lib/games/thought-pockets/data/keywords'
 import { useInsightStore, useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { wakeTones } from '@/components/games/gentleCues'
-import { KeyHints } from '@/components/ui/KeyHints'
+import { KeyHints } from '@/components/seedpress/KeyHints'
 import { CardFace, TYPE_COLORS, keywordsOnCard } from './CardFace'
 import { BiasPortrait, Mood, crackCount, impactLines } from './Sprites'
 import { LessonNote, Term } from './Term'
@@ -355,7 +355,7 @@ function ShakenMeter({ battle }: { battle: BattleState }) {
           <span key={i} className={`h-2.5 w-1.5 border border-[var(--tp-good)] ${i < shaken ? 'bg-[var(--tp-good)]' : ''}`} />
         ))}
       </span>
-      <span className="text-[var(--tp-muted)]">
+      <span >
         {threshold !== null ? `lands when it changes at ${threshold}: ${releaseWords(shaken)}` : `lands when it changes: ${releaseWords(shaken)}`}
       </span>
     </div>
@@ -936,7 +936,7 @@ export function BattleScreen({ run }: { run: RunState }) {
             ) : (
               <>
                 <div className="hidden sm:block">
-                  <KeyHints className="text-[var(--tp-muted)]">1–9 play a card, U undoes, E ends the turn, S skips the replay.</KeyHints>
+                  <KeyHints>1–9 play a card, U undoes, E ends the turn, S skips the replay.</KeyHints>
                 </div>
                 <p className="sm:hidden">Tap a card to play it. Hold a card to read all of it.</p>
               </>

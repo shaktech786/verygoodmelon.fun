@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react'
 import { Button } from '@/components/ui/Button'
-import { KeyHints } from '@/components/ui/KeyHints'
+import { KeyHints } from '@/components/seedpress/KeyHints'
 import { cn } from '@/lib/utils/cn'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { buzz, playTones, useCanBuzz, useSoundAudible, wakeTones, type Tone } from '@/components/games/gentleCues'
@@ -1179,7 +1179,7 @@ export default function BreathingPatterns() {
                 Change rhythm
               </Button>
             )}
-            <KeyHints className="mt-3 text-foreground/70">
+            <KeyHints className="mt-3">
               {sessionState === 'paused'
                 ? 'Choose a rhythm, then Resume. Escape ends.'
                 : isFreeMode
@@ -1295,7 +1295,7 @@ export default function BreathingPatterns() {
         <Button variant="primary" size="lg" onClick={() => startSession()}>
           Begin breathing
         </Button>
-        <KeyHints className="mt-3 text-foreground/70">Arrow keys choose. Enter begins.</KeyHints>
+        <KeyHints className="mt-3">Arrow keys choose. Enter begins.</KeyHints>
       </div>
       <div className="flex flex-wrap justify-center gap-2 mt-6 mb-2">
         <Chip pressed={tonesOn} onToggle={() => setTonesOn((on) => !on)}>Breath tones</Chip>

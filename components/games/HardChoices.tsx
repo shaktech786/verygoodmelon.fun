@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { StickyActionBar } from '@/components/ui/StickyActionBar'
+import { StickyTray } from '@/components/seedpress/StickyTray'
 import { useRealtimeVotes } from '@/lib/hooks/useRealtimeVotes'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { DILEMMAS, type Choice, type ChoiceId } from '@/lib/games/hard-choices/dilemmas'
@@ -366,13 +366,6 @@ export default function HardChoices() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 max-w-3xl">
         <div className="animate-fade">
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl sm:text-4xl font-semibold mb-3">The Dilemma</h1>
-            <p className="text-foreground/75 text-base sm:text-lg max-w-2xl mx-auto">
-              Twelve everyday questions with no right answer. Choose, skip or change your mind, and at the end see what you chose to protect.
-            </p>
-          </div>
-
           <div className="mb-8">
             <div className="flex items-center justify-between text-sm text-foreground/70 mb-2">
               <div className="flex items-center gap-2">
@@ -524,7 +517,7 @@ export default function HardChoices() {
                 )}
               </div>
 
-              <StickyActionBar pinned={showResults || currentAnswer === 'skip'} className="flex gap-3">
+              <StickyTray pinned={showResults || currentAnswer === 'skip'} className="flex gap-3">
                 {currentDilemmaIndex > 0 && (
                   <Button
                     onClick={() => navigate(currentDilemmaIndex - 1)}
@@ -543,7 +536,7 @@ export default function HardChoices() {
                     {currentDilemmaIndex === DILEMMAS.length - 1 ? 'Finish' : 'Next Dilemma'}
                   </Button>
                 )}
-              </StickyActionBar>
+              </StickyTray>
               <div ref={resultEndRef} className="scroll-mb-4" aria-hidden="true" />
 
               <div className="mt-6 text-center text-sm text-foreground/70">
