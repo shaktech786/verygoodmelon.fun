@@ -1,0 +1,30 @@
+name: Database keepalive
+
+# Supabase's free plan pauses a project after a quiet week, and a paused
+# project's hostname stops resolving: every vote, visit and submission then
+# fails with ENOTFOUND while the pages still load (paused unnoticed until
+# 2026-11-25). A daily read through the production API keeps it awake and
+# fails this workflow the day the database stops answering.
+# Remove once verygoodmelon moves off Supabase (VGM-12).
+
+on:
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read vote counts from production
+        run: |
+          code=$(curl -s -o body.json -w '%{http_code}' --retry 3 --retry-delay 20 \
+            'https://verygoodmelon.fun/api/hard-choices/votes?dilemmaId=keepalive')
+          cat body.json; echo
+          if [ "$code" != 200 ]; then
+            echo "::error::Production database read returned HTTP $code"
+            exit 1
+          fi
