@@ -158,8 +158,11 @@ const ALLOWED_WORDS: RegExp[] = [
 
 const AI_WORDING = /\bAI\b|artificial intelligence|model|generat/i
 
+/** Legal pages must name the AI services and what they do plainly; invisible AI is for play, never for disclosure. */
+const DISCLOSURES = ['/privacy', '/terms']
+
 test.describe('no player-facing words say AI, model or generating', () => {
-  for (const route of ALL_ROUTES) {
+  for (const route of ALL_ROUTES.filter((route) => !DISCLOSURES.includes(route))) {
     test(route, async ({ page }) => {
       await open(page, route)
       await settle(page)
