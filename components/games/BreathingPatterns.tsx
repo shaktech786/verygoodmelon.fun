@@ -450,7 +450,7 @@ const OPENING_STYLES = `
 function OpeningMelon({ breaths }: { breaths: Breath[] }) {
   // The picture to keep prints the melon in the page's inks, so the opening uses the same ones
   const inks = useInks()
-  const look = useMemo(() => currentKeepsakeLook(), [inks])
+  const look = useMemo(() => ({ ...currentKeepsakeLook(), inks }), [inks])
   const ink = (name: Ink) => inkColour(name, look)
   const melon = useMemo(() => keepsakeMelon(breaths), [breaths])
   const [cx, cy] = melon.centre
