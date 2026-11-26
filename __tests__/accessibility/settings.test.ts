@@ -11,13 +11,14 @@ async function loadModule() {
 
 beforeEach(() => {
   localStorage.clear()
+  sessionStorage.clear()
   const root = document.documentElement
   for (const name of root.getAttributeNames()) root.removeAttribute(name)
 })
 
-describe('migrateSettings', () => {
+describe('parseSettings', () => {
   it('keeps every setting saved by the current version', async () => {
-    const { migrateSettings } = await loadModule()
+    const { parseSettings } = await loadModule()
     const current = {
       theme: 'dark',
       textSize: 'larger',
@@ -30,71 +31,33 @@ describe('migrateSettings', () => {
       spacing: 'roomy',
     }
 
-    expect(migrateSettings(current)).toEqual(current)
+    expect(parseSettings(current)).toEqual(current)
   })
 
-  it('gives settings saved before the sensory dial and Spacing existed the defaults for both', async () => {
-    const { migrateSettings } = await loadModule()
-    const migrated = migrateSettings({ theme: 'dark', textSize: 'large', contrast: 'high', reduceMotion: true, greyscale: false, muted: true, volume: 40 })
+  it('gives a saved object without sense or spacing the defaults for both', async () => {
+    const { parseSettings } = await loadModule()
+    const migrated = parseSettings({ theme: 'dark', textSize: 'large', contrast: 'high', reduceMotion: true, greyscale: false, muted: true, volume: 40 })
     expect(migrated).toMatchObject({ sense: 'gentle', spacing: 'standard', theme: 'dark', muted: true })
   })
 
   it('replaces an unknown sense or spacing with the default', async () => {
-    const { migrateSettings } = await loadModule()
-    expect(migrateSettings({ sense: 'loud', spacing: 'huge' })).toMatchObject({ sense: 'gentle', spacing: 'standard' })
-    expect(migrateSettings({ sense: 'quiet', spacing: 'roomy' })).toMatchObject({ sense: 'quiet', spacing: 'roomy' })
-  })
-
-  it('turns a removed colour-blind simulation into no filter and keeps the rest', async () => {
-    const { migrateSettings } = await loadModule()
-    const legacy = {
-      reduceMotion: false,
-      contrast: 'high',
-      animationSpeed: 0.5,
-      colorblindMode: 'deuteranopia',
-      pauseAnimations: false,
-      theme: 'dark',
-      volume: 30,
-      muted: false,
-      showKeyboardShortcuts: true,
-      clickAssist: false,
-      timingFlexibility: false,
-      showInstructions: true,
-      tutorialMode: true,
-    }
-
-    expect(migrateSettings(legacy)).toEqual({
-      ...DEFAULT_ACCESSIBILITY_SETTINGS,
-      contrast: 'high',
-      theme: 'dark',
-      volume: 30,
-      greyscale: false,
-    })
-  })
-
-  it('carries the old Monochrome mode over to greyscale', async () => {
-    const { migrateSettings } = await loadModule()
-    expect(migrateSettings({ colorblindMode: 'monochrome' })?.greyscale).toBe(true)
-    expect(migrateSettings({ colorblindMode: 'tritanopia' })?.greyscale).toBe(false)
-  })
-
-  it('carries the old Pause Animations switch over to reduced motion', async () => {
-    const { migrateSettings } = await loadModule()
-    expect(migrateSettings({ pauseAnimations: true, reduceMotion: false })?.reduceMotion).toBe(true)
+    const { parseSettings } = await loadModule()
+    expect(parseSettings({ sense: 'loud', spacing: 'huge' })).toMatchObject({ sense: 'gentle', spacing: 'standard' })
+    expect(parseSettings({ sense: 'quiet', spacing: 'roomy' })).toMatchObject({ sense: 'quiet', spacing: 'roomy' })
   })
 
   it('replaces values it does not recognise with defaults', async () => {
-    const { migrateSettings } = await loadModule()
+    const { parseSettings } = await loadModule()
     expect(
-      migrateSettings({ contrast: 'ultra', theme: 7, textSize: 'huge', volume: 500, muted: 'yes' })
+      parseSettings({ contrast: 'ultra', theme: 7, textSize: 'huge', volume: 500, muted: 'yes' })
     ).toEqual({ ...DEFAULT_ACCESSIBILITY_SETTINGS, volume: 100 })
   })
 
   it('returns null for anything that is not a settings object', async () => {
-    const { migrateSettings } = await loadModule()
-    expect(migrateSettings(null)).toBeNull()
-    expect(migrateSettings('dark')).toBeNull()
-    expect(migrateSettings([1, 2])).toBeNull()
+    const { parseSettings } = await loadModule()
+    expect(parseSettings(null)).toBeNull()
+    expect(parseSettings('dark')).toBeNull()
+    expect(parseSettings([1, 2])).toBeNull()
   })
 })
 
@@ -133,16 +96,37 @@ describe('applySettings', () => {
 })
 
 describe('useAccessibility', () => {
-  it('loads and migrates settings stored by an older version', async () => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ contrast: 'extra-high', colorblindMode: 'protanopia', animationSpeed: 2 })
-    )
+  it('loads the saved settings and applies them to the page', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ contrast: 'extra-high' }))
     const { useAccessibility } = await loadModule()
     const { result } = renderHook(() => useAccessibility())
 
     expect(result.current.settings).toEqual({ ...DEFAULT_ACCESSIBILITY_SETTINGS, contrast: 'extra-high' })
     expect(document.documentElement.getAttribute('data-contrast')).toBe('extra-high')
+  })
+
+  it('does not read the settings that earlier versions saved', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ pauseAnimations: true, colorblindMode: 'monochrome' }))
+    const { useAccessibility } = await loadModule()
+    const { result } = renderHook(() => useAccessibility())
+
+    expect(result.current.settings).toEqual(DEFAULT_ACCESSIBILITY_SETTINGS)
+  })
+
+  it('removes earlier versions of the saved settings from storage once, keeping the current ones', async () => {
+    localStorage.setItem('shakfun:accessibility:settings', '{"theme":"dark"}')
+    sessionStorage.setItem('verygoodmelon:press:sense', 'quiet')
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ theme: 'dark', pauseAnimations: true, colorblindMode: 'deuteranopia', animationSpeed: 0.5, sense: 'quiet' })
+    )
+    const { useAccessibility } = await loadModule()
+    const { result } = renderHook(() => useAccessibility())
+
+    expect(localStorage.getItem('shakfun:accessibility:settings')).toBeNull()
+    expect(sessionStorage.getItem('verygoodmelon:press:sense')).toBeNull()
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')).toEqual({ theme: 'dark', sense: 'quiet' })
+    expect(result.current.settings).toMatchObject({ theme: 'dark', sense: 'quiet' })
   })
 
   it('shares one set of settings between every component that uses it', async () => {

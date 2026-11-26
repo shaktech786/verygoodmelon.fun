@@ -27,11 +27,8 @@ function bool(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
 }
 
-/**
- * Reads settings saved by any version of the site. Removed options are mapped to
- * their nearest surviving setting so a returning visitor keeps what they chose.
- */
-export function migrateSettings(stored: unknown): AccessibilitySettings | null {
+/** Reads saved settings, replacing any value that is not one of the current options with its default. */
+export function parseSettings(stored: unknown): AccessibilitySettings | null {
   if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return null
   const raw = stored as Record<string, unknown>
   const defaults = DEFAULT_ACCESSIBILITY_SETTINGS
@@ -45,12 +42,33 @@ export function migrateSettings(stored: unknown): AccessibilitySettings | null {
     theme: oneOf(THEMES, raw.theme, defaults.theme),
     textSize: oneOf(TEXT_SIZES, raw.textSize, defaults.textSize),
     contrast: oneOf(CONTRASTS, raw.contrast, defaults.contrast),
-    reduceMotion: raw.pauseAnimations === true || bool(raw.reduceMotion, defaults.reduceMotion),
-    greyscale: raw.colorblindMode === 'monochrome' || bool(raw.greyscale, defaults.greyscale),
+    reduceMotion: bool(raw.reduceMotion, defaults.reduceMotion),
+    greyscale: bool(raw.greyscale, defaults.greyscale),
     muted: bool(raw.muted, defaults.muted),
     volume,
     sense: oneOf(SENSES, raw.sense, defaults.sense),
     spacing: oneOf(SPACINGS, raw.spacing, defaults.spacing),
+  }
+}
+
+/** Storage left by earlier versions of the site, which nothing reads any more. */
+const LEGACY_LOCAL_KEYS = ['shakfun:accessibility:settings']
+const LEGACY_SESSION_KEYS = ['verygoodmelon:press:sense']
+
+/** Once per load: drops the earlier versions' keys, and any setting inside the saved object that is no longer one. */
+function forgetLegacyStorage(): void {
+  try {
+    for (const key of LEGACY_LOCAL_KEYS) localStorage.removeItem(key)
+    for (const key of LEGACY_SESSION_KEYS) sessionStorage.removeItem(key)
+    const stored = localStorage.getItem(STORAGE_KEY)
+    const raw = stored ? JSON.parse(stored) : null
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      const current = Object.keys(DEFAULT_ACCESSIBILITY_SETTINGS)
+      const kept = Object.fromEntries(Object.entries(raw).filter(([name]) => current.includes(name)))
+      if (Object.keys(kept).length !== Object.keys(raw).length) localStorage.setItem(STORAGE_KEY, JSON.stringify(kept))
+    }
+  } catch {
+    // Storage that cannot be reached has nothing to clean
   }
 }
 
@@ -63,10 +81,11 @@ function detectSystemPreferences(): AccessibilitySettings {
 }
 
 function loadSettings(): AccessibilitySettings {
+  forgetLegacyStorage()
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    const migrated = stored ? migrateSettings(JSON.parse(stored)) : null
-    if (migrated) return migrated
+    const saved = stored ? parseSettings(JSON.parse(stored)) : null
+    if (saved) return saved
   } catch {
     // Unreadable storage (private mode, corrupt JSON) falls through to system preferences
   }
