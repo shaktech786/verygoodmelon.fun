@@ -35,7 +35,7 @@ export function GameStage({ gameId, title, lead, wide = false, keys, sound = fal
       <header className="sp-strip" style={{ ['--shelf-ink' as string]: `var(--${shelf.ink})` } as CSSProperties}>
         <NextLink href="/games" className="sp-quiet sp-strip__back">
           <Icon name="back" />
-          The shop
+          <span className="sp-strip__back-words">The shop</span>
         </NextLink>
         <h1 className="sp-h1 sp-strip__title">
           <Icon name={shelf.glyph} size={36} className="sp-strip__glyph" />

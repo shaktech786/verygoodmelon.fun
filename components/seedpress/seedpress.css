@@ -1782,6 +1782,34 @@ a.sp-packet:focus-visible .sp-print {
   width: min(28rem, calc(100vw - 2 * var(--game-gutter)));
 }
 
+/* On a phone the back link is a bare arrow beside the title, so the strip spends one row on it, not two. */
+@media (max-width: 639px) {
+  .sp-strip {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'back title tools'
+      'lead lead lead';
+    align-items: center;
+    column-gap: var(--s-2);
+  }
+
+  .sp-strip__back {
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    margin-left: calc(-1 * var(--s-2));
+  }
+
+  .sp-strip__back-words {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 @media (min-width: 640px) {
   .sp-strip {
     grid-template-areas:
