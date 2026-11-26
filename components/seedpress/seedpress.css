@@ -653,7 +653,9 @@ a.sp-packet:focus-visible .sp-print {
 .sp-wordmark {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.125rem;
+  /* A logotype keeps its size when text is enlarged (WCAG 1.4.4 exempts it), so on a phone the
+     header stays one row at every text size and games keep their room. */
+  font-size: 18px;
   line-height: 1;
 }
 
@@ -680,6 +682,16 @@ a.sp-packet:focus-visible .sp-print {
   color: var(--ink);
   font-weight: 600;
   text-decoration: none;
+}
+
+@media (max-width: 639px) {
+  .sp-header__row {
+    column-gap: var(--s-2);
+  }
+
+  .sp-nav-link {
+    padding: 0 var(--s-1);
+  }
 }
 
 .sp-nav-link:hover {
