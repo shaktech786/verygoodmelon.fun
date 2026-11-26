@@ -1,9 +1,12 @@
 'use client'
 
+import { useSyncExternalStore } from 'react'
 import { useCareMode } from '@/components/games/CareMode'
 import { GIVE, type GiveConfig } from '@/lib/give/config'
 import { buttonClass } from './buttonClass'
 import { Icon } from './icons/Icon'
+
+const subscribeNever = () => () => {}
 
 interface GiveBlockProps {
   /** Where it sits: the footer's middle column, or a section at the end of a page. */
@@ -17,7 +20,10 @@ interface GiveBlockProps {
  */
 export function GiveBlock({ placement, config = GIVE }: GiveBlockProps) {
   const { care } = useCareMode()
-  if (!config.enabled || config.organisations.length === 0 || care) return null
+  // Care state is only known in the browser, so the server's page and the first browser pass show nothing:
+  // someone in care mode never sees the block flash in before it is hidden.
+  const known = useSyncExternalStore(subscribeNever, () => true, () => false)
+  if (!known || !config.enabled || config.organisations.length === 0 || care) return null
 
   const footer = placement === 'footer'
   const headingId = footer ? 'footer-give' : 'give-heading'

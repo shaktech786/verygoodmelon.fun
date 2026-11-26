@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { CareModeProvider } from '@/components/games/CareMode'
 import { GiveBlock } from '@/components/seedpress/GiveBlock'
@@ -49,6 +50,11 @@ describe('GiveBlock', () => {
   it('has no counters, goals or urgency in what it adds', () => {
     const { container } = render(<GiveBlock placement="footer" config={SAMPLE} />)
     expect(container.textContent).not.toMatch(/\d|goal|raised|today|urgent|only .* left/i)
+  })
+
+  it('prints nothing on the server, before the browser knows whether care mode is on', () => {
+    expect(renderToString(<GiveBlock placement="footer" config={SAMPLE} />)).toBe('')
+    expect(renderToString(<GiveBlock placement="page" config={SAMPLE} />)).toBe('')
   })
 
   it('stays hidden while care mode lasts', () => {
