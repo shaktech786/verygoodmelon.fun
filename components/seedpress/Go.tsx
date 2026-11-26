@@ -1,5 +1,5 @@
 import NextLink from 'next/link'
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 import { buttonClass } from './buttonClass'
 import { Icon } from './icons/Icon'
 
@@ -18,6 +18,7 @@ type GoProps =
         /** Why it can't be pressed yet; shown beside it. The button stays focusable. */
         unavailable?: string
         loading?: boolean
+        ref?: Ref<HTMLButtonElement>
       })
 
 /**

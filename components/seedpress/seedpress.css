@@ -2412,3 +2412,255 @@ a.sp-packet:focus-visible .sp-print {
 .sp-printtray__actions .sp-stamp-row {
   justify-content: center;
 }
+
+/* ---------- Writing slip and places (PLAN.md sections 7.3 and 9) ---------- */
+
+.sp-slip {
+  --slip-line: 2rem;
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.sp-slip__label {
+  font-weight: 600;
+  font-size: var(--t-small);
+}
+
+.sp-slip__hint {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.sp-slip__input {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-sheet);
+  background-color: var(--well);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-body);
+  overflow-wrap: anywhere;
+}
+
+/* The page: ruled lines at the line height, which scroll with the words */
+.sp-slip__input--page {
+  min-height: 9rem;
+  padding-block: 8px;
+  line-height: var(--slip-line);
+  resize: vertical;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--slip-line) - 2px),
+    var(--rule) calc(var(--slip-line) - 2px),
+    var(--rule) var(--slip-line)
+  );
+  background-attachment: local;
+}
+
+/* A few lines that grow with the words, on the same ruled paper */
+.sp-slip__input--few {
+  min-height: 0;
+  padding-block: 8px;
+  line-height: var(--slip-line);
+  resize: none;
+  overflow: hidden;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--slip-line) - 2px),
+    var(--rule) calc(var(--slip-line) - 2px),
+    var(--rule) var(--slip-line)
+  );
+  background-attachment: local;
+}
+
+:root[data-sense='quiet'] .sp-slip__input--page,
+:root[data-sense='quiet'] .sp-slip__input--few,
+:root[data-contrast='extra-high'] .sp-slip__input--page,
+:root[data-contrast='extra-high'] .sp-slip__input--few {
+  background-image: none;
+}
+
+.sp-slip__input:hover {
+  border-color: var(--ink-soft);
+}
+
+.sp-slip__input:focus-visible {
+  border-color: var(--ink);
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.sp-slip__input:disabled {
+  border-style: dashed;
+  color: var(--ink-soft);
+}
+
+.sp-slip__note {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-4);
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-meta);
+}
+
+/* A stamp row of places: where you are, in words, never a number. Not pressable. */
+.sp-places {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sp-place {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 2px solid var(--rule);
+  border-radius: var(--r-stamp);
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+  font-weight: 600;
+}
+
+.sp-place.is-done {
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+
+.sp-place.is-here {
+  border-color: var(--rind);
+  background-color: var(--rind-wash);
+  box-shadow: 0 3px 0 var(--rind);
+  color: var(--ink);
+}
+
+.sp-place svg {
+  color: var(--rind);
+}
+
+/* A stamp card for a radio that holds a sentence: left-aligned, wrapping, the whole width */
+.sp-choice--card {
+  display: flex;
+}
+
+.sp-choice--card .sp-choice__face {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 56px;
+  padding: var(--s-3) var(--s-4);
+  text-align: left;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.sp-choice--card .sp-choice__face svg {
+  flex-shrink: 0;
+}
+
+.sp-choice--card:has(:checked) .sp-choice__face {
+  font-weight: 700;
+}
+
+.sp-choice__title {
+  display: block;
+  font-weight: 700;
+}
+
+.sp-choice__detail {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+  font-weight: 400;
+}
+
+/* ---------- Writing games: the question, the soft support line, the calm way on ---------- */
+
+.sp-asks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-sheet);
+  background-color: var(--well);
+}
+
+.sp-asks__line {
+  flex: 1 1 14rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.sp-quiet-support {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--t-small);
+  max-width: var(--w-prose);
+}
+
+.sp-gentle-exit {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-3);
+}
+
+.sp-gentle-exit p {
+  margin: 0;
+}
+
+.sp-gentle-exit__list {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sp-gentle-exit__list .sp-stamp {
+  height: auto;
+  min-height: 48px;
+  padding-block: var(--s-2);
+  white-space: normal;
+  text-align: left;
+}
+
+.sp-cloud {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.sp-cloud .sp-h3,
+.sp-cloud p {
+  margin: 0;
+}
+
+.sp-choice__mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+}
+
+/* The card holds a sentence and is pressed on its words, so its radio sits out of the way instead of over them */
+.sp-choice--card input {
+  inset: auto;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+}
