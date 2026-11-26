@@ -71,18 +71,18 @@ export default function FinaleScreen({
     [gameName, path, mutations, sleeping, field, day],
   )
 
-  const fade = reducedMotion ? '' : 'animate-fade'
+  const fade = 'shapeshifter-arrive'
 
   return (
     <div
-      className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center px-4 py-5 sm:py-6 bg-card-bg"
+      className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center px-4 py-5 sm:py-6"
       role="dialog"
       aria-label="Your game is finished"
     >
       <div className="w-full grid gap-x-8 gap-y-4 sm:grid-cols-[minmax(0,26rem)_1fr] sm:items-center">
         <div className="text-center sm:col-start-2 sm:row-start-1">
           {phase >= 1 && (
-            <p className={`text-xs tracking-[0.15em] uppercase mb-2 text-foreground/70 ${fade}`} aria-hidden="true">
+            <p className={`text-sm mb-2 text-[var(--ink-soft)] ${fade}`} aria-hidden="true">
               Your game is finished. It is called
             </p>
           )}
@@ -92,19 +92,19 @@ export default function FinaleScreen({
               <h2
                 ref={headingRef}
                 tabIndex={-1}
-                className={`text-base sm:text-lg leading-relaxed mb-1 break-words text-melon-green focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded ${retroFont}`}
+                className={`text-base sm:text-lg leading-relaxed mb-1 break-words text-[var(--rind)] focus:outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] rounded ${retroFont}`}
               >
                 <span className="sr-only">Your game is finished. It is called </span>
                 {gameName}
               </h2>
-              {tagline && <p className="text-base italic text-foreground/80 break-words">{tagline}</p>}
+              {tagline && <p className="text-base text-[var(--ink-soft)] break-words">{tagline}</p>}
             </div>
           ) : (
-            phase >= 1 && <p className="text-sm text-foreground/70 py-2">Finding its name…</p>
+            phase >= 1 && <p className="text-sm text-[var(--ink-soft)] py-2">Finding its name…</p>
           )}
 
           {phase >= 2 && (
-            <p className={`text-base text-foreground mt-3 leading-relaxed ${fade}`}>{closingLine}</p>
+            <p className={`text-base mt-3 leading-relaxed ${fade}`}>{closingLine}</p>
           )}
 
           {canPlayAgain && (
@@ -112,11 +112,11 @@ export default function FinaleScreen({
               <button data-go=""
                 type="button"
                 onClick={onPlayAgain}
-                className={`text-xs sm:text-sm tracking-[0.15em] px-6 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${retroFont}`}
+                className={`sp-go shapeshifter-pixel ${retroFont}`}
               >
                 PLAY AGAIN
               </button>
-              <p className="text-base mt-2 text-foreground/70">
+              <p className="text-base mt-2 text-[var(--ink-soft)]">
                 Play again and choose other clues, or rest through them, and it will end another way.
               </p>
             </div>

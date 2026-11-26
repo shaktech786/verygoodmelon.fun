@@ -6,21 +6,6 @@
   "app/games/[slug]/opengraph-image.tsx": {
     "raw-colour": 11
   },
-  "app/games/the-mutation/CascadeGame.tsx": {
-    "animate": 1,
-    "banned-utility": 3
-  },
-  "app/games/the-mutation/components/FinaleScreen.tsx": {
-    "animate": 1,
-    "banned-utility": 4
-  },
-  "app/games/the-mutation/components/TitleScreen.tsx": {
-    "animate": 1,
-    "banned-utility": 3
-  },
-  "app/games/the-mutation/engine/palette.ts": {
-    "raw-colour": 17
-  },
   "app/games/the-still-point/opengraph-image.tsx": {
     "raw-colour": 7
   },

@@ -31,32 +31,32 @@ export default function TitleScreen({ onStart, retroFont, isTouch, focusBegin }:
 
   return (
     <div
-      className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center px-5 py-8 animate-fade cursor-pointer bg-card-bg"
+      className="shapeshifter-cover shapeshifter-arrive col-start-1 row-start-1 z-20 flex flex-col items-center justify-center px-5 py-8 cursor-pointer"
       onClick={onStart}
       role="dialog"
       aria-label="The Shapeshifter"
     >
       <div className="text-center max-w-sm">
-        <h2 className={`text-lg sm:text-3xl tracking-[0.12em] sm:tracking-[0.2em] mb-3 text-melon-green leading-relaxed shapeshifter-neon ${retroFont}`}>
+        <h2 className={`text-lg sm:text-3xl mb-3 leading-relaxed shapeshifter-title shapeshifter-title-wide ${retroFont}`}>
           THE SHAPESHIFTER
         </h2>
 
-        <p className="text-sm sm:text-base text-foreground/80 mb-6 sm:mb-8">
+        <p className="text-sm sm:text-base mb-6 sm:mb-8 shapeshifter-dim">
           a little game that keeps changing its mind
         </p>
 
         <button data-go=""
           ref={beginRef}
           type="button"
-          className={`text-xs sm:text-sm tracking-[0.15em] px-6 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${retroFont}`}
+          className={`shapeshifter-go ${retroFont}`}
         >
           BEGIN
         </button>
 
-        <p className="mt-6 sm:mt-8 text-sm text-foreground/80 leading-relaxed">
+        <p className="mt-6 sm:mt-8 text-sm leading-relaxed shapeshifter-dim">
           A few rules are hidden in it. Play, wander or simply rest, and they will show themselves. Nothing here can hurt you.
         </p>
-        <p className="mt-1 text-xs text-foreground/70">
+        <p className="mt-1 text-xs shapeshifter-dim">
           {isTouch ? 'Tap to begin.' : 'Enter, Space or click to begin.'}
         </p>
       </div>

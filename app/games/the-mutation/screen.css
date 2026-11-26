@@ -1,47 +1,52 @@
 /*
- * The Shapeshifter's arcade screen: a deep dark field in a bezel, in every site theme.
- * The site's colour tokens are redefined inside the stage, so the canvas (through usePalette) and the
- * title, pause and rule cards drawn over it all take the screen's neon inks. Every ink keeps at least
- * 7:1 against the field. Nothing here moves: the scanlines and vignette are a still overlay.
+ * The Shapeshifter's arcade screen (PLAN.md 9.14): a deep dark field in every site theme, set inside a Seedpress bezel.
+ * The bezel is a sheet-and-rule frame in the counter's inks; the glass inside stays dark. The glass's inks are the dark
+ * Seedpress spot inks lifted to at least 7:1 on the field (engine/palette.ts), set on the stage as --game-screen-* so the
+ * canvas and the title, pause and rule cards share them. Nothing here flickers: the scanlines and the vignette are a still
+ * overlay, and nothing brightens faster than a slow fade or pulses above 3 Hz. The pixel face keeps its capitals and spacing.
  */
+
+/* The bezel: sheet and rule, with a printed edge like every other frame on the site */
+.shapeshifter-bezel {
+  padding: 10px;
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+  box-shadow: 0 3px 0 var(--rule-strong);
+}
+
+@media (max-width: 640px) {
+  .shapeshifter-bezel {
+    padding: 6px;
+  }
+}
+
 .shapeshifter-screen {
-  --game-screen-field: #08100c;
-  --game-screen-bezel: #1c2320;
-  --game-screen-bezel-edge: #3d4a44;
   --game-screen-scanline: rgba(0, 0, 0, 0.22);
   --game-screen-vignette: rgba(0, 0, 0, 0.55);
   --game-screen-neon: 1;
 
-  --card-bg: var(--game-screen-field);
-  --card-border: #3d5a4b;
-  --foreground: #d9f7e6;
-  --primary-light: #9cc4ae;
-  --accent: #ff6b7a;
-  --melon-green: #5cf29a;
-  --melon-green-light: #a8ffcf;
-  --melon-yellow: #ffd166;
-  --melon-orange: #ff9f43;
-  --melon-teal: #2ee6d6;
-  --melon-purple: #b18cff;
-  --melon-blue: #5aa9ff;
-  --melon-pink: #ff7ac6;
-  --focus-ring: #ffd166;
+  /* Focus on the glass is the brass-gold ink, never the page's */
+  --focus: var(--game-screen-star);
+  --focus-ring: var(--game-screen-star);
   --color-focus-ring: var(--focus-ring);
 
   color-scheme: dark;
   background-color: var(--game-screen-field);
-  border: 10px solid var(--game-screen-bezel);
-  border-radius: 1.25rem;
-  box-shadow: 0 0 0 1px var(--game-screen-bezel-edge);
+  color: var(--game-screen-text);
+  border: 2px solid var(--game-screen-line);
+  border-radius: calc(var(--r-sheet) - 2px);
 }
 
-@media (max-width: 640px) {
-  .shapeshifter-screen {
-    border-width: 6px;
-  }
+/* The finished game is printed back on the site's paper, in a frame of its own */
+.shapeshifter-paper {
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+  box-shadow: 0 3px 0 var(--rule-strong);
 }
 
-/* Quiet, or reduced motion, softens the glow. The canvas reads this through usePalette. */
+/* Quiet, or reduced motion, softens the glow. The canvas reads this through useScreen. */
 [data-sense="quiet"] .shapeshifter-screen,
 html[data-reduce-motion="true"] .shapeshifter-screen {
   --game-screen-neon: 0.5;
@@ -67,20 +72,141 @@ html[data-reduce-motion="true"] .shapeshifter-screen {
 }
 
 /* Title and pause sit on the same glass, so the scanlines run behind their words, never across them */
-.shapeshifter-screen > [role="dialog"] {
+.shapeshifter-cover {
+  background-color: var(--game-screen-field);
   background-image: repeating-linear-gradient(to bottom, transparent 0 2px, var(--game-screen-scanline) 2px 3px);
+  color: var(--game-screen-text);
 }
 
-/* Neon on the retro titles, drawn once and held still */
-.shapeshifter-neon {
+/* The rule card shown over the field when a rule is named */
+.shapeshifter-card {
+  border: 2px solid var(--game-screen-line);
+  border-radius: var(--r-stamp);
+  background-color: color-mix(in srgb, var(--game-screen-field) 92%, transparent);
+  color: var(--game-screen-text);
+}
+
+.shapeshifter-chip {
+  border-radius: 4px;
+  background-color: color-mix(in srgb, var(--game-screen-field) 80%, transparent);
+}
+
+.shapeshifter-text {
+  color: var(--game-screen-text);
+}
+
+.shapeshifter-dim {
+  color: var(--game-screen-dim);
+}
+
+/* The pixel face's title ink, with its neon drawn once and held still */
+.shapeshifter-title {
+  color: var(--game-screen-orb);
+  letter-spacing: 0.12em;
   text-shadow: 0 0 calc(8px * var(--game-screen-neon)) color-mix(in srgb, currentColor 70%, transparent);
 }
 
-/* High contrast settings lift the words to white and take the lines off the glass */
+.shapeshifter-title-wide {
+  letter-spacing: 0.2em;
+}
+
+.shapeshifter-pixel {
+  letter-spacing: 0.15em;
+}
+
+/* The glass's one go-action: the dark palette's flesh with its own words, in the pixel face */
+.shapeshifter-go {
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--r-stamp);
+  background-color: var(--game-screen-go);
+  color: var(--game-screen-on-go);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: opacity calc(var(--d-quick) * var(--motion)) var(--e-out);
+}
+
+@media (min-width: 640px) {
+  .shapeshifter-go {
+    font-size: 0.875rem;
+  }
+}
+
+.shapeshifter-go:hover {
+  opacity: 0.9;
+}
+
+.shapeshifter-go:focus-visible,
+.shapeshifter-quiet:focus-visible {
+  outline: 3px solid var(--game-screen-star);
+  outline-offset: 3px;
+}
+
+.shapeshifter-quiet {
+  min-height: 44px;
+  padding-inline: 4px;
+  border-radius: 4px;
+  color: var(--game-screen-dim);
+  font-size: 0.875rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.shapeshifter-quiet:hover {
+  color: var(--game-screen-text);
+}
+
+/* Things arrive in a slow fade, multiplied by --motion so Quiet and reduced motion show them at once */
+.shapeshifter-arrive {
+  animation: shapeshifter-arrive calc(400ms * var(--motion)) var(--e-out) both;
+}
+
+@keyframes shapeshifter-arrive {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * The bloom (S3, once per new rule): a soft wash of the rule's ink behind its card, in one region, that fades in slowly and
+ * stays. One change over 1,600 ms is well under 10% luminance a frame and nowhere near three a second. Quiet shows the
+ * still rule card alone.
+ */
+.shapeshifter-bloom {
+  position: absolute;
+  inset: -1.5rem;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--game-screen-orb) calc(24% * var(--game-screen-neon)), transparent), transparent 70%);
+  animation: shapeshifter-bloom calc(1600ms * var(--motion)) var(--e-out) both;
+}
+
+[data-sense="quiet"] .shapeshifter-bloom,
+html[data-reduce-motion="true"] .shapeshifter-bloom {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shapeshifter-bloom {
+    display: none;
+  }
+}
+
+@keyframes shapeshifter-bloom {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* High contrast settings lift the words to white (the dark high palette's ink, set on the stage) and take the lines off the glass */
 html[data-contrast="high"] .shapeshifter-screen,
 html[data-contrast="extra-high"] .shapeshifter-screen {
-  --foreground: #ffffff;
-  --primary-light: #e6f5ec;
-  --card-border: #8fb8a3;
   --game-screen-scanline: transparent;
 }

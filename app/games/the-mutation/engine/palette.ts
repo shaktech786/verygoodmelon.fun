@@ -1,5 +1,9 @@
-// The canvas cannot read CSS variables by itself, so the tokens are resolved once per theme change.
-// The stage (screen.css) redefines the site's tokens as the arcade screen's inks, so they are read from the canvas.
+// The arcade screen's inks. The screen is dark in every site theme, so they come from the dark Seedpress palettes
+// (lib/design/inks.ts) with each spot ink lifted until it holds at least 7:1 on the field. Quiet and the two
+// high-contrast settings pick their own dark palette, so the glass softens or sharpens with the rest of the site.
+import { contrast, mixOklab } from '@/lib/design/color'
+import { getInks, type InkContrast, type Inks } from '@/lib/design/inks'
+import type { Sense } from '@/lib/design/tokens'
 
 export interface Palette {
   bg: string
@@ -18,59 +22,60 @@ export interface Palette {
   bloom: string
   text: string
   textDim: string
+  /** The screen's one go-action: flesh from the dark palette, with its own words. */
+  go: string
+  onGo: string
 }
 
 /** Colours a particle or entity can borrow from the palette. */
 export type Tint = 'orb' | 'star' | 'gem' | 'shadow' | 'tide' | 'light' | 'glide' | 'bloom'
 
-const TOKENS: Record<keyof Palette, string> = {
-  bg: '--card-bg',
-  grid: '--card-border',
-  orb: '--melon-green',
-  orbGlow: '--melon-green-light',
-  star: '--melon-yellow',
-  starEdge: '--melon-orange',
-  gem: '--melon-teal',
-  gemEdge: '--melon-green',
-  shadow: '--melon-purple',
-  tide: '--melon-blue',
-  light: '--melon-yellow',
-  glide: '--melon-green-light',
-  ring: '--accent',
-  bloom: '--melon-pink',
-  text: '--foreground',
-  textDim: '--primary-light',
-}
+/** Every ink on the glass keeps at least this much contrast against the field. */
+export const NEON_CONTRAST = 7
 
-/** The arcade screen's inks from screen.css, used before the page's styles can be read. */
-export const DEFAULT_PALETTE: Palette = {
-  bg: '#08100c',
-  grid: '#3d5a4b',
-  orb: '#5cf29a',
-  orbGlow: '#a8ffcf',
-  star: '#ffd166',
-  starEdge: '#ff9f43',
-  gem: '#2ee6d6',
-  gemEdge: '#5cf29a',
-  shadow: '#b18cff',
-  tide: '#5aa9ff',
-  light: '#ffd166',
-  glide: '#a8ffcf',
-  ring: '#ff6b7a',
-  bloom: '#ff7ac6',
-  text: '#d9f7e6',
-  textDim: '#9cc4ae',
-}
-
-export function readPalette(root: Element): Palette {
-  const style = getComputedStyle(root)
-  const palette = { ...DEFAULT_PALETTE }
-  for (const key of Object.keys(TOKENS) as Array<keyof Palette>) {
-    const value = style.getPropertyValue(TOKENS[key]).trim()
-    if (value) palette[key] = value
+/** Lifts `ink` toward the page ink, a little at a time, until it holds `min`:1 on the field. */
+function lift(ink: string, field: string, toward: string, min = NEON_CONTRAST): string {
+  for (let step = 0; step <= 25; step++) {
+    const lifted = mixOklab(toward, step / 25, ink)
+    if (contrast(lifted, field) >= min) return lifted
   }
-  return palette
+  return toward
 }
+
+/** The arcade screen's inks for one dark palette (the glass is dark in every theme). */
+export function arcadePalette(inks: Inks): Palette {
+  const field = inks.well
+  const spot = (ink: string) => lift(ink, field, inks.ink)
+  const orb = spot(inks.rind)
+  return {
+    bg: field,
+    grid: inks.rule,
+    orb,
+    orbGlow: mixOklab(inks.ink, 0.35, orb),
+    star: spot(inks.brass),
+    starEdge: spot(inks.clay),
+    gem: spot(inks.moss),
+    gemEdge: orb,
+    shadow: spot(inks.dusk),
+    tide: spot(inks.clay),
+    light: spot(inks.brass),
+    glide: mixOklab(inks.ink, 0.35, orb),
+    ring: spot(inks.seed),
+    bloom: spot(inks.seed),
+    text: inks.ink,
+    textDim: lift(inks['ink-soft'], field, inks.ink),
+    go: inks.flesh,
+    onGo: inks['on-flesh'],
+  }
+}
+
+/** The dark inks as the page shows them now: Quiet and the high-contrast settings carry over. */
+export function screenInks(sense: Sense, contrastSetting: InkContrast): Inks {
+  return getInks('dark', sense, contrastSetting)
+}
+
+/** The arcade screen's inks before the page's settings can be read. */
+export const DEFAULT_PALETTE: Palette = arcadePalette(screenInks('gentle', 'normal'))
 
 /** How strongly the screen glows, 0 to 1: screen.css halves it for Quiet and reduced motion. */
 export function readNeon(el: Element): number {
@@ -78,10 +83,24 @@ export function readNeon(el: Element): number {
   return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1
 }
 
-/** `#rrggbb` plus an alpha, for glows and faint fills drawn from a token. */
-export function withAlpha(hex: string, alpha: number): string {
-  const m = /^#([0-9a-f]{6})$/i.exec(hex)
-  if (!m) return hex
-  const n = parseInt(m[1], 16)
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`
+/** An ink at a given opacity, for glows and faint fills; the canvas takes color-mix like any other CSS colour. */
+export function withAlpha(colour: string, alpha: number): string {
+  return `color-mix(in srgb, ${colour} ${Math.round(alpha * 100)}%, transparent)`
+}
+
+/** The same inks as CSS variables on the stage, so the title, pause and rule cards match the canvas exactly. */
+export function paletteVars(palette: Palette): Record<string, string> {
+  return {
+    '--game-screen-field': palette.bg,
+    '--game-screen-line': palette.grid,
+    '--game-screen-text': palette.text,
+    '--game-screen-dim': palette.textDim,
+    '--game-screen-orb': palette.orb,
+    '--game-screen-glow': palette.orbGlow,
+    '--game-screen-star': palette.star,
+    '--game-screen-ember': palette.starEdge,
+    '--game-screen-seed': palette.ring,
+    '--game-screen-go': palette.go,
+    '--game-screen-on-go': palette.onGo,
+  }
 }

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 import { expectKeepsakeSaves } from './helpers/keepsake'
 import { expectOneGo } from './helpers/design'
 
@@ -73,6 +73,12 @@ interface MutateBody {
   options: string[]
   ending?: string
   letBe?: string[]
+}
+
+/** Under reduced motion everything arrives at once: no arrival animation has any length (browsers clamp zero to 0.01 ms). */
+async function stillArrivals(locator: Locator): Promise<boolean> {
+  const lengths = await locator.evaluateAll((els) => els.flatMap((el) => el.getAnimations().map((a) => Number(a.effect?.getComputedTiming().duration))))
+  return lengths.every((length) => length <= 0.01)
 }
 
 const NAME = 'ORBIT GARDEN DELUXE'
@@ -696,7 +702,7 @@ test.describe('The Shapeshifter', () => {
         const [r, g, b] = canvas.getContext('2d')!.getImageData(3, 3, 1, 1).data
         // Probed inside the stage, where the screen's inks replace the site's tokens
         const probe = document.createElement('div')
-        probe.style.background = 'var(--card-bg)'
+        probe.style.background = 'var(--game-screen-field)'
         canvas.parentElement!.append(probe)
         const css = getComputedStyle(probe).backgroundColor
         probe.remove()
@@ -725,6 +731,28 @@ test.describe('The Shapeshifter', () => {
     await page.evaluate(() => document.documentElement.setAttribute('data-reduce-motion', 'true'))
     // Compared as a number: a production build writes 0.5 as .5
     expect(await neon()).toBe(0.5)
+  })
+
+  test('a named rule blooms once behind its card, in one slow fade, and is a still card in Quiet', async ({ page }) => {
+    await mockMutations(page)
+    await openGame(page)
+    await page.keyboard.press('Enter')
+    await bringClues(page)
+    await restUntilOpen(page)
+    await waitForName(page)
+    await expect(named(page)).toBeVisible()
+    const bloom = named(page).locator('.shapeshifter-bloom')
+    await expect(bloom).toHaveCount(1)
+    // One fade of 1.6 s that plays once and stays: never a pulse, never a flash
+    const timing = await bloom.evaluate((el) => el.getAnimations().map((a) => {
+      const t = a.effect!.getComputedTiming()
+      return { duration: t.duration, iterations: t.iterations }
+    }))
+    expect(timing).toEqual([{ duration: 1600, iterations: 1 }])
+    // Quiet shows the rule card alone
+    await page.evaluate(() => document.documentElement.setAttribute('data-sense', 'quiet'))
+    await expect(bloom).toBeHidden()
+    await expect(named(page)).toBeVisible()
   })
 
   test('every clue at a crossroads is drawn in the field where the engine says it grows', async ({ page }) => {
@@ -850,12 +878,12 @@ test.describe('The Shapeshifter', () => {
       await learnToMove(page)
       await choose(page, ['stars', 'pulse_gems'])
       await choose(page)
-      await expect(page.locator('.animate-fade')).toHaveCount(0)
+      expect(await stillArrivals(page.locator('.shapeshifter-arrive'))).toBe(true)
       await restThrough(page)
       const finale = finaleDialog(page)
       await expect(finale.getByTestId('keepsake-canvas')).toBeVisible()
       await expect(finale.getByRole('button', { name: 'PLAY AGAIN' })).toBeVisible()
-      await expect(finale.locator('.animate-fade')).toHaveCount(0)
+      expect(await stillArrivals(finale.locator('.shapeshifter-arrive'))).toBe(true)
       const map = await finale.getByTestId('keepsake-canvas').boundingBox()
       expect(map?.width ?? 0).toBeGreaterThanOrEqual(320)
       expect(map?.height ?? 0).toBeGreaterThan((map?.width ?? 0) * 1.4)

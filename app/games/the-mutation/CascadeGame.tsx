@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
+import { useState, useCallback, useRef, useEffect, useSyncExternalStore, type CSSProperties } from 'react'
 import localFont from 'next/font/local'
 import type { CluePlace, DiscoveryEvent, GameState, MutationResult, MutationRecord, PathPoint, Sleeping } from './engine/types'
 import { DEFAULT_PARAMS, GAME_W, GAME_H, ENDING } from './engine/types'
@@ -15,7 +15,9 @@ import TitleScreen from './components/TitleScreen'
 import FinaleScreen from './components/FinaleScreen'
 import { isControlTarget } from './components/controls'
 import { MechanicIcon } from './components/MechanicIcon'
-import { Icon } from '@/components/seedpress/icons/Icon'
+import { Stamp } from '@/components/seedpress/Stamp'
+import { cn } from '@/lib/utils/cn'
+import { useScreen } from './components/useScreen'
 import './screen.css'
 
 // The Shapeshifter's arcade screen keeps its pixel face, self-hosted like the Seedpress fonts (app/fonts/README)
@@ -149,6 +151,7 @@ export default function CascadeGame() {
   const namedIdsRef = useRef<Set<string>>(new Set())
   const runRef = useRef(0)
   const boxRef = useRef<HTMLDivElement>(null)
+  const screen = useScreen(boxRef)
 
   /** A repeated sentence is still read again, so asking twice is never met with silence. */
   const say = useCallback((words: string) => {
@@ -385,7 +388,7 @@ export default function CascadeGame() {
 
   const showHud = phase === 'playing' || phase === 'paused'
   const blooming = activeMechanics.some(m => m.id === 'score_rush')
-  const fade = reducedMotion ? '' : 'animate-fade'
+  const fade = 'shapeshifter-arrive'
   const crossroads = clues.length > 1
   const circleOffered = clues.some(c => c.id === ENDING)
   const caption = clues.length === 1 && circleOffered
@@ -407,7 +410,8 @@ export default function CascadeGame() {
     <div className={`w-full mx-auto ${phase === 'finale' ? 'max-w-3xl' : 'max-w-[640px]'}`} onKeyDown={keepKeysInGame}>
       {/* Overlays share the canvas's grid cell so a tall screen grows the box instead of being clipped.
           Play happens on a dark arcade screen in a bezel; the finished game is printed back on the site's paper. */}
-      <div ref={boxRef} className={`grid rounded-xl overflow-hidden border border-card-border bg-card-bg scroll-mt-20 ${phase === 'finale' ? '' : 'shapeshifter-screen'}`}>
+      <div className={phase === 'finale' ? undefined : 'shapeshifter-bezel'}>
+      <div ref={boxRef} style={screen.vars as CSSProperties} className={cn('grid overflow-hidden scroll-mt-20', phase === 'finale' ? 'shapeshifter-paper' : 'shapeshifter-screen')}>
         {/* Hidden under the finale, so the box takes the finale's height rather than the field's */}
         <div className={`col-start-1 row-start-1 ${phase === 'finale' ? 'hidden' : ''}`}>
           <GameCanvas
@@ -431,25 +435,28 @@ export default function CascadeGame() {
           >
             {/* The name comes last: the rule has already been seen and used by the time it appears */}
             {named && (
-              <div className="absolute top-8 inset-x-3 flex justify-center" data-testid="rule-named">
-                <div className={`max-w-sm text-center rounded-lg border border-card-border bg-card-bg/90 px-4 py-2.5 ${fade}`}>
-                  <p className={`flex items-center justify-center gap-2 text-[11px] sm:text-sm leading-relaxed text-melon-green break-words shapeshifter-neon ${retroFont.className}`}>
+              <div key={named.id} className="absolute top-8 inset-x-3 flex justify-center" data-testid="rule-named">
+                <div className="relative max-w-sm">
+                <span className="shapeshifter-bloom" aria-hidden="true" />
+                <div className={`shapeshifter-card relative text-center px-4 py-2.5 ${fade}`}>
+                  <p className={`flex items-center justify-center gap-2 text-[11px] sm:text-sm leading-relaxed break-words shapeshifter-title ${retroFont.className}`}>
                     <MechanicIcon id={named.id} />
                     {named.title}
                   </p>
-                  <p className="text-sm text-foreground mt-1 break-words">{named.description}</p>
+                  <p className="text-sm mt-1 break-words shapeshifter-text">{named.description}</p>
                   {named.together.map(line => (
-                    <p key={line} className="text-sm text-foreground mt-1 break-words" data-testid="rule-together">{line}</p>
+                    <p key={line} className="text-sm mt-1 break-words shapeshifter-text" data-testid="rule-together">{line}</p>
                   ))}
-                  {named.flavorText && <p className="text-xs italic text-foreground/75 mt-1 break-words">{named.flavorText}</p>}
-                  <p className="text-xs text-foreground/80 mt-1">{named.hint}</p>
+                  {named.flavorText && <p className="text-xs mt-1 break-words shapeshifter-dim">{named.flavorText}</p>}
+                  <p className="text-xs mt-1 shapeshifter-dim">{named.hint}</p>
+                </div>
                 </div>
               </div>
             )}
 
             {phase === 'playing' && caption && (
-              <p className="absolute bottom-6 sm:bottom-8 inset-x-3 text-center text-sm text-foreground/80">
-                <span className="rounded bg-card-bg/80 px-2 py-0.5">{caption}</span>
+              <p className="absolute bottom-6 sm:bottom-8 inset-x-3 text-center text-sm shapeshifter-dim">
+                <span className="shapeshifter-chip px-2 py-0.5">{caption}</span>
               </p>
             )}
           </div>
@@ -457,24 +464,24 @@ export default function CascadeGame() {
 
         {phase === 'paused' && (
           <div
-            className="col-start-1 row-start-1 z-20 flex flex-col items-center justify-center gap-4 px-4 py-8 bg-card-bg/95"
+            className="shapeshifter-cover col-start-1 row-start-1 z-20 flex flex-col items-center justify-center gap-4 px-4 py-8"
             role="dialog"
             aria-label="Paused"
           >
-            <p className={`text-base tracking-[0.3em] text-melon-green shapeshifter-neon ${retroFont.className}`}>PAUSED</p>
-            <p className="text-sm text-foreground/80">Take as long as you like.</p>
+            <p className={`text-base shapeshifter-title shapeshifter-title-wide ${retroFont.className}`}>PAUSED</p>
+            <p className="text-sm shapeshifter-dim">Take as long as you like.</p>
             <button data-go=""
               type="button"
               onClick={resume}
               autoFocus
-              className={`text-xs tracking-[0.15em] px-5 py-3 rounded-lg cursor-pointer bg-melon-green text-card-bg hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${retroFont.className}`}
+              className={`shapeshifter-go ${retroFont.className}`}
             >
               RESUME
             </button>
             <button
               type="button"
               onClick={handlePlayAgain}
-              className="text-sm underline cursor-pointer text-foreground/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded px-1 min-h-[44px]"
+              className="shapeshifter-quiet"
             >
               Start over
             </button>
@@ -501,19 +508,15 @@ export default function CascadeGame() {
           />
         )}
       </div>
+      </div>
 
       {/* Pause sits below the field, so a thumb guiding the orb can never press it by accident */}
       <div className="flex items-center justify-between gap-3 mt-2 min-h-11">
         {phase === 'playing' && (
           <>
-            <button
-              type="button"
-              onClick={pause}
-              className="inline-flex items-center gap-2 min-h-11 px-4 rounded-lg border border-card-border bg-card-bg text-sm text-foreground/85 hover:text-foreground cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-            >
-              <Icon name="pause" size={24} />
+            <Stamp onClick={pause} icon="pause">
               Pause
-            </button>
+            </Stamp>
             {!isTouch && <KeyHints>Esc or P also pauses. C tells you where the clues are.</KeyHints>}
           </>
         )}
