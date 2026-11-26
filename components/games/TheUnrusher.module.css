@@ -1,0 +1,192 @@
+/* The Patient One: the plainest stage on the site. Colour comes from the Seedpress roles only. */
+
+.cards {
+  display: grid;
+  gap: var(--s-3);
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 640px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* A stamp card: a sheet with a 2 px rule-strong edge and a printed 3 px bottom edge */
+.card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--s-4);
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-stamp);
+  background-color: var(--sheet);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--rule-strong);
+  transition:
+    transform calc(var(--d-tap) * var(--motion)) var(--e-stamp),
+    background-color calc(var(--d-quick) * var(--motion)) var(--e-out);
+}
+
+.card:hover {
+  background-color: var(--rind-wash);
+}
+
+.card:active {
+  transform: translateY(calc(3px * var(--motion)));
+}
+
+.card:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* The one opened on the Today strip is the chosen one: rind, never flesh */
+.card[aria-expanded='true'] {
+  border-color: var(--rind);
+  background-color: var(--rind-wash);
+  box-shadow:
+    inset 0 0 0 1px var(--rind),
+    0 3px 0 var(--rind);
+}
+
+.todayCard {
+  flex-direction: column;
+  gap: var(--s-2);
+  width: 9rem;
+  padding: var(--s-3);
+}
+
+@media (min-width: 640px) {
+  .todayCard {
+    width: 10rem;
+  }
+}
+
+.savored {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  color: var(--rind);
+  font-weight: 700;
+}
+
+/* The seed bed: ink A is moss; ink B is a seed-ink edge printed a hair off until the seeds come to rest */
+.field {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--rule);
+  border-radius: var(--r-stamp);
+  background-color: var(--well);
+}
+
+.seed {
+  position: absolute;
+  width: 12px;
+  height: 20px;
+  border-radius: 999px;
+  background-color: var(--moss);
+}
+
+.seed::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--seed);
+  border-radius: 999px;
+  transform: translate(var(--misreg), calc(var(--misreg) * -1));
+}
+
+/* S3, once: when every seed has settled, ink B slides the last pixel home. Quiet has no misregistration, so it is already home. */
+.registered .seed::after {
+  animation: slide-home calc(var(--d-flourish) * var(--motion)) var(--e-out) both;
+}
+
+@keyframes slide-home {
+  from {
+    transform: translate(var(--misreg), calc(var(--misreg) * -1));
+  }
+
+  to {
+    transform: translate(0, 0);
+  }
+}
+
+.arriving {
+  animation: settle-in calc(var(--d-flourish) * var(--motion)) var(--e-out) both;
+}
+
+@keyframes settle-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* Loops that are the game's own content. They are left off in Quiet and under reduced motion. */
+.drift {
+  animation: float-seed 8s ease-in-out infinite;
+}
+
+@keyframes float-seed {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(400px) translateX(20px) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+.pulse {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+@keyframes pulse-slow {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.ripple {
+  position: absolute;
+  border: 2px solid var(--moss);
+  border-radius: 50%;
+  opacity: 0;
+  animation: ripple 4s ease-out infinite;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.45;
+  }
+
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}

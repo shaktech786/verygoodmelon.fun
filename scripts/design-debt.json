@@ -51,9 +51,6 @@
   "app/games/thought-pockets/components/WalkArgument.tsx": {
     "banned-utility": 3
   },
-  "app/globals.css": {
-    "infinite": 2
-  },
   "app/privacy/page.tsx": {
     "banned-utility": 1
   },
@@ -112,10 +109,6 @@
   "components/games/MindDebate.tsx": {
     "animate": 3,
     "banned-utility": 1
-  },
-  "components/games/TheUnrusher.tsx": {
-    "animate": 6,
-    "banned-utility": 3
   },
   "components/games/TimelessMinds.tsx": {
     "banned-utility": 1,

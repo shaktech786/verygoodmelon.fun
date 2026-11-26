@@ -1,13 +1,17 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { Button } from '@/components/ui/Button'
+import { Go } from '@/components/seedpress/Go'
+import { Icon } from '@/components/seedpress/icons/Icon'
+import { QuietButton } from '@/components/seedpress/QuietButton'
+import { Stamp } from '@/components/seedpress/Stamp'
 import { cn } from '@/lib/utils/cn'
-import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { useSense } from '@/lib/design/sense'
 import { buzz, playTones, useCanBuzz, useSoundChosen, wakeTones, type Tone } from '@/components/games/gentleCues'
 import { hushAmbient } from '@/lib/audio/ambient-hush'
 import { Keepsake } from '@/components/games/Keepsake'
 import { patientOneKeepsake } from '@/lib/keepsake/patient-one'
+import styles from './TheUnrusher.module.css'
 import {
   BODY_WORDS,
   HEARD,
@@ -186,41 +190,41 @@ function MomentIcon({ id, className }: { id: MomentId; className?: string }) {
     <svg viewBox="0 0 32 32" className={className} aria-hidden="true" focusable="false">
       {id === 'watch' && (
         <>
-          <path d="M3 12 A13 13 0 0 0 29 12 Z" className="fill-melon-green" />
-          <path d="M5.5 12 A10.5 10.5 0 0 0 26.5 12 Z" className="fill-success/60" />
-          <path d="M7 12 A9 9 0 0 0 25 12 Z" className="fill-melon-red" />
-          <ellipse cx="12" cy="16" rx="1" ry="1.6" className="fill-foreground" />
-          <ellipse cx="16" cy="18.5" rx="1" ry="1.6" className="fill-foreground" />
-          <ellipse cx="20" cy="16" rx="1" ry="1.6" className="fill-foreground" />
+          <path d="M3 12 A13 13 0 0 0 29 12 Z" className="fill-rind" />
+          <path d="M5.5 12 A10.5 10.5 0 0 0 26.5 12 Z" className="fill-rind-wash" />
+          <path d="M7 12 A9 9 0 0 0 25 12 Z" className="fill-moss" />
+          <ellipse cx="12" cy="16" rx="1" ry="1.6" className="fill-seed" />
+          <ellipse cx="16" cy="18.5" rx="1" ry="1.6" className="fill-seed" />
+          <ellipse cx="20" cy="16" rx="1" ry="1.6" className="fill-seed" />
         </>
       )}
       {id === 'listen' && (
         <>
-          <circle cx="9" cy="16" r="3" className="fill-accent" />
-          <path d="M15 10 A8 8 0 0 1 15 22" className="fill-none stroke-accent" strokeWidth="2" strokeLinecap="round" />
-          <path d="M20 6 A13 13 0 0 1 20 26" className="fill-none stroke-accent/60" strokeWidth="2" strokeLinecap="round" />
-          <path d="M25 3 A17 17 0 0 1 25 29" className="fill-none stroke-accent/30" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="9" cy="16" r="3" className="fill-moss" />
+          <path d="M15 10 A8 8 0 0 1 15 22" className="fill-none stroke-moss" strokeWidth="2" strokeLinecap="round" />
+          <path d="M20 6 A13 13 0 0 1 20 26" className="fill-none stroke-moss/60" strokeWidth="2" strokeLinecap="round" />
+          <path d="M25 3 A17 17 0 0 1 25 29" className="fill-none stroke-moss/30" strokeWidth="2" strokeLinecap="round" />
         </>
       )}
       {id === 'look' && (
         <>
-          <circle cx="16" cy="16" r="13.5" className="fill-none stroke-warm" strokeWidth="1.5" strokeDasharray="2.5 3.5" strokeLinecap="round" />
-          <ellipse cx="16" cy="18" rx="8.5" ry="6.5" className="fill-melon-green" />
-          <ellipse cx="13" cy="15.5" rx="3" ry="1.5" className="fill-success/70" />
+          <circle cx="16" cy="16" r="13.5" className="fill-none stroke-clay" strokeWidth="1.5" strokeDasharray="2.5 3.5" strokeLinecap="round" />
+          <ellipse cx="16" cy="18" rx="8.5" ry="6.5" className="fill-moss" />
+          <ellipse cx="13" cy="15.5" rx="3" ry="1.5" className="fill-rind-wash" />
         </>
       )}
       {id === 'reflect' && (
         <>
-          <path d="M3 16 Q16 4 29 16 Q16 28 3 16 Z" className="fill-none stroke-melon-green" strokeWidth="2" strokeLinejoin="round" />
-          <circle cx="16" cy="16" r="5" className="fill-success/40 stroke-melon-green" strokeWidth="1.5" />
-          <circle cx="16" cy="16" r="2" className="fill-melon-green" />
+          <path d="M3 16 Q16 4 29 16 Q16 28 3 16 Z" className="fill-none stroke-moss" strokeWidth="2" strokeLinejoin="round" />
+          <circle cx="16" cy="16" r="5" className="fill-rind-wash stroke-moss" strokeWidth="1.5" />
+          <circle cx="16" cy="16" r="2" className="fill-moss" />
         </>
       )}
       {id === 'appreciate' && (
         <>
-          <ellipse cx="8" cy="20" rx="3.2" ry="5" transform="rotate(-20 8 20)" className="fill-melon-red" />
-          <ellipse cx="16" cy="12" rx="3.2" ry="5" className="fill-warm" />
-          <ellipse cx="24" cy="20" rx="3.2" ry="5" transform="rotate(20 24 20)" className="fill-success" />
+          <ellipse cx="8" cy="20" rx="3.2" ry="5" transform="rotate(-20 8 20)" className="fill-seed" />
+          <ellipse cx="16" cy="12" rx="3.2" ry="5" className="fill-clay" />
+          <ellipse cx="24" cy="20" rx="3.2" ry="5" transform="rotate(20 24 20)" className="fill-moss" />
         </>
       )}
     </svg>
@@ -231,7 +235,10 @@ interface SeedFieldProps {
   settled: number
   /** Seeds from this index on fade in as they settle; earlier ones are already resting. */
   fadeFrom: number
-  reducedMotion: boolean
+  /** Nothing moves: Quiet, or the visitor asked for less motion. */
+  still: boolean
+  /** Every seed is at rest, so ink B slides the last pixel home (once). */
+  registered?: boolean
   className: string
 }
 
@@ -243,27 +250,27 @@ function seedsInWords(settled: number): string {
   return 'Seeds drifting, most settled'
 }
 
-function SeedField({ settled: settledSeeds, fadeFrom, reducedMotion, className }: SeedFieldProps) {
+function SeedField({ settled: settledSeeds, fadeFrom, still, registered = false, className }: SeedFieldProps) {
   return (
     <div
-      className={cn('relative overflow-hidden rounded-xl bg-gradient-to-b from-transparent to-accent/10', className)}
+      className={cn(styles.field, registered && styles.registered, className)}
       role="img"
       aria-label={seedsInWords(settledSeeds)}
+      data-registered={registered || undefined}
     >
       {FLOATING_SEEDS.map((seed) => {
         const settled = seed.id < settledSeeds
+        const arriving = settled && !still && seed.id >= fadeFrom
         return (
           <div
             key={seed.id}
             data-settled={settled}
-            className={cn(
-              'absolute w-3 h-5 bg-foreground/70 rounded-full shadow-lg',
-              settled ? !reducedMotion && seed.id >= fadeFrom && 'animate-fade' : !reducedMotion && 'animate-float-seed',
-            )}
+            data-arriving={arriving || undefined}
+            className={cn(styles.seed, arriving && styles.arriving, !settled && !still && styles.drift)}
             style={
               settled
                 ? { left: `${seed.bedX}%`, bottom: `${8 + seed.bedLift}px`, rotate: `${seed.bedLift * 6 - 30}deg` }
-                : { left: `${seed.x}%`, animationDelay: `${seed.delay}s`, top: reducedMotion ? `${seed.restingTop}%` : '-20px' }
+                : { left: `${seed.x}%`, animationDelay: `${seed.delay}s`, top: still ? `${seed.restingTop}%` : '-20px' }
             }
           />
         )
@@ -272,20 +279,12 @@ function SeedField({ settled: settledSeeds, fadeFrom, reducedMotion, className }
   )
 }
 
+/** A word that fits: a toggle stamp, chosen when pressed (rind, never flesh). */
 function WordChip({ label, pressed, onToggle }: { label: string; pressed: boolean; onToggle: () => void }) {
   return (
-    <button
-      type="button"
-      aria-pressed={pressed}
-      onClick={onToggle}
-      className={cn(
-        'px-3 py-1.5 rounded-full text-sm border transition-colors duration-75',
-        'focus:outline-none focus:ring-2 focus:ring-focus-ring',
-        pressed ? 'border-chosen-line bg-chosen text-foreground' : 'border-card-border text-foreground/75 hover:border-accent/50',
-      )}
-    >
+    <Stamp aria-pressed={pressed} onClick={onToggle}>
       {label}
-    </button>
+    </Stamp>
   )
 }
 
@@ -296,23 +295,23 @@ function toggleIn<T>(list: T[], item: T): T[] {
 const PETAL_ANGLES = [0, 60, 120, 180, 240, 300]
 
 /** A bud that opens as the moment ripens: it only ever grows, so nothing reads as time running out. */
-function MomentBloom({ progress, reducedMotion }: { progress: number; reducedMotion: boolean }) {
+function MomentBloom({ progress, still }: { progress: number; still: boolean }) {
   const open = 0.3 + 0.7 * progress
   return (
     <svg
       viewBox="0 0 60 60"
-      className="w-12 h-12"
+      className="size-12"
       role="img"
       aria-label={momentInWords(progress)}
       data-testid="moment-bloom"
       data-progress={(Math.floor(progress * 100) / 100).toFixed(2)}
     >
-      <circle cx="30" cy="30" r="27" className="fill-success/10" />
+      <circle cx="30" cy="30" r="27" className="fill-rind-wash" />
       <g
         style={{
           transform: `scale(${open})`,
           transformOrigin: '30px 30px',
-          transition: reducedMotion ? undefined : 'transform 400ms ease-out',
+          transition: still ? undefined : 'transform 400ms ease-out',
         }}
       >
         {PETAL_ANGLES.map((angle) => (
@@ -323,12 +322,12 @@ function MomentBloom({ progress, reducedMotion }: { progress: number; reducedMot
             rx="7"
             ry="13"
             transform={`rotate(${angle} 30 30)`}
-            className="fill-success/60 stroke-melon-green/40"
+            className="fill-moss stroke-rind"
             strokeWidth="1"
             style={{ opacity: 0.35 + 0.65 * progress }}
           />
         ))}
-        <circle cx="30" cy="30" r="6" className="fill-warm" />
+        <circle cx="30" cy="30" r="6" className="fill-clay" />
       </g>
     </svg>
   )
@@ -365,7 +364,7 @@ export default function TheUnrusher() {
   const headingRef = useRef<HTMLHeadingElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const previousViewRef = useRef<View>('menu')
-  const reducedMotion = useReducedMotion()
+  const still = useSense().motionScale === 0
   const soundOn = useSoundChosen()
   const canBuzz = useCanBuzz()
 
@@ -621,73 +620,58 @@ export default function TheUnrusher() {
         : 'Soften your gaze and let it rest low. The screen will change when the minute is over.'
 
     return (
-      <div className="max-w-2xl mx-auto">
-        <div
-          ref={cardRef}
-          className={cn(
-            'bg-card-bg border border-card-border rounded-lg px-6 sm:p-12 text-center flex flex-col justify-center',
-            compact && !showReward ? 'py-6' : 'py-10 min-h-[480px]',
-          )}
-        >
+      <div className="mx-auto w-full max-w-[var(--w-prose)]">
+        <div ref={cardRef} className={cn('grid gap-4 py-4 sm:py-6', compact && !showReward && 'gap-3 py-2 sm:gap-4 sm:py-6', !compact && !showReward && 'min-h-[420px] content-center')}>
           {!showReward ? (
             <>
               {(currentTask.id === 'reflect' || currentTask.id === 'appreciate' || currentTask.id === 'look') && (
-                <MomentIcon
-                  id={currentTask.id}
-                  className={cn('w-20 h-20 mx-auto mb-6', !reducedMotion && 'animate-pulse-slow')}
-                />
+                <MomentIcon id={currentTask.id} className={cn('mx-auto size-20', !still && styles.pulse)} />
               )}
 
-              <h2 ref={headingRef} tabIndex={-1} className="text-2xl sm:text-3xl font-semibold mb-3 text-foreground focus:outline-none">
+              <h2 ref={headingRef} tabIndex={-1} className="sp-h2 focus:outline-none">
                 {currentTask.title}
               </h2>
 
-              {currentTask.id === 'listen' && (
-                <p className="text-base text-foreground/80 mb-3 max-w-md mx-auto">{listenInstruction}</p>
-              )}
+              {currentTask.id === 'listen' && <p className="text-body text-ink-soft">{listenInstruction}</p>}
               {currentTask.id === 'watch' && (
-                <p className="text-base text-foreground/80 mb-3 max-w-md mx-auto">
+                <p className="text-small text-ink-soft sm:text-body">
                   The seeds settle only while you stay still. Moving never undoes anything; they just wait.
                 </p>
               )}
 
-              <p className={cn('text-lg text-foreground/80 min-h-8', compact ? 'mb-3' : 'mb-6')} aria-live="polite">
+              <p className="min-h-8 text-lead" aria-live="polite">
                 {currentTask.guidance[guidanceIndex]}
               </p>
 
               {currentTask.id === 'watch' && (
-                <>
-                  <SeedField settled={settledSeeds} fadeFrom={0} reducedMotion={reducedMotion} className="h-40 sm:h-56 mb-2" />
-                  <p className="text-sm text-foreground/70 mb-3 min-h-5">
-                    {stirred ? 'The seeds wait while you move.' : ''}
-                  </p>
-                </>
+                <div>
+                  <SeedField settled={settledSeeds} fadeFrom={0} still={still} className="h-32 sm:h-56" />
+                  <p className="mt-2 min-h-6 text-small text-ink-soft">{stirred ? 'The seeds wait while you move.' : ''}</p>
+                </div>
               )}
 
               {currentTask.id === 'listen' && (
-                <div className="relative h-40 mb-6 flex items-center justify-center" role="img" aria-label="Quiet sound ripples">
-                  {!reducedMotion && (
+                <div className="relative flex h-40 items-center justify-center" role="img" aria-label="Quiet sound ripples">
+                  {!still && (
                     <>
-                      <div className="absolute w-16 h-16 rounded-full bg-accent/10 animate-ping" style={{ animationDuration: '4s' }} />
-                      <div className="absolute w-24 h-24 rounded-full bg-accent/5 animate-ping" style={{ animationDuration: '5s', animationDelay: '0.8s' }} />
+                      <div className={cn(styles.ripple, 'size-16')} style={{ animationDuration: '4s' }} />
+                      <div className={cn(styles.ripple, 'size-24')} style={{ animationDuration: '5s', animationDelay: '0.8s' }} />
                     </>
                   )}
-                  <div className="absolute w-32 h-32 rounded-full border border-accent/20" />
-                  <MomentIcon id="listen" className="relative w-12 h-12" />
+                  <div className="absolute size-32 rounded-full border-2 border-rule" />
+                  <MomentIcon id="listen" className="relative size-12" />
                 </div>
               )}
 
               {currentTask.id === 'listen' && canBuzz && !soundOn && (
-                <div className="mb-6">
+                <div>
                   <WordChip label="Buzz when it ends" pressed={buzzAtEnd} onToggle={() => setBuzzAtEnd((on) => !on)} />
                 </div>
               )}
 
               {currentTask.id === 'look' && (
-                <label className="mb-6 mx-auto w-full max-w-sm block text-left">
-                  <span className="block text-sm text-foreground/75 text-center mb-2">
-                    What are you looking at? Naming it is optional.
-                  </span>
+                <label className="sp-field">
+                  <span className="sp-field__label">What are you looking at? Naming it is optional.</span>
                   <input
                     type="text"
                     value={lookedAt}
@@ -697,19 +681,19 @@ export default function TheUnrusher() {
                       setLookedAt(e.target.value)
                     }}
                     {...writingHandlers}
-                    className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                    className="sp-field__input"
                   />
                 </label>
               )}
 
               {currentTask.id === 'reflect' && (
-                <div className="mb-6 space-y-3">
-                  <p className="text-sm text-foreground/75">Tap any words that fit. None is fine too.</p>
+                <div className="grid gap-3">
+                  <p className="text-small text-ink-soft">Tap any words that fit. None is fine too.</p>
                   {[
                     { label: 'In your body', words: BODY_WORDS },
                     { label: 'In your mind', words: MIND_WORDS },
                   ].map((group) => (
-                    <div key={group.label} role="group" aria-label={group.label} className="flex flex-wrap justify-center gap-2">
+                    <div key={group.label} role="group" aria-label={group.label} className="sp-stamp-row">
                       {group.words.map((word) => (
                         <WordChip
                           key={word}
@@ -724,14 +708,14 @@ export default function TheUnrusher() {
               )}
 
               {currentTask.id === 'appreciate' && (
-                <div className="mb-6 mx-auto w-full max-w-sm space-y-2 text-left">
-                  <p className="text-sm text-foreground/75 text-center mb-3">
+                <div className="grid gap-3">
+                  <p className="text-small text-ink-soft">
                     Write them down if you like. They stay on this device, and only until midnight.
                   </p>
                   {THING_LABELS.map((label, i) => (
-                    <label key={label} className="flex items-center gap-3">
+                    <label key={label} className="flex max-w-md items-center gap-3">
                       <span className="sr-only">{label}</span>
-                      <span aria-hidden="true" className="w-5 text-right text-sm text-foreground/70 tabular-nums">{i + 1}.</span>
+                      <span aria-hidden="true" className="w-5 text-right text-small text-ink-soft tabular-nums">{i + 1}.</span>
                       <input
                         type="text"
                         value={things[i]}
@@ -742,7 +726,7 @@ export default function TheUnrusher() {
                           setThings(next)
                         }}
                         {...writingHandlers}
-                        className="flex-1 min-w-0 rounded-lg border border-card-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                        className="sp-field__input min-w-0 flex-1"
                       />
                     </label>
                   ))}
@@ -750,23 +734,19 @@ export default function TheUnrusher() {
               )}
 
               {welcomeBack && (
-                <p className="text-sm text-foreground/70 mb-4" role="status">
+                <p className="text-small text-ink-soft" role="status">
                   Welcome back. The moment waited for you.
                 </p>
               )}
 
               {/* Progress is a flower slowly opening, with no numbers; a screen reader can ask how far along it is, and is never told. */}
-              <div className={cn('flex flex-wrap items-center justify-center gap-3', !compact && 'mb-2')}>
-                <MomentBloom progress={progress} reducedMotion={reducedMotion} />
+              <div className="flex flex-wrap items-center gap-3">
+                <MomentBloom progress={progress} still={still} />
                 {compact && (
                   timeUp ? (
-                    <Button variant="ghost" onClick={() => finishMoment(currentTask)}>
-                      Done
-                    </Button>
+                    <Go onClick={() => finishMoment(currentTask)}>Done</Go>
                   ) : (
-                    <Button variant="ghost" onClick={resetTask}>
-                      Leave early
-                    </Button>
+                    <QuietButton onClick={resetTask}>Leave early</QuietButton>
                   )
                 )}
               </div>
@@ -774,42 +754,38 @@ export default function TheUnrusher() {
               {!compact && (
                 timeUp ? (
                   <>
-                    <p className="text-sm text-foreground/80" role="status">
+                    <p className="text-small text-ink-soft" role="status">
                       That was the whole time. Finish your thought, then press Done.
                     </p>
-                    <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-                      <Button variant="primary" onClick={() => finishMoment(currentTask)} className="w-full sm:w-auto">
-                        Done
-                      </Button>
+                    <div>
+                      <Go onClick={() => finishMoment(currentTask)}>Done</Go>
                     </div>
                   </>
                 ) : (
                   <>
-                    <p className="text-sm text-foreground/70 min-h-5">
+                    <p className="min-h-6 text-small text-ink-soft">
                       {writingPaused ? 'The time waits while you write.' : 'No rush. Just be here.'}
                     </p>
-                    <div className="mt-6">
-                      <Button variant="ghost" onClick={resetTask}>
-                        Leave early
-                      </Button>
+                    <div>
+                      <QuietButton onClick={resetTask}>Leave early</QuietButton>
                     </div>
                   </>
                 )
               )}
             </>
           ) : (
-            <div className={cn(currentTask.id !== 'watch' && 'animate-fade')}>
+            <>
               {currentTask.id === 'watch' ? (
-                <SeedField settled={SEED_COUNT} fadeFrom={SEED_COUNT - 1} reducedMotion={reducedMotion} className="h-28 max-w-xs w-full mx-auto mb-6" />
+                <SeedField settled={SEED_COUNT} fadeFrom={SEED_COUNT - 1} still={still} registered className="h-28 w-full max-w-xs" />
               ) : (
-                <MomentIcon id={currentTask.id} className="w-16 h-16 mx-auto mb-6" />
+                <MomentIcon id={currentTask.id} className="size-16" />
               )}
-              <h2 ref={headingRef} tabIndex={-1} className="text-3xl font-semibold mb-4 text-foreground focus:outline-none">
+              <h2 ref={headingRef} tabIndex={-1} className="sp-h2 focus:outline-none">
                 Moment savored
               </h2>
 
               {currentTask.id === 'watch' && (
-                <p className="text-lg text-foreground/80 mb-6 max-w-md mx-auto">
+                <p className="text-body">
                   {stirCount === 0
                     ? 'All eight seeds settled, and you did not move once.'
                     : 'All eight seeds settled. When you stirred them, they waited for you.'}
@@ -817,10 +793,10 @@ export default function TheUnrusher() {
               )}
 
               {currentTask.id === 'listen' && (
-                <div className="mb-6">
-                  <div role="group" aria-label="What did you hear?" className="max-w-md mx-auto">
-                    <p className="text-base text-foreground mb-3" aria-hidden="true">What did you hear?</p>
-                    <div className="flex flex-wrap justify-center gap-2">
+                <div className="grid gap-3">
+                  <div role="group" aria-label="What did you hear?" className="grid gap-3">
+                    <p className="font-bold" aria-hidden="true">What did you hear?</p>
+                    <div className="sp-stamp-row">
                       {HEARD.map((sound) => (
                         <WordChip
                           key={sound}
@@ -831,7 +807,7 @@ export default function TheUnrusher() {
                       ))}
                     </div>
                   </div>
-                  <p className="mt-4 min-h-14 text-lg text-foreground/80 max-w-md mx-auto" aria-live="polite">
+                  <p className="min-h-14 text-body" aria-live="polite">
                     {heard.length === 0
                       ? ''
                       : heard[0] === 'Almost nothing'
@@ -842,9 +818,9 @@ export default function TheUnrusher() {
               )}
 
               {currentTask.id === 'look' && (
-                <p className="text-lg text-foreground/80 mb-6 max-w-md mx-auto">
+                <p className="text-body">
                   {lookedAtName ? (
-                    <>You gave <strong className="font-semibold text-foreground">{lookedAtName}</strong> a whole minute. Most things get a glance.</>
+                    <>You gave <strong className="font-bold">{lookedAtName}</strong> a whole minute. Most things get a glance.</>
                   ) : (
                     'You gave one thing a whole minute. Most things get a glance.'
                   )}
@@ -852,7 +828,7 @@ export default function TheUnrusher() {
               )}
 
               {currentTask.id === 'reflect' && (
-                <p className="text-lg text-foreground/80 mb-6 max-w-md mx-auto">
+                <p className="text-body">
                   {feelings.length === 0
                     ? 'You stayed with this moment without needing to name it. That counts.'
                     : `Right now: ${joinNaturally(feelings.map((w) => w.toLowerCase()))}. ${
@@ -865,31 +841,25 @@ export default function TheUnrusher() {
 
               {currentTask.id === 'appreciate' && (
                 notedThings.length > 0 ? (
-                  <div className="mb-6">
-                    <p className="text-sm text-foreground/70 mb-2">Today you noticed</p>
-                    <ul className="space-y-1 text-lg text-foreground">
+                  <div>
+                    <p className="mb-2 text-small text-ink-soft">Today you noticed</p>
+                    <ul className="grid gap-1 text-body">
                       {notedThings.map((thing, i) => (
                         <li key={i}>{thing}</li>
                       ))}
                     </ul>
                   </div>
                 ) : (
-                  <p className="text-lg text-foreground/80 mb-6 max-w-md mx-auto">
-                    You gave a little while to what is good today, written down or not.
-                  </p>
+                  <p className="text-body">You gave a little while to what is good today, written down or not.</p>
                 )
               )}
 
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <Button variant="primary" onClick={resetTask} className="w-full sm:w-auto">
-                  Continue slowing down
-                </Button>
-                <Button variant="secondary" onClick={() => startTask(currentTask)} className="w-full sm:w-auto">
-                  Stay a little longer
-                </Button>
+              <div className="flex flex-wrap items-center gap-3">
+                <Go onClick={resetTask}>Continue slowing down</Go>
+                <Stamp onClick={() => startTask(currentTask)}>Stay a little longer</Stamp>
               </div>
-              {rewardRecord && <MomentKeepsake record={rewardRecord} label="Keep this moment" className="mt-10 pt-8 border-t border-card-border" />}
-            </div>
+              {rewardRecord && <MomentKeepsake record={rewardRecord} label="Keep this moment" className="mt-6 border-t border-rule pt-6" />}
+            </>
           )}
         </div>
       </div>
@@ -900,76 +870,74 @@ export default function TheUnrusher() {
   const opened = strip.find((r) => r.key === openCard) ?? null
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="text-center mb-6">
-        <h2 ref={headingRef} tabIndex={-1} className="text-xl sm:text-2xl font-semibold mb-2 text-foreground focus:outline-none">
+    <div className="mx-auto w-full max-w-4xl">
+      <div className="mb-6 grid max-w-[var(--w-prose)] gap-2">
+        <h2 ref={headingRef} tabIndex={-1} className="sp-h2 focus:outline-none">
           Choose a moment to savor
         </h2>
-        <p className="text-sm sm:text-base text-foreground/70 max-w-xl mx-auto">
+        <p className="text-body text-ink-soft">
           An anti-game about noticing: nothing to win, nothing to hurry. Pick one small thing and give it your full attention.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+      <ul className={cn(styles.cards, 'mb-8')}>
         {MOMENTS.map((task) => {
           const isCompleted = savoredIds.has(task.id)
           return (
-            <button
-              key={task.id}
-              onClick={() => startTask(task)}
-              className={cn(
-                'bg-card-bg border border-card-border rounded-lg p-5 text-left transition-all duration-75',
-                'hover:border-accent hover:shadow-md focus:outline-none focus:ring-2 focus:ring-focus-ring',
-              )}
-              aria-label={`${task.title}: ${task.description} ${task.durationLabel}.${isCompleted ? ' Savored today.' : ''}`}
-            >
-              <div className="flex items-start gap-4">
-                <MomentIcon id={task.id} className="w-10 h-10 flex-shrink-0" />
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold mb-1 text-foreground">{task.title}</h3>
-                  <p className="text-sm text-foreground/75 mb-2">{task.description}</p>
-                  <div className="text-xs text-foreground/70">
+            <li key={task.id} className="flex">
+              <button
+                type="button"
+                onClick={() => startTask(task)}
+                className={styles.card}
+                aria-label={`${task.title}: ${task.description} ${task.durationLabel}.${isCompleted ? ' Savored today.' : ''}`}
+              >
+                <MomentIcon id={task.id} className="size-10 shrink-0" />
+                <span className="grid gap-1">
+                  <span className="text-body font-bold">{task.title}</span>
+                  <span className="text-small text-ink-soft">{task.description}</span>
+                  <span className="text-meta text-ink-soft">
                     {task.durationLabel}
-                    {isCompleted && <span> · savored today</span>}
-                  </div>
-                </div>
-              </div>
-            </button>
+                    {isCompleted && (
+                      <>
+                        {' · '}
+                        <span className={styles.savored}>
+                          <Icon name="done" size={12} />
+                          savored today
+                        </span>
+                      </>
+                    )}
+                  </span>
+                </span>
+              </button>
+            </li>
           )
         })}
-      </div>
+      </ul>
 
       {strip.length > 0 && (
-        <section aria-labelledby="today-strip-heading" className="bg-card-bg border border-card-border rounded-lg p-4 sm:p-5">
-          <h3 id="today-strip-heading" className="text-base font-semibold text-foreground">Today</h3>
-          <p className="text-sm text-foreground/70 mb-3">
+        <section aria-labelledby="today-strip-heading" className="grid gap-2 border-t border-rule pt-6">
+          <h3 id="today-strip-heading" className="sp-h3">Today</h3>
+          <p className="text-small text-ink-soft">
             Each moment you finish rests here until midnight. Open one to keep it.
           </p>
-          <ul className="flex gap-3 overflow-x-auto snap-x pb-2 -mx-1 px-1 pt-1" aria-label="Moments from today">
+          <ul className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-3 pt-1" aria-label="Moments from today">
             {newestFirst(strip).map((record) => {
               const isOpen = record.key === openCard
               return (
-                <li key={record.key} className="snap-start shrink-0 flex">
+                <li key={record.key} className="flex shrink-0 snap-start">
                   <button
                     type="button"
                     aria-expanded={isOpen}
                     aria-controls="today-moment"
                     onClick={() => setOpenCard(isOpen ? null : record.key)}
-                    className={cn(
-                      // Narrow enough on a phone that the next card peeks in, so the row reads as one to scroll
-                      'w-36 sm:w-40 text-left rounded-lg border px-3 py-3 transition-colors duration-75',
-                      'focus:outline-none focus:ring-2 focus:ring-focus-ring',
-                      isOpen ? 'border-chosen-line bg-chosen' : 'border-card-border bg-background hover:border-melon-green/50',
-                    )}
+                    className={cn(styles.card, styles.todayCard)}
                   >
-                    <span className="flex items-center justify-between gap-2 mb-2">
-                      <MomentIcon id={record.id} className="w-7 h-7" />
-                      <span className="text-xs text-foreground/70 tabular-nums">{timeOfDay(record.at)}</span>
+                    <span className="flex w-full items-center justify-between gap-2">
+                      <MomentIcon id={record.id} className="size-7" />
+                      <span className="text-meta text-ink-soft tabular-nums">{timeOfDay(record.at)}</span>
                     </span>
-                    <span className="block text-sm font-semibold text-foreground">{MOMENT_TITLES[record.id]}</span>
-                    <span className="mt-1 font-serif italic text-sm text-foreground/80 line-clamp-2 break-words">
-                      {momentGist(record)}
-                    </span>
+                    <span className="block text-small font-bold">{MOMENT_TITLES[record.id]}</span>
+                    <span className="line-clamp-2 break-words text-small text-ink-soft">{momentGist(record)}</span>
                   </button>
                 </li>
               )
@@ -981,7 +949,7 @@ export default function TheUnrusher() {
                 key={opened.key}
                 record={opened}
                 label={`${MOMENT_TITLES[opened.id]}, at ${timeOfDay(opened.at)}`}
-                className="mt-4 pt-5 border-t border-card-border"
+                className="mt-2 border-t border-rule pt-5"
               />
             )}
           </div>

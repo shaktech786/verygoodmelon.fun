@@ -316,46 +316,6 @@ html[data-greyscale="true"] {
 }
 
 /* ============================================
-   THE UNRUSHER ANIMATIONS
-   ============================================ */
-
-/* Slow pulse for calm tasks */
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 3s ease-in-out infinite;
-}
-
-/* Floating seeds animation */
-@keyframes float-seed {
-  0% {
-    transform: translateY(0) translateX(0) rotate(0deg);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(400px) translateX(20px) rotate(180deg);
-    opacity: 0;
-  }
-}
-
-.animate-float-seed {
-  animation: float-seed 8s ease-in-out infinite;
-}
-
-/* ============================================
    PHASE 0: PLAYFUL MICRO-ANIMATIONS
    ============================================ */
 

@@ -4,6 +4,8 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  // Tests do not need Tailwind, and Vite's loader rejects the string plugin name in postcss.config.mjs
+  css: { postcss: { plugins: [] } },
   test: {
     environment: 'jsdom',
     globals: true,

@@ -240,7 +240,7 @@ test.describe('The Patient One', () => {
     const bed = page.getByRole('img', { name: 'Every seed has settled' })
     await expect(bed).toBeVisible()
     await expect(bed.locator('[data-settled="true"]')).toHaveCount(8)
-    await expect(bed.locator('.animate-fade')).toHaveCount(1)
+    await expect(bed.locator('[data-arriving="true"]')).toHaveCount(1)
   })
 
   test('sound muted in the accessibility panel means no chime, even with the sound button on', async ({ page }) => {
