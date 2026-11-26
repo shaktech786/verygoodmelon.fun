@@ -48,6 +48,7 @@ export default function RequestThinkerModal({ isOpen, onClose, returnFocusRef }:
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmitting) return
     setIsSubmitting(true)
     setError('')
 

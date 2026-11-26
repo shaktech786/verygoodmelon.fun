@@ -130,6 +130,7 @@ export default function IdeaLab() {
   const [activeConceptId, setActiveConceptId] = useState(BASE_CONCEPTS[0].id)
   const reducedMotion = useReducedMotion()
   const cancelResetRef = useRef<HTMLButtonElement>(null)
+  const resetOpenerRef = useRef<HTMLElement | null>(null)
   const conceptRefs = useRef(new Map<string, HTMLButtonElement>())
   const letterHeadingRef = useRef<HTMLHeadingElement>(null)
   const shelfHeadingRef = useRef<HTMLHeadingElement>(null)
@@ -506,7 +507,10 @@ export default function IdeaLab() {
               <div className="flex items-center gap-3">
                 <Button
                   id={RESET_BUTTON_ID}
-                  onClick={() => setShowResetConfirm(true)}
+                  onClick={(event) => {
+                    resetOpenerRef.current = event.currentTarget
+                    setShowResetConfirm(true)
+                  }}
                   disabled={isCombining}
                   variant="ghost"
                   className="p-2 min-w-[44px] min-h-[44px]"
@@ -700,6 +704,7 @@ export default function IdeaLab() {
           size="small"
           onClose={closeResetConfirm}
           initialFocusRef={cancelResetRef}
+          returnFocusRef={resetOpenerRef}
           actions={
             <>
               <Stamp ref={cancelResetRef} onClick={closeResetConfirm}>

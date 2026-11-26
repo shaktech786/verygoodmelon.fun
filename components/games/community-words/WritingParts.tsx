@@ -3,6 +3,7 @@
 import { useId, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent, type RefObject } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
+import { DIRECTORY_LINE, UK_IE_LINE, US_LINE } from '@/lib/care/helplines'
 import { CARE_GAMES } from '@/components/games/CrossGameSuggestions'
 import { CommunityWordCloud } from '@/components/games/CommunityWordCloud'
 import { clearDraft, readDraft, saveDraft } from '@/lib/games/community-words/draft'
@@ -122,10 +123,10 @@ export function QuietSupport() {
   return (
     <p className="text-center text-sm text-foreground/80 leading-relaxed">
       If any of this is close to home, there are people to talk to at any hour: call or text{' '}
-      <a href="tel:988" className={HELPLINE_LINK}>988</a> in the US, call{' '}
-      <a href="tel:116123" className={HELPLINE_LINK}>116 123</a> in the UK and Ireland, or find a line near you at{' '}
-      <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer" className={HELPLINE_LINK}>
-        findahelpline.com
+      <a href={US_LINE.href} className={HELPLINE_LINK}>{US_LINE.label}</a> in the {US_LINE.region}, call{' '}
+      <a href={UK_IE_LINE.href} className={HELPLINE_LINK}>{UK_IE_LINE.label}</a> in the {UK_IE_LINE.region}, or find a line near you at{' '}
+      <a href={DIRECTORY_LINE.href} target="_blank" rel="noopener noreferrer" className={HELPLINE_LINK}>
+        {DIRECTORY_LINE.label}
       </a>
       .
     </p>
@@ -144,11 +145,10 @@ export function CarePanel() {
       </p>
       <p className="mt-2 text-sm text-foreground/80">
         Free, confidential support at any hour:{' '}
-        <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer" className={HELPLINE_LINK}>
-          findahelpline.com
+        <a href={DIRECTORY_LINE.href} target="_blank" rel="noopener noreferrer" className={HELPLINE_LINK}>
+          {DIRECTORY_LINE.label}
         </a>{' '}
-        lists lines in most countries. In the US, call or text <a href="tel:988" className={HELPLINE_LINK}>988</a>. In the UK
-        and Ireland, call <a href="tel:116123" className={HELPLINE_LINK}>116 123</a>.
+        lists lines in most countries. In the {US_LINE.region}, call or text <a href={US_LINE.href} className={HELPLINE_LINK}>{US_LINE.label}</a>. In the {UK_IE_LINE.region}, call <a href={UK_IE_LINE.href} className={HELPLINE_LINK}>{UK_IE_LINE.label}</a>.
       </p>
     </aside>
   )

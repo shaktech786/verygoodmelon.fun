@@ -65,15 +65,15 @@ function ContinueRow({ games, className }: SuggestionRowProps) {
 /** Leads the game lists while care mode lasts: the helplines first, then the calmest games. */
 export function GentleGames({ className = '', helplines = true }: { className?: string; helplines?: boolean }) {
   return (
-    <>
-      {helplines && <CareBlock lead="If things feel too heavy right now, you can talk to someone." className={className} />}
-      <GentleRow games={CARE_GAMES} className={className} />
-    </>
+    <div className={className}>
+      {helplines && <CareBlock lead="If things feel too heavy right now, you can talk to someone." />}
+      <GentleRow games={CARE_GAMES} className={helplines ? 'mt-10' : undefined} />
+    </div>
   )
 }
 
 /** Games whose own care panel already carries the helplines, so the row does not repeat them. */
-const OWN_HELPLINES: ReadonlySet<string> = new Set(['timeless-minds', 'last-words', 'first-words'])
+const OWN_HELPLINES: ReadonlySet<string> = new Set(['timeless-minds', 'last-words', 'first-words', 'hard-talk', 'worry-capsule', 'mind-debate'])
 
 interface CrossGameSuggestionsProps {
   currentGameId: string

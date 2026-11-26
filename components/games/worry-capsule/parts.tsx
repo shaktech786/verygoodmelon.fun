@@ -1,5 +1,6 @@
 'use client'
 
+import { DIRECTORY_LINE } from '@/lib/care/helplines'
 import { type ReactNode, useEffect, useRef } from 'react'
 import type { Capsule, Outcome, Tally } from '@/lib/games/worry-capsule/capsules'
 import { tallyReflection, tallySummary } from '@/lib/games/worry-capsule/copy'
@@ -58,8 +59,8 @@ export function HelpLine() {
   return (
     <p className="text-xs sm:text-sm text-foreground/70 leading-relaxed">
       If a worry feels too heavy to hold alone,{' '}
-      <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer" className={link}>
-        findahelpline.com
+      <a href={DIRECTORY_LINE.href} target="_blank" rel="noopener noreferrer" className={link}>
+        {DIRECTORY_LINE.label}
       </a>{' '}
       lists free, confidential support near you, at any hour.
     </p>

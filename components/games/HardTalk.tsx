@@ -5,6 +5,7 @@ import { Button, buttonClassName } from '@/components/ui/Button'
 import { KeepsakeSave } from '@/components/games/Keepsake'
 import { useCareMode } from '@/components/games/CareMode'
 import { HelplineSentence } from '@/components/games/HelplineSentence'
+import { DIRECTORY_LINE } from '@/lib/care/helplines'
 import { InlineConfirm } from '@/components/seedpress/InlineConfirm'
 import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
 import { CarryScreen } from '@/components/games/hard-talk/CarryScreen'
@@ -147,12 +148,12 @@ export default function HardTalk() {
         This is a moment to steady yourself, not a substitute for support. If a conversation could put your safety at
         risk, you deserve help with it:{' '}
         <a
-          href="https://findahelpline.com"
+          href={DIRECTORY_LINE.href}
           target="_blank"
           rel="noopener noreferrer"
           className="font-medium text-foreground underline underline-offset-4 rounded"
         >
-          findahelpline.com
+          {DIRECTORY_LINE.label}
         </a>{' '}
         lists free, confidential support.
       </aside>

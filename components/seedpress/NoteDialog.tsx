@@ -57,6 +57,7 @@ export function NoteDialog({
   const returnRef = useRef(returnFocusRef)
   // Kept across the double run of effects in development, so the second run does not take the dialog itself for the opener
   const openerRef = useRef<HTMLElement | null>(null)
+  const pressedScrim = useRef(false)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -101,14 +102,23 @@ export function NoteDialog({
         event.preventDefault()
         onClose()
       }}
-      // A second Escape with nothing pressed between can close a modal dialog without asking; bring it back.
+      // A second Escape with nothing pressed between can close a modal dialog without a cancel event:
+      // tell the parent, and bring the dialog back if the parent keeps it open.
       onClose={() => {
-        const dialog = dialogRef.current
-        if (dialog?.isConnected && !dialog.open) dialog.showModal()
+        onClose()
+        setTimeout(() => {
+          const dialog = dialogRef.current
+          if (dialog?.isConnected && !dialog.open) dialog.showModal()
+        }, 0)
       }}
       onKeyDown={keepTabInside}
+      onPointerDown={(event) => {
+        pressedScrim.current = event.target === event.currentTarget
+      }}
       onClick={(event) => {
-        if (scrimCloses && event.target === event.currentTarget) onClose()
+        // Only a press that began on the scrim too, so ending a text selection there does not close it
+        if (scrimCloses && pressedScrim.current && event.target === event.currentTarget) onClose()
+        pressedScrim.current = false
       }}
     >
       <div className="sp-dialog__inner">

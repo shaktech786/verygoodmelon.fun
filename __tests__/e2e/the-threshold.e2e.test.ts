@@ -372,6 +372,15 @@ test.describe('The Plain Speaker', () => {
     await expect.poll(async () => JSON.stringify(await saved(page))).not.toContain('OLD-WORDS')
   })
 
+  test('in care mode the game keeps its own support and the shared care block does not add a second one', async ({ page }) => {
+    await page.goto('/')
+    await page.evaluate(() => localStorage.setItem('verygoodmelon:care', JSON.stringify({ until: Date.now() + 60 * 60 * 1000 })))
+    await openGame(page)
+    await expect(heading(page, FIRST)).toBeVisible()
+    await expect(page.getByRole('complementary', { name: 'Support' })).toHaveCount(1)
+    await expect(page.getByRole('region', { name: 'Something gentle, if it helps' })).toBeVisible()
+  })
+
   test('start over asks first, and clears everything when confirmed', async ({ page }) => {
     await openGame(page)
     await page.getByRole('button', { name: /Ending or changing something/ }).click()

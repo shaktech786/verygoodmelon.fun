@@ -9,8 +9,8 @@ import { StatusLine } from '@/components/seedpress/StatusLine'
 
 const OPEN_FEEDBACK_EVENT = 'verygoodmelon:open-feedback'
 
-export function openFeedback(): void {
-  window.dispatchEvent(new Event(OPEN_FEEDBACK_EVENT))
+export function openFeedback(event?: { currentTarget: HTMLElement }): void {
+  window.dispatchEvent(new CustomEvent<HTMLElement | null>(OPEN_FEEDBACK_EVENT, { detail: event?.currentTarget ?? null }))
 }
 
 /** The feedback form, opened from the footer's Feedback link. */
@@ -22,6 +22,7 @@ export function FeedbackDialog() {
   const [error, setError] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const doneRef = useRef<HTMLButtonElement>(null)
+  const openerRef = useRef<HTMLElement | null>(null)
 
   const close = () => {
     setIsOpen(false)
@@ -34,7 +35,10 @@ export function FeedbackDialog() {
   }, [isSuccess])
 
   useEffect(() => {
-    const open = () => setIsOpen(true)
+    const open = (event: Event) => {
+      openerRef.current = (event as CustomEvent<HTMLElement | null>).detail
+      setIsOpen(true)
+    }
     window.addEventListener(OPEN_FEEDBACK_EVENT, open)
     return () => window.removeEventListener(OPEN_FEEDBACK_EVENT, open)
   }, [])
@@ -71,7 +75,7 @@ export function FeedbackDialog() {
       onClose={close}
       closeLabel="Close feedback"
       initialFocusRef={textareaRef}
-      scrimCloses
+      returnFocusRef={openerRef}
       actions={
         isSuccess ? (
           <Stamp ref={doneRef} onClick={close}>

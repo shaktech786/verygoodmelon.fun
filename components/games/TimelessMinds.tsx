@@ -1049,7 +1049,7 @@ export default function TimelessMinds() {
           )}
           <p className="sp-farewell__note" aria-live="polite">{keepNote}</p>
           <p className="sp-farewell__imagined">{IMAGINED_NOTE}</p>
-          {care && <TimelessMindsCarePanel />}
+          {care && <TimelessMindsCarePanel className="mt-4 rounded-lg p-3" />}
         </NoteDialog>
       )}
 
