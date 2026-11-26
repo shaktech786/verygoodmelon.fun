@@ -11,7 +11,7 @@
         "http://localhost:3000/games/the-silver-lining",
         "http://localhost:3000/support"
       ],
-      "numberOfRuns": 3
+      "numberOfRuns": 5
     },
     "assert": {
       "assertions": {
