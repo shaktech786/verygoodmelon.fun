@@ -1037,16 +1037,19 @@ For each game: its packet motif and inks, its chrome, and **its stimulating mome
    - *Packet:* three seeds at rest in a cupped leaf; moss and seed inks.
    - *Chrome:* the stage is the plainest sheet on the site. The "minute for one small thing" uses a Stamp Go only at the start.
    - *Moment (S3):* when you stay still long enough, the seeds settle *into register* (ink B slides the last 1 px home) and a single `snd-ring` plays (Lively). Quiet: the seeds are simply settled. The `.animate-pulse-slow` and `.animate-float-seed` loops are kept as game content with the existing pause.
+   - *As built (4a):* the moment cards are stamp cards that start a moment when pressed, so the menu has no Go; the Go is the writing moments' "Done" and the reward's "Continue slowing down". The seeds' ink B is a seed-ink edge printed one misregistration off until all eight rest, then it slides home once over 700 ms (Quiet already has no misregistration). No `snd-ring` yet, because the UI sound system of §5.7 is not built. The two loops moved into `TheUnrusher.module.css` and stay off in Quiet and under reduced motion.
 2. **The Harmonist** (`BreathingPatterns.tsx`)
    - *Packet:* a melon slice with a breath-shape traced around it; moss and dusk.
    - *Chrome:* the pattern choice becomes a stamp row, "Begin" is the Go, and Pause, Mark and End are Stamps or Quiet in the tray.
    - *Art:* the breathing shape and melon keep their motion (functional loop with pause), re-inked through `getInks()` (10 hex values removed).
    - *Moment (S2 per breath, S3 at the end):* each finished breath stamps one seed into the slice. The final pattern prints as the keepsake.
+   - *As built (4a):* game ink map: moss for the breath in, clay for the hold, dusk for the breath out, plus the melon's rind, a pale rind band, flesh and a dark seed picked per palette. The pattern choice is stamp cards (a stamp row on a phone, with the description under it) and the length a stamp row. The seed presses in over 700 ms. Quiet and reduced motion show the still guide, which changes once per phase. The opening of the kept melon uses the keepsake's own per-theme colours so it lands exactly on the picture.
 3. **The Gardener** (`CalmGarden.tsx`, `calm-garden/draw.ts`)
    - *Packet:* a single poppy on a seed packet; moss and clay.
    - *Chrome:* `wide` stage. The plant palette is a stamp row of plant glyphs with names; Undo and Clear use Quiet and Careful plus the inline confirm.
    - *Art:* `draw.ts`'s 43 hex values become a 6-ink game map (leaf, petal-warm, petal-cool, earth, sky-day, sky-dusk) derived from moss, clay and dusk. The pixel look stays.
    - *Moment (S3):* "Sit with it", when the light shifts (`Sunset`). The light change is a cross-fade of the sky ink over 1,600 ms, never a flash; Quiet steps it instantly.
+   - *As built (4a):* the six inks are `leaf` (moss), `petal-warm` (clay), `petal-cool` (dusk), `earth` (clay, darkened), `sky-day` (dusk into moss) and `sky-dusk` (dusk into clay); shades come from `shade` and `blend` in `components/games/calm-garden/inks.ts`. Sitting cross-fades the sky, ground and light inks over 1,600 ms, then the sun keeps sinking slowly over the 45 s sit as before; Quiet and reduced motion step to the finished light at once. In a dark theme the day is dimmed. The postcard keepsake still uses its own petal colours (Phase 5).
 
 **Reflect (dusk)**
 

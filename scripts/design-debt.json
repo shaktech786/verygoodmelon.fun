@@ -71,11 +71,6 @@
   "components/ErrorBoundary.tsx": {
     "infinite": 1
   },
-  "components/games/CalmGarden.tsx": {
-    "animate": 3,
-    "arbitrary-colour": 1,
-    "raw-colour": 3
-  },
   "components/games/FirstWords.tsx": {
     "animate": 1,
     "banned-utility": 2,
@@ -126,9 +121,6 @@
     "animate": 2,
     "banned-utility": 2,
     "tailwind-palette": 1
-  },
-  "components/games/calm-garden/draw.ts": {
-    "raw-colour": 138
   },
   "components/games/community-words/WritingParts.tsx": {
     "banned-utility": 1

@@ -134,16 +134,18 @@ test.describe('The Gardener', () => {
     expect((await stored(page)).map((el) => el.type)).toEqual(['daisy', 'oak', 'crystal'])
 
     await page.getByRole('button', { name: 'Clear garden' }).click()
-    await page.getByRole('button', { name: 'No' }).click()
+    await expect(page.getByRole('button', { name: 'Keep it' })).toBeFocused()
+    await page.getByRole('button', { name: 'Keep it' }).click()
+    await expect(page.getByRole('button', { name: 'Clear garden' })).toBeFocused()
     await expect(contents(page)).toHaveText(/a daisy, an oak tree and a crystal/)
     await page.getByRole('button', { name: 'Clear garden' }).click()
-    await page.getByRole('button', { name: 'Yes' }).click()
+    await page.getByRole('button', { name: 'Yes, clear it' }).click()
     await expect(contents(page)).toHaveText('In your garden: nothing yet.')
     // Clearing is not a cliff edge: Undo brings the garden back.
     await page.getByRole('button', { name: 'Undo last change' }).click()
     await expect(contents(page)).toHaveText(/a daisy, an oak tree and a crystal/)
     await page.getByRole('button', { name: 'Clear garden' }).click()
-    await page.getByRole('button', { name: 'Yes' }).click()
+    await page.getByRole('button', { name: 'Yes, clear it' }).click()
 
     await page.reload()
     await expect(contents(page)).toHaveText('In your garden: nothing yet.')

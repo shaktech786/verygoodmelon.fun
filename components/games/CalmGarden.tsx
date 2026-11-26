@@ -2,9 +2,13 @@
 
 import { EXTRA_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Button, buttonClassName } from '@/components/ui/Button'
+import { Go } from '@/components/seedpress/Go'
+import { InlineConfirm } from '@/components/seedpress/InlineConfirm'
+import { QuietButton } from '@/components/seedpress/QuietButton'
+import { Stamp } from '@/components/seedpress/Stamp'
 import { cn } from '@/lib/utils/cn'
-import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { useInks } from '@/lib/design/inks'
+import { useSense } from '@/lib/design/sense'
 import {
   GROUND_TOP,
   PLANT_VARIANTS,
@@ -51,10 +55,14 @@ import type { KeepsakePlan } from '@/lib/keepsake/plan'
 import { Keepsake } from '@/components/games/Keepsake'
 import { drawGround, drawMarker, drawNewGrowth, drawPlant, drawSitLight, drawSky, drawVisitor } from './calm-garden/draw'
 import { Icon } from '@/components/seedpress/icons/Icon'
+import { alpha, gardenColours } from './calm-garden/inks'
+import styles from './CalmGarden.module.css'
 
 const SUGGEST_EVERY = 3
 const MAX_SUGGESTIONS = 5
 const SIT_MS = 45_000
+// The sky ink's cross-fade into the sit-down light (S3); the sun then sinks slowly over SIT_MS
+const LIGHT_FADE_MS = 1600
 const READY_TO_SIT = 3
 const HISTORY_LIMIT = 40
 const STEP = 0.03
@@ -112,6 +120,7 @@ const ICON_SIZE = 40
 // Each picker button shows the plant drawn by the same code as the garden.
 function PlantIcon({ type, season }: { type: PlantType; season: Season }) {
   const ref = useRef<HTMLCanvasElement>(null)
+  const inks = useInks()
   useEffect(() => {
     const canvas = ref.current
     const ctx = canvas?.getContext('2d')
@@ -120,9 +129,9 @@ function PlantIcon({ type, season }: { type: PlantType; season: Season }) {
     canvas.width = ICON_SIZE * dpr
     canvas.height = ICON_SIZE * dpr
     ctx.scale(dpr, dpr)
-    drawPlant(ctx, type, ICON_SIZE / 2, ICON_SIZE - 4, ICON_SCALE[categoryOf(type)], 0.35, 0, season)
-  }, [type, season])
-  return <canvas ref={ref} className="w-10 h-10" aria-hidden="true" />
+    drawPlant(ctx, gardenColours(inks), type, ICON_SIZE / 2, ICON_SIZE - 4, ICON_SCALE[categoryOf(type)], 0.35, 0, season)
+  }, [type, season, inks])
+  return <canvas ref={ref} className="size-10" aria-hidden="true" />
 }
 
 function visitorsSentence(count: number, kind: 'butterfly' | 'firefly'): string {
@@ -150,10 +159,15 @@ export default function CalmGarden() {
   const [arrivals, setArrivals] = useState<ArrivalPlan>({ before: 0, times: [] })
   const [arrived, setArrived] = useState(0)
   const [postcard, setPostcard] = useState<KeepsakePlan | null>(null)
-  const still = useReducedMotion()
+  const still = useSense().motionScale === 0
+  const inks = useInks()
+  const coloursRef = useRef(gardenColours(inks))
+  useEffect(() => {
+    coloursRef.current = gardenColours(inks)
+  }, [inks])
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const sitButtonRef = useRef<HTMLButtonElement>(null)
+  const clearButtonRef = useRef<HTMLButtonElement>(null)
   const standButtonRef = useRef<HTMLButtonElement>(null)
   const postcardRef = useRef<HTMLDivElement>(null)
   const showPostcardRef = useRef(false)
@@ -363,6 +377,7 @@ export default function CalmGarden() {
     sinceSuggestRef.current = 0
     setShowClearConfirm(false)
     setAnnouncement('Garden cleared. Undo brings it back.')
+    requestAnimationFrame(() => document.getElementById('undo-button')?.focus())
   }, [plants, remember, setPlants])
 
   const acceptSuggestion = useCallback(() => {
@@ -440,7 +455,7 @@ export default function CalmGarden() {
       return
     }
     setAnnouncement('You stand up. The garden is still here.')
-    requestAnimationFrame(() => sitButtonRef.current?.focus())
+    requestAnimationFrame(() => document.getElementById('sit-go')?.focus())
   }, [sitDone, sitAt, plants, clock.season, clock.tod, sitVisitors, sitKind, closingLine])
 
   // A finished sit ends on the postcard of it, brought into view under the garden.
@@ -644,7 +659,11 @@ export default function CalmGarden() {
       const drag = dragAtRef.current
       const shown = drag ? scene.plants.map((p) => (p.id === drag.id ? { ...p, ...drag.at } : p)) : scene.plants
       const perf = performance.now()
-      const light = scene.sitting ? Math.min(1, (perf - scene.sitStart) / SIT_MS) : 0
+      const c = coloursRef.current
+      const sinceSit = scene.sitting ? perf - scene.sitStart : 0
+      // The sky ink cross-fades over 1,600 ms and never flashes; Quiet steps straight to it. The sun then keeps sinking, slowly.
+      const light = scene.sitting ? (scene.still ? 1 : ease(sinceSit / LIGHT_FADE_MS)) : 0
+      const drift = scene.sitting ? (scene.still ? 1 : Math.min(1, sinceSit / SIT_MS)) : 0
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, w, h)
@@ -672,8 +691,8 @@ export default function CalmGarden() {
           }
         }
       }
-      drawSky(ctx, w, h, clock.tod, time, light)
-      drawGround(ctx, w, h, clock.tod, clock.season, shown.filter((p) => categoryOf(p.type) === 'tree'), light)
+      drawSky(ctx, c, w, h, clock.tod, time, light, drift)
+      drawGround(ctx, c, w, h, clock.tod, clock.season, shown.filter((p) => categoryOf(p.type) === 'tree'), light)
 
       for (const p of [...shown].sort((a, b) => a.y - b.y)) {
         let sway = 0
@@ -692,13 +711,13 @@ export default function CalmGarden() {
         const s = plantSize(p, w, wallNow) * grow * shownGrowth(p)
         const x = p.x * w
         const y = p.y * h
-        if (glow > 0 && look?.grew.has(p.id)) drawNewGrowth(ctx, categoryOf(p.type), x, y, s, glow, clock.tod)
+        if (glow > 0 && look?.grew.has(p.id)) drawNewGrowth(ctx, c, categoryOf(p.type), x, y, s, glow, clock.tod)
         ctx.beginPath()
         ctx.ellipse(x, y, 10 * s, 3 * s, 0, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.13)'
+        ctx.fillStyle = alpha(c.shadow, 0.13)
         ctx.fill()
-        drawPlant(ctx, p.type, x, y, s, p.colorSeed, sway * k, clock.season)
-        if (p.id === scene.selectedId || p.id === scene.movingId || p.id === drag?.id) drawMarker(ctx, x, y + 1, 20 * s, 6 * s, true)
+        drawPlant(ctx, c, p.type, x, y, s, p.colorSeed, sway * k, clock.season)
+        if (p.id === scene.selectedId || p.id === scene.movingId || p.id === drag?.id) drawMarker(ctx, c, x, y + 1, 20 * s, 6 * s, true)
       }
 
       if (scene.suggestion && !scene.sitting) {
@@ -709,21 +728,21 @@ export default function CalmGarden() {
         ctx.globalAlpha = scene.still ? 0.85 : 0.7 + Math.sin(time * 0.002) * 0.2
         ctx.beginPath()
         ctx.ellipse(sx, sy, 26 * s, 9 * s, 0, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(255, 250, 220, 0.45)'
+        ctx.fillStyle = alpha(c.suggest, 0.45)
         ctx.fill()
-        drawMarker(ctx, sx, sy, 26 * s, 9 * s, false)
+        drawMarker(ctx, c, sx, sy, 26 * s, 9 * s, false)
         ctx.globalAlpha *= 0.5
-        drawPlant(ctx, scene.suggestion.type, sx, sy, s, 0.4, 0, clock.season)
+        drawPlant(ctx, c, scene.suggestion.type, sx, sy, s, 0.4, 0, clock.season)
         ctx.restore()
       }
 
-      if (scene.sitting) drawSitLight(ctx, w, h, clock.tod, light)
+      if (scene.sitting) drawSitLight(ctx, c, w, h, clock.tod, light)
 
       const flowers = visitorHosts(shown)
       const hosts = flowers.length ? flowers : shown.filter((p) => categoryOf(p.type) !== 'stone')
       // While sitting, those already visiting stay and the rest arrive one at a time.
       const here = scene.sitting ? scene.arrivals.before + scene.arrived : visitorCount(scene.plants, false)
-      const kind = visitorKindAt(clock.tod, scene.sitting, light)
+      const kind = visitorKindAt(clock.tod, scene.sitting, drift)
       for (let i = 0; i < here && hosts.length; i++) {
         const hop = time / 7000 + i * 0.41
         const step = Math.floor(hop)
@@ -743,10 +762,10 @@ export default function CalmGarden() {
           vx = fromX + (vx - fromX) * flight
           vy = h * 0.18 + (vy - h * 0.18) * flight
         }
-        drawVisitor(ctx, kind, vx, vy, k, i, time, scene.still)
+        drawVisitor(ctx, c, kind, vx, vy, k, i, time, scene.still)
       }
 
-      if (scene.cursor && !scene.sitting && !scene.movingId) drawMarker(ctx, scene.cursor.x * w, scene.cursor.y * h, 12, 5, true)
+      if (scene.cursor && !scene.sitting && !scene.movingId) drawMarker(ctx, c, scene.cursor.x * w, scene.cursor.y * h, 12, 5, true)
 
       frame = requestAnimationFrame(tick)
     }
@@ -761,9 +780,6 @@ export default function CalmGarden() {
   // Render
   // ---------------------------------------------------------------------------
 
-  const smallButton = 'rounded-md px-3 py-1.5 font-medium hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
-  const mainButton = 'rounded-md px-3 py-1.5 font-medium border border-card-border bg-card-bg text-foreground hover:bg-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-1'
-
   let status: React.ReactNode = null
   if (movingPlant) {
     status = (
@@ -772,18 +788,18 @@ export default function CalmGarden() {
           Tap the grass where the {nameOf(movingPlant.type)} should go
           <span className="hidden pointer-fine:inline">, or use the arrow keys and Enter</span>.
         </p>
-        <button type="button" onClick={cancelMove} className={smallButton}>Cancel</button>
+        <QuietButton onClick={cancelMove}>Cancel</QuietButton>
       </>
     )
   } else if (selected) {
     const place = describePlace(selected, plants)
     status = (
       <>
-        <p><span className="font-medium">{variantOf(selected.type).label}</span>, {place}. Drag it, or:</p>
-        <span className="flex gap-1.5">
-          <button type="button" onClick={() => startMove(selected.id, false)} className={mainButton}>Move</button>
-          <button type="button" onClick={() => removePlant(selected.id)} className={smallButton}>Remove</button>
-          <button type="button" onClick={() => setSelectedId(null)} className={smallButton}>Done</button>
+        <p><span className="font-bold">{variantOf(selected.type).label}</span>, {place}. Drag it, or:</p>
+        <span className={styles.statusActions}>
+          <Stamp onClick={() => startMove(selected.id, false)}>Move</Stamp>
+          <QuietButton onClick={() => removePlant(selected.id)}>Remove</QuietButton>
+          <QuietButton onClick={() => setSelectedId(null)}>Done</QuietButton>
         </span>
       </>
     )
@@ -791,11 +807,9 @@ export default function CalmGarden() {
     status = (
       <>
         <p>{suggestion.line}</p>
-        <span className="flex gap-1.5">
-          <button type="button" onClick={acceptSuggestion} className={mainButton}>
-            Plant the {nameOf(suggestion.type)} there
-          </button>
-          <button type="button" onClick={dismissSuggestion} className={smallButton}>Not now</button>
+        <span className={styles.statusActions}>
+          <Stamp onClick={acceptSuggestion}>Plant the {nameOf(suggestion.type)} there</Stamp>
+          <QuietButton onClick={dismissSuggestion}>Not now</QuietButton>
         </span>
       </>
     )
@@ -804,14 +818,14 @@ export default function CalmGarden() {
   }
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start lg:gap-4" onKeyDown={handleRootKeyDown}>
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-4" onKeyDown={handleRootKeyDown}>
       <div id="garden-announcer" aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
       </div>
 
       <div>
         <div
-          className={cn(sitting && 'fixed inset-0 z-[80] flex flex-col items-center justify-center gap-5 bg-background p-4 animate-fade')}
+          className={cn(sitting && styles.sit)}
           role={sitting ? 'dialog' : undefined}
           aria-modal={sitting ? true : undefined}
           aria-labelledby={sitting ? 'sit-title' : undefined}
@@ -821,8 +835,8 @@ export default function CalmGarden() {
           {sitting && <h2 id="sit-title" className="sr-only">Sitting with your garden</h2>}
           <div
             className={cn(
-              'relative w-full overflow-hidden border border-card-border bg-card-bg',
-              sitting ? 'max-w-[calc((100svh-13rem)*1.6)] rounded-lg' : status ? 'rounded-t-lg' : 'rounded-lg',
+              styles.frame,
+              sitting ? 'max-w-[calc((100svh-13rem)*1.6)] rounded-sheet' : status ? 'rounded-t-sheet' : 'rounded-sheet',
             )}
           >
             <canvas
@@ -856,61 +870,55 @@ export default function CalmGarden() {
             </p>
             {returnLine && !sitting && (
               // Heard through the announcer already, so it is only shown here.
-              <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 flex justify-center px-2.5 pt-2.5 select-none animate-fade sm:px-4 sm:pt-4">
-                <p className="max-w-[28rem] rounded-xl bg-black/60 px-3 py-1.5 text-center text-[13px] leading-snug text-white sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-base sm:leading-relaxed">
+              <div aria-hidden="true" className={styles.returning}>
+                <p>
                   {returnLine}
-                  <span className="mt-0.5 block text-[11px] text-white/90 sm:text-xs">
+                  <small>
                     <span className="pointer-fine:hidden">Tap to skip</span>
                     <span className="hidden pointer-fine:inline">Press any key to skip</span>
-                  </span>
+                  </small>
                 </p>
               </div>
             )}
             {garden && plants.length === 0 && !sitting && (
-              <p className="absolute inset-x-0 bottom-6 mx-auto w-fit max-w-[85%] text-center text-sm text-white bg-black/55 rounded-full px-4 py-1.5 select-none pointer-events-none">
-                Choose a plant, then tap the grass.
-              </p>
+              <p className={styles.caption}>Choose a plant, then tap the grass.</p>
             )}
           </div>
 
           {sitting && (
             <>
-              <p id="sit-words" aria-live="polite" className="min-h-[5.5rem] max-w-xl text-center text-base leading-relaxed text-foreground sm:text-lg">
+              <p id="sit-words" aria-live="polite" className="min-h-[5.5rem] max-w-xl text-center text-body sm:text-lead">
                 {sitDone ? closingLine : (
                   <>
-                    <span className="text-foreground/70">The light is changing. Stay as long as you like.</span>
+                    <span className="text-ink-soft">{still ? 'The light has settled. Stay as long as you like.' : 'The light is changing. Stay as long as you like.'}</span>
                     {arrived > 0 && (
-                      <span key={arrived} className="mt-2 block animate-fade text-foreground/85">
+                      <span key={arrived} className="mt-2 block">
                         {arrivalLine(arrived - 1, arrivals.before, visitorKindAt(clock.tod, true, arrivals.times[arrived - 1]))}
                       </span>
                     )}
                   </>
                 )}
               </p>
-              <button ref={standButtonRef} type="button" onClick={standUp} className={buttonClassName('secondary', 'md')}>
+              <Stamp ref={standButtonRef} onClick={standUp}>
                 Stand up
-              </button>
+              </Stamp>
             </>
           )}
         </div>
 
-        {status && !sitting && (
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-b-lg border border-t-0 border-card-border bg-success/15 px-3 py-2 text-sm text-foreground">
-            {status}
-          </div>
-        )}
+        {status && !sitting && <div className={styles.status}>{status}</div>}
 
         {postcard && !sitting && (
-          <div ref={postcardRef} tabIndex={-1} className="mt-6 scroll-mt-24 rounded-lg focus:outline-none" data-testid="garden-postcard">
+          <div ref={postcardRef} tabIndex={-1} className="mt-6 scroll-mt-24 rounded-sheet focus:outline-none" data-testid="garden-postcard">
             <Keepsake plan={postcard} label="A postcard of your garden" />
           </div>
         )}
       </div>
 
-      <section aria-label="Gardening tools" inert={sitting} className="mt-3 rounded-lg border border-card-border bg-card-bg p-3 lg:mt-0">
+      <section aria-label="Gardening tools" inert={sitting} className={cn(styles.panel, 'mt-3 lg:mt-0')}>
         <div
           id="plant-picker"
-          className="grid grid-cols-5 gap-1.5 sm:grid-cols-8 lg:grid-cols-3"
+          className={styles.picker}
           role="radiogroup"
           aria-label="Plant to place"
           onKeyDown={handlePickerKeyDown}
@@ -924,98 +932,95 @@ export default function CalmGarden() {
               aria-checked={selectedType === variant.id}
               tabIndex={selectedType === variant.id ? 0 : -1}
               onClick={() => setSelectedType(variant.id)}
-              className={cn(
-                'flex flex-col items-center gap-0.5 rounded-lg px-1 pt-1.5 pb-1 text-[11px] leading-tight transition-colors duration-75',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
-                selectedType === variant.id
-                  ? 'bg-chosen border border-chosen-line text-foreground'
-                  : 'border border-transparent text-foreground/80 hover:bg-hover-bg hover:text-foreground',
-              )}
+              className={styles.plant}
             >
-              {/* The plants are drawn in daylight colours, so their tile stays a light meadow green in every theme */}
-              <span className="rounded-md bg-[#d6ecdd] p-0.5">
+              <span className={styles.tile}>
                 <PlantIcon type={variant.id} season={clock.season} />
               </span>
-              <span className="text-center">{variant.label}</span>
+              <span className={styles.label}>{variant.label}</span>
             </button>
           ))}
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-card-border pt-3">
-          <Button variant="ghost" size="sm" onClick={undo} disabled={history.length === 0} aria-label="Undo last change">
-            <Icon name="undo" size={12} className="inline mr-1 -mt-0.5" />
-            Undo
-          </Button>
+        <div className="mt-3 grid gap-2 border-t border-rule pt-3">
           {!showClearConfirm ? (
-            <Button variant="ghost" size="sm" onClick={() => setShowClearConfirm(true)} disabled={plants.length === 0} aria-label="Clear garden">
-              <Icon name="trash" size={12} className="inline mr-1 -mt-0.5" />
-              Clear
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <QuietButton id="undo-button" onClick={() => history.length > 0 && undo()} aria-disabled={history.length === 0 || undefined} aria-label="Undo last change" className="aria-disabled:cursor-not-allowed aria-disabled:text-ink-soft aria-disabled:no-underline">
+                <Icon name="undo" size={12} className="mr-1 inline" />
+                Undo
+              </QuietButton>
+              <Stamp
+                ref={clearButtonRef}
+                className="sp-stamp--careful"
+                onClick={() => plants.length > 0 && setShowClearConfirm(true)}
+                aria-disabled={plants.length === 0 || undefined}
+                aria-label="Clear garden"
+              >
+                <Icon name="trash" size={12} className="mr-1 inline" />
+                Clear
+              </Stamp>
+            </div>
           ) : (
-            <span className="flex items-center gap-1">
-              <span className="text-sm text-foreground/80">Clear all?</span>
-              <Button variant="danger" size="sm" onClick={clearGarden}>Yes</Button>
-              <Button variant="ghost" size="sm" onClick={() => setShowClearConfirm(false)}>No</Button>
-            </span>
+            <InlineConfirm
+              question="Clear the whole garden?"
+              why="Undo brings it back."
+              keepLabel="Keep it"
+              confirmLabel="Yes, clear it"
+              onKeep={() => {
+                setShowClearConfirm(false)
+                requestAnimationFrame(() => clearButtonRef.current?.focus())
+              }}
+              onConfirm={clearGarden}
+            />
           )}
         </div>
 
-        <button data-go=""
-          ref={sitButtonRef}
-          type="button"
-          onClick={startSit}
-          disabled={!canSit}
-          aria-describedby="sit-hint"
-          className={cn(
-            'mt-3 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-medium transition-opacity duration-75',
-            'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
-            canSit ? 'bg-melon-green text-background hover:opacity-90' : 'bg-foreground/10 text-foreground/60 cursor-not-allowed',
-          )}
-        >
-          <Icon name="sunset" size={24} />
-          Sit with your garden
-        </button>
-        <p id="sit-hint" className="mt-1 text-center text-xs text-foreground/70">
-          {canSit ? 'Rest a minute while the light changes.' : 'Once three things are growing.'}
-        </p>
+        <div className="mt-3 grid gap-2">
+          <div>
+            <Go id="sit-go" onClick={startSit} unavailable={canSit ? undefined : 'Once three things are growing.'}>
+              <Icon name="sunset" size={24} />
+              Sit with your garden
+            </Go>
+          </div>
+          {canSit && <p className="text-small text-ink-soft">Rest a minute while the light changes.</p>}
+        </div>
 
         <details
-          className="mt-3 border-t border-card-border pt-2"
+          className="mt-3 border-t border-rule pt-2"
           onToggle={(e) => {
             const details = e.currentTarget
             setListOpen(details.open)
             if (details.open) requestAnimationFrame(() => details.scrollIntoView({ block: 'nearest' }))
           }}
         >
-          <summary ref={listSummaryRef} className="cursor-pointer rounded text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+          <summary ref={listSummaryRef} className="cursor-pointer rounded-stamp py-2 font-bold">
             What&apos;s in your garden
           </summary>
           {listOpen && (plants.length === 0 ? (
-            <p className="mt-2 text-sm text-foreground/70">Nothing yet.</p>
+            <p className="mt-2 text-small text-ink-soft">Nothing yet.</p>
           ) : (
-            <ul ref={listRef} className="mt-2 max-h-56 space-y-1 overflow-y-auto pr-1">
+            <ul ref={listRef} className={styles.list}>
               {plants.map((p, i) => {
                 const place = describePlace(p, plants)
                 const name = nameOf(p.type)
                 return (
-                  <li key={p.id} className="flex items-center gap-1 text-sm">
+                  <li key={p.id} className={styles.listItem}>
                     <span className="min-w-0 flex-1">
-                      <span className="font-medium">{variantOf(p.type).label}</span>,{' '}
-                      <span className="text-foreground/70">{place}{p.selfSown ? ' (came up on its own)' : ''}</span>
+                      <span className="font-bold">{variantOf(p.type).label}</span>,{' '}
+                      <span className="text-ink-soft">{place}{p.selfSown ? ' (came up on its own)' : ''}</span>
                     </span>
-                    <button type="button" onClick={() => startMove(p.id, true)} aria-label={`Move the ${name}, ${place}`} className={cn(smallButton, 'px-2 text-xs')}>
+                    <QuietButton onClick={() => startMove(p.id, true)} aria-label={`Move the ${name}, ${place}`}>
                       Move
-                    </button>
-                    <button type="button" data-remove onClick={() => removeFromList(p.id, i)} aria-label={`Remove the ${name}, ${place}`} className={cn(smallButton, 'px-2 text-xs')}>
+                    </QuietButton>
+                    <QuietButton data-remove onClick={() => removeFromList(p.id, i)} aria-label={`Remove the ${name}, ${place}`}>
                       Remove
-                    </button>
+                    </QuietButton>
                   </li>
                 )
               })}
             </ul>
           ))}
         </details>
-
       </section>
     </div>
   )
