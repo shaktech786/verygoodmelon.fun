@@ -1,7 +1,7 @@
 'use client'
 
 import { REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
-import { useState, useEffect, useId, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { NoteDialog } from '@/components/seedpress/NoteDialog'
 import { Stamp } from '@/components/seedpress/Stamp'
 import { Go } from '@/components/seedpress/Go'
@@ -135,7 +135,6 @@ export default function IdeaLab() {
   const [freshClue, setFreshClue] = useState<number | null>(null)
   const [activeConceptId, setActiveConceptId] = useState(BASE_CONCEPTS[0].id)
   const reducedMotion = useReducedMotion()
-  const mixReasonId = useId()
   // Read through a ref, so turning the sensory dial never re-fires a scroll or a focus move
   const { motionScale } = useSense()
   const scrollBehaviourRef = useRef<ScrollBehavior>('smooth')
@@ -255,19 +254,8 @@ export default function IdeaLab() {
       return
     }
 
-    // Two on the bench wait for Mix: nothing is combined by a tap alone
     setSelectedConcepts([selectedConcepts[0], concept])
-    setLastResult(null)
-    setAnnouncement(`${selectedConcepts[0].name} and ${concept.name} are on the bench. Press Mix to combine them.`)
-  }
-
-  const mixPair = () => {
-    if (isCombining) return
-    if (selectedConcepts.length < 2 || (lastResult && lastResult.status !== 'unresolved')) {
-      setAnnouncement(selectedConcepts.length < 2 ? 'Pick two concepts, then press Mix.' : 'Pick a new pair to mix again.')
-      return
-    }
-    combineConcepts(selectedConcepts[0], selectedConcepts[1])
+    combineConcepts(selectedConcepts[0], concept)
   }
 
   const combineConcepts = async (concept1: Concept, concept2: Concept) => {
@@ -444,9 +432,6 @@ export default function IdeaLab() {
   // The riddle that last grew plainer, or else the oldest one still hidden.
   const currentRiddle = [...unsolved].reverse().find(index => (progress.hints[index] ?? 0) > 0) ?? unsolved[0]
   const currentLevel = currentRiddle === undefined ? 0 : progress.hints[currentRiddle] ?? 0
-  // A pair is ready to mix when two are chosen and nothing is under way; a pair that could not be mixed can be tried again
-  const readyToMix = selectedConcepts.length === 2 && !isCombining && (lastResult === null || lastResult.status === 'unresolved')
-  const waitingReason = selectedConcepts.length < 2 ? 'Pick two concepts to mix' : 'Pick a new pair to mix again'
 
   const cellTone = isCombining
     ? styles.cellCombining
@@ -511,25 +496,13 @@ export default function IdeaLab() {
     </div>
   )
 
-  // Not Go's own `unavailable`, which would wrap the button in a new element and drop keyboard focus as the pair settles
-  const mixButton = (
-    <span className={styles.mix}>
-      <Go onClick={mixPair} loading={isCombining} aria-disabled={readyToMix || isCombining ? undefined : true} aria-describedby={`${mixReasonId}-why`}>
-        Mix
-      </Go>
-      <span id={`${mixReasonId}-why`} className="sr-only">
-        {readyToMix || isCombining ? 'Mix the two concepts on the bench' : waitingReason}
-      </span>
-    </span>
-  )
-
   const clearButton = hasBench && !isCombining && (
     <QuietButton onClick={handleClearSelection}>
       <Icon name="trash" size={12} /> Clear
     </QuietButton>
   )
 
-  const benchHint = selectedConcepts.length === 2 && !lastResult && !isCombining ? 'Press Mix to combine them.' : 'Choose two concepts to combine them.'
+  const benchHint = 'Choose two concepts to combine them.'
 
   return (
     <div>
@@ -579,7 +552,7 @@ export default function IdeaLab() {
                         ? <span className={answerBeat}>Gold. It answers: <b>{lastResult.riddle}</b></span>
                         : lastResult?.description
                           ? <>&ldquo;{lastResult.description}&rdquo;</>
-                          : (!hasBench || selectedConcepts.length === 2) && benchHint}
+                          : !hasBench && benchHint}
                   </p>
                   {resultIsGold && !isCombining && (
                     <QuietButton onClick={seeFreshGold} aria-label="See it on the shelf" className={styles.seeIt}>
@@ -587,7 +560,6 @@ export default function IdeaLab() {
                     </QuietButton>
                   )}
                   {clearButton}
-                  {mixButton}
                 </div>
                 {currentRiddle !== undefined && (
                   <p className={styles.benchRiddle} aria-hidden="true">
@@ -604,7 +576,7 @@ export default function IdeaLab() {
                   </a>
                 </div>
                 <p id="idea-lab-concepts-help" className="sr-only">
-                  Arrow keys move between concepts. Enter or Space picks one; pick two, then press Mix.
+                  Arrow keys move between concepts. Enter or Space picks one; pick two to combine them.
                 </p>
 
                 <div
@@ -671,12 +643,9 @@ export default function IdeaLab() {
                     <b>Gold.</b> It answers: <b>{lastResult.riddle}</b>
                   </p>
                 )}
-                {(!hasBench || (selectedConcepts.length === 2 && !lastResult && !isCombining)) && <p className={styles.cellSoft}>{benchHint}</p>}
+                {!hasBench && <p className={styles.cellSoft}>{benchHint}</p>}
               </div>
-              <div className={styles.mixRow}>
-                {mixButton}
-                {clearButton}
-              </div>
+              <div className={styles.mixRow}>{clearButton}</div>
             </div>
 
             <div

@@ -304,11 +304,6 @@
   margin-top: var(--s-3);
 }
 
-.mix :global(.sp-go) {
-  min-height: 44px;
-  padding-inline: var(--s-4);
-}
-
 .seeIt {
   flex-shrink: 0;
 }
