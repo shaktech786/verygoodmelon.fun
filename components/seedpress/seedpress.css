@@ -2982,3 +2982,42 @@ a.sp-flap:hover .sp-flap__title {
 .sp-home > * {
   min-width: 0;
 }
+
+/* A slip whose title is the one link; its pseudo-element stretches the target over the whole slip */
+.sp-flap--card {
+  position: relative;
+}
+
+.sp-flap--card:hover {
+  border-color: var(--rind);
+}
+
+.sp-flap__link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.sp-flap__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.sp-flap--card:hover .sp-flap__link {
+  text-decoration: underline 1.5px var(--rind);
+  text-underline-offset: 3px;
+}
+
+.sp-flap--card:has(.sp-flap__link:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.sp-flap__link:focus-visible {
+  outline: none;
+}
+
+.sp-slip__over {
+  color: var(--seed);
+  font-weight: 600;
+}

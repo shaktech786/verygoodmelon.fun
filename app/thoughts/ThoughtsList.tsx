@@ -22,16 +22,20 @@ export function ThoughtsList({ thoughts }: ThoughtsListProps) {
       <ul className="sp-flaps" aria-label="Thoughts">
         {thoughts.map((thought) => (
           <li key={thought.id}>
-            <Link href={`/thoughts/${thought.slug}`} className="sp-flap">
-              <span className="sp-flap__top">
+            <article className="sp-flap sp-flap--card">
+              <div className="sp-flap__top">
                 <span>{THEME_LABELS[thought.theme]}</span>
                 <time dateTime={thought.createdAt}>{formatDate(thought.createdAt)}</time>
-              </span>
-              <span className="sp-flap__body">
-                <h2 className="sp-flap__title">{thought.title}</h2>
-                <span className="sp-flap__excerpt">{thought.body.split('\n\n')[0]}</span>
-              </span>
-            </Link>
+              </div>
+              <div className="sp-flap__body">
+                <h2 className="sp-flap__title">
+                  <Link href={`/thoughts/${thought.slug}`} className="sp-flap__link">
+                    {thought.title}
+                  </Link>
+                </h2>
+                <p className="sp-flap__excerpt">{thought.body.split('\n\n')[0]}</p>
+              </div>
+            </article>
           </li>
         ))}
       </ul>
