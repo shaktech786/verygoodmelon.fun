@@ -1,5 +1,5 @@
 import { MOMENT_TITLES, joinNaturally, type Heard, type MomentRecord } from '@/lib/games/patient-one/today'
-import { KEEPSAKE_WIDTH, framedKeepsake, hashString, keepsakeDay, keepsakeFileName, seededRandom, type KeepsakeOp, type KeepsakePlan } from './plan'
+import { KEEPSAKE_WIDTH, framedKeepsake, hashString, keepsakeDay, keepsakeFileName, mix, seededRandom, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
 
 /**
  * A keepsake of one moment from The Patient One: a small picture of that moment (the eight
@@ -37,7 +37,7 @@ export function seedRow(key: string, centreY: number, width: number, size: numbe
 
 function seedOps(seeds: BedSeed[], bedY: number, bedWidth: number): KeepsakeOp[] {
   return [
-    { kind: 'ellipse', x: MID, y: bedY, rx: bedWidth / 2, ry: 16, angle: 0, ink: 'paperDeep' },
+    { kind: 'ellipse', x: MID, y: bedY, rx: bedWidth / 2, ry: 16, angle: 0, ink: 'well' },
     ...seeds.map((s): KeepsakeOp => ({ kind: 'ellipse', x: s.x, y: s.y, rx: s.rx, ry: s.ry, angle: s.angle, ink: 'ink', alpha: 0.72 })),
   ]
 }
@@ -55,18 +55,18 @@ export function soundIcon(sound: Heard, x: number, y: number): KeepsakeOp[] {
     case 'Birds':
       return [
         { kind: 'line', points: [[x - 46, y - 2], [x - 26, y + 14], [x - 6, y - 2]], ink: 'ink', width: 8 },
-        { kind: 'line', points: [[x + 6, y - 26], [x + 22, y - 12], [x + 38, y - 26]], ink: 'inkSoft', width: 7 },
+        { kind: 'line', points: [[x + 6, y - 26], [x + 22, y - 12], [x + 38, y - 26]], ink: 'ink-soft', width: 7 },
       ]
     case 'Wind or rain':
       return [-30, -4, 22].flatMap((dx, i): KeepsakeOp[] => [
-        { kind: 'line', points: [[x + dx + 12, y - 36 + i * 8], [x + dx - 8, y + 30 + i * 8]], ink: 'rindLight', width: 7, alpha: 0.8 },
+        { kind: 'line', points: [[x + dx + 12, y - 36 + i * 8], [x + dx - 8, y + 30 + i * 8]], ink: 'moss', width: 7, alpha: 0.8 },
       ])
     case 'Voices':
       return [
-        { kind: 'disc', x: x - 16, y: y - 8, r: 28, ink: 'rindLight' },
-        { kind: 'poly', points: [[x - 34, y + 10], [x - 40, y + 34], [x - 16, y + 18]], ink: 'rindLight' },
-        { kind: 'disc', x: x + 26, y: y + 14, r: 22, ink: 'gold' },
-        { kind: 'poly', points: [[x + 38, y + 26], [x + 46, y + 44], [x + 26, y + 34]], ink: 'gold' },
+        { kind: 'disc', x: x - 16, y: y - 8, r: 28, ink: 'moss' },
+        { kind: 'poly', points: [[x - 34, y + 10], [x - 40, y + 34], [x - 16, y + 18]], ink: 'moss' },
+        { kind: 'disc', x: x + 26, y: y + 14, r: 22, ink: 'brass', b: true },
+        { kind: 'poly', points: [[x + 38, y + 26], [x + 46, y + 44], [x + 26, y + 34]], ink: 'brass', b: true },
       ]
     case 'A hum or fan':
       return [
@@ -87,23 +87,23 @@ export function soundIcon(sound: Heard, x: number, y: number): KeepsakeOp[] {
       ]
     case 'Almost nothing':
       return [
-        { kind: 'disc', x, y, r: 36, ink: 'inkSoft' },
+        { kind: 'disc', x, y, r: 36, ink: 'ink-soft' },
         { kind: 'disc', x, y, r: 29, ink: 'paper' },
       ]
   }
 }
 
 function text(y: number, value: string, size: number, extra: Partial<Extract<KeepsakeOp, { kind: 'text' }>> = {}): KeepsakeOp {
-  return { kind: 'text', x: MID, y, text: value, size, ink: 'ink', font: 'serif', align: 'center', maxWidth: 840, ...extra }
+  return { kind: 'text', x: MID, y, text: value, size, ink: 'ink', font: 'sans', align: 'center', maxWidth: 840, ...extra }
 }
 
-const quiet = { ink: 'inkSoft', font: 'sans' } as const
+const quiet = { ink: 'ink-soft', font: 'sans' } as const
 
 function listenOps(heard: Heard[]): { ops: KeepsakeOp[]; words: string[] } {
   if (heard.length === 0) {
     return {
       ops: [
-        text(640, 'A minute of listening to what was already here.', 44, { italic: true, lineHeight: 58, maxLines: 3 }),
+        text(640, 'A minute of listening to what was already here.', 44, { lineHeight: 58, maxLines: 3 }),
       ],
       words: ['A minute of listening to what was already here.'],
     }
@@ -113,7 +113,7 @@ function listenOps(heard: Heard[]): { ops: KeepsakeOp[]; words: string[] } {
       ops: [
         ...soundIcon('Almost nothing', MID, 640),
         text(800, 'Almost nothing.', 52),
-        text(880, 'That kind of quiet is rarer than it sounds.', 36, { italic: true, ...quiet, font: 'serif' }),
+        text(880, 'That kind of quiet is rarer than it sounds.', 36, quiet),
       ],
       words: ['Almost nothing.', 'That kind of quiet is rarer than it sounds.'],
     }
@@ -128,7 +128,7 @@ function listenOps(heard: Heard[]): { ops: KeepsakeOp[]; words: string[] } {
       ops.push(...soundIcon(sound, x, y), { kind: 'text', x, y: y + 92, text: sound, size: 26, align: 'center', maxWidth: step - 16, maxLines: 2, lineHeight: 32, ...quiet })
     })
   })
-  ops.push(text(rows.length === 1 ? 900 : 1010, 'Most of the day, they go unheard.', 38, { italic: true }))
+  ops.push(text(rows.length === 1 ? 900 : 1010, 'Most of the day, they go unheard.', 38))
   return { ops, words: [`I heard ${joinNaturally(heard.map((s) => (s === 'My own breath' ? 'my own breath' : s.toLowerCase())))}.`, 'Most of the day, they go unheard.'] }
 }
 
@@ -136,20 +136,20 @@ function momentContent(record: MomentRecord): { ops: KeepsakeOp[]; words: string
   switch (record.id) {
     case 'watch':
       return {
-        ops: [text(640, 'Eight seeds settled while I stayed still.', 40, { italic: true, lineHeight: 58, maxLines: 2 })],
+        ops: [text(640, 'Eight seeds settled while I stayed still.', 40, { lineHeight: 58, maxLines: 2 })],
         words: ['Eight seeds settled while I stayed still.'],
       }
     case 'listen':
       return listenOps(record.heard)
     case 'look':
       if (!record.lookedAt) {
-        return { ops: [text(700, 'One thing, given a whole minute.', 44, { italic: true, lineHeight: 58, maxLines: 2 })], words: ['One thing, given a whole minute.'] }
+        return { ops: [text(700, 'One thing, given a whole minute.', 44, { lineHeight: 58, maxLines: 2 })], words: ['One thing, given a whole minute.'] }
       }
       return {
         ops: [
           text(560, 'I gave', 30, quiet),
           text(670, record.lookedAt, 60, { lineHeight: 72, maxLines: 2 }),
-          text(820, 'a whole minute.', 40, { italic: true }),
+          text(820, 'a whole minute.', 40),
           text(900, 'Most things get a glance.', 30, quiet),
         ],
         words: [`I gave ${record.lookedAt} a whole minute.`, 'Most things get a glance.'],
@@ -157,7 +157,7 @@ function momentContent(record: MomentRecord): { ops: KeepsakeOp[]; words: string
     case 'reflect':
       if (record.feelings.length === 0) {
         return {
-          ops: [text(700, 'A moment noticed, without needing to name it.', 44, { italic: true, lineHeight: 58, maxLines: 3 })],
+          ops: [text(700, 'A moment noticed, without needing to name it.', 44, { lineHeight: 58, maxLines: 3 })],
           words: ['A moment noticed, without needing to name it.'],
         }
       }
@@ -165,14 +165,14 @@ function momentContent(record: MomentRecord): { ops: KeepsakeOp[]; words: string
         ops: [
           text(560, 'Right now', 30, quiet),
           text(670, record.feelings.join('  ·  '), 52, { lineHeight: 68, maxLines: 3 }),
-          text(820, 'Whatever is here is allowed.', 36, { italic: true }),
+          text(820, 'Whatever is here is allowed.', 36),
         ],
         words: [`Right now: ${joinNaturally(record.feelings.map((w) => w.toLowerCase()))}.`, 'Whatever is here is allowed.'],
       }
     case 'appreciate': {
       if (record.things.length === 0) {
         return {
-          ops: [text(700, 'A little while given to what is good today.', 44, { italic: true, lineHeight: 58, maxLines: 3 })],
+          ops: [text(700, 'A little while given to what is good today.', 44, { lineHeight: 58, maxLines: 3 })],
           words: ['A little while given to what is good today.'],
         }
       }
@@ -205,7 +205,7 @@ export function opExtent(op: KeepsakeOp): [number, number] {
     case 'line':
       return [Math.min(...op.points.map(([, y]) => y)), Math.max(...op.points.map(([, y]) => y))]
     case 'text': {
-      const wrapped = op.maxWidth ? Math.ceil((op.text.length * op.size * 0.5) / op.maxWidth) : 1
+      const wrapped = op.maxWidth ? Math.ceil((op.text.length * op.size * 0.55) / op.maxWidth) : 1
       const lines = Math.max(1, Math.min(wrapped, op.maxLines ?? wrapped))
       return [op.y - op.size * 0.8, op.y + (lines - 1) * (op.lineHeight ?? op.size * 1.35) + op.size * 0.25]
     }
@@ -227,13 +227,13 @@ function centred(ops: KeepsakeOp[]): KeepsakeOp[] {
 }
 
 const PICTURE_Y = 420
-// The sky keeps its own colours in both themes, so a morning never reads as night on dark paper
-const DAY_SKY = '#cfe3ee'
-const NIGHT_SKY = '#1f2a44'
-const GROUND = '#3f7d4f'
-const MOON = '#f4ecd2'
-const EYE_WHITE = '#f6f1e7'
-const PUPIL = '#1a1a1a'
+// The sky keeps its own colours in both themes, the glass inks, so a morning never reads as night on dark paper
+const DAY_SKY: Ink = mix('glass-dusk', 0.3, 'glass-ink')
+const NIGHT_SKY: Ink = mix('glass-dusk', 0.3, 'glass-well')
+const GROUND: Ink = mix('glass-rind', 0.6, 'glass-well')
+const MOON: Ink = 'glass-ink'
+const EYE_WHITE: Ink = 'glass-ink'
+const PUPIL: Ink = 'glass-well'
 
 /** Rings of sound reaching a still point from both sides. */
 function listenPicture(): KeepsakeOp[] {
@@ -243,7 +243,7 @@ function listenPicture(): KeepsakeOp[] {
       const a = ((i - 4) / 4) * 0.8
       return [MID + side * Math.cos(a) * r, PICTURE_Y + Math.sin(a) * r] as const
     }),
-    ink: 'inkSoft',
+    ink: 'ink-soft',
     width: 8,
     alpha: 1 - r / 160,
   })
@@ -258,7 +258,7 @@ function lookPicture(): KeepsakeOp[] {
       return [MID - 120 + t * 240, PICTURE_Y - side * Math.sin(t * Math.PI) * open] as const
     })
   return [
-    { kind: 'poly', points: [...lid(66, 1), ...lid(66, -1).reverse()], ink: 'inkSoft' },
+    { kind: 'poly', points: [...lid(66, 1), ...lid(66, -1).reverse()], ink: 'ink-soft' },
     { kind: 'poly', points: [...lid(56, 1), ...lid(56, -1).reverse()], ink: EYE_WHITE },
     { kind: 'disc', x: MID, y: PICTURE_Y, r: 38, ink: 'rind' },
     { kind: 'disc', x: MID, y: PICTURE_Y, r: 17, ink: PUPIL },
@@ -299,7 +299,7 @@ function skyPicture(at: Date): { ops: KeepsakeOp[]; words: string } {
   return {
     ops: [
       { kind: 'rect', x: left, y: top, w, h, ink: DAY_SKY },
-      { kind: 'disc', x: left + 40 + p * (w - 80), y: top + h - 50 - Math.sin(p * Math.PI) * 90, r: 26, ink: 'gold' },
+      { kind: 'disc', x: left + 40 + p * (w - 80), y: top + h - 50 - Math.sin(p * Math.PI) * 90, r: 26, ink: 'glass-brass' },
       ground,
     ],
     words: `The ${part} sky as it was, with the sun where it stood`,
@@ -309,13 +309,13 @@ function skyPicture(at: Date): { ops: KeepsakeOp[]; words: string } {
 /** A small sprout for each good thing written down, or one for the time given. */
 function sproutPicture(count: number): KeepsakeOp[] {
   const step = 150
-  const ops: KeepsakeOp[] = [{ kind: 'ellipse', x: MID, y: PICTURE_Y + 56, rx: 90 + ((count - 1) * step) / 2, ry: 14, angle: 0, ink: 'paperDeep' }]
+  const ops: KeepsakeOp[] = [{ kind: 'ellipse', x: MID, y: PICTURE_Y + 56, rx: 90 + ((count - 1) * step) / 2, ry: 14, angle: 0, ink: 'well' }]
   for (let i = 0; i < count; i++) {
     const x = MID + (i - (count - 1) / 2) * step
     ops.push(
       { kind: 'line', points: [[x, PICTURE_Y + 54], [x, PICTURE_Y - 20]], ink: 'rind', width: 8 },
-      { kind: 'ellipse', x: x - 22, y: PICTURE_Y - 4, rx: 24, ry: 11, angle: -0.5, ink: 'rindLight' },
-      { kind: 'ellipse', x: x + 22, y: PICTURE_Y - 22, rx: 24, ry: 11, angle: 0.5, ink: 'rindLight' },
+      { kind: 'ellipse', x: x - 22, y: PICTURE_Y - 4, rx: 24, ry: 11, angle: -0.5, ink: 'moss' },
+      { kind: 'ellipse', x: x + 22, y: PICTURE_Y - 22, rx: 24, ry: 11, angle: 0.5, ink: 'moss' },
     )
   }
   return ops
@@ -359,7 +359,7 @@ export function patientOneKeepsake({ record }: PatientKeepsakeInput): KeepsakePl
   const content = momentContent(record)
 
   const art = centred([
-    { kind: 'text', x: MID, y: 290, text: title, size: 36, ink: 'ink', font: 'sans', align: 'center', weight: 600 },
+    { kind: 'text', x: MID, y: 290, text: title, size: 36, ink: 'ink', font: 'display', align: 'center', weight: 700 },
     ...picture.ops,
     ...content.ops,
   ])

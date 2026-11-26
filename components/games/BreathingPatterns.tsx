@@ -9,7 +9,7 @@ import { Stamp } from '@/components/seedpress/Stamp'
 import { StickyTray } from '@/components/seedpress/StickyTray'
 import { cn } from '@/lib/utils/cn'
 import { contrast, luminance, mixOklab } from '@/lib/design/color'
-import { useInks, useInkTheme, type Inks } from '@/lib/design/inks'
+import { useInks, type Inks } from '@/lib/design/inks'
 import { useSense } from '@/lib/design/sense'
 import { buzz, playTones, useCanBuzz, useSoundAudible, wakeTones, type Tone } from '@/components/games/gentleCues'
 import { hushAmbient } from '@/lib/audio/ambient-hush'
@@ -25,7 +25,8 @@ import {
 } from '@/lib/games/breathing-patterns/melon'
 import { cutBand, harmonistKeepsake, keepsakeMelon, restingLid } from '@/lib/keepsake/harmonist'
 import { KEEPSAKE_HEIGHT, KEEPSAKE_WIDTH } from '@/lib/keepsake/plan'
-import { inkColour } from '@/lib/keepsake/render'
+import { INNER_RIND, SEED, type Ink } from '@/lib/keepsake/plan'
+import { currentKeepsakeLook, inkColour } from '@/lib/keepsake/render'
 import { Keepsake } from '@/components/games/Keepsake'
 import styles from './BreathingPatterns.module.css'
 
@@ -441,18 +442,16 @@ const OPENING_STYLES = `
 @keyframes harmonist-face-out { from { opacity: 1 } to { opacity: 0 } }
 @keyframes harmonist-face-in { from { opacity: 0 } to { opacity: 1 } }
 @keyframes harmonist-reveal { from { opacity: 1 } to { opacity: 0 } }
-.harmonist-paper { fill: ${inkColour('paper', 'light')} }
-:root[data-theme="dark"] .harmonist-paper { fill: ${inkColour('paper', 'dark')} }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .harmonist-paper { fill: ${inkColour('paper', 'dark')} } }
 `
 
 // The ending: the melon is cut along the shape the breath followed, and the cut piece lifts
 // aside, turning over to show its cut face, and the seeds are there. It plays exactly over the
 // picture to keep, drawn from the same geometry, then fades to leave that one picture.
 function OpeningMelon({ breaths }: { breaths: Breath[] }) {
-  // The picture to keep prints the melon in its own fixed colours per theme, so the opening uses the same ones
-  const theme = useInkTheme()
-  const ink = (name: Parameters<typeof inkColour>[0]) => inkColour(name, theme)
+  // The picture to keep prints the melon in the page's inks, so the opening uses the same ones
+  const inks = useInks()
+  const look = useMemo(() => currentKeepsakeLook(), [inks])
+  const ink = (name: Ink) => inkColour(name, look)
   const melon = useMemo(() => keepsakeMelon(breaths), [breaths])
   const [cx, cy] = melon.centre
   const r = melon.radius
@@ -487,13 +486,13 @@ function OpeningMelon({ breaths }: { breaths: Breath[] }) {
       data-shape={melon.shape}
     >
       <style>{OPENING_STYLES}</style>
-      <rect x={left} y={top} width={right - left} height={bottom - top} className="harmonist-paper" />
+      <rect x={left} y={top} width={right - left} height={bottom - top} fill={ink('paper')} />
       <ellipse cx={cx + 16} cy={cy + r - 6} rx={r * 0.92} ry={30} fill={ink('ink')} opacity={0.08} />
       <circle cx={cx} cy={cy} r={r} fill={ink('rind')} />
       {melon.stripes.map((s, n) => (
-        <ellipse key={n} cx={s.x} cy={s.y} rx={s.rx} ry={s.ry} fill={ink('rindLight')} opacity={0.3} />
+        <ellipse key={n} cx={s.x} cy={s.y} rx={s.rx} ry={s.ry} fill={ink('rind-wash')} opacity={0.35} />
       ))}
-      <polygon points={lid} fill={ink('rindLight')} />
+      <polygon points={lid} fill={ink(INNER_RIND)} />
       <polygon points={pointsOf(melon.flesh)} fill={ink('flesh')} />
       {melon.seeds.map((s, n) => (
         <ellipse
@@ -503,7 +502,7 @@ function OpeningMelon({ breaths }: { breaths: Breath[] }) {
           cy={s.y}
           rx={s.rx}
           ry={s.ry}
-          fill={ink('seed')}
+          fill={ink(SEED)}
           transform={`rotate(${(s.angle * 180) / Math.PI} ${s.x} ${s.y})`}
         />
       ))}
@@ -519,7 +518,7 @@ function OpeningMelon({ breaths }: { breaths: Breath[] }) {
             points={lid}
             pathLength={1}
             fill="none"
-            stroke={ink('rindLight')}
+            stroke={ink(INNER_RIND)}
             strokeWidth={1.5 * k}
             strokeLinejoin="round"
             strokeDasharray="1 1"
@@ -529,7 +528,7 @@ function OpeningMelon({ breaths }: { breaths: Breath[] }) {
         <g data-cut-face="" style={{ animation: 'harmonist-face-in 0.12s linear 1.4s both' }}>
           <polygon points={lid} transform="translate(0 8)" fill={ink('rind')} />
           <polygon points={lid} fill={ink('rind')} />
-          <polygon points={pointsOf(cutBand(melon))} fill={ink('rindLight')} />
+          <polygon points={pointsOf(cutBand(melon))} fill={ink(INNER_RIND)} />
           <polygon points={pointsOf(melon.flesh)} fill={ink('flesh')} />
         </g>
       </g>

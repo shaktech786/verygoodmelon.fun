@@ -1,19 +1,7 @@
-import { PALETTES } from '@/lib/design/tokens'
-
 export type EmblemId =
   | 'laurel' | 'carnation' | 'cat' | 'dog' | 'moon' | 'sun' | 'column' | 'mountain'
   | 'quill' | 'lens' | 'drop' | 'kite' | 'tortoise' | 'hare' | 'gear' | 'bolt'
   | 'honey' | 'scroll' | 'oak' | 'mayfly' | 'star' | 'planet' | 'grapes' | 'mug'
-
-/**
- * The two speakers' colours, the same on the cards, the stage and the keepsake: voiceA is dusk and voiceB is clay,
- * calm inks that are neither red nor green, so neither side ever reads as right or wrong. Each is also told apart
- * by its side, its name and a round or a diamond mark.
- */
-export const ARENA_VOICE_COLOURS = {
-  light: { a: PALETTES.light.dusk, b: PALETTES.light.clay },
-  dark: { a: PALETTES.dark.dusk, b: PALETTES.dark.clay },
-} as const
 
 export interface Pairing {
   first: string

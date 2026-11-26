@@ -9,15 +9,16 @@ const texts = (ops: KeepsakeOp[]) => ops.filter((op): op is Extract<KeepsakeOp, 
 describe('awakeningKeepsake', () => {
   const plan = awakeningKeepsake({ note: `  ${NOTE} `, day })
 
-  it('writes the plan for tomorrow by hand on the note', () => {
+  it('writes the plan for tomorrow on the note, in the reading face, under short titles in the display face', () => {
     const note = texts(plan.ops).find((op) => op.text === NOTE)
-    expect(note?.font).toBe('hand')
-    expect(texts(plan.ops).map((op) => op.text)).toEqual(expect.arrayContaining(['Good morning', 'For tomorrow', 'THE AWAKENING']))
+    expect(note?.font).toBe('sans')
+    expect(texts(plan.ops).find((op) => op.text === 'For tomorrow')?.font).toBe('display')
+    expect(texts(plan.ops).map((op) => op.text)).toEqual(expect.arrayContaining(['Good morning', 'For tomorrow', 'The Awakening']))
   })
 
-  it('draws a sun over the hills in fixed colours, the same in either theme', () => {
+  it('draws a sun over the hills in the glass inks, the same in either theme', () => {
     const sun = plan.ops.find((op) => op.kind === 'disc' && op.r === 92)
-    expect(sun && sun.ink.startsWith('#')).toBe(true)
+    expect(sun && typeof sun.ink !== 'string' && JSON.stringify(sun.ink).includes('glass-')).toBe(true)
     expect(plan.ops.filter((op) => op.kind === 'poly').length).toBeGreaterThanOrEqual(2)
   })
 

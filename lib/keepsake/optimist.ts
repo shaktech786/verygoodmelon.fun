@@ -12,9 +12,9 @@ export interface OptimistKeepsakeInput {
   day: Date
 }
 
-/** The story with today's word set in capitals, the way it was inked into the gap. */
+/** The story with today's word in its gap, as it was written. */
 export function storyWithWord(reveal: Reveal): string {
-  return reveal.story.flat().map((piece) => (piece.word ? piece.text.toUpperCase() : piece.text)).join('')
+  return reveal.story.flat().map((piece) => piece.text).join('')
 }
 
 function hostname(url: string): string {
@@ -44,8 +44,8 @@ function inkedWord(word: string, top: number): KeepsakeOp[] {
   ;[...word].forEach((letter, i) => {
     const x = x0 + i * slot
     ops.push(
-      { kind: 'rect', x: x + gap / 2, y: top + size + 12, w: slot - gap, h: 6, ink: 'rindInk' },
-      { kind: 'text', x: x + slot / 2, y: top + size, text: letter, size, ink: 'rindInk', font: 'hand', align: 'center', weight: 700 },
+      { kind: 'rect', x: x + gap / 2, y: top + size + 12, w: slot - gap, h: 6, ink: 'rind', b: true },
+      { kind: 'text', x: x + slot / 2, y: top + size, text: letter, size, ink: 'rind', font: 'display', align: 'center', weight: 700 },
     )
   })
   return ops
@@ -61,17 +61,17 @@ export function optimistKeepsake({ reveal, day }: OptimistKeepsakeInput): Keepsa
   const paper: Array<[number, number]> = [...tornEdge(top, false), ...tornEdge(bottom, true).reverse()]
 
   const art: KeepsakeOp[] = [
-    { kind: 'poly', points: paper.map(([x, y]) => [x + 14, y + 14] as [number, number]), ink: 'line' },
-    { kind: 'poly', points: paper, ink: 'paperDeep' },
-    { kind: 'text', x: cx, y: top + 70, text: 'GOOD NEWS', size: 30, ink: 'ink', font: 'serif', align: 'center', weight: 700 },
+    { kind: 'poly', points: paper.map(([x, y]) => [x + 14, y + 14] as [number, number]), ink: 'rule', b: true },
+    { kind: 'poly', points: paper, ink: 'sheet' },
+    { kind: 'text', x: cx, y: top + 70, text: 'Good news', size: 34, ink: 'ink', font: 'display', align: 'center', weight: 700 },
     { kind: 'rect', x: CLIPPING.left + 60, y: top + 96, w: CLIPPING.right - CLIPPING.left - 120, h: 4, ink: 'ink' },
     {
       kind: 'text',
       x: cx,
       y: top + 140,
-      text: `${reveal.category} · ${kind}`.toUpperCase(),
-      size: 22,
-      ink: 'rindInk',
+      text: `${reveal.category} · ${kind}`,
+      size: 26,
+      ink: 'rind',
       font: 'sans',
       align: 'center',
       weight: 700,
@@ -85,7 +85,7 @@ export function optimistKeepsake({ reveal, day }: OptimistKeepsakeInput): Keepsa
       text: story,
       size: STORY_SIZE,
       ink: 'ink',
-      font: 'serif',
+      font: 'sans',
       maxWidth: TEXT_W,
       lineHeight: STORY_LINE,
       maxLines: STORY_LINES,
@@ -96,15 +96,14 @@ export function optimistKeepsake({ reveal, day }: OptimistKeepsakeInput): Keepsa
       y: bottom - 110,
       text: reveal.reflection,
       size: 28,
-      ink: 'inkSoft',
-      font: 'serif',
-      italic: true,
+      ink: 'ink-soft',
+      font: 'sans',
       align: 'center',
       maxWidth: TEXT_W,
       lineHeight: 38,
       maxLines: 2,
     },
-    { kind: 'text', x: cx, y: bottom - 26, text: `Source: ${hostname(reveal.source)}`, size: 22, ink: 'inkSoft', font: 'sans', align: 'center' },
+    { kind: 'text', x: cx, y: bottom - 26, text: `Source: ${hostname(reveal.source)}`, size: 22, ink: 'ink-soft', font: 'sans', align: 'center' },
   ]
 
   const alt = `A newspaper clipping of today’s good news, filed under ${reveal.category}. The missing word, ${reveal.word}, is inked into its place by hand. It reads: “${story}” Beneath it: “${reveal.reflection}”`

@@ -1,14 +1,14 @@
 import { THEMES, THEME_TITLE, readingLine, type ChosenValue, type Theme } from '@/lib/games/hard-choices/reading'
-import { KEEPSAKE_WIDTH, MARGIN, framedKeepsake, hashString, keepsakeDay, keepsakeFileName, seededRandom, type KeepsakeOp, type KeepsakePlan } from './plan'
+import { KEEPSAKE_WIDTH, MARGIN, framedKeepsake, hashString, keepsakeDay, keepsakeFileName, mix, seededRandom, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
 
-// The chart is a night sky in both themes, as a star chart is.
-const NIGHT = '#17223b'
-const NIGHT_EDGE = '#24345a'
-const STAR = '#f6d78f'
-const GLOW = '#f6ad55'
-const THREAD = '#c9d3ea'
-const LABEL = '#ece6d6'
-const HEADING = '#aeb9d1'
+// The chart is a night sky in both themes, as a star chart is: the glass inks, the dark palette on either paper.
+const NIGHT: Ink = mix('glass-dusk', 0.18, 'glass-well')
+const NIGHT_EDGE: Ink = mix('glass-dusk', 0.4, 'glass-well')
+const STAR: Ink = 'glass-brass'
+const GLOW: Ink = 'glass-clay'
+const THREAD: Ink = mix('glass-dusk', 0.6, 'glass-ink')
+const LABEL: Ink = 'glass-ink'
+const HEADING: Ink = 'glass-ink-soft'
 
 const SKY = { top: 220, bottom: 960 }
 // A sans letter averages a little over half its size wide
@@ -131,9 +131,8 @@ export function dilemmaKeepsake({ chosen, day }: DilemmaKeepsakeInput): Keepsake
     text: reading,
     size: 40,
     ink: 'ink',
-    font: 'serif',
+    font: 'sans',
     align: 'center',
-    italic: true,
     maxWidth: 860,
     lineHeight: 56,
     maxLines: 3,

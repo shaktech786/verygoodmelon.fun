@@ -10,8 +10,8 @@ import { optimistKeepsake } from '@/lib/keepsake/optimist'
 import { patientOneKeepsake } from '@/lib/keepsake/patient-one'
 import { plainSpeakerKeepsake } from '@/lib/keepsake/plain-speaker'
 import { shapeshifterKeepsake } from '@/lib/keepsake/shapeshifter'
-import { inkColour, type KeepsakeTheme } from '@/lib/keepsake/render'
-import type { KeepsakeOp, KeepsakePlan } from '@/lib/keepsake/plan'
+import { inkColour, lookFor, type KeepsakeLook } from '@/lib/keepsake/render'
+import { PIXEL, type KeepsakeOp, type KeepsakePlan } from '@/lib/keepsake/plan'
 import { WORKS, composeLetter } from '@/lib/games/idea-lab/golds'
 import type { Plant } from '@/lib/games/calm-garden/garden'
 
@@ -70,11 +70,20 @@ function covers(op: ShapeOp, x: number, y: number): boolean {
   }
 }
 
-/** The colour the shapes leave at a point, every one painted in order over the last. */
-function backgroundAt(plan: KeepsakePlan, theme: KeepsakeTheme, x: number, y: number): Rgb {
+/** One channel of the second ink laid over the paper beneath it: multiplied in light, screened in dark, as the press does. */
+function overprint(under: Rgb, ink: Rgb, theme: KeepsakeLook['theme']): Rgb {
+  return under.map((u, i) => (theme === 'dark' ? 255 - ((255 - u) * (255 - ink[i])) / 255 : (u * ink[i]) / 255)) as Rgb
+}
+
+/** The colour the shapes leave at a point, every one painted in order over the last, the second ink a pixel out of register. */
+function backgroundAt(plan: KeepsakePlan, look: KeepsakeLook, x: number, y: number): Rgb {
   let colour: Rgb = [255, 255, 255]
   for (const op of plan.ops) {
-    if (op.kind !== 'text' && covers(op, x, y)) colour = blend(rgb(inkColour(op.ink, theme)), colour, op.alpha ?? 1)
+    if (op.kind === 'text') continue
+    const shift = op.b && !look.plain ? PIXEL : 0
+    if (!covers(op, x - shift, y - shift)) continue
+    const ink = rgb(inkColour(op.ink, look))
+    colour = blend(op.b ? overprint(colour, ink, look.theme) : ink, colour, op.alpha ?? 1)
   }
   return colour
 }
@@ -87,17 +96,17 @@ function samplePoints(op: TextOp): Array<[number, number]> {
   return [0.05, 0.5, 0.95].map((f) => [left + width * f, y])
 }
 
-function lowContrast(plan: KeepsakePlan, theme: KeepsakeTheme): string[] {
+function lowContrast(plan: KeepsakePlan, look: KeepsakeLook, label: string): string[] {
   const failures: string[] = []
   for (const op of plan.ops) {
     if (op.kind !== 'text') continue
     const ratio = Math.min(
       ...samplePoints(op).map(([x, y]) => {
-        const under = backgroundAt(plan, theme, x, y)
-        return contrast(blend(rgb(inkColour(op.ink, theme)), under, op.alpha ?? 1), under)
+        const under = backgroundAt(plan, look, x, y)
+        return contrast(blend(rgb(inkColour(op.ink, look)), under, op.alpha ?? 1), under)
       }),
     )
-    if (ratio < 4.5) failures.push(`${plan.title} (${theme}): “${op.text.slice(0, 30)}” in ${op.ink} at ${ratio.toFixed(2)}:1`)
+    if (ratio < 4.5) failures.push(`${plan.title} (${label}): “${op.text.slice(0, 30)}” in ${JSON.stringify(op.ink)} at ${ratio.toFixed(2)}:1`)
   }
   return failures
 }
@@ -144,10 +153,37 @@ const KEEPSAKES: KeepsakePlan[] = [
   }),
 ]
 
+// The six palettes tokens.css emits: Gentle, Quiet and high contrast, each light and dark.
+const LOOKS = [
+  ['Light', lookFor('light')],
+  ['Dark', lookFor('dark')],
+  ['Light Quiet', lookFor('light', 'quiet')],
+  ['Dark Quiet', lookFor('dark', 'quiet')],
+  ['Light High', lookFor('light', 'gentle', 'high')],
+  ['Dark High', lookFor('dark', 'gentle', 'high')],
+] as const
+
 describe('every keepsake is readable on its own paper', () => {
-  for (const theme of ['light', 'dark'] as const) {
-    it(`keeps every line of words at 4.5:1 or more against what lies beneath it, in the ${theme} theme`, () => {
-      expect(KEEPSAKES.flatMap((plan) => lowContrast(plan, theme))).toEqual([])
+  for (const [label, look] of LOOKS) {
+    it(`keeps every line of words at 4.5:1 or more against what lies beneath it, in the ${label} palette`, () => {
+      expect(KEEPSAKES.flatMap((plan) => lowContrast(plan, look, label))).toEqual([])
     })
   }
+})
+
+describe('every keepsake sets its words plainly', () => {
+  const words = KEEPSAKES.flatMap((plan) => plan.ops.filter((op): op is TextOp => op.kind === 'text'))
+
+  it('has no word in capitals but a single tile letter, and no italics', () => {
+    const shouting = words.filter((op) => /[A-Z]{2,}/.test(op.text) && op.text === op.text.toUpperCase()).map((op) => op.text)
+    expect(shouting).toEqual([])
+    expect(words.some((op) => 'italic' in op)).toBe(false)
+  })
+
+  it('sets short titles in the display face and everything long in the reading face', () => {
+    for (const op of words.filter((w) => w.font === 'display')) {
+      expect(op.size).toBeGreaterThanOrEqual(24)
+      expect(op.text.split(/\s+/).length).toBeLessThanOrEqual(8)
+    }
+  })
 })

@@ -72,10 +72,8 @@ const SHEET = { left: 120, right: KEEPSAKE_WIDTH - 120, top: 222, bottom: 1172 }
 // The greeting sits above the words; the lower corner is kept for the candle
 const WRITING = { left: 196, width: 688, top: 300, bottom: 1030 }
 const GREETING_HEIGHT = 110
-// An average Georgia letter, space included, is a little under half its size wide
-const GLYPH_WIDTH = 0.47
-const WAX = '#efd9c3'
-const WAX_SHADE = '#dcbfa4'
+// An average Atkinson letter, space included, is a little over half its size wide
+const GLYPH_WIDTH = 0.52
 
 /** Smaller writing for longer words, so even the longest fit the sheet. */
 export function bodySize(body: string): number {
@@ -88,14 +86,14 @@ export function bodySize(body: string): number {
 /** A small candle, just put out, with one thread of smoke. */
 function candleMark(x: number, base: number): KeepsakeOp[] {
   return [
-    { kind: 'ellipse', x, y: base, rx: 44, ry: 10, angle: 0, ink: 'line' },
-    { kind: 'rect', x: x - 18, y: base - 72, w: 36, h: 72, ink: WAX },
-    { kind: 'rect', x: x + 6, y: base - 72, w: 12, h: 72, ink: WAX_SHADE },
+    { kind: 'ellipse', x, y: base, rx: 44, ry: 10, angle: 0, ink: 'rule' },
+    { kind: 'rect', x: x - 18, y: base - 72, w: 36, h: 72, ink: 'rind-wash' },
+    { kind: 'rect', x: x + 6, y: base - 72, w: 12, h: 72, ink: 'rule' },
     { kind: 'line', points: [[x, base - 72], [x, base - 88]], ink: 'ink', width: 4 },
     {
       kind: 'line',
       points: [[x, base - 94], [x + 10, base - 116], [x - 6, base - 138], [x + 12, base - 162], [x - 2, base - 186]],
-      ink: 'inkSoft',
+      ink: 'ink-soft',
       width: 5,
       alpha: 0.55,
     },
@@ -124,9 +122,9 @@ export function finalWordKeepsake({ words, prompt, day }: FinalWordKeepsakeInput
   const block = GREETING_HEIGHT + lines * lineHeight
   const top = Math.max(WRITING.top, Math.round((WRITING.top + WRITING.bottom - block) / 2))
   const art: KeepsakeOp[] = [
-    { kind: 'rect', x: SHEET.left + 12, y: SHEET.top + 12, w: SHEET.right - SHEET.left, h: SHEET.bottom - SHEET.top, ink: 'line' },
-    { kind: 'rect', x: SHEET.left, y: SHEET.top, w: SHEET.right - SHEET.left, h: SHEET.bottom - SHEET.top, ink: 'paperDeep' },
-    { kind: 'text', x: WRITING.left, y: top + 50, text: to, size: 50, ink: 'ink', font: 'hand', maxWidth: WRITING.width, maxLines: 1 },
+    { kind: 'rect', x: SHEET.left + 12, y: SHEET.top + 12, w: SHEET.right - SHEET.left, h: SHEET.bottom - SHEET.top, ink: 'rule', b: true },
+    { kind: 'rect', x: SHEET.left, y: SHEET.top, w: SHEET.right - SHEET.left, h: SHEET.bottom - SHEET.top, ink: 'sheet' },
+    { kind: 'text', x: WRITING.left, y: top + 50, text: to, size: 50, ink: 'ink', font: 'display', maxWidth: WRITING.width, maxLines: 1 },
     {
       kind: 'text',
       x: WRITING.left,
@@ -134,7 +132,7 @@ export function finalWordKeepsake({ words, prompt, day }: FinalWordKeepsakeInput
       text: body,
       size,
       ink: 'ink',
-      font: 'serif',
+      font: 'sans',
       maxWidth: WRITING.width,
       lineHeight,
       maxLines: Math.floor((WRITING.bottom - top - GREETING_HEIGHT - size) / lineHeight) + 1,

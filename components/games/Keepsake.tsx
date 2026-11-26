@@ -1,31 +1,13 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { useInks } from '@/lib/design/inks'
 import { PrintTray } from '@/components/seedpress/PrintTray'
 import { Stamp } from '@/components/seedpress/Stamp'
 import { StatusLine } from '@/components/seedpress/StatusLine'
 import type { KeepsakePlan } from '@/lib/keepsake/plan'
-import { renderKeepsake, type KeepsakeTheme } from '@/lib/keepsake/render'
+import { currentKeepsakeLook, loadKeepsakeFonts, renderKeepsake } from '@/lib/keepsake/render'
 import { cn } from '@/lib/utils/cn'
-
-const DARK_QUERY = '(prefers-color-scheme: dark)'
-
-function subscribeTheme(onChange: () => void): () => void {
-  const media = window.matchMedia(DARK_QUERY)
-  media.addEventListener('change', onChange)
-  const observer = new MutationObserver(onChange)
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-  return () => {
-    media.removeEventListener('change', onChange)
-    observer.disconnect()
-  }
-}
-
-function themeSnapshot(): KeepsakeTheme {
-  const chosen = document.documentElement.getAttribute('data-theme')
-  if (chosen === 'dark' || chosen === 'light') return chosen
-  return window.matchMedia(DARK_QUERY).matches ? 'dark' : 'light'
-}
 
 const noSubscription = () => () => {}
 
@@ -122,11 +104,11 @@ function KeepsakeActions({ plan, picture, saveLabel, className }: KeepsakeAction
   )
 }
 
-/** Draws a plan onto a canvas that is never shown, in the theme the page is in now. */
+/** Draws a plan onto a canvas that is never shown, in the look the page has now. */
 async function offscreenPicture(plan: KeepsakePlan): Promise<Blob | null> {
-  await document.fonts?.ready.catch(() => {})
+  await loadKeepsakeFonts()
   const canvas = document.createElement('canvas')
-  renderKeepsake(canvas, plan, themeSnapshot())
+  renderKeepsake(canvas, plan, currentKeepsakeLook())
   return canvasBlob(canvas)
 }
 
@@ -153,20 +135,21 @@ interface KeepsakeProps {
 export function Keepsake({ plan, label = 'A keepsake of this visit', hideLabel = false, className }: KeepsakeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const descriptionId = useId()
-  const theme = useSyncExternalStore(subscribeTheme, themeSnapshot, () => 'light' as const)
+  // The palette is read only to redraw when the page's theme, sense or contrast changes
+  const inks = useInks()
 
   useEffect(() => {
     let current = true
     const draw = () => {
-      if (current && canvasRef.current) renderKeepsake(canvasRef.current, plan, theme)
+      if (current && canvasRef.current) renderKeepsake(canvasRef.current, plan, currentKeepsakeLook())
     }
     draw()
     // Draw again once the page's fonts have arrived, so the words use the site's typeface.
-    document.fonts?.ready.then(draw).catch(() => {})
+    loadKeepsakeFonts().then(draw)
     return () => {
       current = false
     }
-  }, [plan, theme])
+  }, [plan, inks])
 
   const picture = async () => (canvasRef.current ? canvasBlob(canvasRef.current) : null)
 

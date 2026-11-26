@@ -42,12 +42,12 @@ describe('patientOneKeepsake', () => {
     const night = patientOneKeepsake({ record: record({ id: 'reflect', at: new Date(2026, 10, 21, 22).toISOString() }) })
     expect(morning.alt).toMatch(/morning sky/)
     expect(night.alt).toMatch(/night sky/)
-    expect(morning.ops.some((op) => op.kind === 'disc' && op.ink === 'gold')).toBe(true)
-    expect(night.ops.some((op) => op.kind === 'disc' && op.ink === 'gold')).toBe(false)
+    expect(morning.ops.some((op) => op.kind === 'disc' && op.ink === 'glass-brass')).toBe(true)
+    expect(night.ops.some((op) => op.kind === 'disc' && op.ink === 'glass-brass')).toBe(false)
   })
 
   it('grows one sprout for each good thing written, and one when none were', () => {
-    const sprouts = (plan: Plan) => plan.ops.filter((op) => op.kind === 'ellipse' && op.ink === 'rindLight').length / 2
+    const sprouts = (plan: Plan) => plan.ops.filter((op) => op.kind === 'ellipse' && op.ink === 'moss').length / 2
     expect(sprouts(patientOneKeepsake({ record: record({ id: 'appreciate', things: ['Rain', 'Tea', 'Socks'] }) }))).toBe(3)
     expect(sprouts(patientOneKeepsake({ record: record({ id: 'appreciate', things: ['Rain'] }) }))).toBe(1)
     expect(sprouts(patientOneKeepsake({ record: record({ id: 'appreciate' }) }))).toBe(1)
@@ -58,11 +58,11 @@ describe('patientOneKeepsake', () => {
     expect(plan.alt).toMatch(/^An open eye/)
   })
 
-  it('sets the three things in a quiet serif, in the order they were written', () => {
+  it('sets the three things in the reading face, in the order they were written', () => {
     const plan = patientOneKeepsake({ record: record({ id: 'appreciate', things: ['Morning light', 'My sister', 'Warm socks'] }) })
-    const serif = plan.ops.flatMap((op) => (op.kind === 'text' && op.font === 'serif' ? [op.text] : []))
-    expect(serif).toEqual(expect.arrayContaining(['Morning light', 'My sister', 'Warm socks']))
-    expect(serif.indexOf('Morning light')).toBeLessThan(serif.indexOf('Warm socks'))
+    const sans = plan.ops.flatMap((op) => (op.kind === 'text' && op.font === 'sans' ? [op.text] : []))
+    expect(sans).toEqual(expect.arrayContaining(['Morning light', 'My sister', 'Warm socks']))
+    expect(sans.indexOf('Morning light')).toBeLessThan(sans.indexOf('Warm socks'))
     expect(plan.alt).toContain('Morning light')
     expect(plan.text).toContain('Warm socks')
   })

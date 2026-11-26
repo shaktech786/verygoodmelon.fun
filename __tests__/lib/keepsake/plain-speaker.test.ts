@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { lineSize, plainSpeakerKeepsake } from '@/lib/keepsake/plain-speaker'
-import type { KeepsakeOp } from '@/lib/keepsake/plan'
+import { SEED, type KeepsakeOp } from '@/lib/keepsake/plan'
 
 const day = new Date(2026, 10, 21)
 const LINE = 'I have grown into this role.'
@@ -14,12 +14,12 @@ describe('plainSpeakerKeepsake', () => {
     const bar = plan.ops.find((op) => op.kind === 'rect' && op.ink === 'rind')
     if (bar?.kind !== 'rect') throw new Error('no green bar')
     const words = texts(plan.ops)
-    const label = words.find((op) => op.text === 'BEGIN WITH')
+    const label = words.find((op) => op.text === 'Begin with')
     const opening = words.find((op) => op.text === `“${BEGIN}”`)
     for (const op of [label, opening]) {
       expect(op?.y).toBeGreaterThan(bar.y)
       expect(op?.y).toBeLessThan(bar.y + bar.h)
-      expect(op?.ink).toBe('onRind')
+      expect(op?.ink).toBe('sheet')
     }
   })
 
@@ -35,8 +35,8 @@ describe('plainSpeakerKeepsake', () => {
   it('with no separate first sentence, the bar simply names the card', () => {
     const only = plainSpeakerKeepsake({ line: LINE, begin: null, day })
     const words = texts(only.ops).map((op) => op.text)
-    expect(words).toContain('ONE LINE TO CARRY IN')
-    expect(words).not.toContain('BEGIN WITH')
+    expect(words).toContain('One line to carry in')
+    expect(words).not.toContain('Begin with')
     expect(only.text.startsWith(LINE)).toBe(true)
     expect(only.alt).toContain(LINE)
   })
@@ -50,14 +50,14 @@ describe('plainSpeakerKeepsake', () => {
   it('draws the little melon and a door left ajar at the foot of the card', () => {
     // One slice is the envoy; the other is the site's signature at the foot of every keepsake
     expect(plan.ops.filter((op) => op.kind === 'poly' && op.ink === 'flesh')).toHaveLength(2)
-    expect(plan.ops.some((op) => op.kind === 'rect' && op.ink === 'gold')).toBe(true)
+    expect(plan.ops.some((op) => op.kind === 'rect' && op.ink === 'brass')).toBe(true)
   })
 
   it('gives the little melon a kind face: upright eyes and a smile whose corners lift', () => {
-    const eyes = plan.ops.filter((op) => op.kind === 'rect' && op.ink === 'seed')
+    const eyes = plan.ops.filter((op) => op.kind === 'rect' && op.ink === SEED)
     expect(eyes).toHaveLength(2)
     for (const eye of eyes) if (eye.kind === 'rect') expect(eye.h).toBeGreaterThan(eye.w)
-    const smile = plan.ops.find((op) => op.kind === 'line' && op.ink === 'seed')
+    const smile = plan.ops.find((op) => op.kind === 'line' && op.ink === SEED)
     if (smile?.kind !== 'line') throw new Error('no smile')
     const ys = smile.points.map(([, y]) => y)
     expect(Math.max(...ys.slice(1, -1))).toBeGreaterThan(Math.max(ys[0], ys[ys.length - 1]))

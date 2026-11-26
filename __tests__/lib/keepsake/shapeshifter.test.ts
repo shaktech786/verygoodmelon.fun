@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { MECHANIC_CATEGORIES, type PathPoint } from '@/app/games/the-mutation/engine/types'
 import { MAX_ZOOM, RULE_LOOK, dashed, displayName, fieldBox, framePath, pathSegments, ruleLook, shapeshifterKeepsake } from '@/lib/keepsake/shapeshifter'
 import type { KeepsakeOp } from '@/lib/keepsake/plan'
+import { inkColour, lookFor } from '@/lib/keepsake/render'
 
 const day = new Date(2026, 10, 21)
 const RULES = [
@@ -28,17 +29,20 @@ const strokes = (ops: KeepsakeOp[], colour: string) => lines(ops).filter((l) => 
 describe('shapeshifterKeepsake', () => {
   const plan = shapeshifterKeepsake({ path: PATH, rules: RULES, field: { w: 640, h: 480 }, name: 'WANDERING GEMS & RHYTHMS', day })
 
-  it('gives every kind of rule its own colour, shape and line pattern, and no two colours that blur together', () => {
+  it('gives every kind of rule its own colour, shape and line pattern, and no two colours that blur together, with the line pattern still telling Quiet apart', () => {
     const looks = MECHANIC_CATEGORIES.map((c) => RULE_LOOK[c])
     expect(new Set(looks.map((l) => l.colour)).size).toBe(looks.length)
     expect(new Set(looks.map((l) => l.shape)).size).toBe(looks.length)
     expect(new Set(looks.map((l) => l.dash.join(','))).size).toBe(looks.length)
     const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
-    for (const a of looks) {
-      for (const b of looks) {
-        if (a === b) continue
-        const [x, y] = [rgb(a.colour), rgb(b.colour)]
-        expect(Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2])).toBeGreaterThan(60)
+    for (const [theme, sense, contrast] of [['light', 'gentle', 'normal'], ['dark', 'gentle', 'normal'], ['light', 'quiet', 'normal'], ['dark', 'quiet', 'normal'], ['light', 'gentle', 'high'], ['dark', 'gentle', 'high']] as const) {
+      const look = lookFor(theme, sense, contrast)
+      for (const a of looks) {
+        for (const b of looks) {
+          if (a === b) continue
+          const [x, y] = [rgb(inkColour(a.colour, look)), rgb(inkColour(b.colour, look))]
+          expect(Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]), `${a.colourName} and ${b.colourName} in ${theme} ${sense} ${contrast}`).toBeGreaterThan(sense === 'quiet' ? 25 : 40)
+        }
       }
     }
   })
@@ -75,7 +79,7 @@ describe('shapeshifterKeepsake', () => {
     const phone = shapeshifterKeepsake({ path: PATH, rules: RULES, field: { w: 480, h: 720 }, name: 'x', day })
     expect(phone.height).toBeGreaterThan(plan.height)
     // The legend sits below the taller field, never over it
-    const legend = texts(phone.ops).find((op) => op.text === RULES[0].title)
+    const legend = texts(phone.ops).find((op) => op.text === displayName(RULES[0].title))
     expect(legend?.y).toBeGreaterThan(tall.top + tall.h)
   })
 
@@ -91,7 +95,7 @@ describe('shapeshifterKeepsake', () => {
   })
 
   it('sets the legend large enough to read on a phone', () => {
-    const legend = texts(plan.ops).filter((op) => RULES.some((r) => r.title === op.text))
+    const legend = texts(plan.ops).filter((op) => RULES.some((r) => displayName(r.title) === op.text))
     for (const op of legend) expect(op.size).toBeGreaterThanOrEqual(32)
   })
 
@@ -134,7 +138,7 @@ describe('shapeshifterKeepsake', () => {
 
   it('has a legend naming every rule in the order it arrived, beside its shape', () => {
     const words = texts(plan.ops).map((op) => op.text)
-    const legend = RULES.map((r) => words.indexOf(r.title))
+    const legend = RULES.map((r) => words.indexOf(displayName(r.title)))
     expect(legend.every((i) => i >= 0)).toBe(true)
     expect([...legend].sort((a, b) => a - b)).toEqual(legend)
   })
@@ -148,7 +152,7 @@ describe('shapeshifterKeepsake', () => {
     expect(plan.alt).toContain('IT CAN MOVE (blue circle), then BREATHING GEMS (gold star)')
     expect(plan.alt).toContain('THE BLOOM (pink flower)')
     expect(plan.text).toContain('Wandering Gems & Rhythms')
-    expect(plan.text).toContain('· RHYTHM (orange square)')
+    expect(plan.text).toContain('· RHYTHM (cream square)')
   })
 
   it('shows no score, tally or time anywhere', () => {

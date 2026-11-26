@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { VIEW, gardenerKeepsake } from '@/lib/keepsake/gardener'
+import { luminance } from '@/lib/design/color'
+import { inkColour, lookFor } from '@/lib/keepsake/render'
 import type { KeepsakeOp } from '@/lib/keepsake/plan'
 import type { Plant, PlantType } from '@/lib/games/calm-garden/garden'
-import { petalColour } from '@/lib/games/calm-garden/colours'
 
 const day = new Date(2026, 10, 21, 13)
 const LINE = 'An autumn garden: two flowers and a willow. Two butterflies came while you sat. You planted all of it today.'
@@ -17,9 +18,9 @@ describe('gardenerKeepsake', () => {
   it('is a postcard of this garden: its season stamped on, its line written beneath the picture', () => {
     const plan = gardenerKeepsake(base)
     const words = texts(plan.ops)
-    expect(words.some((op) => op.text === 'AUTUMN')).toBe(true)
+    expect(words.some((op) => op.text === 'Autumn')).toBe(true)
     const line = words.find((op) => op.text === LINE)
-    expect(line?.font).toBe('hand')
+    expect(line?.font).toBe('sans')
     expect(line?.y).toBeGreaterThan(VIEW.top + VIEW.height)
     expect(plan.fileName).toBe('the-gardener-2026-11-21.png')
     expect(plan.text).toContain(LINE)
@@ -37,7 +38,7 @@ describe('gardenerKeepsake', () => {
   it('takes its light from the hour: a night postcard has a dark sky and fireflies', () => {
     const night = gardenerKeepsake({ ...base, timeOfDay: 'night', visitorKind: 'firefly' })
     const firstSky = night.ops.find((op) => op.kind === 'rect' && op.y === VIEW.top && op.x === VIEW.left)
-    expect(firstSky?.kind === 'rect' && firstSky.ink).toBe('#10112c')
+    expect(firstSky?.kind === 'rect' && luminance(inkColour(firstSky.ink, lookFor('light')))).toBeLessThan(0.02)
     expect(night.alt).toMatch(/autumn garden in moonlight: two poppies and a willow, with two fireflies among the plants/)
   })
 
@@ -54,8 +55,7 @@ describe('gardenerKeepsake', () => {
   it('draws each flower in the colour and at the place the garden gave it', () => {
     const pink = { ...plant('p', 'poppy', 0.25, 0.7), colorSeed: 0.95 }
     const plan = gardenerKeepsake({ ...base, plants: [pink] })
-    const head = plan.ops.find((op) => op.kind === 'disc' && op.ink === petalColour(0.95))
-    expect(petalColour(0.95)).toBe('#f9c6d3')
+    const head = plan.ops.find((op) => op.kind === 'disc' && op.ink === 'glass-seed')
     expect(head?.kind === 'disc' && head.x).toBe(VIEW.left + 0.25 * VIEW.width)
   })
 })

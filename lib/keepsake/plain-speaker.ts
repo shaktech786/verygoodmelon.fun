@@ -1,4 +1,4 @@
-import { KEEPSAKE_WIDTH, framedKeepsake, keepsakeDay, keepsakeFileName, semicircle, type KeepsakeOp, type KeepsakePlan } from './plan'
+import { KEEPSAKE_WIDTH, framedKeepsake, keepsakeDay, keepsakeFileName, INNER_RIND, SEED, semicircle, type KeepsakeOp, type KeepsakePlan } from './plan'
 
 const CARD = { left: 132, right: KEEPSAKE_WIDTH - 132, top: 236, bottom: 1150 }
 const CARD_W = CARD.right - CARD.left
@@ -18,7 +18,7 @@ export interface PlainSpeakerKeepsakeInput {
 
 /** Roughly how many lines a text wraps to: a character is about half as wide as the type is tall. */
 function estimatedLines(text: string, size: number, width: number): number {
-  return Math.max(1, Math.ceil((text.length * size * 0.5) / width))
+  return Math.max(1, Math.ceil((text.length * size * 0.55) / width))
 }
 
 /** The largest calm size at which the line still fits the card. */
@@ -39,26 +39,26 @@ function envoyAndDoor(): KeepsakeOp[] {
   const doorX = CARD.right - 190
   const doorTop = floor - 118
   return [
-    { kind: 'rect', x: CARD.left + 60, y: floor, w: CARD_W - 120, h: 6, ink: 'line' },
+    { kind: 'rect', x: CARD.left + 60, y: floor, w: CARD_W - 120, h: 6, ink: 'rule' },
     { kind: 'rect', x: melonX - 22, y: floor - 42, w: 8, h: 42, ink: 'ink' },
     { kind: 'rect', x: melonX + 14, y: floor - 42, w: 8, h: 42, ink: 'ink' },
     { kind: 'poly', points: semicircle(melonX, MELON_TOP, 60), ink: 'rind' },
-    { kind: 'poly', points: semicircle(melonX, MELON_TOP, 52), ink: 'rindLight' },
+    { kind: 'poly', points: semicircle(melonX, MELON_TOP, 52), ink: INNER_RIND },
     { kind: 'poly', points: semicircle(melonX, MELON_TOP, 44), ink: 'flesh' },
     // A kind face, as on the page: two upright eyes and a small smile
-    { kind: 'rect', x: melonX - 20, y: MELON_TOP + 8, w: 8, h: 14, ink: 'seed' },
-    { kind: 'rect', x: melonX + 12, y: MELON_TOP + 8, w: 8, h: 14, ink: 'seed' },
-    { kind: 'line', points: SMILE.map(([dx, dy]) => [melonX + dx, MELON_TOP + dy] as const), ink: 'seed', width: 6 },
-    { kind: 'rect', x: melonX + 56, y: MELON_TOP + 6, w: 36, h: 28, ink: 'paper' },
-    { kind: 'rect', x: melonX + 63, y: MELON_TOP + 14, w: 22, h: 4, ink: 'inkSoft' },
-    { kind: 'rect', x: melonX + 63, y: MELON_TOP + 23, w: 14, h: 4, ink: 'inkSoft' },
+    { kind: 'rect', x: melonX - 20, y: MELON_TOP + 8, w: 8, h: 14, ink: SEED },
+    { kind: 'rect', x: melonX + 12, y: MELON_TOP + 8, w: 8, h: 14, ink: SEED },
+    { kind: 'line', points: SMILE.map(([dx, dy]) => [melonX + dx, MELON_TOP + dy] as const), ink: SEED, width: 6 },
+    { kind: 'rect', x: melonX + 56, y: MELON_TOP + 6, w: 36, h: 28, ink: 'sheet' },
+    { kind: 'rect', x: melonX + 63, y: MELON_TOP + 14, w: 22, h: 4, ink: 'ink-soft' },
+    { kind: 'rect', x: melonX + 63, y: MELON_TOP + 23, w: 14, h: 4, ink: 'ink-soft' },
     // A door left just ajar, warm light at the gap.
     { kind: 'rect', x: doorX - 8, y: doorTop - 8, w: 92, h: 126, ink: 'rind' },
-    { kind: 'rect', x: doorX, y: doorTop, w: 76, h: 118, ink: 'gold' },
+    { kind: 'rect', x: doorX, y: doorTop, w: 76, h: 118, ink: 'brass', b: true },
     { kind: 'rect', x: doorX, y: doorTop, w: 62, h: 118, ink: 'rind' },
-    { kind: 'rect', x: doorX + 6, y: doorTop + 8, w: 50, h: 102, ink: 'rindLight', alpha: 0.45 },
-    { kind: 'rect', x: doorX + 50, y: doorTop + 58, w: 6, h: 10, ink: 'paper' },
-    { kind: 'poly', points: [[doorX + 62, floor + 6], [doorX + 76, floor + 6], [doorX + 96, floor + 30], [doorX + 66, floor + 30]], ink: 'gold', alpha: 0.4 },
+    { kind: 'rect', x: doorX + 6, y: doorTop + 8, w: 50, h: 102, ink: 'rind-wash', alpha: 0.45 },
+    { kind: 'rect', x: doorX + 50, y: doorTop + 58, w: 6, h: 10, ink: 'sheet' },
+    { kind: 'poly', points: [[doorX + 62, floor + 6], [doorX + 76, floor + 6], [doorX + 96, floor + 30], [doorX + 66, floor + 30]], ink: 'brass', alpha: 0.4, b: true },
   ]
 }
 
@@ -71,17 +71,17 @@ export function plainSpeakerKeepsake({ line, begin, day }: PlainSpeakerKeepsakeI
   const bandBottom = CARD.top + bandH
 
   const art: KeepsakeOp[] = [
-    { kind: 'rect', x: CARD.left + 14, y: CARD.top + 14, w: CARD_W, h: CARD.bottom - CARD.top, ink: 'line' },
-    { kind: 'rect', x: CARD.left, y: CARD.top, w: CARD_W, h: CARD.bottom - CARD.top, ink: 'paperDeep' },
+    { kind: 'rect', x: CARD.left + 14, y: CARD.top + 14, w: CARD_W, h: CARD.bottom - CARD.top, ink: 'rule', b: true },
+    { kind: 'rect', x: CARD.left, y: CARD.top, w: CARD_W, h: CARD.bottom - CARD.top, ink: 'sheet' },
     { kind: 'rect', x: CARD.left, y: CARD.top, w: CARD_W, h: bandH, ink: 'rind' },
-    { kind: 'rect', x: CARD.left, y: bandBottom, w: CARD_W, h: BAND_STRIPE, ink: 'rindLight' },
+    { kind: 'rect', x: CARD.left, y: bandBottom, w: CARD_W, h: BAND_STRIPE, ink: INNER_RIND },
     {
       kind: 'text',
       x: cx,
       y: CARD.top + 56,
-      text: begin ? 'BEGIN WITH' : 'ONE LINE TO CARRY IN',
-      size: 24,
-      ink: 'onRind',
+      text: begin ? 'Begin with' : 'One line to carry in',
+      size: 28,
+      ink: 'sheet',
       font: 'sans',
       align: 'center',
       weight: 700,
@@ -94,9 +94,8 @@ export function plainSpeakerKeepsake({ line, begin, day }: PlainSpeakerKeepsakeI
       y: CARD.top + 112,
       text: `“${begin}”`,
       size: beginSize,
-      ink: 'onRind',
-      font: 'serif',
-      italic: true,
+      ink: 'sheet',
+      font: 'sans',
       align: 'center',
       maxWidth: TEXT_W,
       lineHeight: 48,

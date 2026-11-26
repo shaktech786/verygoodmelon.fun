@@ -1,38 +1,46 @@
+import type { ColorRole } from '@/lib/design/tokens'
+
 /**
  * A keepsake is a small picture of one visit, described as a list of drawing steps so the
  * picture can be worked out (and tested) without a canvas. Shapes are drawn onto a coarse
- * grid and scaled up, which gives every keepsake the site's soft pixel look; words are drawn
+ * grid and scaled up, which gives every keepsake the site's printed-pixel look; words are drawn
  * afterwards at full resolution so they stay easy to read.
  */
 
-/** Colours that follow the light or dark theme. A `#rrggbb` value stays the same in both. */
-export type Ink =
-  | 'paper'
-  | 'paperDeep'
-  | 'ink'
-  | 'inkSoft'
-  | 'line'
-  | 'rind'
-  | 'rindLight'
-  /** Green for words on the paper, light enough to read on dark paper. */
-  | 'rindInk'
-  /** Words on a rind-green band, the same cream in both themes. */
-  | 'onRind'
-  | 'flesh'
-  | 'seed'
-  | 'gold'
-  | 'voiceA'
-  | 'voiceB'
-  | `#${string}`
+/**
+ * A colour, named for a Seedpress role so it follows the theme, Quiet and high contrast.
+ * `glass-` roles come from the dark palette in every theme, for a scene that stays lit the same on either paper
+ * (a night sky, an arcade field), as the arcade screen does. A mix blends two inks, the first at the given weight.
+ */
+export type Ink = ColorRole | `glass-${ColorRole}` | readonly [Ink, number, Ink]
 
-export type Font = 'sans' | 'serif' | 'hand'
+export function mix(a: Ink, weight: number, b: Ink): Ink {
+  return [a, weight, b]
+}
+
+/** A colour along a run of inks, 0 at the first and 1 at the last, so a sky can be banded without a gradient. */
+export function ramp(stops: readonly Ink[], t: number): Ink {
+  const at = Math.min(Math.max(t, 0), 1) * (stops.length - 1)
+  const from = Math.min(Math.floor(at), stops.length - 2)
+  return mix(stops[from + 1], at - from, stops[from])
+}
+
+/** Atkinson Hyperlegible Next for words, Bricolage Grotesque for short titles of 24 units and up. */
+export type Font = 'sans' | 'display'
+
+interface Shape {
+  ink: Ink
+  alpha?: number
+  /** Printed in the second ink: overprinted on the first, a pixel out of register. */
+  b?: boolean
+}
 
 export type KeepsakeOp =
-  | { kind: 'rect'; x: number; y: number; w: number; h: number; ink: Ink; alpha?: number }
-  | { kind: 'disc'; x: number; y: number; r: number; ink: Ink; alpha?: number }
-  | { kind: 'ellipse'; x: number; y: number; rx: number; ry: number; angle: number; ink: Ink; alpha?: number }
-  | { kind: 'poly'; points: ReadonlyArray<readonly [number, number]>; ink: Ink; alpha?: number }
-  | { kind: 'line'; points: ReadonlyArray<readonly [number, number]>; ink: Ink; width: number; alpha?: number }
+  | (Shape & { kind: 'rect'; x: number; y: number; w: number; h: number })
+  | (Shape & { kind: 'disc'; x: number; y: number; r: number })
+  | (Shape & { kind: 'ellipse'; x: number; y: number; rx: number; ry: number; angle: number })
+  | (Shape & { kind: 'poly'; points: ReadonlyArray<readonly [number, number]> })
+  | (Shape & { kind: 'line'; points: ReadonlyArray<readonly [number, number]>; width: number })
   | {
       kind: 'text'
       x: number
@@ -42,7 +50,6 @@ export type KeepsakeOp =
       ink: Ink
       font: Font
       align?: 'left' | 'center' | 'right'
-      italic?: boolean
       weight?: 400 | 500 | 600 | 700
       /** Words wrap onto new lines past this width. */
       maxWidth?: number
@@ -86,16 +93,23 @@ export interface FrameOptions {
   height?: number
 }
 
+/** Seeds that read dark on the flesh in every palette: the seed ink pulled toward the darkest ink. */
+export const SEED: Ink = mix('seed', 0.35, 'glass-well')
+
+/** The pale inner rind seen on a cut melon: the rind ink thinned with cream, so it stays pale on either paper. */
+export const INNER_RIND: Ink = mix('rind', 0.3, 'glass-ink')
+
 /** A tiny watermelon slice beside the site's name, the same on every keepsake. */
 function signature(width: number, height: number): KeepsakeOp[] {
   const y = height - MARGIN + 6
   const cx = width / 2 - 150
   return [
     { kind: 'poly', points: semicircle(cx, y - 20, 24), ink: 'rind' },
-    { kind: 'poly', points: semicircle(cx, y - 20, 18), ink: 'flesh' },
-    { kind: 'disc', x: cx - 7, y: y - 10, r: 2.5, ink: 'seed' },
-    { kind: 'disc', x: cx + 7, y: y - 10, r: 2.5, ink: 'seed' },
-    { kind: 'text', x: width / 2 + 18, y, text: SITE_NAME, size: 30, ink: 'inkSoft', font: 'sans', align: 'center', weight: 500 },
+    { kind: 'poly', points: semicircle(cx, y - 20, 18), ink: 'paper' },
+    { kind: 'poly', points: semicircle(cx, y - 20, 18), ink: 'flesh', b: true },
+    { kind: 'disc', x: cx - 7, y: y - 10, r: 2.5, ink: SEED },
+    { kind: 'disc', x: cx + 7, y: y - 10, r: 2.5, ink: SEED },
+    { kind: 'text', x: width / 2 + 18, y, text: SITE_NAME, size: 30, ink: 'ink-soft', font: 'sans', align: 'center', weight: 500 },
   ]
 }
 
@@ -115,15 +129,15 @@ export function framedKeepsake({ title, subtitle, art, alt, text, fileName, heig
   const inset = 36
   const ops: KeepsakeOp[] = [
     { kind: 'rect', x: 0, y: 0, w: width, h: height, ink: 'paper' },
-    { kind: 'rect', x: inset, y: inset, w: width - inset * 2, h: PIXEL, ink: 'line' },
-    { kind: 'rect', x: inset, y: height - inset - PIXEL, w: width - inset * 2, h: PIXEL, ink: 'line' },
-    { kind: 'rect', x: inset, y: inset, w: PIXEL, h: height - inset * 2, ink: 'line' },
-    { kind: 'rect', x: width - inset - PIXEL, y: inset, w: PIXEL, h: height - inset * 2, ink: 'line' },
+    { kind: 'rect', x: inset, y: inset, w: width - inset * 2, h: PIXEL, ink: 'rule' },
+    { kind: 'rect', x: inset, y: height - inset - PIXEL, w: width - inset * 2, h: PIXEL, ink: 'rule' },
+    { kind: 'rect', x: inset, y: inset, w: PIXEL, h: height - inset * 2, ink: 'rule' },
+    { kind: 'rect', x: width - inset - PIXEL, y: inset, w: PIXEL, h: height - inset * 2, ink: 'rule' },
     ...art,
-    { kind: 'text', x: width / 2, y: MARGIN + 40, text: title.toUpperCase(), size: 30, ink: 'inkSoft', font: 'sans', align: 'center', weight: 600 },
+    { kind: 'text', x: width / 2, y: MARGIN + 40, text: title, size: 34, ink: 'ink-soft', font: 'display', align: 'center', weight: 700 },
   ]
   if (subtitle) {
-    ops.push({ kind: 'text', x: width / 2, y: MARGIN + 86, text: subtitle, size: 28, ink: 'inkSoft', font: 'serif', align: 'center', italic: true })
+    ops.push({ kind: 'text', x: width / 2, y: MARGIN + 86, text: subtitle, size: 28, ink: 'ink-soft', font: 'sans', align: 'center' })
   }
   ops.push(...signature(width, height))
   return { title, width, height, ops, alt, text: `${text}\n\n${title} · ${SITE_NAME}`, fileName }

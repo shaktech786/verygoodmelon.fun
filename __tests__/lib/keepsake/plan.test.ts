@@ -1,11 +1,12 @@
 import { framedKeepsake, hashString, keepsakeDay, keepsakeFileName, seededRandom, SITE_NAME, KEEPSAKE_HEIGHT, KEEPSAKE_WIDTH } from '@/lib/keepsake/plan'
-import { inkColour, wrapLines } from '@/lib/keepsake/render'
+import { inkColour, lookFor, wrapLines } from '@/lib/keepsake/render'
+import { PALETTES } from '@/lib/design/tokens'
 
 describe('framedKeepsake: the paper every keepsake is drawn on', () => {
   const plan = framedKeepsake({
     title: 'The Dilemma',
     subtitle: 'Saturday 21 November',
-    art: [{ kind: 'disc', x: 540, y: 600, r: 40, ink: 'gold' }],
+    art: [{ kind: 'disc', x: 540, y: 600, r: 40, ink: 'brass' }],
     alt: 'A single star.',
     text: 'One star tonight.',
     fileName: 'the-dilemma-2026-11-21.png',
@@ -15,12 +16,12 @@ describe('framedKeepsake: the paper every keepsake is drawn on', () => {
     expect(plan.width).toBe(KEEPSAKE_WIDTH)
     expect(plan.height).toBe(KEEPSAKE_HEIGHT)
     expect(plan.ops[0]).toEqual({ kind: 'rect', x: 0, y: 0, w: KEEPSAKE_WIDTH, h: KEEPSAKE_HEIGHT, ink: 'paper' })
-    expect(plan.ops).toContainEqual({ kind: 'disc', x: 540, y: 600, r: 40, ink: 'gold' })
+    expect(plan.ops).toContainEqual({ kind: 'disc', x: 540, y: 600, r: 40, ink: 'brass' })
   })
 
   it('names the game, the day and the site in words on the picture', () => {
     const words = plan.ops.flatMap((op) => (op.kind === 'text' ? [op.text] : []))
-    expect(words).toEqual(['THE DILEMMA', 'Saturday 21 November', SITE_NAME])
+    expect(words).toEqual(['The Dilemma', 'Saturday 21 November', SITE_NAME])
   })
 
   it('signs the copied words with the game and the site', () => {
@@ -63,15 +64,28 @@ describe('drawing helpers', () => {
     expect(wrapLines(measure, 'one two three four\nfive', 90)).toEqual(['one two', 'three', 'four', 'five'])
   })
 
-  it('follows the theme for named inks and keeps a fixed colour as it is', () => {
-    expect(inkColour('paper', 'light')).not.toBe(inkColour('paper', 'dark'))
-    expect(inkColour('#17223b', 'dark')).toBe('#17223b')
+  it('takes every named ink from the Seedpress palette the page is in', () => {
+    expect(inkColour('paper', lookFor('light'))).toBe(PALETTES.light.paper)
+    expect(inkColour('paper', lookFor('dark'))).toBe(PALETTES.dark.paper)
+    expect(inkColour('rind', lookFor('dark', 'quiet'))).toBe(PALETTES.darkQuiet.rind)
+    expect(inkColour('paper', lookFor('light', 'gentle', 'high'))).toBe(PALETTES.lightHigh.paper)
   })
 
-  it('keeps the watermelon one set of colours in both themes', () => {
-    for (const ink of ['rind', 'rindLight', 'flesh', 'seed', 'gold'] as const) {
-      expect(inkColour(ink, 'dark')).toBe(inkColour(ink, 'light'))
-    }
-    expect(inkColour('rind', 'dark')).toBe('#1a4d2e')
+  it('keeps a glass ink on the dark palette whichever paper it is printed on', () => {
+    expect(inkColour('glass-well', lookFor('light'))).toBe(PALETTES.dark.well)
+    expect(inkColour('glass-well', lookFor('dark'))).toBe(PALETTES.dark.well)
+    expect(inkColour('glass-brass', lookFor('light', 'quiet'))).toBe(PALETTES.darkQuiet.brass)
+  })
+
+  it('mixes two inks, the first at the weight given', () => {
+    const look = lookFor('light')
+    expect(inkColour(['ink', 1, 'paper'], look)).toBe(PALETTES.light.ink.toUpperCase())
+    expect(inkColour(['ink', 0.5, 'paper'], look)).not.toBe(inkColour('ink', look))
+  })
+
+  it('prints flat in Quiet and high contrast, and with grain and a second-ink offset otherwise', () => {
+    expect(lookFor('light').plain).toBe(false)
+    expect(lookFor('dark', 'quiet').plain).toBe(true)
+    expect(lookFor('light', 'gentle', 'high').plain).toBe(true)
   })
 })

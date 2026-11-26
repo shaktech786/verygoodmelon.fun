@@ -1,5 +1,5 @@
 import { PATTERN_NAMES, melonSeeds, type Breath, type BreathPatternId } from '@/lib/games/breathing-patterns/melon'
-import { framedKeepsake, keepsakeDay, keepsakeFileName, type KeepsakeOp, type KeepsakePlan } from './plan'
+import { INNER_RIND, SEED, framedKeepsake, keepsakeDay, keepsakeFileName, type KeepsakeOp, type KeepsakePlan } from './plan'
 
 /**
  * The melon a Harmonist session opens into: cut along the shape the breath followed, with
@@ -222,15 +222,15 @@ export function harmonistKeepsake({ breaths, day }: HarmonistKeepsakeInput): Kee
   const art: KeepsakeOp[] = [
     { kind: 'ellipse', x: cx + 16, y: cy + r - 6, rx: r * 0.92, ry: 30, angle: 0, ink: 'ink', alpha: 0.08 },
     { kind: 'disc', x: cx, y: cy, r, ink: 'rind' },
-    ...melon.stripes.map((s): KeepsakeOp => ({ kind: 'ellipse', x: s.x, y: s.y, rx: s.rx, ry: s.ry, angle: 0, ink: 'rindLight', alpha: 0.3 })),
-    { kind: 'poly', points: melon.cut, ink: 'rindLight' },
+    ...melon.stripes.map((s): KeepsakeOp => ({ kind: 'ellipse', x: s.x, y: s.y, rx: s.rx, ry: s.ry, angle: 0, ink: 'rind-wash', alpha: 0.35 })),
+    { kind: 'poly', points: melon.cut, ink: INNER_RIND },
     { kind: 'poly', points: melon.flesh, ink: 'flesh' },
-    ...melon.seeds.map((s): KeepsakeOp => ({ kind: 'ellipse', x: s.x, y: s.y, rx: s.rx, ry: s.ry, angle: s.angle, ink: 'seed' })),
+    ...melon.seeds.map((s): KeepsakeOp => ({ kind: 'ellipse', x: s.x, y: s.y, rx: s.rx, ry: s.ry, angle: s.angle, ink: SEED })),
     // The cut piece lies turned over beside it, its cut face up: rind edge, pale rind, flesh.
     { kind: 'poly', points: restingLid(melon, 18), ink: 'ink', alpha: 0.1 },
     { kind: 'poly', points: restingLid(melon, 8), ink: 'rind' },
     { kind: 'poly', points: restingLid(melon), ink: 'rind' },
-    { kind: 'poly', points: restingLid(melon, 0, band), ink: 'rindLight' },
+    { kind: 'poly', points: restingLid(melon, 0, band), ink: INNER_RIND },
     { kind: 'poly', points: restingLid(melon, 0, melon.flesh), ink: 'flesh' },
     {
       kind: 'text',
@@ -239,14 +239,13 @@ export function harmonistKeepsake({ breaths, day }: HarmonistKeepsakeInput): Kee
       text: lines.opened,
       size: 36,
       ink: 'ink',
-      font: 'serif',
+      font: 'sans',
       align: 'center',
-      italic: true,
       maxWidth: 900,
       lineHeight: 48,
       maxLines: 2,
     },
-    { kind: 'text', x: 540, y: textTop + 94, text: lines.seeds, size: 28, ink: 'inkSoft', font: 'sans', align: 'center', maxWidth: 860, maxLines: 2 },
+    { kind: 'text', x: 540, y: textTop + 94, text: lines.seeds, size: 28, ink: 'ink-soft', font: 'sans', align: 'center', maxWidth: 860, maxLines: 2 },
   ]
 
   const alt = `A watermelon cut open along ${SHAPE_WORDS[melon.shape]}, the cut piece lying turned over beside it, and one seed in the red flesh for every breath, set in a spiral. ${lines.opened} ${lines.seeds}`

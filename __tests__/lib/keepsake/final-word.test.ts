@@ -81,7 +81,7 @@ describe('finalWordKeepsake', () => {
     const drawn = texts(plan.ops)
     expect(drawn).toContain('To Mum,')
     expect(drawn).toContain('You were right about the garden.')
-    expect(drawn).toContain('THE FINAL WORD')
+    expect(drawn).toContain('The Final Word')
   })
 
   it('describes and copies the same words', () => {
@@ -106,7 +106,7 @@ describe('finalWordKeepsake', () => {
   it('writes longer words smaller and limits the lines so they stay on the card', () => {
     expect(bodySize('a'.repeat(50))).toBeGreaterThan(bodySize('a'.repeat(480)))
     const long = finalWordKeepsake({ words: 'word '.repeat(100), prompt: '', day })
-    const body = long.ops.find((op) => op.kind === 'text' && op.font === 'serif' && op.text.startsWith('word'))
+    const body = long.ops.find((op) => op.kind === 'text' && op.font === 'sans' && op.text.startsWith('word'))
     expect(body && body.kind === 'text' && body.maxLines).toBeGreaterThan(8)
   })
 

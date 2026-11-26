@@ -1,4 +1,5 @@
 import { followedPattern, harmonistKeepsake, keepsakeMelon, openedMelon, restingLid } from '@/lib/keepsake/harmonist'
+import { SEED } from '@/lib/keepsake/plan'
 import type { Breath } from '@/lib/games/breathing-patterns/melon'
 
 const DAY = new Date(2026, 10, 21, 10, 5)
@@ -6,7 +7,7 @@ const breaths = (pattern: Breath['pattern'], seconds: number, n: number): Breath
   Array.from({ length: n }, () => ({ pattern, seconds }))
 
 const words = (plan: ReturnType<typeof harmonistKeepsake>) => plan.ops.flatMap((op) => (op.kind === 'text' ? [op.text] : []))
-const seedOps = (plan: ReturnType<typeof harmonistKeepsake>) => plan.ops.filter((op) => op.kind === 'ellipse' && op.ink === 'seed')
+const seedOps = (plan: ReturnType<typeof harmonistKeepsake>) => plan.ops.filter((op) => op.kind === 'ellipse' && op.ink === SEED)
 
 describe('openedMelon: cut along the shape the breath followed', () => {
   it('cuts a square for Box Breathing, a triangle for 4-7-8 and the sigh, a circle for coherent breathing', () => {
@@ -112,6 +113,6 @@ describe('harmonistKeepsake', () => {
     const rind = plan.ops.find((op) => op.kind === 'disc' && op.ink === 'rind')
     if (rind?.kind !== 'disc') throw new Error('no melon')
     expect([rind.x, rind.y, rind.r]).toEqual([...melon.centre, melon.radius])
-    expect(plan.ops.filter((op) => op.kind === 'ellipse' && op.ink === 'seed').map((op) => op.kind === 'ellipse' && op.x)).toEqual(melon.seeds.map((s) => s.x))
+    expect(plan.ops.filter((op) => op.kind === 'ellipse' && op.ink === SEED).map((op) => op.kind === 'ellipse' && op.x)).toEqual(melon.seeds.map((s) => s.x))
   })
 })

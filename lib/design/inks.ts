@@ -57,6 +57,12 @@ function readContrast(root: HTMLElement): InkContrast {
   return contrast === 'high' || contrast === 'extra-high' ? contrast : 'normal'
 }
 
+/** The theme, sense and contrast the page is showing now, for art drawn once outside React (a saved keepsake). */
+export function readInkState(): { theme: InkTheme; sense: Sense; contrast: InkContrast } {
+  const root = document.documentElement
+  return { theme: readTheme(root), sense: readSense(root), contrast: readContrast(root) }
+}
+
 function snapshot(): Inks {
   const root = document.documentElement
   return getInks(readTheme(root), readSense(root), readContrast(root))

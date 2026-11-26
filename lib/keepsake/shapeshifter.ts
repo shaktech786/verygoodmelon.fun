@@ -1,18 +1,19 @@
 import { MECHANIC_OPTIONS, type MechanicCategory, type PathPoint, type Sleeping } from '@/app/games/the-mutation/engine/types'
-import { KEEPSAKE_HEIGHT, KEEPSAKE_WIDTH, MARGIN, framedKeepsake, keepsakeDay, keepsakeFileName, type KeepsakeOp, type KeepsakePlan } from './plan'
+import { KEEPSAKE_HEIGHT, KEEPSAKE_WIDTH, MARGIN, framedKeepsake, keepsakeDay, keepsakeFileName, mix, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
 
-// The field is night-dark in both themes, like the game at dusk, so every rule's colour glows on it.
-const FIELD = '#18202e'
-const FIELD_EDGE = '#2c3850'
-const DOT = '#33405a'
-const START = '#e9edf5'
-const ORB = '#fff4d6'
-const ORB_GLOW = '#ffe9a8'
+// The field is night-dark in both themes, like the arcade screen it comes from, so it takes the glass inks and every
+// rule's colour glows on it.
+const FIELD: Ink = 'glass-well'
+const FIELD_EDGE: Ink = 'glass-rule-strong'
+const DOT: Ink = 'glass-rule'
+const START: Ink = 'glass-ink'
+const ORB: Ink = mix('glass-ink', 0.6, 'glass-brass')
+const ORB_GLOW: Ink = 'glass-brass'
 
 export type MarkShape = 'circle' | 'star' | 'triangle' | 'diamond' | 'square' | 'flower'
 
 interface RuleLook {
-  colour: `#${string}`
+  colour: Ink
   colourName: string
   shape: MarkShape
   /** Lengths of dash and gap along the line, in keepsake units; empty is a solid line. */
@@ -24,12 +25,12 @@ interface RuleLook {
  * and the line's pattern tells the rules apart for anyone who cannot tell the colours apart.
  */
 export const RULE_LOOK: Record<MechanicCategory, RuleLook> = {
-  movement: { colour: '#7cb7ff', colourName: 'blue', shape: 'circle', dash: [] },
-  collectible: { colour: '#f6d27a', colourName: 'gold', shape: 'star', dash: [48, 24] },
-  threat: { colour: '#c3a6ff', colourName: 'violet', shape: 'triangle', dash: [6, 24] },
-  power: { colour: '#5fe0c8', colourName: 'teal', shape: 'diamond', dash: [42, 18, 6, 18] },
-  modifier: { colour: '#ff8a5c', colourName: 'orange', shape: 'square', dash: [18, 18] },
-  climax: { colour: '#f59ac8', colourName: 'pink', shape: 'flower', dash: [42, 14, 6, 14, 6, 14] },
+  movement: { colour: 'glass-dusk', colourName: 'blue', shape: 'circle', dash: [] },
+  collectible: { colour: 'glass-brass', colourName: 'gold', shape: 'star', dash: [48, 24] },
+  threat: { colour: 'glass-flesh', colourName: 'coral', shape: 'triangle', dash: [6, 24] },
+  power: { colour: 'glass-moss', colourName: 'teal', shape: 'diamond', dash: [42, 18, 6, 18] },
+  modifier: { colour: 'glass-ink', colourName: 'cream', shape: 'square', dash: [18, 18] },
+  climax: { colour: 'glass-seed', colourName: 'pink', shape: 'flower', dash: [42, 14, 6, 14, 6, 14] },
 }
 
 type Point = readonly [number, number]
@@ -74,7 +75,7 @@ export function ruleLook(mechanicId: string): RuleLook {
 }
 
 /** A small mark in a rule's shape, centred on (x, y). */
-export function mark(shape: MarkShape, x: number, y: number, r: number, ink: `#${string}`): KeepsakeOp[] {
+export function mark(shape: MarkShape, x: number, y: number, r: number, ink: Ink): KeepsakeOp[] {
   switch (shape) {
     case 'circle':
       return [{ kind: 'disc', x, y, r, ink }]
@@ -265,7 +266,7 @@ export function shapeshifterKeepsake({ path, rules, sleeping = [], field, name, 
       { kind: 'rect', x, y, w: 132, h: 60, ink: FIELD },
       ...mark(look.shape, x + 26, y + 30, 16, look.colour),
       ...dashed([[x + 54, y + 30], [x + 120, y + 30]], look.dash).map((points): KeepsakeOp => ({ kind: 'line', points, ink: look.colour, width: 12 })),
-      { kind: 'text', x: x + 146, y: y + 41, text: rule.title, size: LEGEND_TEXT, ink: 'ink', font: 'sans', weight: 600, maxWidth: columnW - 152, maxLines: 1 },
+      { kind: 'text', x: x + 146, y: y + 41, text: displayName(rule.title), size: LEGEND_TEXT, ink: 'ink', font: 'sans', weight: 600, maxWidth: columnW - 152, maxLines: 1 },
     )
   })
   const height = Math.max(KEEPSAKE_HEIGHT, legendTop + Math.ceil(rules.length / columns) * LEGEND_ROW + 150)

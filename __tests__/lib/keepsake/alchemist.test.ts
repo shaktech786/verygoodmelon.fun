@@ -21,7 +21,7 @@ describe('alchemistKeepsake: the Great Work letter as a sheet to keep', () => {
     expect(positions.every((p) => p >= 0)).toBe(true)
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
     for (const line of letter.lines) expect(shown).toContain(`…${line.meaning}`)
-    expect(plan.ops.filter((op) => op.kind === 'disc' && op.ink === 'gold')).toHaveLength(7)
+    expect(plan.ops.filter((op) => op.kind === 'disc' && op.ink === 'brass')).toHaveLength(7)
   })
 
   it('carries the title and the farewell, and no count of tries', () => {
