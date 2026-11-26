@@ -17,12 +17,12 @@ const SERVER_STATE: SenseState = { sense: DEFAULT_SENSE, reducedMotion: false, m
 let cached: SenseState = SERVER_STATE
 
 function subscribe(onChange: () => void): () => void {
-  const query = window.matchMedia(REDUCED_QUERY)
-  query.addEventListener('change', onChange)
+  const query = typeof window.matchMedia === 'function' ? window.matchMedia(REDUCED_QUERY) : null
+  query?.addEventListener('change', onChange)
   const observer = new MutationObserver(onChange)
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-sense', 'data-reduce-motion'] })
   return () => {
-    query.removeEventListener('change', onChange)
+    query?.removeEventListener('change', onChange)
     observer.disconnect()
   }
 }
@@ -31,7 +31,7 @@ function snapshot(): SenseState {
   const root = document.documentElement
   const attribute = root.getAttribute('data-sense')
   const sense = SENSES.find((s) => s === attribute) ?? DEFAULT_SENSE
-  const reducedMotion = window.matchMedia(REDUCED_QUERY).matches || root.getAttribute('data-reduce-motion') === 'true'
+  const reducedMotion = (typeof window.matchMedia === 'function' && window.matchMedia(REDUCED_QUERY).matches) || root.getAttribute('data-reduce-motion') === 'true'
   const motionScale = sense === 'quiet' || reducedMotion ? 0 : 1
   if (cached.sense !== sense || cached.reducedMotion !== reducedMotion || cached.motionScale !== motionScale) {
     cached = { sense, reducedMotion, motionScale }

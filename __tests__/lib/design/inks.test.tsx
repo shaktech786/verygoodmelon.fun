@@ -16,9 +16,16 @@ describe('getInks', () => {
         contrast !== 'normal' ? (dark ? PALETTES.darkHigh : PALETTES.lightHigh)
         : sense === 'quiet' ? (dark ? PALETTES.darkQuiet : PALETTES.lightQuiet)
         : dark ? PALETTES.dark : PALETTES.light
-      expect(getInks(theme, sense, contrast)).toEqual(expected)
+      // Highest contrast also points every rule at rule-strong, as tokens.css does
+      const withRules = contrast === 'extra-high' ? { ...expected, rule: expected['rule-strong'] } : expected
+      expect(getInks(theme, sense, contrast)).toEqual(withRules)
     },
   )
+
+  it('returns the same object each time, so useSyncExternalStore does not loop', () => {
+    expect(getInks('dark', 'quiet', 'extra-high')).toBe(getInks('dark', 'quiet', 'extra-high'))
+    expect(getInks('light', 'gentle', 'high')).toBe(PALETTES.lightHigh)
+  })
 
   it('keeps the standard inks for Lively: the dial only changes motion and texture there', () => {
     expect(paletteName('light', 'lively', 'normal')).toBe('light')
@@ -86,7 +93,7 @@ describe('useInks', () => {
       html.setAttribute('data-contrast', 'extra-high')
       await Promise.resolve()
     })
-    expect(result.current).toEqual(PALETTES.darkHigh)
+    expect(result.current).toEqual({ ...PALETTES.darkHigh, rule: PALETTES.darkHigh['rule-strong'] })
   })
 })
 

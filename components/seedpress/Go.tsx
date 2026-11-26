@@ -52,7 +52,7 @@ export function Go(props: GoProps) {
       data-go=""
       className={buttonClass('go', className)}
       aria-disabled={unavailable || loading ? true : undefined}
-      aria-describedby={reasonId}
+      aria-describedby={reasonId ?? rest['aria-describedby']}
       aria-busy={loading || undefined}
       onClick={(event) => {
         // Still focusable, but pressing it does nothing, including submitting a form it sits in

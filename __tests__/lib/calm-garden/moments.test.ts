@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { WHOLE, arrivalLine, arrivalTimes, glowAt, growthShown, mixCamera, returnCamera, visitorKindAt } from '@/lib/games/calm-garden/moments'
+import { WHOLE, arrivalLine, arrivalTimes, glowAt, growthShown, mixCamera, returnCamera, sitFraction, visitorKindAt } from '@/lib/games/calm-garden/moments'
 
 const inside = ({ zoom, x, y }: { zoom: number; x: number; y: number }) => {
   const half = 0.5 / zoom
@@ -66,5 +66,22 @@ describe('visitors arriving while you sit', () => {
     expect(visitorKindAt('evening', true, 0.6)).toBe('firefly')
     expect(visitorKindAt('evening', false, 0.6)).toBe('butterfly')
     expect(visitorKindAt('day', true, 1)).toBe('butterfly')
+  })
+})
+
+describe('the visitor kind in an evening sit', () => {
+  it('is the same for the drawn visitors and the words when the light steps at once', () => {
+    for (const at of arrivalTimes(0, 3)) {
+      const drawn = visitorKindAt('evening', true, sitFraction(true, 1))
+      const told = visitorKindAt('evening', true, sitFraction(true, at))
+      expect(told).toBe(drawn)
+      expect(arrivalLine(0, 0, told)).toContain(drawn)
+    }
+    expect(visitorKindAt('evening', true, sitFraction(true, 1))).toBe('firefly')
+  })
+
+  it('still follows the sunset when the light moves slowly', () => {
+    expect(visitorKindAt('evening', true, sitFraction(false, 0.2))).toBe('butterfly')
+    expect(visitorKindAt('evening', true, sitFraction(false, 0.8))).toBe('firefly')
   })
 })

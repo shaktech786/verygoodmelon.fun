@@ -18,9 +18,22 @@ export function paletteName(theme: InkTheme, sense: Sense, contrast: InkContrast
   return dark ? 'dark' : 'light'
 }
 
-/** Every colour role, resolved to a string a canvas or an SVG attribute can take. */
+const highestCopies = new Map<PaletteName, Inks>()
+
+/**
+ * Every colour role, resolved to a string a canvas can take. Highest contrast also sets every rule to
+ * rule-strong (tokens.css), so it gets a copy of the High palette; the copy is made once per palette so
+ * useSyncExternalStore sees a stable reference.
+ */
 export function getInks(theme: InkTheme, sense: Sense, contrast: InkContrast): Inks {
-  return PALETTES[paletteName(theme, sense, contrast)]
+  const name = paletteName(theme, sense, contrast)
+  if (contrast !== 'extra-high') return PALETTES[name]
+  let copy = highestCopies.get(name)
+  if (!copy) {
+    copy = { ...PALETTES[name], rule: PALETTES[name]['rule-strong'] }
+    highestCopies.set(name, copy)
+  }
+  return copy
 }
 
 function systemIsDark(): boolean {
@@ -50,12 +63,12 @@ function snapshot(): Inks {
 }
 
 function subscribe(onChange: () => void): () => void {
-  const query = window.matchMedia(DARK_QUERY)
-  query.addEventListener('change', onChange)
+  const query = typeof window.matchMedia === 'function' ? window.matchMedia(DARK_QUERY) : null
+  query?.addEventListener('change', onChange)
   const observer = new MutationObserver(onChange)
   observer.observe(document.documentElement, { attributes: true, attributeFilter: WATCHED })
   return () => {
-    query.removeEventListener('change', onChange)
+    query?.removeEventListener('change', onChange)
     observer.disconnect()
   }
 }
@@ -64,7 +77,7 @@ const DEFAULT_INKS = getInks('light', 'gentle', 'normal')
 
 /**
  * The inks the page is showing now, for canvas and SVG art that cannot read CSS variables.
- * The server and the first client render use the light Gentle inks; the real ones arrive after hydration.
+ * For canvas only: the server and the first client render use the light Gentle inks, so SVG and CSS must use the CSS variables instead.
  * The palette objects are shared, so an unchanged palette never re-renders.
  */
 export function useInks(): Inks {

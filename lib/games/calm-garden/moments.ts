@@ -83,6 +83,14 @@ export function arrivalTimes(before: number, total: number): number[] {
   return Array.from({ length: extra }, (_, j) => 0.1 + (0.75 * (j + 1)) / (extra + 1))
 }
 
+/**
+ * How far through the sit the light is when something is judged by it. Quiet and reduced motion step straight
+ * to the finished light, so the drawn visitors and the words about them must both read the end of the sit.
+ */
+export function sitFraction(still: boolean, fraction: number): number {
+  return still ? 1 : fraction
+}
+
 /** Fireflies come out at night, and once an evening sit has let the light go. */
 export function visitorKindAt(tod: TimeOfDay, sitting: boolean, light: number): VisitorKind {
   return tod === 'night' || (sitting && tod === 'evening' && light > 0.45) ? 'firefly' : 'butterfly'

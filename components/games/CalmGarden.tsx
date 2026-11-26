@@ -48,6 +48,7 @@ import {
   growthShown,
   mixCamera,
   returnCamera,
+  sitFraction,
   visitorKindAt,
 } from '@/lib/games/calm-garden/moments'
 import { gardenerKeepsake } from '@/lib/keepsake/gardener'
@@ -663,7 +664,7 @@ export default function CalmGarden() {
       const sinceSit = scene.sitting ? perf - scene.sitStart : 0
       // The sky ink cross-fades over 1,600 ms and never flashes; Quiet steps straight to it. The sun then keeps sinking, slowly.
       const light = scene.sitting ? (scene.still ? 1 : ease(sinceSit / LIGHT_FADE_MS)) : 0
-      const drift = scene.sitting ? (scene.still ? 1 : Math.min(1, sinceSit / SIT_MS)) : 0
+      const drift = scene.sitting ? sitFraction(scene.still, Math.min(1, sinceSit / SIT_MS)) : 0
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, w, h)
@@ -893,7 +894,7 @@ export default function CalmGarden() {
                     <span className="text-ink-soft">{still ? 'The light has settled. Stay as long as you like.' : 'The light is changing. Stay as long as you like.'}</span>
                     {arrived > 0 && (
                       <span key={arrived} className="mt-2 block">
-                        {arrivalLine(arrived - 1, arrivals.before, visitorKindAt(clock.tod, true, arrivals.times[arrived - 1]))}
+                        {arrivalLine(arrived - 1, arrivals.before, visitorKindAt(clock.tod, true, sitFraction(still, arrivals.times[arrived - 1])))}
                       </span>
                     )}
                   </>
@@ -943,12 +944,12 @@ export default function CalmGarden() {
         </div>
 
         <div className="mt-3 grid gap-2 border-t border-rule pt-3">
-          {!showClearConfirm ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <QuietButton id="undo-button" onClick={() => history.length > 0 && undo()} aria-disabled={history.length === 0 || undefined} aria-label="Undo last change" className="aria-disabled:cursor-not-allowed aria-disabled:text-ink-soft aria-disabled:no-underline">
-                <Icon name="undo" size={12} className="mr-1 inline" />
-                Undo
-              </QuietButton>
+          <div className="flex flex-wrap items-center gap-2">
+            <QuietButton id="undo-button" onClick={() => history.length > 0 && undo()} aria-disabled={history.length === 0 || undefined} aria-label="Undo last change" className="aria-disabled:cursor-not-allowed aria-disabled:text-ink-soft aria-disabled:no-underline">
+              <Icon name="undo" size={12} className="mr-1 inline" />
+              Undo
+            </QuietButton>
+            {!showClearConfirm && (
               <Stamp
                 ref={clearButtonRef}
                 className="sp-stamp--careful"
@@ -959,8 +960,9 @@ export default function CalmGarden() {
                 <Icon name="trash" size={12} className="mr-1 inline" />
                 Clear
               </Stamp>
-            </div>
-          ) : (
+            )}
+          </div>
+          {showClearConfirm && (
             <InlineConfirm
               question="Clear the whole garden?"
               why="Undo brings it back."
@@ -977,12 +979,12 @@ export default function CalmGarden() {
 
         <div className="mt-3 grid gap-2">
           <div>
-            <Go id="sit-go" onClick={startSit} unavailable={canSit ? undefined : 'Once three things are growing.'}>
+            <Go id="sit-go" onClick={startSit} aria-describedby={canSit ? 'sit-hint' : undefined} unavailable={canSit ? undefined : 'Once three things are growing.'}>
               <Icon name="sunset" size={24} />
               Sit with your garden
             </Go>
           </div>
-          {canSit && <p className="text-small text-ink-soft">Rest a minute while the light changes.</p>}
+          {canSit && <p id="sit-hint" className="text-small text-ink-soft">Rest a minute while the light changes.</p>}
         </div>
 
         <details

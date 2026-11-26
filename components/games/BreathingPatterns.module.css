@@ -73,10 +73,16 @@
   gap: var(--s-3) var(--s-3);
 }
 
+:global(html[data-text-size='large']) .patterns,
+:global(html[data-text-size='larger']) .patterns {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .pattern {
   width: 100%;
   align-items: flex-start;
-  padding: 8px 12px;
+  /* Room on the right for the tick, so a long name never runs under it */
+  padding: 8px 32px 8px 12px;
 }
 
 .pattern:last-child:nth-child(odd) {
@@ -97,6 +103,7 @@
 }
 
 .name {
+  overflow-wrap: break-word;
   font-weight: 700;
   line-height: 1.25;
 }
@@ -191,4 +198,39 @@
   width: 100%;
   max-width: 300px;
   aspect-ratio: 1;
+}
+
+/* The melon in SVG: every colour is a CSS variable, so it is right before hydration and in every palette. */
+.melon {
+  --band: color-mix(in oklab, var(--rind) 24%, var(--sheet));
+  /* Seeds are dark on the flesh: ink in the light palettes, the dark on-flesh ink in the dark ones */
+  --melon-seed: var(--ink);
+}
+
+:where(html[data-theme='dark']) .melon {
+  --band: color-mix(in oklab, var(--rind) 55%, var(--ink));
+  --melon-seed: var(--on-flesh);
+}
+
+@media (prefers-color-scheme: dark) {
+  :where(html[data-theme='auto']) .melon {
+    --band: color-mix(in oklab, var(--rind) 55%, var(--ink));
+    --melon-seed: var(--on-flesh);
+  }
+}
+
+.rind {
+  fill: var(--rind);
+}
+
+.band {
+  fill: var(--band);
+}
+
+.flesh {
+  fill: var(--flesh);
+}
+
+.seed {
+  fill: var(--melon-seed);
 }

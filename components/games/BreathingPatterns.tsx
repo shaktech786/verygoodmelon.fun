@@ -396,12 +396,16 @@ function sidePath(sides: number, k: number, c: number, r: number): string {
   return `M${x1} ${y1} L${x2} ${y2}`
 }
 
-function MelonSvg({ c, r, breaths, melon }: { c: number; r: number; breaths: Breath[]; melon: MelonInks }) {
+// SVG takes its colours from CSS variables, so a dark or high-contrast page never flashes light inks while it hydrates
+const KIND_STROKE: Record<PhaseKind, string> = { in: 'stroke-moss', hold: 'stroke-clay', out: 'stroke-dusk' }
+const KIND_FILL: Record<PhaseKind, string> = { in: 'fill-moss', hold: 'fill-clay', out: 'fill-dusk' }
+
+function MelonSvg({ c, r, breaths }: { c: number; r: number; breaths: Breath[] }) {
   return (
-    <g>
-      <circle cx={c} cy={c} r={r} fill={melon.rind} />
-      <circle cx={c} cy={c} r={r * 0.88} fill={melon.band} />
-      <circle cx={c} cy={c} r={r * 0.8} fill={melon.flesh} />
+    <g className={styles.melon}>
+      <circle cx={c} cy={c} r={r} className={styles.rind} />
+      <circle cx={c} cy={c} r={r * 0.88} className={styles.band} />
+      <circle cx={c} cy={c} r={r * 0.8} className={styles.flesh} />
       {melonSeeds(breaths).map((seed, n) => {
         const x = c + seed.x * r
         const y = c + seed.y * r
@@ -412,7 +416,7 @@ function MelonSvg({ c, r, breaths, melon }: { c: number; r: number; breaths: Bre
             cy={y}
             rx={r * seed.width}
             ry={r * seed.length}
-            fill={melon.seed}
+            className={styles.seed}
             transform={`rotate(${(seed.angle * 180) / Math.PI + 90} ${x} ${y})`}
           />
         )
@@ -545,7 +549,7 @@ function MelonEnding({ breaths, still }: { breaths: Breath[]; still: boolean }) 
   )
 }
 
-function StillGuide({ phases, phaseIndex, breaths, melon }: { phases: BreathingPhase[]; phaseIndex: number; breaths: Breath[]; melon: MelonInks }) {
+function StillGuide({ phases, phaseIndex, breaths }: { phases: BreathingPhase[]; phaseIndex: number; breaths: Breath[] }) {
   const c = 100
   const r = 80
   const sides = phases.length
@@ -557,38 +561,36 @@ function StillGuide({ phases, phaseIndex, breaths, melon }: { phases: BreathingP
         <path
           key={k}
           d={sidePath(sides, k, c, r)}
-          fill="none"
-          stroke={melon[phaseKind(phases, k)]}
+          className={cn('fill-none', KIND_STROKE[phaseKind(phases, k)])}
           strokeWidth={k === phaseIndex ? 6 : 4}
           strokeOpacity={k === phaseIndex ? 1 : 0.4}
           strokeLinecap="round"
         />
       ))}
-      <MelonSvg c={c} r={phases[phaseIndex].fill > 0.5 ? fullMelonRadius(sides, r) : r * 0.22} breaths={breaths} melon={melon} />
-      <circle cx={px} cy={py} r={8} fill={melon[kind]} />
+      <MelonSvg c={c} r={phases[phaseIndex].fill > 0.5 ? fullMelonRadius(sides, r) : r * 0.22} breaths={breaths} />
+      <circle cx={px} cy={py} r={8} className={KIND_FILL[kind]} />
     </svg>
   )
 }
 
-function PatternGlyph({ phases, melon }: { phases: BreathingPhase[]; melon: MelonInks }) {
+function PatternGlyph({ phases }: { phases: BreathingPhase[] }) {
   const sides = phases.length
   return (
     <svg viewBox="0 0 40 40" className={styles.glyph} aria-hidden="true">
       {sides === 0 ? (
-        <circle cx="20" cy="20" r="14" fill="none" stroke={melon.in} strokeWidth="2.5" strokeDasharray="3 5" strokeLinecap="round" />
+        <circle cx="20" cy="20" r="14" className="fill-none stroke-moss" strokeWidth="2.5" strokeDasharray="3 5" strokeLinecap="round" />
       ) : (
         phases.map((_, k) => (
           <path
             key={k}
             d={sidePath(sides, k, 20, 15)}
-            fill="none"
-            stroke={melon[phaseKind(phases, k)]}
+            className={cn('fill-none', KIND_STROKE[phaseKind(phases, k)])}
             strokeWidth="3"
             strokeLinecap="round"
           />
         ))
       )}
-      <circle cx="20" cy="20" r="5" fill={melon.rind} />
+      <circle cx="20" cy="20" r="5" className="fill-rind" />
     </svg>
   )
 }
@@ -1010,7 +1012,7 @@ export default function BreathingPatterns() {
               <MelonEnding breaths={breaths} still={still} />
             ) : (
               <svg viewBox="0 0 200 200" className="mb-4 size-36" role="img" aria-label="A whole melon, waiting">
-                <MelonSvg c={100} r={92} breaths={breaths} melon={melon} />
+                <MelonSvg c={100} r={92} breaths={breaths} />
               </svg>
             )}
             {seeds === 0 && <p className="mb-2 text-body">A pause, however short, is still a pause.</p>}
@@ -1080,11 +1082,11 @@ export default function BreathingPatterns() {
               onClick={isFreeMode && isRunning ? markBreath : undefined}
             >
               {position ? (
-                <StillGuide phases={pattern.phases} phaseIndex={position.phaseIndex} breaths={breaths} melon={melon} />
+                <StillGuide phases={pattern.phases} phaseIndex={position.phaseIndex} breaths={breaths} />
               ) : (
                 <svg viewBox="0 0 200 200" className="size-full" aria-hidden="true">
-                  <circle cx="100" cy="100" r="80" fill="none" stroke={melon.in} strokeWidth="3" strokeDasharray="6 10" strokeLinecap="round" />
-                  <MelonSvg c={100} r={48} breaths={breaths} melon={melon} />
+                  <circle cx="100" cy="100" r="80" className="fill-none stroke-moss" strokeWidth="3" strokeDasharray="6 10" strokeLinecap="round" />
+                  <MelonSvg c={100} r={48} breaths={breaths} />
                 </svg>
               )}
             </div>
@@ -1121,12 +1123,13 @@ export default function BreathingPatterns() {
           {/* No clock: the seeds gather in the melon, and nothing counts the time or hurries the end. */}
           <p className="min-h-6 text-small text-ink-soft">{finishing && !isFreeMode && 'Finishing this breath'}</p>
 
+          {isFreeMode && (
+            <Stamp aria-disabled={!isRunning || undefined} onClick={() => isRunning && markBreath()}>
+              Mark a breath
+            </Stamp>
+          )}
+
           <StickyTray className="flex w-full flex-wrap items-center justify-center gap-3">
-            {isFreeMode && (
-              <Stamp aria-disabled={!isRunning || undefined} onClick={() => isRunning && markBreath()}>
-                Mark a breath
-              </Stamp>
-            )}
             <Stamp icon={sessionState === 'paused' ? 'play' : 'pause'} onClick={sessionState === 'paused' ? resumeSession : pauseSession}>
               {sessionState === 'paused' ? 'Resume' : 'Pause'}
             </Stamp>
@@ -1181,7 +1184,7 @@ export default function BreathingPatterns() {
       {shownMelon && (
         <figure className="flex items-center gap-3">
           <svg viewBox="0 0 200 200" className="size-10 shrink-0 sm:size-12" aria-hidden="true">
-            <MelonSvg c={100} r={96} breaths={shownMelon.breaths} melon={melon} />
+            <MelonSvg c={100} r={96} breaths={shownMelon.breaths} />
           </svg>
           <figcaption className="text-small text-ink-soft">
             Your last melon{shownMelon.at ? `, from ${formatDay(shownMelon.at)}` : ''}: {plural(shownMelon.breaths.length, 'seed')}.
@@ -1212,7 +1215,7 @@ export default function BreathingPatterns() {
                 onClick={() => setSelectedPatternId(p.id)}
                 className={cn(styles.choice, styles.pattern)}
               >
-                <PatternGlyph phases={p.phases} melon={melon} />
+                <PatternGlyph phases={p.phases} />
                 <span className={styles.words}>
                   <span className={styles.name}>{p.name}</span>
                   {p.phases.length > 0 && <span className={styles.timing}>{p.phases.map((ph) => ph.duration).join('-')}s</span>}
