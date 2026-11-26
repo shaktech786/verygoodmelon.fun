@@ -105,24 +105,17 @@
   fill: var(--clay);
 }
 
-/* The second ink of the flame: printed one pixel off register until the words are judged safe, then it settles once. */
+/* The second ink of the flame rests a pixel out of register while the words wait, and settles in one press once they are judged safe. */
 .flameCore {
   fill: var(--flame-core);
+  transition:
+    transform calc(var(--d-flourish) * var(--motion)) var(--e-out),
+    opacity calc(var(--d-flourish) * var(--motion)) var(--e-out);
 }
 
-.printed .flameCore {
-  animation: print-settle calc(var(--d-flourish) * var(--motion)) var(--e-out) both;
-}
-
-@keyframes print-settle {
-  from {
-    opacity: 0.3;
-    transform: translate(2px, -2px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+.unsettled .flameCore {
+  opacity: 0.6;
+  transform: translate(2px, -2px);
 }
 
 .words {

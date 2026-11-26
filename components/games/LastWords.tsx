@@ -78,13 +78,14 @@ function Smoke({ motionScale }: { motionScale: 0 | 1 }) {
 }
 
 /**
- * A small candle with a pixel flame. The flame is printed in two inks and never flickers: once the
- * words are judged safe, its second ink settles into register in one 700 ms press. Nothing marks the
- * moment before that, and in Quiet or reduced motion the flame is simply already settled.
+ * A small candle with a pixel flame. The flame is printed in two inks and never flickers: its second ink rests
+ * a pixel out of register, and once the words are judged safe it settles into register in one 700 ms press.
+ * Judgement is never undone while the words stay, so switching the sense dial later does not replay it.
+ * In Quiet or reduced motion the flame is simply registered.
  */
 function Candle({ lit, judgedSafe, motionScale }: { lit: boolean; judgedSafe: boolean; motionScale: 0 | 1 }) {
   return (
-    <div className={cn(styles.candle, judgedSafe && motionScale === 1 && styles.printed)} aria-hidden="true" data-testid="candle">
+    <div className={cn(styles.candle, !judgedSafe && motionScale === 1 && styles.unsettled)} aria-hidden="true" data-testid="candle">
       <svg viewBox="0 0 32 48" shapeRendering="crispEdges" focusable="false">
         <g className={cn(styles.flame, !lit && styles.flameOut)}>
           <circle cx="16" cy="12" r="14" className={styles.halo} />
@@ -145,6 +146,11 @@ export default function LastWords() {
   const [candleOut, setCandleOut] = useState(false)
   const [prompt, setPrompt] = useState('')
   const { motionScale } = useSense()
+  // Read through a ref, so switching the sense dial later never scrolls the page or moves focus
+  const smooth = useRef(motionScale === 1)
+  useEffect(() => {
+    smooth.current = motionScale === 1
+  }, [motionScale])
   const cardRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const thanksRef = useRef<HTMLHeadingElement>(null)
@@ -164,9 +170,9 @@ export default function LastWords() {
   // The smoke rises at the top of the card, so the card comes into view as the candle goes out
   useEffect(() => {
     if (!candleOut) return
-    cardRef.current?.scrollIntoView({ block: 'start', behavior: motionScale === 0 ? 'auto' : 'smooth' })
+    cardRef.current?.scrollIntoView({ block: 'start', behavior: smooth.current ? 'smooth' : 'auto' })
     goodnightRef.current?.focus({ preventScroll: true })
-  }, [candleOut, motionScale])
+  }, [candleOut])
 
   const writeAnother = () => {
     returningToWrite.current = true
