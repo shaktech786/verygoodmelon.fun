@@ -15,7 +15,7 @@ export type AvatarProviderType = 'talkinghead' | 'simli' | 'static'
  * The parent (TimelessMinds) passes these regardless of which provider is active.
  */
 export interface AvatarComponentProps {
-  /** Provider-specific avatar identifier (face UUID, GLB URL, or PNG path) */
+  /** Provider-specific avatar identifier (face UUID, GLB URL, or the thinker id for the static portrait) */
   avatarId: string
   /** Whether the avatar is actively rendering */
   isActive: boolean
@@ -31,6 +31,8 @@ export interface AvatarComponentProps {
   onError?: (error: string) => void
   /** CSS class for the container */
   className?: string
+  /** The static portrait's second ink has settled into register (the first reply has arrived). */
+  settled?: boolean
 }
 
 /**

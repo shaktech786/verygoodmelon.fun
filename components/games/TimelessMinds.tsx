@@ -5,10 +5,14 @@ import { pickRandomThinker, thinkers as allThinkers, getThinkerById } from '@/li
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
 import ThinkerPhoneBook from './ThinkerPhoneBook'
 import RequestThinkerModal from './RequestThinkerModal'
-import { Button } from '@/components/ui/Button'
 import { Go } from '@/components/seedpress/Go'
 import { NoteDialog } from '@/components/seedpress/NoteDialog'
 import { Stamp } from '@/components/seedpress/Stamp'
+import { QuietButton } from '@/components/seedpress/QuietButton'
+import { Loading } from '@/components/seedpress/Loading'
+import { WritingSlip } from '@/components/seedpress/WritingSlip'
+import { cn } from '@/lib/utils/cn'
+import styles from './TimelessMinds.module.css'
 import { synthesizeSpeech, stopSpeech, isSpeechSynthesisSupported } from '@/lib/games/timeless-minds/speech-synthesis'
 import { SpeechRecognitionManager } from '@/lib/games/timeless-minds/speech-recognition'
 import type { AvatarEmotion } from '@/lib/games/timeless-minds/avatar-provider'
@@ -21,7 +25,7 @@ import TimelessMindsCarePanel from './TimelessMindsCarePanel'
 import { useCareMode } from './CareMode'
 import { MAX_MESSAGE_LENGTH, farewellFallback } from '@/lib/games/timeless-minds/conversation'
 import { plainText } from '@/lib/games/timeless-minds/plain-text'
-import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { useSense } from '@/lib/design/sense'
 import { isKept, keepLine, loadKeptLines, removeLine, saveKeptLines, type KeptLine } from '@/lib/games/timeless-minds/kept-lines'
 import TimelessMindsKeptLines from './TimelessMindsKeptLines'
 import TimelessMindsChooser from './TimelessMindsChooser'
@@ -48,47 +52,7 @@ const CONNECTING_MS = 1400
 const GOODBYE_AFTER_EXCHANGES = 3
 
 // A calm video call with someone from history: their large tile, your small one, a meeting chat and a bar of call controls.
-// The stage stays a deep, warm dusk in both themes, as video calls do; the chat panel follows the site's theme.
-const SAGE_CALL_CSS = `
-.sage-call {
-  --call-stage: #2b2622;
-  --call-tile: #3a332d;
-  --call-self: #4a4139;
-  --call-avatar: #6b5a4a;
-  --call-control: #463e37;
-  --call-ink: #f4ede4;
-  --call-ink-soft: #d2c6b8;
-  --call-on: #b8dcc6;
-  --call-on-ink: #17301f;
-  --call-leave: #a84d2a;
-  --call-speaking: #9fd3b5;
-}
-html[data-contrast="high"] .sage-call,
-html[data-contrast="extra-high"] .sage-call {
-  --call-stage: #000000;
-  --call-tile: #141414;
-  --call-ink: #ffffff;
-  --call-ink-soft: #ffffff;
-}
-.call-stage { background-color: var(--call-stage); color: var(--call-ink); }
-.call-tile { background-color: var(--call-tile); box-shadow: inset 0 0 0 2px transparent; transition: box-shadow 600ms ease; }
-.call-tile-speaking { box-shadow: inset 0 0 0 3px var(--call-speaking); }
-.call-self { background-color: var(--call-self); color: var(--call-ink); }
-.call-avatar { background-color: var(--call-avatar); color: var(--call-ink); }
-.call-label { background-color: color-mix(in srgb, var(--call-stage) 78%, transparent); color: var(--call-ink); }
-.call-ink { color: var(--call-ink); }
-.call-ink-soft { color: var(--call-ink-soft); }
-.call-control { background-color: var(--call-control); color: var(--call-ink); transition: filter 150ms ease; }
-.call-control-on { background-color: var(--call-on); color: var(--call-on-ink); }
-.call-leave { background-color: var(--call-leave); color: #ffffff; transition: filter 150ms ease; }
-.call-button:hover:not(:disabled) .call-control,
-.call-button:hover:not(:disabled) .call-leave { filter: brightness(1.15); }
-.call-connecting { opacity: 0; pointer-events: none; transition: opacity 700ms ease; }
-.call-connecting.is-on { opacity: 1; }
-@media (prefers-reduced-motion: reduce) {
-  .call-tile, .call-connecting, .call-control, .call-leave { transition: none; }
-}
-`
+// The stage stays a deep dusk in both themes, as video calls do (TimelessMinds.module.css); the chat panel follows the site's theme.
 
 // A reply let go after its time limit is an expected pause, not a fault worth logging
 function isTimeout(error: unknown): boolean {
@@ -144,7 +108,12 @@ export default function TimelessMinds() {
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [requestsAvailable, setRequestsAvailable] = useState(false)
   const { care, enterCareMode } = useCareMode()
-  const reducedMotion = useReducedMotion()
+  const { motionScale } = useSense()
+  // Read when a reply scrolls into view; turning the sensory dial never scrolls the conversation by itself.
+  const scrollBehavior = useRef<ScrollBehavior>(motionScale === 0 ? 'auto' : 'smooth')
+  useEffect(() => {
+    scrollBehavior.current = motionScale === 0 ? 'auto' : 'smooth'
+  }, [motionScale])
   const [showTopicSuggestions, setShowTopicSuggestions] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
   const [keptLines, setKeptLines] = useState<KeptLine[]>([])
@@ -346,12 +315,12 @@ export default function TimelessMinds() {
         if (typeof container.scrollTo === 'function') {
           container.scrollTo({
             top: messages.length === 1 ? 0 : container.scrollHeight,
-            behavior: reducedMotion ? 'auto' : 'smooth'
+            behavior: scrollBehavior.current
           })
         }
       })
     }
-  }, [messages, care, reducedMotion])
+  }, [messages, care])
 
   useEffect(() => {
     if (isLoading || !returnFocusAfterReply.current) return
@@ -662,9 +631,8 @@ export default function TimelessMinds() {
       startConversation(first)
     }
     return (
-      <div className="sage-call call-stage max-w-2xl mx-auto rounded-2xl p-2 sm:p-3">
-        <style>{SAGE_CALL_CSS}</style>
-        <div className="bg-card-bg text-foreground rounded-xl">
+      <div className={cn(styles.call, 'max-w-2xl mx-auto p-2 sm:p-3')}>
+        <div className={styles.choose}>
           <TimelessMindsChooser care={care} onChoose={chooseFirst} onSurprise={() => chooseFirst(pickRandomThinker({ care }))} />
         </div>
       </div>
@@ -673,23 +641,20 @@ export default function TimelessMinds() {
 
   // On a phone the conversation needs the room once it has begun, so the thinker's tile becomes a slim strip
   const conversationStarted = messages.length > 1
-  const tileHeight = conversationStarted ? 'h-24' : 'h-36'
+  const tileHeight = conversationStarted ? 'h-20' : 'h-36'
   const statusLabel = isSpeaking ? 'Speaking' : isListening ? 'Listening' : 'Here with you'
-  const menuItem = 'w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-left text-sm text-foreground hover:bg-hover-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
-  const menuIcon = 'shrink-0 text-foreground/70'
-  const callButton = 'call-button flex flex-col items-center gap-1 w-14 sm:w-16 rounded-xl disabled:opacity-50 focus:outline-none'
-  const callCircle = 'w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center'
-  const callLabel = 'call-ink-soft text-[11px] sm:text-xs leading-tight whitespace-nowrap'
+  // The first reply that really came back: the portrait's second ink settles into register with it
+  const firstReplyIn = messages.some((m, index) => index > 0 && m.role === 'assistant' && !m.unanswered)
+  const callCircle = 'w-11 h-11 sm:w-12 sm:h-12'
   const userHasSpoken = messages.some((m) => m.role === 'user')
   const offerGoodbye = messages.filter((m) => m.role === 'user' && !m.unanswered).length >= GOODBYE_AFTER_EXCHANGES && !farewell
 
   return (
-    <div className="sage-call call-stage max-w-[1200px] mx-auto h-[calc(100dvh-var(--game-chrome,12rem))] min-h-[26rem] flex flex-col rounded-2xl">
-      <style>{SAGE_CALL_CSS}</style>
+    <div className={cn(styles.call, 'max-w-[1200px] mx-auto h-[calc(100dvh-var(--game-chrome,12rem))] min-h-[26rem] flex flex-col')}>
       {/* At some widths the call reaches the site's floating buttons, so its right edge leaves them a rail there. */}
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3 sm:pr-[5.5rem] xl:pr-3">
         {/* The thinker's video tile, with your own small tile in its corner */}
-        <div className={`call-tile ${isSpeaking ? 'call-tile-speaking' : ''} ${tileHeight} sm:h-auto sm:flex-[3] lg:flex-1 shrink-0 relative rounded-xl overflow-hidden sm:min-h-[12rem] lg:min-h-0`}>
+        <div className={cn(styles.tile, isSpeaking && styles.speaking, tileHeight, 'sm:h-auto sm:flex-[3] lg:flex-1 shrink-0 sm:min-h-[12rem] lg:min-h-0')}>
           <div className="absolute inset-0">
             {videoEnabled ? (
               avatarId && (
@@ -699,13 +664,14 @@ export default function TimelessMinds() {
                   isActive={videoEnabled}
                   audioMuted={!audioEnabled}
                   emotion={currentEmotion}
+                  settled={firstReplyIn}
                   onSpeakingChange={handleAvatarSpeakingChange}
                   onError={(err) => console.warn('Avatar error:', err)}
                 />
               )
             ) : (
               <div className="w-full h-full flex items-center justify-center" data-testid="portrait-hidden">
-                <span aria-hidden="true" className="call-avatar w-14 h-14 sm:w-28 sm:h-28 rounded-full flex items-center justify-center font-serif text-2xl sm:text-5xl">
+                <span aria-hidden="true" className={cn(styles.hiddenPortrait, 'w-14 h-14 sm:w-28 sm:h-28 rounded-full flex items-center justify-center text-2xl sm:text-5xl font-bold')}>
                   {thinker.name.charAt(0)}
                 </span>
               </div>
@@ -713,38 +679,41 @@ export default function TimelessMinds() {
           </div>
 
           {/* A quiet moment of connecting as the call opens; the heading already tells screen readers who is here */}
-          <div aria-hidden="true" className={`call-connecting ${connecting ? 'is-on' : ''} call-tile absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 sm:gap-4`}>
-            <span className="call-avatar w-12 h-12 sm:w-24 sm:h-24 rounded-full flex items-center justify-center font-serif text-xl sm:text-4xl">
+          <div aria-hidden="true" className={cn(styles.connecting, connecting && styles.connectingOn, 'absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 sm:gap-4')}>
+            <span className={cn(styles.round, 'w-12 h-12 sm:w-24 sm:h-24 rounded-full flex items-center justify-center text-xl sm:text-4xl font-bold')}>
               {thinker.name.charAt(0)}
             </span>
-            <span className="call-ink text-sm sm:text-base">Calling {thinker.name}…</span>
+            <span className="text-sm sm:text-base">Calling {thinker.name}…</span>
           </div>
 
-          <p className="call-label absolute z-10 top-2 left-2 sm:top-3 sm:left-3 flex items-center gap-1.5 px-2 py-1 sm:px-2.5 rounded-full text-[11px] sm:text-xs">
-            <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isSpeaking ? 'bg-warm' : isListening ? 'bg-melon-green' : 'bg-success'}`} aria-hidden="true" />
+          <p className={cn(styles.label, styles.status, 'absolute z-10 top-2 left-2 sm:top-3 sm:left-3 px-2 py-1 sm:px-2.5 text-[11px] sm:text-xs')}>
+            <span className={cn(styles.statusDot, (isSpeaking || isListening) && styles.statusLive)} aria-hidden="true" />
             <span>{statusLabel}</span>
           </p>
 
-          <div className="call-label absolute z-10 bottom-2 left-2 sm:bottom-3 sm:left-3 max-w-[60%] px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg">
-            <p className="font-semibold text-xs sm:text-sm truncate">{thinker.name}</p>
-            <p className="call-ink-soft text-[10px] sm:text-xs truncate">{thinker.era}</p>
+          <div className={cn(styles.label, 'absolute z-10 bottom-2 left-2 sm:bottom-3 sm:left-3 max-w-[60%] px-2 py-1 sm:px-3 sm:py-1.5')}>
+            <p className="font-bold text-xs sm:text-sm truncate">{thinker.name}</p>
+            <p className={cn(styles.labelSoft, 'text-[10px] sm:text-xs truncate')}>{thinker.era}</p>
           </div>
 
           {/* Your own tile: a placeholder, never a camera */}
-          <div aria-hidden="true" className="call-self absolute z-10 bottom-2 right-2 sm:bottom-3 sm:right-3 w-16 h-12 sm:w-40 sm:h-24 rounded-lg flex items-center justify-center">
-            <span className="call-avatar w-7 h-7 sm:w-12 sm:h-12 rounded-full flex items-center justify-center">
+          <div aria-hidden="true" className={cn(styles.self, 'absolute z-10 bottom-2 right-2 sm:bottom-3 sm:right-3 w-16 h-12 sm:w-40 sm:h-24 flex items-center justify-center')}>
+            <span className={cn(styles.round, 'w-7 h-7 sm:w-12 sm:h-12 rounded-full flex items-center justify-center')}>
               <Icon name="person" size={12} className="sm:w-6 sm:h-6" />
             </span>
-            <span className="absolute bottom-0.5 left-1.5 sm:bottom-1.5 sm:left-2 text-[10px] sm:text-xs font-semibold">You</span>
+            <span className="absolute bottom-0.5 left-1.5 sm:bottom-1.5 sm:left-2 text-[10px] sm:text-xs font-bold">You</span>
           </div>
         </div>
 
         {/* The meeting chat */}
-        <div className="flex-1 sm:flex-[2] lg:flex-none lg:w-[22rem] min-h-0 w-full flex flex-col bg-card-bg text-foreground rounded-xl overflow-hidden">
+        <div className={cn(styles.chat, 'flex-1 sm:flex-[2] lg:flex-none lg:w-[22rem] min-h-0 w-full flex flex-col overflow-hidden')}>
           <div className="sr-only">
             <h2>Talking with {thinker.name}</h2>
           </div>
-          <p className="hidden sm:block shrink-0 px-4 py-3 border-b border-card-border text-sm font-semibold">In-call messages</p>
+          <p className={cn(styles.chatHead, 'hidden sm:flex items-center gap-2 shrink-0 px-4 py-3')}>
+            <Icon name="chat" size={24} />
+            In-call messages
+          </p>
 
           {/* Replies are announced once each, when they arrive whole. */}
           <div
@@ -753,16 +722,16 @@ export default function TimelessMinds() {
             aria-live="polite"
             aria-label="Conversation"
             tabIndex={0}
-            className="flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:px-4 space-y-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring"
+            className={cn(styles.log, 'flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:px-4 space-y-3 focus:outline-none')}
             style={{ scrollbarGutter: 'stable' }}
           >
-            <p className="rounded-lg bg-hover-bg px-3 py-1.5 text-center text-xs text-foreground/70 leading-relaxed">
+            <p className={cn(styles.system, 'px-3 py-1.5')}>
               {IMAGINED_NOTE} Inspired by their life and writing, for reflection only.{' '}
               {/* Same tab, unless leaving would end a conversation the visitor is in the middle of */}
               <a
                 href="/games/ancient-voices/disclaimer"
                 {...(userHasSpoken && { target: '_blank' })}
-                className="inline-flex items-center min-h-11 px-1 text-foreground underline"
+                className="sp-link inline-flex items-center min-h-11 px-1"
               >
                 About these conversations
                 {userHasSpoken && <span className="sr-only"> (opens in a new tab)</span>}
@@ -771,111 +740,104 @@ export default function TimelessMinds() {
 
             {messages.length === 1 && showTopicSuggestions && (
               <div>
-                <p className="text-xs text-foreground/70 mb-2">Try asking about:</p>
-                <div className="flex flex-wrap gap-1.5">
+                <p className={cn(styles.asking, 'mb-2')}>Try asking about:</p>
+                <div className="flex flex-wrap gap-2">
                   {getTopicSuggestions(thinker, care).map(topic => (
-                    <button
+                    <Stamp
                       key={topic}
                       onClick={() => {
                         setInputMessage(topic)
                         setShowTopicSuggestions(false)
                         inputRef.current?.focus()
                       }}
-                      className="text-sm px-3 py-1.5 min-h-[44px] bg-background border border-card-border hover:border-chosen-line text-foreground rounded-full transition-colors"
                     >
                       {topic}
-                    </button>
+                    </Stamp>
                   ))}
                 </div>
               </div>
             )}
 
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
+            {messages.map((message, index) => {
+              const mine = message.role === 'user'
+              return (
+                <div key={index} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                  <div className="max-w-[88%]">
+                    <div className={cn(styles.name, mine && styles.mineName, 'mb-1 px-1', mine && 'text-right')}>
+                      {mine ? 'You' : thinker.name}
+                    </div>
+                    <div className={cn(styles.bubble, mine && styles.mine)}>
+                      <p className="whitespace-pre-wrap">
+                        {message.role === 'assistant' ? plainText(message.content) : message.content}
+                      </p>
+                    </div>
+                    {mine && message.unanswered && (
+                      <p className={cn(styles.unanswered, 'mt-1 px-1 text-right')}>Not answered yet</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* While a reply is on its way, the seeds settle inside the thinker's bubble. Never typing dots. */}
+            {isLoading && (
+              <div className="flex justify-start">
                 <div className="max-w-[88%]">
-                  <div className={`text-xs font-semibold text-foreground/70 mb-1 px-1 ${message.role === 'user' ? 'text-right' : ''}`}>
-                    {message.role === 'user' ? 'You' : thinker.name}
+                  <div className={cn(styles.name, 'mb-1 px-1')}>{thinker.name}</div>
+                  <div className={styles.bubble}>
+                    <Loading>One moment…</Loading>
                   </div>
-                  <div
-                    className={`px-3 py-2 rounded-xl ${
-                      message.role === 'user'
-                        ? 'bg-chosen border border-chosen-line/40 rounded-br-sm'
-                        : 'bg-hover-bg border border-card-border rounded-bl-sm'
-                    }`}
-                  >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {message.role === 'assistant' ? plainText(message.content) : message.content}
-                    </p>
-                  </div>
-                  {message.role === 'user' && message.unanswered && (
-                    <p className="mt-1 px-1 text-right text-xs text-foreground/70">Not answered yet</p>
-                  )}
                 </div>
               </div>
-            ))}
+            )}
           </div>
 
-          {care && <TimelessMindsCarePanel className="shrink-0 px-3 py-2 border-x-0 border-b-0" />}
+          {care && <TimelessMindsCarePanel className={cn(styles.care, 'shrink-0')} />}
 
           {offerGoodbye && (
-            <div className="shrink-0 flex justify-center border-t border-card-border">
-              <button
-                ref={goodbyeButtonRef}
-                type="button"
-                onClick={() => handleEndCall(goodbyeButtonRef)}
-                className="inline-flex items-center gap-1.5 min-h-11 px-3 text-sm text-foreground underline underline-offset-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-              >
+            <div className={cn(styles.goodbye, 'shrink-0 flex justify-center py-1')}>
+              <QuietButton ref={goodbyeButtonRef} onClick={() => handleEndCall(goodbyeButtonRef)}>
                 <Icon name="hand" size={24} />
                 Say goodbye<span className="sr-only"> to {thinker.name}</span>
-              </button>
+              </QuietButton>
             </div>
           )}
 
-          <div ref={inputRowRef} className="shrink-0 p-2 sm:p-3 border-t border-card-border">
+          <div ref={inputRowRef} className={cn(styles.inputRow, 'shrink-0 p-2 sm:p-3')}>
             {isListening && (
-              <div className="mb-2 p-2 bg-chosen border border-chosen-line/40 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-melon-green rounded-full" aria-hidden="true" />
-                  <span className="text-xs font-medium">Listening...</span>
-                </div>
+              <div className={cn(styles.listening, 'mb-2 p-2')}>
+                <span className="font-bold">Listening...</span>
                 {interimTranscript && (
-                  <p className="text-xs text-foreground/70 mt-1">&quot;{interimTranscript}&quot;</p>
+                  <p className="mt-1">&quot;{interimTranscript}&quot;</p>
                 )}
               </div>
             )}
 
             {voiceInputNote && (
-              <p className="mb-2 text-xs text-foreground/70" role="status">
+              <p className={cn(styles.voiceNote, 'mb-2')} role="status">
                 {voiceInputNote}
               </p>
             )}
 
-            <div className="flex gap-1.5 sm:gap-2">
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyDown={handleKeyPress}
-                onFocus={keepInputInView}
-                placeholder={isListening ? 'Listening...' : 'Type a message...'}
-                maxLength={MAX_MESSAGE_LENGTH}
-                className="flex-1 min-w-0 px-3 py-2 bg-background text-foreground border border-card-border rounded-full text-base sm:text-sm transition-colors placeholder:text-foreground/60"
-                disabled={isLoading || isListening}
-                aria-label="Message input"
-              />
-              <Button
-                onClick={() => sendMessage()}
-                disabled={!inputMessage.trim() || isLoading || isListening}
-                variant="primary"
-                className="px-3 py-2 sm:px-4 min-w-[44px] rounded-full"
-                aria-label="Send message"
-              >
-                <Icon name="next" size={24} />
-              </Button>
+            <div className="flex items-end gap-2">
+              <div className="flex-1 min-w-0">
+                <WritingSlip
+                  ref={inputRef as React.Ref<HTMLTextAreaElement>}
+                  line
+                  labelHidden
+                  label="Message input"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  onFocus={keepInputInView}
+                  placeholder={isListening ? 'Listening...' : 'Type a message...'}
+                  maxLength={MAX_MESSAGE_LENGTH}
+                  disabled={isLoading || isListening}
+                />
+              </div>
+              <Go onClick={() => sendMessage()} aria-label="Send message">
+                Send
+              </Go>
             </div>
           </div>
         </div>
@@ -883,7 +845,7 @@ export default function TimelessMinds() {
 
       {/* The call's control bar */}
       <div className="shrink-0 relative flex items-center justify-center px-2 pt-1 pb-2 sm:pb-3 sm:pr-[5.5rem] xl:pr-3">
-        <p className="hidden lg:block absolute left-5 max-w-[14rem] truncate call-ink-soft text-sm">
+        <p className={cn(styles.hint, 'hidden lg:block absolute left-5 max-w-[20rem] truncate')}>
           {thinker.name} · an imagined conversation
         </p>
         <div className="flex items-start gap-1 sm:gap-3">
@@ -892,12 +854,12 @@ export default function TimelessMinds() {
             onClick={toggleVoiceInput}
             disabled={isLoading || isSpeaking}
             aria-label={isListening ? 'Stop listening' : 'Start voice input'}
-            className={callButton}
+            className={styles.callButton}
           >
-            <span className={`${callCircle} ${isListening ? 'bg-melon-green text-background' : 'call-control'}`}>
+            <span className={cn(styles.circle, callCircle, isListening && styles.on)}>
               {isListening ? <Icon name="mic-off" size={24} /> : <Icon name="mic" size={24} />}
             </span>
-            <span className={callLabel}>{isListening ? 'Stop' : 'Speak'}</span>
+            <span>{isListening ? 'Stop' : 'Speak'}</span>
           </button>
 
           <button
@@ -905,24 +867,24 @@ export default function TimelessMinds() {
             onClick={toggleAudio}
             aria-label={audioEnabled ? 'Turn off thinker voice' : 'Turn on thinker voice'}
             aria-pressed={audioEnabled}
-            className={callButton}
+            className={styles.callButton}
           >
-            <span className={`${callCircle} ${audioEnabled ? 'call-control-on' : 'call-control'}`}>
+            <span className={cn(styles.circle, callCircle, audioEnabled && styles.on)}>
               {audioEnabled ? <Icon name="sound-on" size={24} /> : <Icon name="sound-off" size={24} />}
             </span>
-            <span className={callLabel}>{audioEnabled ? 'Voice on' : 'Voice off'}</span>
+            <span>{audioEnabled ? 'Voice on' : 'Voice off'}</span>
           </button>
 
           <button
             type="button"
             onClick={toggleVideo}
             aria-label={videoEnabled ? 'Hide portrait' : 'Show portrait'}
-            className={callButton}
+            className={styles.callButton}
           >
-            <span className={`${callCircle} call-control`}>
+            <span className={cn(styles.circle, callCircle)}>
               {videoEnabled ? <Icon name="camera" size={24} /> : <Icon name="camera-off" size={24} />}
             </span>
-            <span className={callLabel}>{videoEnabled ? 'Portrait' : 'Portrait off'}</span>
+            <span>{videoEnabled ? 'Portrait' : 'Portrait off'}</span>
           </button>
 
           <div ref={menuWrapRef} className="relative" onKeyDown={handleMenuKeyDown} onBlur={handleMenuBlur}>
@@ -932,35 +894,35 @@ export default function TimelessMinds() {
               aria-expanded={menuOpen}
               aria-controls={MENU_ID}
               onClick={() => setMenuOpen(!menuOpen)}
-              className={callButton}
+              className={styles.callButton}
             >
-              <span className={`${callCircle} ${menuOpen ? 'call-control-on' : 'call-control'}`}>
+              <span className={cn(styles.circle, callCircle, menuOpen && styles.on)}>
                 <Icon name="more" size={24} />
               </span>
-              <span className={callLabel}>Menu</span>
+              <span>Menu</span>
             </button>
             {menuOpen && (
               <div
                 id={MENU_ID}
-                className="absolute right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2 z-30 w-64 rounded-xl border border-card-border bg-card-bg p-1.5 shadow-xl"
+                className={cn(styles.menu, 'absolute right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2 z-30 w-64 p-1.5')}
               >
-                <button type="button" className={menuItem} onClick={fromMenu(() => setShowPhoneBook(true))}>
-                  <Icon name="people" size={24} className={menuIcon} />
+                <button type="button" className={styles.menuItem} onClick={fromMenu(() => setShowPhoneBook(true))}>
+                  <Icon name="people" size={24} />
                   Choose who to talk with
                 </button>
-                <button type="button" className={menuItem} onClick={fromMenu(() => setShowKeptLines(true))}>
-                  <Icon name="library" size={24} className={menuIcon} />
+                <button type="button" className={styles.menuItem} onClick={fromMenu(() => setShowKeptLines(true))}>
+                  <Icon name="library" size={24} />
                   Kept lines
                 </button>
                 {requestsAvailable && (
-                  <button type="button" className={menuItem} onClick={fromMenu(() => setShowRequestModal(true))}>
-                    <Icon name="plus" size={24} className={menuIcon} />
+                  <button type="button" className={styles.menuItem} onClick={fromMenu(() => setShowRequestModal(true))}>
+                    <Icon name="plus" size={24} />
                     Request
                   </button>
                 )}
-                <div className="my-1 border-t border-card-border" />
-                <button type="button" className={menuItem} onClick={endCallFromMenu}>
-                  <Icon name="hand" size={24} className={menuIcon} />
+                <div className={styles.menuRule} />
+                <button type="button" className={styles.menuItem} onClick={endCallFromMenu}>
+                  <Icon name="hand" size={24} />
                   Say goodbye
                 </button>
               </div>
@@ -971,12 +933,12 @@ export default function TimelessMinds() {
             ref={leaveButtonRef}
             type="button"
             onClick={() => handleEndCall(leaveButtonRef)}
-            className={callButton}
+            className={styles.callButton}
           >
-            <span className="call-leave w-14 h-11 sm:w-16 sm:h-12 rounded-full flex items-center justify-center">
+            <span className={cn(styles.circle, styles.leave, callCircle)}>
               <Icon name="hang-up" size={24} />
             </span>
-            <span className={callLabel}>Leave</span>
+            <span>Leave</span>
           </button>
         </div>
       </div>
@@ -1049,7 +1011,7 @@ export default function TimelessMinds() {
           )}
           <p className="sp-farewell__note" aria-live="polite">{keepNote}</p>
           <p className="sp-farewell__imagined">{IMAGINED_NOTE}</p>
-          {care && <TimelessMindsCarePanel className="mt-4 rounded-lg p-3" />}
+          {care && <TimelessMindsCarePanel className="mt-4" />}
         </NoteDialog>
       )}
 

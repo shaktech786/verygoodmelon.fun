@@ -2,6 +2,9 @@
 
 import { forwardRef, useImperativeHandle, useEffect, useRef, useState, useCallback } from 'react'
 import type { AvatarComponentProps, AvatarHandle } from '@/lib/games/timeless-minds/avatar-providers/types'
+import { Loading } from '@/components/seedpress/Loading'
+import { cn } from '@/lib/utils/cn'
+import styles from './Portrait.module.css'
 
 /**
  * 3D lip-syncing avatar using @met4citizen/talkinghead.
@@ -171,36 +174,21 @@ const TalkingHeadAvatar = forwardRef<AvatarHandle, AvatarComponentProps>(
     }, [isActive, avatarId, audioMuted])
 
     return (
-      <div className={`relative w-full h-full ${className}`}>
+      <div className={cn(styles.live, className)}>
         <div
           ref={containerRef}
-          className={`w-full h-full transition-opacity duration-300 ${
-            isReady ? 'opacity-100' : 'opacity-0'
-          }`}
+          className={cn('w-full h-full', styles.fade, isReady ? 'opacity-100' : 'opacity-0')}
         />
 
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="text-center">
-              <div className="w-12 h-12 border-2 border-white/30 border-t-white rounded-full animate-spin motion-reduce:animate-none mx-auto mb-3" />
-              <p className="text-white/80 text-sm">Loading 3D avatar...</p>
-            </div>
+          <div className={styles.veil}>
+            <Loading>Getting the portrait ready…</Loading>
           </div>
         )}
 
         {loadError && !isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center p-4">
-              <p className="text-white/60 text-xs mb-2">3D avatar unavailable</p>
-              <p className="text-white/40 text-[10px]">{loadError}</p>
-            </div>
-          </div>
-        )}
-
-        {isReady && (
-          <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-lg backdrop-blur-sm">
-            <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" />
-            <span className="text-white/70 text-[10px]">3D</span>
+          <div className={styles.veil}>
+            <p>The portrait is not here just now.</p>
           </div>
         )}
       </div>

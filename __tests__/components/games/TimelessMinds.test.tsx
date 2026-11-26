@@ -198,9 +198,9 @@ describe('TimelessMinds', () => {
 
     await userEvent.type(box, 'Everyone would be fine without me{Enter}')
     const support = await screen.findByRole('complementary', { name: 'Support' })
-    expect(within(support).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
-    expect(within(support).getByRole('link', { name: '116 123' })).toHaveAttribute('href', 'tel:116123')
-    expect(within(support).getByRole('link', { name: /^findahelpline.com/ })).toHaveAttribute('href', 'https://findahelpline.com')
+    expect(within(support).getByRole('link', { name: /988/ })).toHaveAttribute('href', 'tel:988')
+    expect(within(support).getByRole('link', { name: /116 123/ })).toHaveAttribute('href', 'tel:116123')
+    expect(within(support).getByRole('link', { name: /findahelpline.com/ })).toHaveAttribute('href', 'https://findahelpline.com')
     expect(screen.getByTestId('care-probe')).toHaveTextContent('care')
 
     await userEvent.type(box, 'Thank you{Enter}')

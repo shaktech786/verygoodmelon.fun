@@ -1,0 +1,489 @@
+/*
+ * The Sage: a modern video call with someone from history (PLAN.md section 9, item 4). The call stage is a deep dusk sheet in
+ * both themes, as a video call is; the tiles are --well frames; the control bar is a row of icon stamps with their words; and the
+ * chat panel is --sheet. Colour comes only from Seedpress roles, mixed here into the call's own ink map.
+ */
+
+.call {
+  --call-stage: color-mix(in oklab, var(--dusk) 42%, black);
+  --call-ink: color-mix(in oklab, white 93%, var(--dusk));
+  --call-ink-soft: color-mix(in oklab, white 78%, var(--dusk));
+  --call-edge: color-mix(in oklab, white 36%, var(--call-stage));
+  --call-control: color-mix(in oklab, var(--call-stage) 70%, white);
+  --call-on: color-mix(in oklab, var(--rind) 30%, white);
+  --call-on-ink: color-mix(in oklab, black 84%, var(--rind));
+  --call-speaking: color-mix(in oklab, var(--moss) 36%, white);
+  background-color: var(--call-stage);
+  color: var(--call-ink);
+  border: 2px solid var(--call-edge);
+  border-radius: var(--r-sheet);
+}
+
+:global(html[data-theme='dark']) .call {
+  --call-stage: color-mix(in oklab, var(--dusk) 20%, black);
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(html[data-theme='auto']) .call {
+    --call-stage: color-mix(in oklab, var(--dusk) 20%, black);
+  }
+}
+
+/* High and highest contrast: a black stage, white words and bright edges, so the call stays readable. */
+:global(html[data-contrast='high']) .call,
+:global(html[data-contrast='extra-high']) .call {
+  --call-stage: black;
+  --call-ink: white;
+  --call-ink-soft: white;
+  --call-edge: white;
+  --call-control: color-mix(in oklab, black 78%, white);
+  --call-speaking: white;
+}
+
+/* ---------- Tiles ---------- */
+
+.tile {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--well);
+  color: var(--ink);
+  border: 2px solid var(--call-edge);
+  border-radius: var(--r-sheet);
+}
+
+/* The active-speaker ring: steady, drawn over the portrait, never a pulse. */
+.tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  border: 4px solid var(--call-speaking);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity calc(var(--d-settle) * var(--motion)) var(--e-out);
+}
+
+.speaking::after {
+  opacity: 1;
+}
+
+.label {
+  background-color: color-mix(in oklab, var(--call-stage) 84%, transparent);
+  color: var(--call-ink);
+  border-radius: var(--r-stamp);
+}
+
+.labelSoft {
+  color: var(--call-ink-soft);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--r-slice);
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border: 2px solid var(--call-ink);
+  border-radius: var(--r-slice);
+}
+
+.statusLive {
+  background-color: var(--call-speaking);
+  border-color: var(--call-speaking);
+}
+
+.self {
+  background-color: var(--well);
+  color: var(--ink);
+  border: 2px solid var(--call-edge);
+  border-radius: var(--r-stamp);
+}
+
+.round {
+  background-color: var(--rule);
+  color: var(--ink);
+}
+
+.hiddenPortrait {
+  background-color: var(--rule);
+  color: var(--ink);
+}
+
+/* "Calling {name}…": a decorative moment on the tile as each call opens. In Quiet and reduced motion it simply shows, then goes. */
+.connecting {
+  background-color: var(--well);
+  color: var(--ink);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity calc(var(--d-flourish) * var(--motion)) var(--e-out);
+}
+
+.connectingOn {
+  opacity: 1;
+}
+
+/* ---------- The control bar: icon stamps with their words ---------- */
+
+.callButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 3.5rem;
+  border-radius: var(--r-stamp);
+  color: var(--call-ink-soft);
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (min-width: 640px) {
+  .callButton {
+    width: 4.25rem;
+    font-size: var(--t-meta, 0.875rem);
+  }
+}
+
+.callButton:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.callButton:focus-visible {
+  outline: 3px solid var(--call-ink);
+  outline-offset: 2px;
+}
+
+.circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 2px solid var(--call-edge);
+  border-radius: var(--r-slice);
+  background-color: var(--call-control);
+  color: var(--call-ink);
+  box-shadow: 0 3px 0 var(--call-edge);
+  transition:
+    transform calc(var(--d-tap) * var(--motion)) var(--e-stamp),
+    background-color calc(var(--d-quick) * var(--motion)) var(--e-out);
+}
+
+@media (min-width: 640px) {
+  .circle {
+    width: 3rem;
+    height: 3rem;
+  }
+}
+
+.callButton:hover:not(:disabled) .circle {
+  background-color: color-mix(in oklab, var(--call-control) 80%, white);
+}
+
+.callButton:active:not(:disabled) .circle {
+  transform: translateY(calc(3px * var(--motion)));
+}
+
+.on {
+  border-color: var(--call-on);
+  background-color: var(--call-on);
+  color: var(--call-on-ink);
+}
+
+.callButton:hover:not(:disabled) .on {
+  background-color: color-mix(in oklab, var(--call-on) 88%, white);
+}
+
+/* Leave is the one clay pill, never flesh. */
+.leave {
+  width: 3.5rem;
+  border-color: var(--call-ink);
+  background-color: var(--clay);
+  color: var(--on-flesh);
+}
+
+@media (min-width: 640px) {
+  .leave {
+    width: 4rem;
+  }
+}
+
+.callButton:hover:not(:disabled) .leave {
+  background-color: color-mix(in oklab, var(--clay) 86%, white);
+}
+
+.hint {
+  color: var(--call-ink-soft);
+}
+
+/* ---------- The menu ---------- */
+
+.menu {
+  background-color: var(--sheet);
+  color: var(--ink);
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-sheet);
+  box-shadow: 0 3px 0 var(--rule-strong);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-stamp);
+  color: var(--ink);
+  font-size: var(--t-small);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem:hover {
+  background-color: var(--rind-wash);
+}
+
+.menuItem:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.menuRule {
+  margin-block: var(--s-1);
+  border-top: 2px solid var(--rule);
+}
+
+/* ---------- The meeting chat ---------- */
+
+.chat {
+  background-color: var(--sheet);
+  color: var(--ink);
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-sheet);
+}
+
+.chatHead {
+  border-bottom: 2px solid var(--rule);
+  font-weight: 700;
+}
+
+.log:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+/* The imagined-conversation notice, pinned at the top like a meeting's system note */
+.system {
+  background-color: var(--well);
+  color: var(--ink);
+  border-radius: var(--r-stamp);
+  font-size: var(--t-small);
+  line-height: 1.45;
+  text-align: center;
+}
+
+.asking {
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.name {
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+  font-weight: 700;
+}
+
+.bubble {
+  padding: var(--s-2) var(--s-3);
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-stamp);
+  background-color: var(--sheet);
+  color: var(--ink);
+  border-bottom-left-radius: 3px;
+  font-size: var(--t-small);
+  line-height: 1.55;
+}
+
+.mine {
+  border-color: var(--rind);
+  background-color: var(--rind-wash);
+  border-bottom-left-radius: var(--r-stamp);
+  border-bottom-right-radius: 3px;
+}
+
+.mineName {
+  color: var(--ink);
+}
+
+.unanswered {
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.goodbye {
+  border-top: 2px solid var(--rule);
+}
+
+.inputRow {
+  border-top: 2px solid var(--rule);
+}
+
+.listening {
+  border: 2px solid var(--rind);
+  border-radius: var(--r-stamp);
+  background-color: var(--rind-wash);
+  color: var(--ink);
+  font-size: var(--t-small);
+}
+
+.voiceNote {
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+/* The care block inside the chat panel: the same lamp, set close so the conversation and the box stay in view with it. */
+.care {
+  border-top: 2px solid var(--rule);
+}
+
+.care :global(.sp-care) {
+  /* On a short screen, such as a phone with its keyboard open, the block keeps its place and scrolls within itself. */
+  max-height: max(7rem, 26dvh);
+  overflow-y: auto;
+  gap: var(--s-2);
+  max-width: none;
+  padding: var(--s-3);
+  border-width: 0;
+  border-radius: 0;
+}
+
+.care :global(.sp-care__lead) {
+  font-size: var(--t-small);
+  line-height: 1.35;
+}
+
+.care :global(.sp-care__lines) {
+  gap: var(--s-2);
+}
+
+.care :global(.sp-care__row) {
+  min-height: 44px;
+  padding: var(--s-1) var(--s-3);
+}
+
+.care :global(.sp-care__words) {
+  font-size: var(--t-small);
+}
+
+.care :global(.sp-care__number) {
+  font-size: 1.125rem;
+}
+
+.care :global(.sp-care__after) {
+  font-size: var(--t-small);
+  line-height: 1.35;
+}
+
+/* ---------- The chooser: a pre-call list of stamp cards ---------- */
+
+.choose {
+  background-color: var(--sheet);
+  color: var(--ink);
+  border-radius: var(--r-sheet);
+}
+
+.chooseTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .chooseTitle {
+    font-size: 1.875rem;
+  }
+}
+
+.chooseLine {
+  margin: 0;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--s-2) var(--s-4) var(--s-2) var(--s-2);
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-stamp);
+  background-color: var(--sheet);
+  color: var(--ink);
+  box-shadow: 0 3px 0 var(--rule-strong);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform calc(var(--d-tap) * var(--motion)) var(--e-stamp),
+    background-color calc(var(--d-quick) * var(--motion)) var(--e-out);
+}
+
+.card:hover {
+  background-color: var(--rind-wash);
+}
+
+.card:active {
+  transform: translateY(calc(3px * var(--motion)));
+}
+
+.card:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.cardFace {
+  position: relative;
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--r-stamp);
+  background-color: var(--well);
+}
+
+.cardName {
+  display: block;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.cardField {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.cardMark {
+  flex-shrink: 0;
+  color: var(--rind);
+}
+
+/* The seeds inside a reply's bubble: no tall waiting room, just the seeds and the words */
+.bubble :global(.sp-loading) {
+  min-height: 0;
+  justify-items: start;
+  text-align: left;
+}

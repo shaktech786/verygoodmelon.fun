@@ -4,6 +4,8 @@ import { useRef, useState, type RefObject } from 'react'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
 import { NoteDialog } from '@/components/seedpress/NoteDialog'
 import { Stamp } from '@/components/seedpress/Stamp'
+import { useInkTheme } from '@/lib/design/inks'
+import { portraitPlates } from '@/lib/games/timeless-minds/portraits'
 
 /** A few broad shelves; a thinker whose field spans two appears on both. */
 const SHELVES: ReadonlyArray<{ label: string; fields: RegExp }> = [
@@ -32,6 +34,7 @@ export default function ThinkerPhoneBook({
   const [shelf, setShelf] = useState<string | null>(null)
 
   const searchRef = useRef<HTMLInputElement>(null)
+  const theme = useInkTheme()
 
   if (!isOpen) return null
 
@@ -93,7 +96,7 @@ export default function ThinkerPhoneBook({
             <li key={thinker.id} className="sp-sheet sp-directory__card">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`/games/timeless-minds/avatars/${thinker.id}.png`}
+                src={portraitPlates(thinker.id, theme).ink}
                 alt=""
                 loading="lazy"
                 className="sp-directory__avatar"

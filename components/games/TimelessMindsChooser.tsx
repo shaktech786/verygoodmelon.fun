@@ -2,6 +2,10 @@
 
 import { getThinkerById, type Thinker } from '@/lib/games/timeless-minds/thinkers'
 import { Icon } from '@/components/seedpress/icons/Icon'
+import { Stamp } from '@/components/seedpress/Stamp'
+import { useInkTheme } from '@/lib/design/inks'
+import { portraitPlates } from '@/lib/games/timeless-minds/portraits'
+import styles from './TimelessMinds.module.css'
 
 // A few warm, very different voices to start from; everyone else waits in the directory once talking
 const FIRST_CHOICES = ['socrates', 'buddha', 'marie-curie', 'maya-angelou']
@@ -14,48 +18,42 @@ interface TimelessMindsChooserProps {
   onSurprise: () => void
 }
 
-const choiceClass =
-  'bg-background w-full min-h-[44px] flex items-center gap-3 rounded-xl border border-card-border px-4 py-3 text-left hover:border-chosen-line transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
-
-/** Before the first call: a short, calm choice of who to call, or a surprise. */
+/** Before the first call: a short, calm choice of who to call, as stamp cards, or a surprise. */
 export default function TimelessMindsChooser({ care, onChoose, onSurprise }: TimelessMindsChooserProps) {
+  const theme = useInkTheme()
   const choices = (care ? CARE_CHOICES : FIRST_CHOICES)
     .map(getThinkerById)
     .filter((thinker): thinker is Thinker => thinker !== undefined)
 
   return (
     <section aria-labelledby="sage-chooser-heading" className="p-5 sm:p-8">
-      <h2 id="sage-chooser-heading" className="font-serif text-2xl sm:text-3xl text-foreground text-center">
+      <h2 id="sage-chooser-heading" className={styles.chooseTitle}>
         Who would you like to talk with?
       </h2>
-      <p className="mt-2 text-center text-sm sm:text-base text-foreground/70">
+      <p className={`${styles.chooseLine} mt-2`}>
         Pick someone to sit with for a while. You can meet anyone else later, from the Menu.
       </p>
-      <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+      <ul className="mt-6 grid gap-4 sm:grid-cols-2">
         {choices.map((thinker) => (
           <li key={thinker.id}>
-            <button type="button" className={choiceClass} onClick={() => onChoose(thinker)}>
-              <span aria-hidden="true" className="call-avatar shrink-0 w-11 h-11 rounded-full flex items-center justify-center font-serif text-lg">
-                {thinker.name.charAt(0)}
+            <button type="button" className={styles.card} onClick={() => onChoose(thinker)}>
+              <span aria-hidden="true" className={styles.cardFace}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={portraitPlates(thinker.id, theme).ink} alt="" width={48} height={48} className="w-full h-full object-cover" style={{ objectPosition: 'center 22%' }} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-semibold leading-tight text-foreground">{thinker.name}</span>
-                <span className="block text-sm text-foreground/70">{thinker.field}</span>
+                <span className={styles.cardName}>{thinker.name}</span>
+                <span className={styles.cardField}>{thinker.field}</span>
               </span>
-              <Icon name="camera" size={24} className="shrink-0 text-foreground/70" />
+              <Icon name="phone" size={24} className={styles.cardMark} />
             </button>
           </li>
         ))}
       </ul>
-      <div className="mt-4 flex justify-center">
-        <button
-          type="button"
-          onClick={onSurprise}
-          className="bg-background text-foreground border-card-border min-h-[44px] inline-flex items-center gap-2 rounded-full border px-5 text-sm sm:text-base hover:border-chosen-line transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-        >
-          <Icon name="dice" size={24} />
+      <div className="mt-5 flex justify-center">
+        <Stamp icon="dice" onClick={onSurprise}>
           Surprise me
-        </button>
+        </Stamp>
       </div>
     </section>
   )

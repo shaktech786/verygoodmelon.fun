@@ -4,7 +4,7 @@
  * Maps a thinkerId to a provider-specific avatar identifier:
  *  - simli → Simli face UUID
  *  - talkinghead → GLB model URL
- *  - static → PNG image path
+ *  - static → the thinker id; the duotone portrait is picked per theme
  */
 
 import type { AvatarProviderType } from './types'
@@ -23,9 +23,9 @@ export function resolveAvatarId(
       return getTalkingHeadModel(thinkerId).modelUrl
 
     case 'static':
-      return `/games/timeless-minds/avatars/${thinkerId}.png`
+      return thinkerId
 
     default:
-      return `/games/timeless-minds/avatars/${thinkerId}.png`
+      return thinkerId
   }
 }

@@ -363,7 +363,7 @@ test('the voice starts off, speaks only once chosen, and the portrait can be hid
   await fromMenu(page, 'Turn off thinker voice')
   await page.evaluate(() => { (window as unknown as { __spoken: string[] }).__spoken.length = 0 })
 
-  const portrait = page.locator('img[src$="socrates.png"]').first()
+  const portrait = page.locator('img[src$="socrates.webp"]').first()
   await expect(portrait).toBeVisible()
   await fromMenu(page, 'Hide portrait')
   await expect(portrait).toHaveCount(0)
@@ -754,7 +754,7 @@ test('a portrait is framed on the face, not the beard', async ({ page }) => {
   await chooseFirst(page, 'Socrates')
   await callFromPhoneBook(page, 'Leonardo da Vinci')
 
-  const portrait = page.locator('img[src$="leonardo-da-vinci.png"]').first()
+  const portrait = page.locator('img[src$="leonardo-da-vinci.webp"]').first()
   await expect(portrait).toBeVisible()
   expect(await portrait.evaluate(img => getComputedStyle(img).objectPosition)).toBe('50% 22%')
 })
