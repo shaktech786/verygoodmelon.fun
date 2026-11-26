@@ -339,7 +339,9 @@ test.describe('The Shapeshifter', () => {
     expect((await offered(page))[0]).toMatch(/^(arrow_keys|mouse_follow)$/)
     await expect(page.getByText('Something is growing. Press Space, or just rest.')).toBeVisible()
     await expect(status(page)).toHaveText('Something new is growing close to your orb: a small sign of four arrows. Pulse the orb, or rest, and it will open.')
-    for (let i = 0; i < 15 && (await engine(page)).seeds.length; i++) await page.keyboard.press(' ')
+    // Five pulses open it (0.2 each). Sent back to back: reading the engine between presses let a slow
+    // runner idle long enough for resting to outgrow the gathering.
+    for (let i = 0; i < 5; i++) await page.keyboard.press(' ')
     await expect.poll(async () => (await engine(page)).activeMechanics.length).toBe(1)
     expect((await engine(page)).foundBy).toEqual(['gathered'])
     await expect(page.getByRole('dialog')).toHaveCount(0)

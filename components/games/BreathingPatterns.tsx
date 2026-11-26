@@ -1198,10 +1198,6 @@ export default function BreathingPatterns() {
 
   return (
     <section className="max-w-2xl mx-auto" aria-label="Breathing guide">
-      <p className="text-center text-sm sm:text-base text-foreground/75 mb-3 sm:mb-4">
-        Pick a rhythm and follow the dot around its shape.
-      </p>
-
       {shownMelon && (
         <figure className="flex items-center justify-center gap-3 mb-3 sm:mb-4">
           <svg viewBox="0 0 200 200" className="w-12 h-12 sm:w-14 sm:h-14 shrink-0" aria-hidden="true">

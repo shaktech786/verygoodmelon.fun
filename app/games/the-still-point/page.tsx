@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function TheStillPointPage() {
   return (
-    <GameStage gameId="breathing-patterns" title="The Harmonist" lead="Every breath you finish becomes a seed. Leave with the pattern you made." sound>
+    <GameStage gameId="breathing-patterns" title="The Harmonist" lead="Pick a rhythm and follow the dot around its shape. Each breath you finish becomes a seed." sound>
       <BreathingPatterns />
     </GameStage>
   )
