@@ -1,16 +1,21 @@
 'use client'
 
 import { REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
-import { useState, useEffect, useRef } from 'react'
-import { Button } from '@/components/ui/Button'
+import { useState, useEffect, useId, useRef } from 'react'
 import { NoteDialog } from '@/components/seedpress/NoteDialog'
 import { Stamp } from '@/components/seedpress/Stamp'
+import { Go } from '@/components/seedpress/Go'
+import { QuietButton } from '@/components/seedpress/QuietButton'
+import { IconStamp } from '@/components/seedpress/IconStamp'
+import { cn } from '@/lib/utils/cn'
+import styles from './IdeaLab.module.css'
 import { BASE_CONCEPTS, findKnownCombination, type Concept } from '@/lib/games/idea-lab/concepts'
 import { WORK_TITLES, goldsFor, isGolden, type GoldenIdea } from '@/lib/games/idea-lab/golds'
 import {
   DEFAULT_PROGRESS, afterCombination, beginNextWork, parseCombinations, parseDiscoveries, parseProgress, type LabProgress,
 } from '@/lib/games/idea-lab/progress'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { useSense } from '@/lib/design/sense'
 import { FRESH_GOLD_ID, GoldShelf } from '@/components/games/idea-lab/GoldShelf'
 import { LetterScene } from '@/components/games/idea-lab/LetterScene'
 import { IdeaCabinet } from '@/components/games/idea-lab/IdeaCabinet'
@@ -36,16 +41,17 @@ const RESET_BUTTON_ID = 'idea-lab-reset'
 const WIDE_QUERY = '(min-width: 1024px)'
 const CLUE_LABELS = ['Riddle:', 'Plainer:', 'Ingredients:']
 
-// A found gold: its dashed riddle outline warms to gold, and what it answers arrives one beat later.
+// A found gold: its dashed riddle outline turns to brass, and what it answers arrives one beat later.
 const GOLD_MOMENT_CSS = `
-.alchemist-gold-settled {
-  border-color: var(--warm);
-  background-color: color-mix(in srgb, var(--warm) 15%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--warm) 25%, transparent);
+li.alchemist-gold-settled {
+  border-style: solid;
+  border-color: var(--brass);
+  background-color: color-mix(in srgb, var(--brass) 14%, var(--sheet));
+  box-shadow: 0 3px 0 var(--brass);
 }
 @keyframes alchemist-gold-turn {
   from {
-    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
+    border-color: var(--rule-strong);
     background-color: transparent;
     box-shadow: 0 0 0 0 transparent;
   }
@@ -54,8 +60,8 @@ const GOLD_MOMENT_CSS = `
   from { opacity: 0; transform: translateY(3px); }
   to { opacity: 1; transform: none; }
 }
-.alchemist-gold-turn { animation: alchemist-gold-turn 700ms ease-out both; }
-.alchemist-gold-answer { animation: alchemist-gold-answer 500ms ease-out 900ms both; }
+.alchemist-gold-turn { animation: alchemist-gold-turn calc(700ms * var(--motion)) ease-out both; }
+.alchemist-gold-answer { animation: alchemist-gold-answer calc(500ms * var(--motion)) ease-out calc(900ms * var(--motion)) both; }
 `
 
 const getComboKey = (c1: Concept, c2: Concept) => [c1.id, c2.id].sort().join('+')
@@ -129,6 +135,13 @@ export default function IdeaLab() {
   const [freshClue, setFreshClue] = useState<number | null>(null)
   const [activeConceptId, setActiveConceptId] = useState(BASE_CONCEPTS[0].id)
   const reducedMotion = useReducedMotion()
+  const mixReasonId = useId()
+  // Read through a ref, so turning the sensory dial never re-fires a scroll or a focus move
+  const { motionScale } = useSense()
+  const scrollBehaviourRef = useRef<ScrollBehavior>('smooth')
+  useEffect(() => {
+    scrollBehaviourRef.current = motionScale ? 'smooth' : 'auto'
+  }, [motionScale])
   const cancelResetRef = useRef<HTMLButtonElement>(null)
   const resetOpenerRef = useRef<HTMLElement | null>(null)
   const conceptRefs = useRef(new Map<string, HTMLButtonElement>())
@@ -189,7 +202,7 @@ export default function IdeaLab() {
     if (!element) return
     pendingFocus.current = null
     element.focus({ preventScroll: true })
-    element.scrollIntoView({ block: target === 'concepts' ? 'nearest' : 'start', behavior: reducedMotion ? 'auto' : 'smooth' })
+    element.scrollIntoView({ block: target === 'concepts' ? 'nearest' : 'start', behavior: scrollBehaviourRef.current })
   })
 
   const updateProgress = (next: LabProgress) => {
@@ -242,8 +255,19 @@ export default function IdeaLab() {
       return
     }
 
+    // Two on the bench wait for Mix: nothing is combined by a tap alone
     setSelectedConcepts([selectedConcepts[0], concept])
-    combineConcepts(selectedConcepts[0], concept)
+    setLastResult(null)
+    setAnnouncement(`${selectedConcepts[0].name} and ${concept.name} are on the bench. Press Mix to combine them.`)
+  }
+
+  const mixPair = () => {
+    if (isCombining) return
+    if (selectedConcepts.length < 2 || (lastResult && lastResult.status !== 'unresolved')) {
+      setAnnouncement(selectedConcepts.length < 2 ? 'Pick two concepts, then press Mix.' : 'Pick a new pair to mix again.')
+      return
+    }
+    combineConcepts(selectedConcepts[0], selectedConcepts[1])
   }
 
   const combineConcepts = async (concept1: Concept, concept2: Concept) => {
@@ -334,14 +358,14 @@ export default function IdeaLab() {
   const seeFreshGold = () => {
     const card = document.getElementById(FRESH_GOLD_ID)
     card?.focus({ preventScroll: true })
-    card?.scrollIntoView({ block: 'center', behavior: reducedMotion ? 'auto' : 'smooth' })
+    card?.scrollIntoView({ block: 'center', behavior: scrollBehaviourRef.current })
   }
 
   const skipToRiddles = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault()
     const heading = shelfHeadingRef.current
     heading?.focus({ preventScroll: true })
-    heading?.scrollIntoView({ block: 'start', behavior: reducedMotion ? 'auto' : 'smooth' })
+    heading?.scrollIntoView({ block: 'start', behavior: scrollBehaviourRef.current })
   }
 
   const moveConceptFocus = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -397,18 +421,16 @@ export default function IdeaLab() {
 
   if (showIntro) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="max-w-lg text-center animate-fade">
-          <Icon name="flask" size={48} className="mx-auto mb-6 text-warm" />
-          <p className="text-lg text-foreground/80 mb-3 leading-relaxed">
+      <div className={styles.intro}>
+        <div className={styles.introBody}>
+          <Icon name="flask" size={48} className={styles.flask} />
+          <p className={styles.introLead}>
             Seven of them are gold, each hidden behind a riddle, and the heaviest feelings are often the way there.
           </p>
-          <p className="text-foreground/70 mb-8">
+          <p className={styles.introSoft}>
             No timer, no wrong answers. Clues grow plainer if you are stuck, and everything you make is kept.
           </p>
-          <Button onClick={beginExploring} variant="primary" className="px-8 py-3">
-            Begin Exploring
-          </Button>
+          <Go onClick={beginExploring}>Begin Exploring</Go>
         </div>
       </div>
     )
@@ -422,276 +444,261 @@ export default function IdeaLab() {
   // The riddle that last grew plainer, or else the oldest one still hidden.
   const currentRiddle = [...unsolved].reverse().find(index => (progress.hints[index] ?? 0) > 0) ?? unsolved[0]
   const currentLevel = currentRiddle === undefined ? 0 : progress.hints[currentRiddle] ?? 0
+  // A pair is ready to mix when two are chosen and nothing is under way; a pair that could not be mixed can be tried again
+  const readyToMix = selectedConcepts.length === 2 && !isCombining && (lastResult === null || lastResult.status === 'unresolved')
+  const waitingReason = selectedConcepts.length < 2 ? 'Pick two concepts to mix' : 'Pick a new pair to mix again'
 
-  const resultTone = isCombining
-    ? 'border-warm bg-warm/10'
+  const cellTone = isCombining
+    ? styles.cellCombining
     : resultIsGold
-      ? `border-warm bg-warm/20 ring-4 ring-warm/40 ${reducedMotion ? '' : 'alchemist-gold-turn'}`
+      ? `${styles.cellGold} ${reducedMotion ? '' : 'alchemist-gold-turn'}`
       : lastResult?.status === 'new'
-        ? 'border-melon-green bg-melon-green/10'
-        : 'border-foreground/20 bg-foreground/5'
+        ? styles.cellNew
+        : ''
 
   const resultTag = !lastResult || isCombining
     ? null
     : resultIsGold
-      ? 'GOLD'
+      ? 'Gold'
       : lastResult.status === 'new'
-        ? 'NEW'
+        ? 'New'
         : lastResult.status === 'known'
           ? 'Already yours'
           : null
 
-  const benchCell = 'flex-1 min-w-0 overflow-hidden py-1 border-2 flex flex-col items-center justify-center transition-colors'
-  const emojiSize = (compact: boolean) => (compact ? 'text-base leading-tight' : 'text-3xl mb-1')
-  const nameSize = (compact: boolean) => (compact ? 'text-xs' : 'text-sm')
+  const emojiClass = (compact: boolean) => (compact ? styles.cellEmojiCompact : styles.cellEmoji)
+  const nameClass = (compact: boolean) => cn(styles.cellName, compact && styles.cellNameCompact)
 
   const renderSlot = (concept: Concept | undefined, compact: boolean) => (
-    <div className={`${benchCell} ${compact ? 'rounded-lg' : 'rounded-xl'} ${concept ? 'border-chosen-line bg-chosen' : 'border-dashed border-foreground/20 bg-foreground/5'}`}>
+    <div className={cn(styles.cell, concept && styles.cellFilled)}>
       {concept ? (
         <>
-          <span className={emojiSize(compact)} aria-hidden="true">{concept.emoji}</span>
-          <span className={`${nameSize(compact)} font-medium text-center px-1 break-words max-w-full`}>{concept.name}</span>
+          <span className={emojiClass(compact)} aria-hidden="true">{concept.emoji}</span>
+          <span className={nameClass(compact)}>{concept.name}</span>
         </>
       ) : (
-        <span className="text-foreground/70 text-sm">Select</span>
+        <span className={styles.cellSoft}>Select</span>
       )}
     </div>
   )
 
   const renderResult = (compact: boolean) => (
-    <div className={`${benchCell} ${compact ? 'rounded-lg' : 'rounded-xl'} ${resultTone}`}>
+    <div className={cn(styles.cell, cellTone)}>
       {isCombining ? (
         <>
-          <Icon name="flask" size={compact ? 12 : 24} className={`text-foreground/70 ${reducedMotion ? '' : 'animate-pulse'}`} />
-          <span className="text-xs text-foreground/70 mt-1">Combining...</span>
+          <Icon name="flask" size={compact ? 12 : 24} />
+          <span className={styles.cellSoft}>Combining...</span>
         </>
       ) : lastResult ? (
         <>
-          <span className={emojiSize(compact)} aria-hidden="true">{lastResult.emoji}</span>
-          <span className={`${nameSize(compact)} font-semibold text-center px-1 break-words max-w-full`}>{lastResult.name}</span>
-          {resultTag && (
-            <span className={`text-[11px] sm:text-xs font-semibold mt-0.5 text-center ${lastResult.status === 'known' ? 'font-normal text-foreground/75' : 'text-foreground'}`}>
-              {resultTag}
-            </span>
-          )}
+          <span className={emojiClass(compact)} aria-hidden="true">{lastResult.emoji}</span>
+          <span className={nameClass(compact)}>{lastResult.name}</span>
+          {resultTag && <span className={cn(styles.cellTag, lastResult.status === 'known' && styles.cellTagSoft)}>{resultTag}</span>}
         </>
       ) : (
-        <span className="text-foreground/70 text-sm text-center px-2">Result</span>
+        <span className={styles.cellSoft}>Result</span>
       )}
     </div>
   )
 
   const renderEquation = (compact: boolean) => (
-    <div className={`flex items-stretch ${compact ? 'gap-1.5 h-14' : 'gap-2 h-24'}`} aria-hidden="true">
+    <div className={cn(styles.equation, compact ? styles.equationCompact : styles.equationWide)} aria-hidden="true">
       {renderSlot(selectedConcepts[0], compact)}
-      <span className="self-center text-foreground/60">+</span>
+      <span className={styles.sign}>+</span>
       {renderSlot(selectedConcepts[1], compact)}
-      <span className="self-center text-foreground/60">=</span>
+      <span className={styles.sign}>=</span>
       {renderResult(compact)}
     </div>
   )
 
-  const clearButton = hasBench && !isCombining && (
-    <Button onClick={handleClearSelection} variant="ghost" className="text-sm inline-flex items-center min-h-[44px]">
-      <Icon name="trash" size={24} className="mr-2" />
-      Clear
-    </Button>
+  // Not Go's own `unavailable`, which would wrap the button in a new element and drop keyboard focus as the pair settles
+  const mixButton = (
+    <span className={styles.mix}>
+      <Go onClick={mixPair} loading={isCombining} aria-disabled={readyToMix || isCombining ? undefined : true} aria-describedby={`${mixReasonId}-why`}>
+        Mix
+      </Go>
+      <span id={`${mixReasonId}-why`} className="sr-only">
+        {readyToMix || isCombining ? 'Mix the two concepts on the bench' : waitingReason}
+      </span>
+    </span>
   )
+
+  const clearButton = hasBench && !isCombining && (
+    <QuietButton onClick={handleClearSelection}>
+      <Icon name="trash" size={12} /> Clear
+    </QuietButton>
+  )
+
+  const benchHint = selectedConcepts.length === 2 && !lastResult && !isCombining ? 'Press Mix to combine them.' : 'Choose two concepts to combine them.'
 
   return (
     <div>
       <style>{GOLD_MOMENT_CSS}</style>
-      <div className="mx-auto max-w-6xl">
-        <div className={reducedMotion ? '' : 'animate-fade'}>
-          <div className="flex justify-end gap-4 mb-6 sm:mb-8">
-              <div className="flex items-center gap-3">
-                <Button
-                  id={RESET_BUTTON_ID}
-                  onClick={(event) => {
-                    resetOpenerRef.current = event.currentTarget
-                    setShowResetConfirm(true)
-                  }}
-                  disabled={isCombining}
-                  variant="ghost"
-                  className="p-2 min-w-[44px] min-h-[44px]"
-                  aria-label="Reset all discoveries"
+      <div className={styles.lab}>
+        <div className={styles.toolbar}>
+          <IconStamp
+            id={RESET_BUTTON_ID}
+            icon="reset"
+            label="Reset all discoveries"
+            disabled={isCombining}
+            onClick={(event) => {
+              resetOpenerRef.current = event.currentTarget
+              setShowResetConfirm(true)
+            }}
+          />
+        </div>
+
+        {letterWork !== null && (
+          <LetterScene
+            ref={letterHeadingRef}
+            work={letterWork}
+            discoveries={discoveries}
+            canBeginNextWork={letterWork === 0 && canBeginNextWork}
+            onBeginNextWork={beginSecondWork}
+            onClose={closeLetter}
+          />
+        )}
+
+        <div role="status" aria-live="polite" className="sr-only">{announcement}</div>
+
+        <div
+          className={styles.layout}
+          style={{ '--bench-top': `${stickyTop + 16}px`, '--bench-room': `calc(100vh - ${stickyTop + 32}px)` } as React.CSSProperties}
+        >
+          <div>
+            <div className={styles.panel}>
+              {/* Below the wide layout the bench and the current riddle sit at the top of the concepts and stay in view while scrolling. */}
+              <div className={styles.phoneBench} style={{ top: stickyTop }} data-testid="phone-bench">
+                {renderEquation(true)}
+                {/* A fixed height, so a result never pushes the chip the player just tapped out from under their finger. */}
+                <div className={styles.benchRow}>
+                  <p className={styles.benchText} aria-hidden="true">
+                    {isCombining
+                      ? ''
+                      : resultIsGold && lastResult?.riddle
+                        ? <span className={answerBeat}>Gold. It answers: <b>{lastResult.riddle}</b></span>
+                        : lastResult?.description
+                          ? <>&ldquo;{lastResult.description}&rdquo;</>
+                          : (!hasBench || selectedConcepts.length === 2) && benchHint}
+                  </p>
+                  {resultIsGold && !isCombining && (
+                    <QuietButton onClick={seeFreshGold} aria-label="See it on the shelf" className={styles.seeIt}>
+                      See it
+                    </QuietButton>
+                  )}
+                  {clearButton}
+                  {mixButton}
+                </div>
+                {currentRiddle !== undefined && (
+                  <p className={styles.benchRiddle} aria-hidden="true">
+                    <b>{CLUE_LABELS[currentLevel]}</b> {golds[currentRiddle].riddles[currentLevel]}
+                  </p>
+                )}
+              </div>
+
+              <div className={styles.panelBody}>
+                <div className={styles.headingRow}>
+                  <h2 id="idea-lab-concepts" className={styles.heading}>Your Concepts</h2>
+                  <a href="#great-work-title" onClick={skipToRiddles} className={cn('sp-link', styles.skip)}>
+                    Skip to the riddles
+                  </a>
+                </div>
+                <p id="idea-lab-concepts-help" className="sr-only">
+                  Arrow keys move between concepts. Enter or Space picks one; pick two, then press Mix.
+                </p>
+
+                <div
+                  role="toolbar"
+                  aria-labelledby="idea-lab-concepts"
+                  aria-describedby="idea-lab-concepts-help"
+                  onKeyDown={moveConceptFocus}
+                  className={styles.concepts}
                 >
-                  <Icon name="reset" size={24} />
-                </Button>
+                  {concepts.map(concept => {
+                    const isSelected = selectedConcepts.some(c => c.id === concept.id)
+                    const gold = !concept.isBase && isGolden(concept.name, progress.work)
+
+                    return (
+                      <button
+                        key={concept.id}
+                        ref={element => {
+                          if (!element) return
+                          conceptRefs.current.set(concept.id, element)
+                          return () => { conceptRefs.current.delete(concept.id) }
+                        }}
+                        type="button"
+                        tabIndex={concept.id === activeId ? 0 : -1}
+                        onClick={() => handleSelectConcept(concept)}
+                        aria-disabled={isCombining}
+                        className={cn(
+                          styles.chip,
+                          !concept.isBase && styles.chipFound,
+                          gold && styles.chipGold,
+                          isSelected && styles.chipChosen,
+                          concept.id === newConceptId && styles.chipNew,
+                          isCombining && styles.chipBusy,
+                        )}
+                        aria-label={concept.name}
+                        aria-pressed={isSelected}
+                      >
+                        {isSelected && <Icon name="done" size={12} className={styles.tick} />}
+                        <span aria-hidden="true">{concept.emoji}</span>
+                        <span>{concept.name}</span>
+                        {gold && <span className={styles.chipGoldWord} aria-hidden="true">gold</span>}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
 
-            {letterWork !== null && (
-              <LetterScene
-                ref={letterHeadingRef}
-                work={letterWork}
-                discoveries={discoveries}
-                canBeginNextWork={letterWork === 0 && canBeginNextWork}
-                reducedMotion={reducedMotion}
-                onBeginNextWork={beginSecondWork}
-                onClose={closeLetter}
-              />
-            )}
+            <IdeaCabinet
+              discoveries={discoveries}
+              combinations={combinations}
+              concepts={concepts}
+              wide={wide}
+            />
+          </div>
 
-            <div role="status" aria-live="polite" className="sr-only">{announcement}</div>
+          {/* In the wide layout this column keeps the bench and the riddles beside whatever concept the player is looking at. */}
+          <div className={styles.side}>
+            <div className={cn(styles.panel, styles.wideBench)}>
+              {renderEquation(false)}
+              <div className={styles.wideText} aria-hidden="true">
+                {lastResult?.description && !isCombining && <p>&ldquo;{lastResult.description}&rdquo;</p>}
+                {resultIsGold && lastResult?.riddle && (
+                  <p className={answerBeat}>
+                    <b>Gold.</b> It answers: <b>{lastResult.riddle}</b>
+                  </p>
+                )}
+                {(!hasBench || (selectedConcepts.length === 2 && !lastResult && !isCombining)) && <p className={styles.cellSoft}>{benchHint}</p>}
+              </div>
+              <div className={styles.mixRow}>
+                {mixButton}
+                {clearButton}
+              </div>
+            </div>
 
             <div
-              className="lg:grid lg:grid-cols-[minmax(0,1fr)_23rem] lg:gap-6 lg:items-start"
-              style={{ '--bench-top': `${stickyTop + 16}px`, '--bench-room': `calc(100vh - ${stickyTop + 32}px)` } as React.CSSProperties}
+              className={styles.shelfScroll}
+              role={wide ? 'region' : undefined}
+              aria-label={wide ? 'Riddles' : undefined}
+              tabIndex={wide ? 0 : undefined}
+              data-shelf-scroll
             >
-              <div>
-              <div className="bg-card-bg border border-card-border rounded-xl">
-                {/* Below the wide layout the bench and the current riddle sit at the top of the concepts and stay in view while scrolling. */}
-                <div
-                  className="lg:hidden sticky z-10 bg-card-bg border-b border-card-border rounded-t-xl px-3 pt-3 pb-2"
-                  style={{ top: stickyTop }}
-                  data-testid="phone-bench"
-                >
-                  {renderEquation(true)}
-                  {/* A fixed height, so a result never pushes the chip the player just tapped out from under their finger. */}
-                  <div className="flex items-center gap-2 h-[3.75rem] mt-1">
-                    <p className="flex-1 min-w-0 text-[13px] leading-snug text-foreground/85 line-clamp-3" aria-hidden="true">
-                      {isCombining
-                        ? ''
-                        : resultIsGold && lastResult?.riddle
-                          ? <span className={answerBeat}>Gold. It answers: <span className="italic">{lastResult.riddle}</span></span>
-                          : lastResult?.description
-                            ? <>&ldquo;{lastResult.description}&rdquo;</>
-                            : !hasBench && 'Choose two concepts to combine them.'}
-                    </p>
-                    {resultIsGold && !isCombining && (
-                      <button
-                        type="button"
-                        onClick={seeFreshGold}
-                        aria-label="See it on the shelf"
-                        className="shrink-0 min-h-[44px] px-2 rounded-lg text-sm font-medium text-foreground underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-                      >
-                        See it
-                      </button>
-                    )}
-                    {clearButton}
-                  </div>
-                  {currentRiddle !== undefined && (
-                    <p className="h-12 mt-1 pt-1.5 border-t border-card-border text-[13px] leading-snug text-foreground/85 line-clamp-2" aria-hidden="true">
-                      <span className="font-medium">{CLUE_LABELS[currentLevel]}</span>{' '}
-                      <span className={currentLevel === 0 ? 'italic' : ''}>{golds[currentRiddle].riddles[currentLevel]}</span>
-                    </p>
-                  )}
-                </div>
-
-                <div className="p-4 sm:p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                    <h2 id="idea-lab-concepts" className="font-medium text-foreground/80">Your Concepts</h2>
-                    <a
-                      href="#great-work-title"
-                      onClick={skipToRiddles}
-                      className="sr-only focus:not-sr-only focus:px-3 focus:py-2 rounded-lg text-sm font-medium text-foreground underline focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-                    >
-                      Skip to the riddles
-                    </a>
-                  </div>
-                  <p id="idea-lab-concepts-help" className="sr-only">
-                    Arrow keys move between concepts. Enter or Space picks one; pick two to combine them.
-                  </p>
-
-                  <div
-                    role="toolbar"
-                    aria-labelledby="idea-lab-concepts"
-                    aria-describedby="idea-lab-concepts-help"
-                    onKeyDown={moveConceptFocus}
-                    className="flex flex-wrap gap-2 sm:gap-3"
-                  >
-                    {concepts.map(concept => {
-                      const isSelected = selectedConcepts.some(c => c.id === concept.id)
-                      const gold = !concept.isBase && isGolden(concept.name, progress.work)
-
-                      return (
-                        <button
-                          key={concept.id}
-                          ref={element => {
-                            if (!element) return
-                            conceptRefs.current.set(concept.id, element)
-                            return () => { conceptRefs.current.delete(concept.id) }
-                          }}
-                          type="button"
-                          tabIndex={concept.id === activeId ? 0 : -1}
-                          onClick={() => handleSelectConcept(concept)}
-                          aria-disabled={isCombining}
-                          className={`
-                            flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-lg border transition-colors
-                            text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card-bg
-                            ${isSelected
-                              ? 'border-chosen-line bg-chosen text-foreground shadow-[inset_0_0_0_1px_var(--chosen-line)]'
-                              : gold
-                                ? 'border-warm bg-warm/20 hover:bg-warm/30'
-                                : concept.isBase
-                                  ? 'border-foreground/10 bg-foreground/5 hover:border-accent/50 hover:bg-accent/5'
-                                  : 'border-melon-green/30 bg-melon-green/5 hover:border-melon-green/60 hover:bg-melon-green/10'
-                            }
-                            ${concept.id === newConceptId ? 'ring-2 ring-melon-green ring-offset-2 ring-offset-background' : ''}
-                            ${isCombining ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                          `}
-                          aria-label={concept.name}
-                          aria-pressed={isSelected}
-                        >
-                          <span aria-hidden="true">{concept.emoji}</span>
-                          <span>{concept.name}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <IdeaCabinet
-                discoveries={discoveries}
-                combinations={combinations}
-                concepts={concepts}
-                wide={wide}
+              <GoldShelf
+                ref={shelfHeadingRef}
+                work={progress.work}
+                hints={progress.hints}
+                freshClue={freshClue}
+                freshGold={freshGoldIndex >= 0 ? freshGoldIndex : null}
                 reducedMotion={reducedMotion}
+                found={goldFound}
+                completedWorks={completedWorks}
+                canBeginNextWork={canBeginNextWork}
+                onReadLetter={openLetter}
+                onBeginNextWork={beginSecondWork}
               />
-            </div>
-
-            {/* In the wide layout this column keeps the bench and the riddles beside whatever concept the player is looking at. */}
-            <div className="mt-6 lg:mt-0 lg:sticky lg:top-[var(--bench-top)] lg:max-h-[var(--bench-room)] lg:flex lg:flex-col">
-              <div className="hidden lg:block shrink-0 bg-card-bg border border-card-border rounded-xl p-4 mb-4">
-                {renderEquation(false)}
-                <div className="mt-3 text-center" aria-hidden="true">
-                  {lastResult?.description && !isCombining && (
-                    <p className="text-foreground/85 text-sm leading-relaxed">&ldquo;{lastResult.description}&rdquo;</p>
-                  )}
-                  {resultIsGold && lastResult?.riddle && (
-                    <p className={`mt-2 text-sm text-foreground ${answerBeat}`}>
-                      <span className="font-medium">Gold.</span>{' '}
-                      <span className="text-foreground/80">It answers: <span className="italic">{lastResult.riddle}</span></span>
-                    </p>
-                  )}
-                  {!hasBench && <p className="text-foreground/75 text-sm">Choose two concepts to combine them.</p>}
-                </div>
-                {clearButton && <div className="flex justify-center mt-2">{clearButton}</div>}
-              </div>
-
-              <div
-                className="lg:min-h-0 lg:overflow-y-auto rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-                role={wide ? 'region' : undefined}
-                aria-label={wide ? 'Riddles' : undefined}
-                tabIndex={wide ? 0 : undefined}
-                data-shelf-scroll
-              >
-                <GoldShelf
-                  ref={shelfHeadingRef}
-                  work={progress.work}
-                  hints={progress.hints}
-                  freshClue={freshClue}
-                  freshGold={freshGoldIndex >= 0 ? freshGoldIndex : null}
-                  reducedMotion={reducedMotion}
-                  found={goldFound}
-                  completedWorks={completedWorks}
-                  canBeginNextWork={canBeginNextWork}
-                  onReadLetter={openLetter}
-                  onBeginNextWork={beginSecondWork}
-                />
-              </div>
             </div>
           </div>
         </div>

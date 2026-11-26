@@ -82,6 +82,7 @@
   --moss: #2C6656;
   --dusk: #4A4785;
   --clay: #9A4A26;
+  --brass: #75592B;
 }
 
 :root:where([data-theme="dark"]) {
@@ -102,6 +103,7 @@
   --moss: #7CC6B3;
   --dusk: #B1AEF2;
   --clay: #EEA27F;
+  --brass: #CEB289;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -123,6 +125,7 @@
     --moss: #7CC6B3;
     --dusk: #B1AEF2;
     --clay: #EEA27F;
+    --brass: #CEB289;
   }
 }
 
@@ -144,6 +147,7 @@
   --moss: #45625B;
   --dusk: #55546F;
   --clay: #7A5444;
+  --brass: #6A5C48;
 }
 
 :root:where([data-theme="dark"][data-sense="quiet"]) {
@@ -164,6 +168,7 @@
   --moss: #9EBDB5;
   --dusk: #B4B3CF;
   --clay: #D3B1A2;
+  --brass: #C3B8A6;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -185,6 +190,7 @@
     --moss: #9EBDB5;
     --dusk: #B4B3CF;
     --clay: #D3B1A2;
+    --brass: #C3B8A6;
   }
 }
 
@@ -207,6 +213,7 @@
   --moss: #0F4A3C;
   --dusk: #2E2B6B;
   --clay: #6E2E10;
+  --brass: #563F1A;
 }
 
 :root:where([data-theme="dark"][data-contrast="high"]),
@@ -228,6 +235,7 @@
   --moss: #A6EBDA;
   --dusk: #D2D0FF;
   --clay: #FFC6AA;
+  --brass: #E6D1B3;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -250,6 +258,7 @@
     --moss: #A6EBDA;
     --dusk: #D2D0FF;
     --clay: #FFC6AA;
+    --brass: #E6D1B3;
   }
 }
 

@@ -71,20 +71,6 @@
   "components/ErrorBoundary.tsx": {
     "infinite": 1
   },
-  "components/games/IdeaLab.tsx": {
-    "animate": 3,
-    "banned-utility": 4
-  },
-  "components/games/idea-lab/GoldShelf.tsx": {
-    "banned-utility": 2
-  },
-  "components/games/idea-lab/IdeaCabinet.tsx": {
-    "animate": 1,
-    "banned-utility": 1
-  },
-  "components/games/idea-lab/LetterScene.tsx": {
-    "animate": 1
-  },
   "components/ui/Button.tsx": {
     "banned-utility": 1
   },

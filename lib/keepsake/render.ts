@@ -11,7 +11,8 @@ const MELON = {
   rindLight: '#74c69d',
   flesh: '#e63946',
   seed: '#2a211c',
-  gold: '#c98a1b',
+  // Brass: clay's ochre at a lightness that reads on the light paper (4:1) and the dark one (3.9:1), in place of the old yellow gold.
+  gold: '#937545',
   // Cream words set on the rind, such as a band of green across a card.
   onRind: '#fbf7f0',
 } as const

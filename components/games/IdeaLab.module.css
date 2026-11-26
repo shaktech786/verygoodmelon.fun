@@ -1,0 +1,735 @@
+/*
+ * The Alchemist: clay and seed, with brass for gold (clay turned to a low-chroma ochre, never yellow). The cabinet of ideas is a
+ * row of stamp cards; a chosen one is rind with a tick. Every colour is a Seedpress role and every duration is multiplied by --motion.
+ */
+
+.intro {
+  display: flex;
+  min-height: 50vh;
+  align-items: center;
+  justify-content: center;
+}
+
+.introBody {
+  max-width: 32rem;
+}
+
+.flask {
+  margin-bottom: var(--s-5);
+  color: var(--brass);
+}
+
+.introLead {
+  margin: 0 0 var(--s-3);
+  font-size: var(--t-lead);
+}
+
+.introSoft {
+  margin: 0 0 var(--s-6);
+  color: var(--ink-soft);
+}
+
+.lab {
+  max-width: 72rem;
+  margin-inline: auto;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--s-5);
+}
+
+.layout {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 23rem;
+    gap: var(--s-5);
+    align-items: start;
+  }
+}
+
+.panel {
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+  color: var(--ink);
+}
+
+.panelBody {
+  padding: var(--s-4);
+}
+
+@media (min-width: 640px) {
+  .panelBody {
+    padding: var(--s-5);
+  }
+}
+
+.heading {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-body);
+  font-weight: 700;
+}
+
+.headingRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
+}
+
+.skip:not(:focus):not(:focus-visible) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The bench and the current riddle stay in view above the concepts on a phone. */
+.phoneBench {
+  position: sticky;
+  z-index: 10;
+  padding: var(--s-3) var(--s-3) var(--s-2);
+  border-bottom: 2px solid var(--rule);
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  background-color: var(--sheet);
+}
+
+@media (min-width: 1024px) {
+  .phoneBench {
+    display: none;
+  }
+}
+
+.wideBench {
+  display: none;
+  flex-shrink: 0;
+  margin-bottom: var(--s-4);
+  padding: var(--s-4);
+}
+
+@media (min-width: 1024px) {
+  .wideBench {
+    display: block;
+  }
+}
+
+.side {
+  margin-top: var(--s-5);
+}
+
+@media (min-width: 1024px) {
+  .side {
+    position: sticky;
+    top: var(--bench-top);
+    display: flex;
+    max-height: var(--bench-room);
+    flex-direction: column;
+    margin-top: 0;
+  }
+}
+
+.shelfScroll {
+  border-radius: var(--r-sheet);
+}
+
+@media (min-width: 1024px) {
+  .shelfScroll {
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
+.shelfScroll:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.equation {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-2);
+}
+
+.equationCompact {
+  height: 3.5rem;
+  gap: 6px;
+}
+
+.equationWide {
+  height: 6rem;
+}
+
+.sign {
+  align-self: center;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.cell {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-block: 4px;
+  overflow: hidden;
+  border: 2px dashed var(--rule-strong);
+  border-radius: var(--r-stamp);
+  background-color: var(--well);
+  text-align: center;
+}
+
+.cellFilled {
+  border-style: solid;
+  border-color: var(--rind);
+  background-color: var(--rind-wash);
+}
+
+.cellCombining {
+  border-style: solid;
+}
+
+.cellNew {
+  border-style: solid;
+  border-color: var(--rind);
+  background-color: var(--rind-wash);
+}
+
+.cellGold {
+  border-style: solid;
+  border-width: 3px;
+  border-color: var(--brass);
+  background-color: color-mix(in srgb, var(--brass) 14%, var(--sheet));
+}
+
+.cellEmoji {
+  font-size: 1.75rem;
+  line-height: 1.1;
+}
+
+.cellEmojiCompact {
+  font-size: 1rem;
+  line-height: 1.1;
+}
+
+.cellName {
+  max-width: 100%;
+  padding-inline: 4px;
+  overflow-wrap: anywhere;
+  font-size: var(--t-meta);
+  font-weight: 700;
+}
+
+.cellNameCompact {
+  font-size: 0.75rem;
+}
+
+.cellTag {
+  margin-top: 2px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.cellTagSoft {
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+.cellSoft {
+  padding-inline: var(--s-2);
+  color: var(--ink-soft);
+  font-size: var(--t-meta);
+}
+
+.benchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  height: 4.25rem;
+  margin-top: 4px;
+}
+
+.benchText {
+  display: -webkit-box;
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--t-meta);
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.benchRiddle {
+  display: -webkit-box;
+  height: 3rem;
+  margin: 4px 0 0;
+  padding-top: 6px;
+  overflow: hidden;
+  border-top: 2px solid var(--rule);
+  font-size: var(--t-meta);
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.wideText {
+  margin-top: var(--s-3);
+  text-align: center;
+}
+
+.wideText p {
+  margin: var(--s-2) 0 0;
+}
+
+.mixRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+}
+
+.mix :global(.sp-go) {
+  min-height: 44px;
+  padding-inline: var(--s-4);
+}
+
+.seeIt {
+  flex-shrink: 0;
+}
+
+.concepts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+@media (min-width: 640px) {
+  .concepts {
+    gap: var(--s-3);
+  }
+}
+
+/* A stamp card: a chosen concept is a rind edge with a tick, a gold is a brass edge with the word. */
+.chip {
+  position: relative;
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 6px 14px;
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-stamp);
+  background-color: var(--sheet);
+  box-shadow: 0 3px 0 var(--rule-strong);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-small);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform calc(var(--d-tap) * var(--motion)) var(--e-stamp),
+    box-shadow calc(var(--d-tap) * var(--motion)) var(--e-stamp),
+    background-color calc(var(--d-quick) * var(--motion)) var(--e-out);
+}
+
+.chip:hover {
+  background-color: var(--rind-wash);
+}
+
+.chip:active {
+  transform: translateY(calc(3px * var(--motion)));
+  box-shadow: 0 calc(3px - 3px * var(--motion)) 0 var(--rule-strong);
+}
+
+.chip:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.chipFound {
+  background-color: var(--well);
+}
+
+.chipGold {
+  border-color: var(--brass);
+  box-shadow: 0 3px 0 var(--brass);
+}
+
+.chipGoldWord {
+  color: var(--brass);
+  font-size: var(--t-meta);
+  font-weight: 400;
+}
+
+/* The edge thickens inward, so choosing a chip never moves it or its neighbours. */
+.chipChosen {
+  border-color: var(--rind);
+  background-color: var(--rind-wash);
+  box-shadow:
+    inset 0 0 0 1px var(--rind),
+    0 3px 0 var(--rind);
+}
+
+.chipNew {
+  outline: 3px solid var(--moss);
+  outline-offset: 3px;
+}
+
+.chipBusy {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.tick {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  box-sizing: content-box;
+  padding: 3px;
+  border-radius: var(--r-slice);
+  background-color: var(--rind);
+  color: var(--sheet);
+}
+
+.cabinet {
+  margin-top: var(--s-5);
+  padding: var(--s-4);
+}
+
+@media (min-width: 640px) {
+  .cabinet {
+    padding: var(--s-5);
+  }
+}
+
+.cabinetToggle {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--t-body);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cabinetToggle:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.cabinetToggle svg {
+  flex-shrink: 0;
+  transition: transform calc(var(--d-quick) * var(--motion)) var(--e-out);
+}
+
+.open svg {
+  transform: rotate(180deg);
+}
+
+.soft {
+  margin: var(--s-1) 0 var(--s-4);
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.drawers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drawer {
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-stamp);
+  background-color: var(--sheet);
+  box-shadow: 0 3px 0 var(--rule-strong);
+}
+
+.drawerGold {
+  border-color: var(--brass);
+  box-shadow: 0 3px 0 var(--brass);
+}
+
+.drawerReading {
+  border-color: var(--rind);
+  background-color: var(--rind-wash);
+  box-shadow: 0 3px 0 var(--rind);
+}
+
+.drawerButton {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--r-stamp);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-small);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.drawerButton:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.drawerName {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.drawerGoldWord {
+  color: var(--brass);
+  font-size: var(--t-meta);
+  font-weight: 400;
+}
+
+.reading {
+  padding: 2px 12px 12px;
+}
+
+.reading p {
+  margin: 0;
+  font-size: var(--t-small);
+}
+
+.reading .made {
+  margin-top: 6px;
+  color: var(--ink-soft);
+  font-size: var(--t-meta);
+}
+
+.arrive {
+  animation: lab-arrive calc(var(--d-settle) * var(--motion)) var(--e-out) both;
+}
+
+@keyframes lab-arrive {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.shelf {
+  padding: var(--s-4);
+}
+
+.shelfList {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .shelfList {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.riddleCard {
+  padding: 10px 12px;
+  border: 2px dashed var(--rule-strong);
+  border-radius: var(--r-stamp);
+}
+
+.riddleCard:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.riddleFresh {
+  border-style: solid;
+  border-color: var(--brass);
+  background-color: color-mix(in srgb, var(--brass) 10%, var(--sheet));
+}
+
+.freshWord {
+  margin: 0 0 4px;
+  color: var(--brass);
+  font-size: var(--t-meta);
+  font-weight: 700;
+}
+
+.riddle {
+  margin: 0;
+  font-weight: 700;
+}
+
+.clue {
+  margin: 6px 0 0;
+  font-size: var(--t-small);
+}
+
+.goldCard {
+  padding: 10px 12px;
+  border: 2px solid var(--brass);
+  border-radius: var(--r-stamp);
+  background-color: color-mix(in srgb, var(--brass) 14%, var(--sheet));
+}
+
+.goldName {
+  margin: 0;
+  font-weight: 700;
+}
+
+.goldWords {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.shelfActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+
+/* The letter prints in, line by line; Quiet and reduced motion show it whole at once. */
+.letter {
+  margin-bottom: var(--s-5);
+  padding: var(--s-5) var(--s-5) var(--s-6);
+  border: 3px solid var(--brass);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+  color: var(--ink);
+}
+
+@media (min-width: 640px) {
+  .letter {
+    padding: var(--s-6) var(--s-7);
+  }
+}
+
+.letterMark {
+  margin: 0 auto var(--s-3);
+  color: var(--brass);
+}
+
+.letterTitle {
+  margin: 0 0 var(--s-4);
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  scroll-margin-top: 6rem;
+}
+
+@media (min-width: 640px) {
+  .letterTitle {
+    font-size: 2.25rem;
+  }
+}
+
+.letterTitle:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+}
+
+.letterBody {
+  max-width: 36rem;
+  margin-inline: auto;
+}
+
+.letterBody p {
+  margin: 0 0 var(--s-4);
+}
+
+.letterLines {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0 0 var(--s-4);
+  padding: 0;
+  list-style: none;
+}
+
+.letterLine {
+  display: flex;
+  gap: var(--s-3);
+}
+
+.letterClosing {
+  color: var(--ink-soft);
+}
+
+.printed {
+  animation: lab-print calc(var(--d-settle) * var(--motion)) var(--e-out) calc(var(--n, 0) * 140ms * var(--motion)) both;
+}
+
+@keyframes lab-print {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.letterActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-3);
+  margin-top: var(--s-5);
+}
+
+.keepsake {
+  margin-top: var(--s-5);
+}
+
+.shelfHeading {
+  margin-bottom: var(--s-1);
+  scroll-margin-top: 6rem;
+}
+
+.shelfHeading:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.shelfListAfter {
+  margin-top: var(--s-3);
+}

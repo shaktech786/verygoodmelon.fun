@@ -3,7 +3,7 @@ import { chroma, contrast, mixOklab } from '@/lib/design/color'
 import { CARE_PAPER, COLOR_ROLES, CONTRAST_PAIRS, PALETTES, SURFACES, type PaletteName } from '@/lib/design/tokens'
 
 const NAMES = Object.keys(PALETTES) as PaletteName[]
-const CHROMATIC = ['rind', 'flesh', 'flesh-press', 'seed', 'moss', 'dusk', 'clay'] as const
+const CHROMATIC = ['rind', 'flesh', 'flesh-press', 'seed', 'moss', 'dusk', 'clay', 'brass'] as const
 
 describe('Seedpress palettes', () => {
   it.each(NAMES)('%s defines every role as a six-digit hex colour', (name) => {

@@ -23,6 +23,7 @@ export const COLOR_ROLES = [
   'moss',
   'dusk',
   'clay',
+  'brass',
 ] as const
 
 export type ColorRole = (typeof COLOR_ROLES)[number]
@@ -48,6 +49,7 @@ export const PALETTES: Readonly<Record<PaletteName, Palette>> = {
     moss: '#2C6656',
     dusk: '#4A4785',
     clay: '#9A4A26',
+    brass: '#75592B',
   },
   dark: {
     paper: '#151D18',
@@ -67,6 +69,7 @@ export const PALETTES: Readonly<Record<PaletteName, Palette>> = {
     moss: '#7CC6B3',
     dusk: '#B1AEF2',
     clay: '#EEA27F',
+    brass: '#CEB289',
   },
   lightQuiet: {
     paper: '#F2EEE8',
@@ -86,6 +89,7 @@ export const PALETTES: Readonly<Record<PaletteName, Palette>> = {
     moss: '#45625B',
     dusk: '#55546F',
     clay: '#7A5444',
+    brass: '#6A5C48',
   },
   darkQuiet: {
     paper: '#1A1D1C',
@@ -105,6 +109,7 @@ export const PALETTES: Readonly<Record<PaletteName, Palette>> = {
     moss: '#9EBDB5',
     dusk: '#B4B3CF',
     clay: '#D3B1A2',
+    brass: '#C3B8A6',
   },
   lightHigh: {
     paper: '#FFFFFF',
@@ -124,6 +129,7 @@ export const PALETTES: Readonly<Record<PaletteName, Palette>> = {
     moss: '#0F4A3C',
     dusk: '#2E2B6B',
     clay: '#6E2E10',
+    brass: '#563F1A',
   },
   darkHigh: {
     paper: '#000000',
@@ -143,6 +149,7 @@ export const PALETTES: Readonly<Record<PaletteName, Palette>> = {
     moss: '#A6EBDA',
     dusk: '#D2D0FF',
     clay: '#FFC6AA',
+    brass: '#E6D1B3',
   },
 }
 
@@ -160,6 +167,7 @@ export const CONTRAST_PAIRS: readonly { fg: ColorRole; bg: ColorRole | 'surface'
   { fg: 'moss', bg: 'surface', min: 4.5, why: 'Slow down shelf label' },
   { fg: 'dusk', bg: 'surface', min: 4.5, why: 'Reflect shelf label' },
   { fg: 'clay', bg: 'surface', min: 4.5, why: 'Play shelf label' },
+  { fg: 'brass', bg: 'surface', min: 4.5, why: "the Alchemist's gold: clay turned to a low-chroma ochre" },
   { fg: 'on-flesh', bg: 'flesh', min: 4.5, why: 'the go label' },
   { fg: 'on-flesh', bg: 'flesh-press', min: 4.5, why: 'the go label, pressed' },
   { fg: 'paper', bg: 'clay', min: 4.5, why: "the Sage's Leave pill" },

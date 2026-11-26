@@ -23,6 +23,8 @@ const reply = (name: string, description = `${name}, briefly.`) =>
 
 const concept = (name: string) => screen.getByRole('button', { name })
 const status = () => screen.getByRole('status')
+// Mix sits on the phone bench and the wide bench; the page shows only one of them
+const mix = () => fireEvent.click(screen.getAllByRole('button', { name: 'Mix' })[0])
 
 // Saved progress is read in a microtask after mounting; a real player cannot click before it lands
 async function begin() {
@@ -52,6 +54,7 @@ describe('IdeaLab', () => {
     await begin()
     fireEvent.click(concept('Love'))
     fireEvent.click(concept('Fear'))
+    mix()
 
     await waitFor(() => expect(status()).toHaveTextContent('New discovery: Jealousy. When love fears loss, it curdles into possession.'))
     expect(status()).toHaveAttribute('aria-live', 'polite')
@@ -64,11 +67,13 @@ describe('IdeaLab', () => {
     await begin()
     fireEvent.click(concept('Love'))
     fireEvent.click(concept('Fear'))
+    mix()
     await waitFor(() => expect(concept('Jealousy')).toBeInTheDocument())
 
     reply('Restlessness', 'A heart that cannot settle.')
     fireEvent.click(concept('Jealousy'))
     fireEvent.click(concept('Chaos'))
+    mix()
     await waitFor(() => expect(status()).toHaveTextContent('New discovery: Restlessness. A heart that cannot settle.'))
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
@@ -87,6 +92,7 @@ describe('IdeaLab', () => {
     for (const [a, b] of pairs) {
       fireEvent.click(concept(a))
       fireEvent.click(concept(b))
+      mix()
       await waitFor(() => expect(status()).toHaveTextContent(/New discovery: /))
     }
     expect(status()).toHaveTextContent('A riddle has grown plainer: Let love meet its ending, then let the dawn sit beside it.')
@@ -98,6 +104,7 @@ describe('IdeaLab', () => {
     await begin()
     fireEvent.click(concept('Love'))
     fireEvent.click(concept('Fear'))
+    mix()
     await waitFor(() => expect(concept('Jealousy')).toBeInTheDocument())
 
     fireEvent.click(screen.getByRole('button', { name: 'Your cabinet' }))

@@ -71,6 +71,7 @@ const letter = (page: Page) => page.getByRole('region', { name: /^The (Great|Sec
 async function combine(page: Page, a: string, b: string) {
   await concept(page, a).click()
   await concept(page, b).click()
+  await page.getByRole('button', { name: 'Mix', exact: true }).click()
 }
 
 async function startLab(page: Page) {
@@ -281,10 +282,15 @@ test('can be played with the keyboard alone', async ({ page }) => {
   await page.keyboard.press('ArrowRight')
   await expect(concept(page, 'Order')).toBeFocused()
   await page.keyboard.press('Space')
+  await expect(announcement(page)).toContainText('Chaos and Order are on the bench. Press Mix')
 
+  // One Tab from the concepts reaches Mix, and Enter mixes the pair
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('button', { name: 'Mix', exact: true })).toBeFocused()
+  await page.keyboard.press('Enter')
   await expect(announcement(page)).toContainText('New discovery: Balance.')
   // Regression: locking the chips while combining used to drop focus to the page
-  await expect(concept(page, 'Order')).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Mix', exact: true })).toBeFocused()
 })
 
 test('the concepts are a single Tab stop moved through with the arrow keys, with a way past them to the riddles', async ({ page }) => {
@@ -343,7 +349,8 @@ test('a finished Work is a few Tabs from the concepts, not one per concept', asy
     presses++
   }
   await expect(begin).toBeFocused()
-  expect(presses).toBeLessThanOrEqual(4)
+  // Mix is the one new stop on the way: the concepts, Mix, the riddles, the letter, then the next Work
+  expect(presses).toBeLessThanOrEqual(5)
 })
 
 test('damaged saved data does not stop the lab from opening', async ({ page }) => {
@@ -562,7 +569,8 @@ test('a found gold warms its riddle on the shelf, and what it answers arrives on
   const answer = turning.locator('.alchemist-gold-answer')
   await expect(answer).toContainText('Courage')
   await expect.poll(() => answer.evaluate(el => Number(getComputedStyle(el).opacity))).toBe(1)
-  await expect(turning).toHaveCSS('border-top-style', 'dashed')
+  // The dashed riddle outline has turned to a solid brass edge
+  await expect(turning).toHaveCSS('border-top-style', 'solid')
   await expect(turning).toBeInViewport()
 
   // The next pair files it away with the other golds.
@@ -644,6 +652,7 @@ test.describe('on a phone', () => {
     await page.evaluate(y => window.scrollTo({ top: y - 600, behavior: 'instant' }), top)
     await concept(page, 'Renewal').tap()
     await spring.tap()
+    await page.getByTestId('phone-bench').getByRole('button', { name: 'Mix', exact: true }).tap()
     await expect(announcement(page)).toContainText('A riddle has grown plainer')
     await expect(bench).toBeInViewport()
     await expect(bench).toContainText('Plainer: Let love meet its ending, then let the dawn sit beside it.')
@@ -654,6 +663,7 @@ test.describe('on a phone', () => {
     await startLab(page)
     await concept(page, 'Hope').tap()
     await concept(page, 'Fear').tap()
+    await page.getByTestId('phone-bench').getByRole('button', { name: 'Mix', exact: true }).tap()
     await expect(announcement(page)).toContainText('Gold: Courage.')
     const bench = page.getByTestId('phone-bench')
     const turning = shelf(page).getByRole('listitem').filter({ hasText: 'Just found. Riddle:' })
@@ -685,6 +695,7 @@ test.describe('on a phone', () => {
 
     await concept(page, 'Renewal').tap()
     await spring.tap()
+    await page.getByTestId('phone-bench').getByRole('button', { name: 'Mix', exact: true }).tap()
     await expect(announcement(page)).toContainText('New discovery: Idea 1.')
 
     const bench = page.getByTestId('phone-bench')

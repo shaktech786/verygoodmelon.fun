@@ -128,6 +128,7 @@ html[data-theme="dark"] .text-gray-900 {
   --color-moss: var(--moss);
   --color-dusk: var(--dusk);
   --color-clay: var(--clay);
+  --color-brass: var(--brass);
 
   --text-meta: var(--t-meta);
   --text-small: var(--t-small);
