@@ -71,10 +71,6 @@
   "components/ErrorBoundary.tsx": {
     "infinite": 1
   },
-  "components/games/HardChoices.tsx": {
-    "animate": 2,
-    "banned-utility": 3
-  },
   "components/games/HopeDaily.tsx": {
     "animate": 1,
     "banned-utility": 13
@@ -82,29 +78,6 @@
   "components/games/IdeaLab.tsx": {
     "animate": 3,
     "banned-utility": 4
-  },
-  "components/games/MindDebate.tsx": {
-    "animate": 3,
-    "banned-utility": 1
-  },
-  "components/games/TimelessMinds.tsx": {
-    "banned-utility": 1,
-    "raw-colour": 16
-  },
-  "components/games/avatars/SimliAvatar.tsx": {
-    "animate": 2,
-    "banned-utility": 2,
-    "tailwind-palette": 1
-  },
-  "components/games/avatars/StaticAvatar.tsx": {
-    "banned-utility": 5,
-    "raw-colour": 5,
-    "tailwind-palette": 12
-  },
-  "components/games/avatars/TalkingHeadAvatar.tsx": {
-    "animate": 2,
-    "banned-utility": 2,
-    "tailwind-palette": 1
   },
   "components/games/idea-lab/GoldShelf.tsx": {
     "banned-utility": 2
@@ -124,9 +97,6 @@
   },
   "lib/email/templates.ts": {
     "raw-colour": 6
-  },
-  "lib/games/arena-pairings.ts": {
-    "raw-colour": 4
   },
   "lib/games/calm-garden/colours.ts": {
     "raw-colour": 5
