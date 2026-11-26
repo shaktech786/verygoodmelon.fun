@@ -114,7 +114,11 @@ export default function FirstWords() {
   const beforeWakingRef = useRef<HTMLHeadingElement>(null)
   const morningRef = useRef<HTMLHeadingElement>(null)
   const returningToWrite = useRef(false)
-  const scrollBehavior = motionScale === 0 ? 'auto' : 'smooth'
+  // Read through a ref, so switching the sense dial later never scrolls the page or moves focus
+  const scrollBehavior = useRef<ScrollBehavior>(motionScale === 0 ? 'auto' : 'smooth')
+  useEffect(() => {
+    scrollBehavior.current = motionScale === 0 ? 'auto' : 'smooth'
+  }, [motionScale])
 
   const awake = carried !== null
   // The suggestion fills the box until the player writes their own
@@ -132,29 +136,29 @@ export default function FirstWords() {
   // keyboard leaves the page scrolled low, so the dawn sky is brought back into view first.
   useEffect(() => {
     if (submitted !== null) {
-      sceneRef.current?.scrollIntoView({ block: 'start', behavior: scrollBehavior })
+      sceneRef.current?.scrollIntoView({ block: 'start', behavior: scrollBehavior.current })
       beforeWakingRef.current?.focus({ preventScroll: true })
     } else if (returningToWrite.current) {
       returningToWrite.current = false
       textareaRef.current?.focus()
     }
-  }, [submitted, scrollBehavior])
+  }, [submitted])
 
   // Words that called for care, or that no reply could judge, are met by support first, so it is what
   // comes into view, even when that answer (or the lack of one) arrives after the dawn sky has been scrolled to
   const afterWords = submitted !== null
   const supportFirst = afterWords && (care || unjudged)
   useEffect(() => {
-    if (supportFirst) careRef.current?.scrollIntoView({ block: 'start', behavior: scrollBehavior })
-  }, [supportFirst, scrollBehavior])
+    if (supportFirst) careRef.current?.scrollIntoView({ block: 'start', behavior: scrollBehavior.current })
+  }, [supportFirst])
 
   // The sky turning to morning is the payoff, so bring it on screen before focus moves; in care, the support stays in view
   useEffect(() => {
     if (!awake) return
     const inView = care ? careRef : sceneRef
-    inView.current?.scrollIntoView({ block: 'start', behavior: scrollBehavior })
+    inView.current?.scrollIntoView({ block: 'start', behavior: scrollBehavior.current })
     morningRef.current?.focus({ preventScroll: true })
-  }, [awake, care, scrollBehavior])
+  }, [awake, care])
 
   useEffect(() => {
     if (goingOn) textareaRef.current?.focus()
@@ -180,7 +184,9 @@ export default function FirstWords() {
 
   // The sun only starts to rise once the words are judged safe; until then the sky stays dark
   const light: Light = awake ? 'day' : safe ? 'dawn' : 'night'
-  const place = awake ? 2 : submitted !== null ? 1 : 0
+  // Places move on only once the words are judged safe: before that nothing marks a step forward
+  const place = awake ? 2 : submitted !== null && safe ? 1 : 0
+  const showPlaces = !supportFirst && !(care && !goingOn)
   const joined = cloud.status === 'ready' && stored ? cloud.total > 1 : null
 
   return (
@@ -204,7 +210,7 @@ export default function FirstWords() {
         {!supportFirst && <Sky light={light} />}
 
         <div className={styles.inner}>
-          <PlaceStamps places={PLACES} here={place} label="Where you are" />
+          {showPlaces && <PlaceStamps places={PLACES} here={place} label="Where you are" />}
 
           {submitted === null ? (
             <>

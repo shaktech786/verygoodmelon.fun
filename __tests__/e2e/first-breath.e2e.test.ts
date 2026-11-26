@@ -186,6 +186,69 @@ test.describe('The Awakening', () => {
     await expect(page.getByRole('button', { name: 'Copy it for tomorrow' })).toHaveCount(0)
   })
 
+  test('the places row waits for the judgement: nothing ticks while the words are heard', async ({ page }) => {
+    const places = page.getByRole('list', { name: 'Where you are' })
+    let answer: () => void = () => {}
+    const replied = new Promise<void>((resolve) => (answer = resolve))
+    await page.route('**/api/first-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
+    await page.route('**/api/first-words/reflect', async (route) => {
+      await replied
+      await route.fulfill({ json: { reflection: 'Carry it home.', intention: INTENTION, safe: true } })
+    })
+    await page.goto('/games/first-breath')
+    await expect(places.getByRole('listitem').first()).toHaveAttribute('aria-current', 'step')
+
+    await speak(page, 'Where did everyone go?')
+    await expect(page.getByText('The quiet listens…')).toBeVisible()
+    await expect(places.getByRole('listitem').first()).toHaveAttribute('aria-current', 'step')
+    answer()
+    await expect(places.getByRole('listitem').nth(1)).toHaveAttribute('aria-current', 'step')
+  })
+
+  test('the places row is not shown beside the care block', async ({ page }) => {
+    await offline(page, { reflection: 'Thank you for trusting this page.', care: true })
+    await page.goto('/games/first-breath')
+    await speak(page, 'I hope it is over for good this time')
+    await expect(page.getByRole('complementary', { name: 'Support' })).toBeVisible()
+    await expect(page.getByRole('list', { name: 'Where you are' })).toHaveCount(0)
+  })
+
+  test('the places row is not shown for words nobody could judge', async ({ page }) => {
+    await page.route('**/api/first-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
+    await page.route('**/api/first-words/reflect', (route) => route.fulfill({ status: 500, json: {} }))
+    await page.goto('/games/first-breath')
+    await speak(page, 'Honestly I am so tired of all of it.')
+    await expect(page.getByText(/If any of this is close to home/)).toBeVisible()
+    await expect(page.getByRole('list', { name: 'Where you are' })).toHaveCount(0)
+  })
+
+  test('in care the places row waits behind the choice to go on', async ({ page }) => {
+    await page.goto('/')
+    await page.evaluate(() => localStorage.setItem('verygoodmelon:care', JSON.stringify({ until: Date.now() + 60 * 60 * 1000 })))
+    await page.goto('/games/first-breath')
+    await expect(page.getByRole('button', { name: "I'd still like to" })).toBeVisible()
+    await expect(page.getByRole('list', { name: 'Where you are' })).toHaveCount(0)
+  })
+
+  test('switching the sense dial after waking leaves the page and focus where they were', async ({ page }) => {
+    await offline(page, { reflection: 'Carry it home.', intention: INTENTION, safe: true })
+    await page.goto('/games/first-breath')
+    await speak(page, 'It is so quiet here.')
+    await page.getByRole('button', { name: 'Wake up' }).click()
+    await expect(page.getByRole('heading', { name: 'Good morning' })).toBeFocused()
+    await expect(daySky(page)).toHaveCSS('opacity', '1', { timeout: 10_000 })
+    await page.getByRole('button', { name: 'Open accessibility settings' }).click()
+    const panel = page.getByRole('dialog', { name: 'Accessibility settings' })
+    await expect(panel).toBeVisible()
+    const before = await page.evaluate(() => window.scrollY)
+    await panel.getByRole('radio', { name: 'Quiet' }).check({ force: true })
+    await expect(page.locator('html')).toHaveAttribute('data-sense', 'quiet')
+    await expect(async () => {
+      expect(Math.abs((await page.evaluate(() => window.scrollY)) - before)).toBeLessThan(2)
+      await expect(page.getByRole('heading', { name: 'Good morning' })).not.toBeFocused()
+    }).toPass({ timeout: 2000 })
+  })
+
   test('in care mode the return is offered without a plan to fill in and without repeating the words', async ({ page }) => {
     await offline(page, { reflection: 'Thank you for trusting this page.', care: true })
     await page.goto('/games/first-breath')
@@ -340,7 +403,8 @@ test.describe('The Awakening', () => {
       await wake.click()
       await expect(page.getByRole('heading', { name: 'Good morning' })).toBeFocused()
       await expect(page.locator('[data-sky]')).toHaveCount(0)
-      await expect(page.getByTestId('sunrise-glow')).toHaveCount(0)
+      // No dawn is drawn at all: neither the sky nor any of its layers
+      await expect(page.locator('[data-light], [data-sky="dawn"], [data-sky="day"]')).toHaveCount(0)
       await expect(support.getByRole('link', { name: '988' })).toBeInViewport()
     })
 
@@ -364,7 +428,8 @@ test.describe('The Awakening', () => {
         expect(helpline!.y).toBeLessThan(scene!.y)
       }).toPass()
       await expect(page.locator('[data-sky]')).toHaveCount(0)
-      await expect(page.getByTestId('sunrise-glow')).toHaveCount(0)
+      // No dawn is drawn at all: neither the sky nor any of its layers
+      await expect(page.locator('[data-light], [data-sky="dawn"], [data-sky="day"]')).toHaveCount(0)
       await expect(page.getByText('Morning is close.')).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Wake up' })).toHaveCount(0)
       await expect(page.getByRole('navigation', { name: 'Somewhere calm to go next' }).locator('a[href="/games/the-still-point"]')).toBeVisible()
