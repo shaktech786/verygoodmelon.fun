@@ -190,10 +190,12 @@ export function MenuScreen({ run, onResume, onHelp }: { run: RunState | null; on
   const [confirming, setConfirming] = useState(false)
   const [mode, setMode] = useState<Mode>('gentle')
   const firstTime = finishedWith.length === 0
-  const [length, setLength] = useState<RunLength>(firstTime ? 'short' : 'long')
+  // Until one is picked, the walk length and level follow what is kept, which arrives after the first draw
+  const [pickedLength, setLength] = useState<RunLength | null>(null)
+  const length = pickedLength ?? (firstTime ? 'short' : 'long')
   const open = Math.min(MAX_RIGOR, rigorWon + 1)
-  const [chosenLevel, setLevel] = useState(open)
-  const level = Math.min(chosenLevel, open)
+  const [chosenLevel, setLevel] = useState<number | null>(null)
+  const level = Math.min(chosenLevel ?? open, open)
   const inProgress = runInProgress(run)
   // Someone who has never won a fight gets one clear way in; every choice is still a click away.
   const firstRun = !inProgress && !tutorialDone && firstTime && rigorWon === 0

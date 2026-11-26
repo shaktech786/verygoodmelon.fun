@@ -283,7 +283,12 @@ export function ThoughtPockets() {
   const showMenu = !run || menuOpen
   const viewKey = showMenu ? 'menu' : `${run.screen}-${run.pick ?? ''}-${run.floor}`
 
+  const shownKey = useRef(viewKey)
+
   useEffect(() => {
+    // The first screen is already where the page left the reader, so only a change of screen moves focus
+    if (shownKey.current === viewKey) return
+    shownKey.current = viewKey
     const screen = screenRef.current
     if (!screen) return
     // The site header is sticky, so a new screen starts from the top rather than wherever the last one was scrolled.
@@ -296,27 +301,22 @@ export function ThoughtPockets() {
   return (
     <div className="tp-root min-h-[calc(100dvh-4rem)] bg-[var(--tp-ink)] px-4 py-3 sm:py-6">
       <style>{THEME_CSS}</style>
-      <div className="mx-auto max-w-5xl">
-        {!hydrated ? (
-          <p className="py-24 text-center text-[var(--tp-muted)]">Opening your notebook…</p>
-        ) : (
-          <>
-            {runInProgress(run) && !showMenu && run.screen !== 'defeat' && (
-              <StatusBar run={run} shown={shown} onMenu={() => setMenuOpen(true)} onDeck={() => setDialog('deck')} onHelp={() => setDialog('help')} />
-            )}
-            <div ref={screenRef} tabIndex={-1} className="tp-screen outline-none" data-testid={`screen-${showMenu ? 'menu' : run.screen}`}>
-              {showMenu ? (
-                <MenuScreen run={run} onResume={() => setMenuOpen(false)} onHelp={() => setDialog('help')} />
-              ) : run.screen === 'victory' || run.screen === 'defeat' ? (
-                <EndScreen run={run} onMenu={() => setMenuOpen(true)} />
-              ) : (
-                <PlayerShownContext.Provider value={setShown}>
-                  <Screen run={run} />
-                </PlayerShownContext.Provider>
-              )}
-            </div>
-          </>
+      {/* The server draws the first menu of a new visit; saved progress arrives once the page has hydrated (kept-boot.ts hides that menu for a visitor who has some) */}
+      <div className="mx-auto max-w-5xl" data-booting={hydrated ? undefined : 'thought-pockets'}>
+        {runInProgress(run) && !showMenu && run.screen !== 'defeat' && (
+          <StatusBar run={run} shown={shown} onMenu={() => setMenuOpen(true)} onDeck={() => setDialog('deck')} onHelp={() => setDialog('help')} />
         )}
+        <div ref={screenRef} tabIndex={-1} className="tp-screen outline-none" data-testid={`screen-${showMenu ? 'menu' : run.screen}`}>
+          {showMenu ? (
+            <MenuScreen run={run} onResume={() => setMenuOpen(false)} onHelp={() => setDialog('help')} />
+          ) : run.screen === 'victory' || run.screen === 'defeat' ? (
+            <EndScreen run={run} onMenu={() => setMenuOpen(true)} />
+          ) : (
+            <PlayerShownContext.Provider value={setShown}>
+              <Screen run={run} />
+            </PlayerShownContext.Provider>
+          )}
+        </div>
       </div>
       <Modal open={dialog === 'help'} onClose={() => setDialog(null)} title="How to play">
         <HowToPlay school={runInProgress(run) ? run.school : null} />
