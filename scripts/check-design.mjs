@@ -2,22 +2,16 @@
 // Seedpress's design rules (docs/design-system/PLAN.md §10.2). Run by `npm run qa` and CI, and as
 // `check:red`, the name it replaced. Optionally checks only the given folders.
 //
-// Strict rules fail on any match. Flesh (and the red it replaces) is for the one go-action of a view,
-// so it never marks a state: a choice someone made, a box they ticked or where keyboard focus sits.
-//
-// Ratcheted rules are the old system's habits: raw colours, Tailwind's own palette, blurred shadows,
-// capitals and tracking, looping animation in the chrome. scripts/design-debt.json records how many
-// each file has today. A file may only lose them; a rise, or a new file with any, fails.
-// `--write-debt` rewrites the record once a count has gone down.
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+// Every rule is strict: any match fails. Flesh (and the red it replaces) is for the one go-action of a
+// view, so it never marks a state: a choice someone made, a box they ticked or where keyboard focus sits.
+// The old system's habits (raw colours, Tailwind's own palette, blurred shadows, capitals and tracking,
+// looping animation in the chrome) fail too; the debt ratchet that once tolerated them is gone.
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const args = process.argv.slice(2)
-const WRITE_DEBT = args.includes('--write-debt')
 const ROOTS = args.filter((a) => !a.startsWith('--'))
-const WHOLE_SITE = ROOTS.length === 0
-if (WHOLE_SITE) ROOTS.push('components', 'app', 'lib')
-const DEBT_FILE = join(import.meta.dirname, 'design-debt.json')
+if (ROOTS.length === 0) ROOTS.push('components', 'app', 'lib')
 const MOTION_CSS = join(process.cwd(), 'app', 'styles', 'motion.css')
 
 const RED = String.raw`(?:accent|accent-hover|melon-red|danger|flesh|flesh-press|flesh-wash|red-\d{2,3}|rose-\d{2,3})(?:\/\d+)?\b`
@@ -52,7 +46,7 @@ const motionAnimations = existsSync(MOTION_CSS)
   ? new Set([...readFileSync(MOTION_CSS, 'utf8').matchAll(/\.animate-([\w-]+)/g)].map((m) => m[1]))
   : new Set()
 
-const RATCHET = [
+const HABITS = [
   {
     id: 'raw-colour',
     why: 'a raw colour; use a token from lib/design',
@@ -76,7 +70,7 @@ const RATCHET = [
     id: 'banned-utility',
     why: 'capitals, tracking, light weights, blur or blurred shadows',
     applies: (file) => /\.tsx?$/.test(file),
-    pattern: /(?<![\w-])(?:[\w-]+:)*(?:italic|uppercase|tracking-[\w[\].-]+|font-(?:light|thin|extralight)|shadow-(?!none(?![\w-]))[\w[\]/.-]+|blur-[\w[\]]+|backdrop-blur(?:-[\w[\]]+)?)(?![\w-])/g,
+    pattern: /(?<![\w/-])(?:[\w-]+:)*(?:italic|uppercase|tracking-[\w[\].-]+|font-(?:light|thin|extralight)|shadow-(?!none(?![\w-]))[\w[\]/.-]+|blur-[\w[\]]+|backdrop-blur(?:-[\w[\]]+)?)(?![\w-])/g,
   },
   {
     id: 'animate',
@@ -135,8 +129,6 @@ function* openingTags(text) {
 }
 
 const problems = []
-const counts = {}
-const found = {}
 for (const root of ROOTS) {
   for (const file of sourceFiles(root)) {
     const text = readFileSync(file, 'utf8')
@@ -146,13 +138,11 @@ for (const root of ROOTS) {
         problems.push(`${where}:${lineOf(text, match.index)}  ${match[0]}  (${why})`)
       }
     }
-    for (const rule of RATCHET) {
+    for (const rule of HABITS) {
       if (!rule.applies(where)) continue
       for (const match of text.matchAll(rule.pattern)) {
         if (rule.keep && !rule.keep(match)) continue
-        counts[where] ??= {}
-        counts[where][rule.id] = (counts[where][rule.id] ?? 0) + 1
-        ;(found[`${where}|${rule.id}`] ??= []).push(`${where}:${lineOf(text, match.index)}  ${match[0]}  (${rule.why})`)
+        problems.push(`${where}:${lineOf(text, match.index)}  ${match[0]}  (${rule.why})`)
       }
     }
     if (!/\.(?:tsx|jsx)$/.test(file)) continue
@@ -168,32 +158,9 @@ for (const root of ROOTS) {
   }
 }
 
-if (WRITE_DEBT) {
-  const sorted = Object.fromEntries(Object.keys(counts).sort().map((file) => [file, Object.fromEntries(Object.entries(counts[file]).sort())]))
-  writeFileSync(DEBT_FILE, JSON.stringify(sorted, null, 2) + '\n')
-  console.log(`check-design: recorded the debt of ${Object.keys(sorted).length} file(s) in scripts/design-debt.json.`)
-}
-
-const debt = existsSync(DEBT_FILE) ? JSON.parse(readFileSync(DEBT_FILE, 'utf8')) : {}
-let shrunk = 0
-for (const [file, rules] of Object.entries(counts)) {
-  for (const [rule, count] of Object.entries(rules)) {
-    const allowed = debt[file]?.[rule] ?? 0
-    if (count > allowed) {
-      problems.push(...found[`${file}|${rule}`].map((line) => `${line}  [${count} here, ${allowed} allowed]`))
-    }
-  }
-}
-for (const [file, rules] of WHOLE_SITE ? Object.entries(debt) : []) {
-  for (const [rule, allowed] of Object.entries(rules)) {
-    if ((counts[file]?.[rule] ?? 0) < allowed) shrunk++
-  }
-}
-
 if (problems.length) {
   console.error(`check-design found ${problems.length} problem(s). Use the Seedpress tokens and components (components/seedpress):\n`)
   for (const problem of problems) console.error(`  ${problem}`)
   process.exit(1)
 }
-if (shrunk && !WRITE_DEBT) console.log(`check-design: ${shrunk} debt record(s) went down; run \`node scripts/check-design.mjs --write-debt\` to lock that in.`)
-console.log('check-design: flesh and red are only used for actions, and no design debt grew.')
+console.log('check-design: flesh and red are only used for actions, and no old habits remain.')

@@ -76,7 +76,7 @@ export class ErrorBoundary extends Component<Props, State> {
       }
     }
 
-    // Auto-reset after too many errors (prevent infinite loops)
+    // Auto-reset after too many errors (prevent a render loop)
     if (errorCount > 5) {
       console.warn('[ErrorBoundary] Too many errors, forcing reset')
       setTimeout(() => this.reset(), 3000)

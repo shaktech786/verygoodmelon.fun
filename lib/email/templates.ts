@@ -3,10 +3,15 @@
  * Returns plain HTML strings with inline styles (safe for email clients).
  */
 
-const ACCENT = '#d32f3f'
-const TEXT_COLOR = '#1a1a1a'
-const MUTED_COLOR = '#666666'
-const BG_COLOR = '#fafafa'
+import { PALETTES } from '@/lib/design/tokens'
+
+// Email clients have no CSS variables, so the light palette's values are written into the inline styles.
+const INK = PALETTES.light
+const ACCENT = INK.rind
+const TEXT_COLOR = INK.ink
+const MUTED_COLOR = INK['ink-soft']
+const BG_COLOR = INK.paper
+const RULE_COLOR = INK.rule
 const SITE_URL = 'https://verygoodmelon.fun'
 
 function wrapInLayout(content: string): string {
@@ -17,7 +22,7 @@ function wrapInLayout(content: string): string {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;padding:32px 16px;">
     <tr><td>
       ${content}
-      <p style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e5e5;font-size:13px;color:${MUTED_COLOR};">
+      <p style="margin-top:32px;padding-top:16px;border-top:1px solid ${RULE_COLOR};font-size:13px;color:${MUTED_COLOR};">
         <a href="${SITE_URL}" style="color:${ACCENT};text-decoration:none;">VeryGoodMelon.fun</a> — Think deeply, feel lighter.
       </p>
     </td></tr>
@@ -50,7 +55,7 @@ export function confirmationEmailHtml({ requesterName, requestedName }: Confirma
       We'll review your suggestion and, if it's a good fit, add them to the collection.
     </p>
     <p style="margin:24px 0;">
-      <a href="${SITE_URL}/games/ancient-voices" style="display:inline-block;padding:10px 20px;background-color:${ACCENT};color:#ffffff;text-decoration:none;border-radius:4px;font-size:14px;font-weight:600;">
+      <a href="${SITE_URL}/games/ancient-voices" style="display:inline-block;padding:10px 20px;background-color:${INK.flesh};color:${INK['on-flesh']};text-decoration:none;border-radius:4px;font-size:14px;font-weight:600;">
         Back to The Sage
       </a>
     </p>
