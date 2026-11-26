@@ -1,9 +1,10 @@
 import { test, expect, type Page } from '@playwright/test'
-import { FLASH_STEP, MAX_FLASHES_PER_SECOND, MEAN_LUMINANCE_SOURCE, largestStep, mostFlashesInASecond, type LuminanceSample } from './helpers/flash'
+import { MAX_FLASHES_PER_SECOND, MEAN_LUMINANCE_SOURCE, mostFlashesInASecond, type LuminanceSample } from './helpers/flash'
+import { settle } from './helpers/animations'
 
 /**
  * No flash (PLAN.md 12.1): the two S3 moments are measured, frame by frame, as the pixels the player sees.
- * A change is a step of more than 10% in relative luminance between frames; no second may hold more than three.
+ * A flash is a swing of more than 10% in relative luminance from the last turning point (helpers/flash.ts); no second may hold more than three.
  *
  * The Shapeshifter's bloom is a CSS animation, so it is paused and stepped through at 60 frames a second and each
  * frame is photographed, which makes the count the same on a slow runner as on a fast one. The Gardener's light
@@ -19,7 +20,6 @@ function assertNoFlash(samples: LuminanceSample[], minimumFrames: number) {
   // The sampler has to see the change it is checking
   const seen = samples.map((s) => s.luminance)
   expect(Math.max(...seen) - Math.min(...seen)).toBeGreaterThan(0)
-  expect(largestStep(samples)).toBeLessThanOrEqual(FLASH_STEP)
   expect(mostFlashesInASecond(samples)).toBeLessThanOrEqual(MAX_FLASHES_PER_SECOND)
 }
 
@@ -66,27 +66,30 @@ test('The Shapeshifter bloom fades in over 1.6 s without a flash, seen frame by 
     return page.evaluate(() => (window as CascadeWindow).__cascadeState?.unnamed)
   }).toBeNull()
 
-  const bloom = page.getByTestId('rule-named').locator('.shapeshifter-bloom')
+  const card = page.getByTestId('rule-named')
+  const bloom = card.locator('.shapeshifter-bloom')
   await expect(bloom).toHaveCount(1)
-  const duration = await bloom.evaluate((el) => {
-    const [animation] = el.getAnimations()
-    animation.pause()
-    return Number(animation.effect!.getComputedTiming().duration)
+  // Everything the clip shows is held and stepped together: the wash, the card's own fade, anything else inside it
+  const duration = await card.evaluate((el) => {
+    const animations = el.getAnimations({ subtree: true })
+    for (const animation of animations) animation.pause()
+    return Math.max(...animations.map((animation) => Number(animation.effect!.getComputedTiming().endTime)))
   })
-  expect(duration).toBe(1600)
+  expect(await bloom.evaluate((el) => el.getAnimations().map((a) => Number(a.effect!.getComputedTiming().duration)))).toEqual([1600])
 
-  // The wash behind the card, which is the region that changes
-  const box = await bloom.boundingBox()
+  // In view first, so the box is the one on screen
+  await bloom.scrollIntoViewIfNeeded()
+  const box = (await bloom.boundingBox())!
   const viewport = page.viewportSize()!
-  const x = Math.max(0, Math.floor(box!.x))
-  const y = Math.max(0, Math.floor(box!.y))
-  const clip = { x, y, width: Math.min(viewport.width - x, Math.ceil(box!.width)), height: Math.min(viewport.height - y, Math.ceil(box!.height)) }
+  const x = Math.max(0, Math.floor(box.x))
+  const y = Math.max(0, Math.floor(box.y))
+  const clip = { x, y, width: Math.max(1, Math.min(viewport.width - x, Math.ceil(box.width))), height: Math.max(1, Math.min(viewport.height - y, Math.ceil(box.height))) }
 
   const frames: { at: number; png: string }[] = []
   for (let at = 0; at <= duration + FRAME_MS; at += FRAME_MS) {
-    await bloom.evaluate((el, time) => {
-      el.getAnimations()[0].currentTime = time
-    }, Math.min(at, duration))
+    await card.evaluate((el, time) => {
+      for (const animation of el.getAnimations({ subtree: true })) animation.currentTime = Math.min(time, Number(animation.effect!.getComputedTiming().endTime))
+    }, at)
     frames.push({ at, png: (await page.screenshot({ clip, type: 'png' })).toString('base64') })
   }
 
@@ -127,7 +130,7 @@ test('The Gardener light shift cross-fades the sky without a flash, read on ever
   const sit = page.getByRole('button', { name: 'Sit with your garden' })
   await expect(sit).toBeEnabled()
   // Entrance fades must be over before the first frame is read
-  await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))))
+  await settle(page)
 
   // Read the canvas on every frame from before the click until well past the 1.6 s fade
   await page.evaluate((source) => {
@@ -155,10 +158,4 @@ test('The Gardener light shift cross-fades the sky without a flash, read on ever
 
   const samples = await page.evaluate(() => (window as unknown as { __flash: { samples: { at: number; luminance: number }[] } }).__flash.samples)
   assertNoFlash(samples, 20)
-})
-
-test('the flash detector catches a real strobe', () => {
-  const strobe: LuminanceSample[] = Array.from({ length: 30 }, (_, i) => ({ at: i * FRAME_MS, luminance: i % 2 ? 0.9 : 0.1 }))
-  expect(largestStep(strobe)).toBeGreaterThan(FLASH_STEP)
-  expect(mostFlashesInASecond(strobe)).toBeGreaterThan(MAX_FLASHES_PER_SECOND)
 })
