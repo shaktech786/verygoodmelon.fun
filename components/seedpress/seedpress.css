@@ -2282,6 +2282,57 @@ a.sp-packet:focus-visible .sp-print {
   transform: none;
 }
 
+/* ---------- The error page (PLAN.md section 7.17) ---------- */
+
+.sp-error {
+  display: grid;
+  gap: var(--s-5);
+  width: 100%;
+  max-width: var(--w-prose);
+  margin-inline: auto;
+  padding: var(--s-7) var(--s-4);
+}
+
+.sp-error__title {
+  margin: 0;
+}
+
+.sp-error__words {
+  margin: var(--s-2) 0 0;
+}
+
+.sp-error__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
+.sp-error__help {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.sp-error__details {
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sheet);
+  background-color: var(--well);
+  font-size: var(--t-meta);
+}
+
+.sp-error__details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.sp-error__details pre {
+  margin: var(--s-2) 0 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  color: var(--ink-soft);
+}
+
 /* ---------- The print tray (PLAN.md section 7.19) ---------- */
 
 .sp-printtray {

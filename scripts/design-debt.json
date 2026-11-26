@@ -51,9 +51,6 @@
   "app/games/thought-pockets/components/WalkArgument.tsx": {
     "banned-utility": 3
   },
-  "app/global-error.tsx": {
-    "raw-colour": 2
-  },
   "app/globals.css": {
     "infinite": 2
   },
@@ -75,12 +72,7 @@
     "animate": 1
   },
   "components/ErrorBoundary.tsx": {
-    "banned-utility": 1,
     "infinite": 1
-  },
-  "components/FeedbackDialog.tsx": {
-    "animate": 2,
-    "banned-utility": 1
   },
   "components/games/BreathingPatterns.tsx": {
     "animate": 1,
@@ -111,7 +103,7 @@
   },
   "components/games/IdeaLab.tsx": {
     "animate": 3,
-    "banned-utility": 5
+    "banned-utility": 4
   },
   "components/games/LastWords.tsx": {
     "animate": 1,
@@ -121,26 +113,13 @@
     "animate": 6,
     "banned-utility": 1
   },
-  "components/games/RequestThinkerModal.tsx": {
-    "animate": 3,
-    "banned-utility": 2
-  },
   "components/games/TheUnrusher.tsx": {
     "animate": 6,
     "banned-utility": 3
   },
-  "components/games/ThinkerPhoneBook.tsx": {
-    "animate": 1,
-    "banned-utility": 3
-  },
   "components/games/TimelessMinds.tsx": {
-    "animate": 2,
-    "banned-utility": 5,
+    "banned-utility": 1,
     "raw-colour": 16
-  },
-  "components/games/TimelessMindsKeptLines.tsx": {
-    "animate": 1,
-    "banned-utility": 3
   },
   "components/games/WorryCapsule.tsx": {
     "banned-utility": 1
