@@ -29,7 +29,6 @@ import {
   letterDropDelayMs,
   lettersLandAfterSeconds,
 } from '@/lib/games/hope-daily/solved'
-import { Icon } from '@/components/seedpress/icons/Icon'
 import { Go } from '@/components/seedpress/Go'
 import { Stamp } from '@/components/seedpress/Stamp'
 import { QuietButton } from '@/components/seedpress/QuietButton'
@@ -618,7 +617,7 @@ function EndingStory({ reveal, arrive, shareNote, onShare, pressing }: EndingSto
 
       <div className={styles.passOn}>
         <Go onClick={() => onShare(reveal)}>
-          <Icon name="share" size={12} /> Pass the good news on
+          Pass the good news on
         </Go>
         <p className={styles.source} role="status" aria-live="polite">
           {shareNote}

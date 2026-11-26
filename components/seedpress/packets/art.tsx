@@ -218,7 +218,7 @@ function keeper(s: Screens): PacketPrint {
   }
 }
 
-/** A folded morning paper with the sun rising out of it. */
+/** A folded morning paper with the sun rising out of it, and one word left blank. */
 function optimist(s: Screens): PacketPrint {
   return {
     a: (
@@ -234,7 +234,8 @@ function optimist(s: Screens): PacketPrint {
         <path d="M36 176 L204 168 L210 270 L42 282 Z" fill={s.b} />
         <path d="M36 176 L204 168 L210 270 L42 282 Z" {...ROUND} strokeWidth="7" />
         <path d="M120 172 L126 276" {...ROUND} strokeWidth="4" strokeDasharray="3 7" />
-        <path d="M54 194 L104 191" {...ROUND} strokeWidth="10" />
+        {/* The one blank word, a dashed gap in the first line */}
+        <rect x="54" y="184" width="54" height="16" rx="4" {...ROUND} strokeWidth="4" strokeDasharray="5 5" />
         <path d="M56 214 L106 211 M57 230 L107 227 M58 246 L94 244 M140 188 L190 185 M141 206 L191 203 M142 222 L192 219 M143 238 L178 236" {...ROUND} strokeWidth="5" />
       </>
     ),
