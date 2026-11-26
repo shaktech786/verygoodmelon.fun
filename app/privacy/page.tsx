@@ -120,7 +120,7 @@ export default function PrivacyPage() {
         </ProseList>
       </ProseSection>
 
-      <ProseSection id="conversations" title="Conversations and Generated Content">
+      <ProseSection id="conversations" title="Conversations and Replies">
         <p>
           Several experiences respond to what you type or say. To produce a response, your input
           is sent to Google (Gemini) or OpenAI for processing, and the reply comes straight back
@@ -130,7 +130,7 @@ export default function PrivacyPage() {
         <ProseList>
           <li>
             <Term>Spoken replies.</Term> When a character speaks aloud, the text of its reply (not
-            yours) is sent to ElevenLabs to generate audio, and animated portraits may be rendered
+            yours) is sent to ElevenLabs to turn it into speech, and animated portraits may be rendered
             by Simli.
           </li>
           <li>
@@ -210,7 +210,7 @@ export default function PrivacyPage() {
           <li>
             <InkLink href="https://policies.google.com/privacy">Google</InkLink> and{' '}
             <InkLink href="https://openai.com/policies/privacy-policy">OpenAI</InkLink>{' '}
-            &mdash; generating responses
+            &mdash; writing replies
           </li>
           <li>
             <InkLink href="https://elevenlabs.io/privacy-policy">ElevenLabs</InkLink> and{' '}
@@ -242,7 +242,7 @@ export default function PrivacyPage() {
           <li>Sell, rent, share, or trade data with anyone, for any price or purpose.</li>
           <li>Show ads, or use advertising, remarketing, or social media tracking pixels.</li>
           <li>Build profiles of visitors or follow you to other websites.</li>
-          <li>Use what you write to train models.</li>
+          <li>Use what you write to teach other systems.</li>
           <li>Use data for anything other than running and improving this site.</li>
         </ProseList>
       </ProseSection>

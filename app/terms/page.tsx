@@ -45,9 +45,9 @@ export default function TermsPage() {
         </p>
       </ProseSection>
 
-      <ProseSection id="generated-content" title="Generated Content and Characters">
+      <ProseSection id="generated-content" title="Replies and Characters">
         <p>
-          Some responses are generated in the moment and can be wrong, incomplete, or out of
+          Some responses are written in the moment and can be wrong, incomplete, or out of
           character. Conversations with historical figures are creative simulations, not the real
           words or views of those people. Please do not rely on them for facts or for important
           decisions. The{' '}
@@ -79,7 +79,7 @@ export default function TermsPage() {
             Do not use scripts or bots to flood submissions, votes, or conversations, or to get
             around rate limits.
           </li>
-          <li>Do not use the site to generate content that harms others.</li>
+          <li>Do not use the site to make content that harms others.</li>
         </ProseList>
         <p>We may limit or block access that puts the site or its visitors at risk.</p>
       </ProseSection>

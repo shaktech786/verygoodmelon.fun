@@ -17,7 +17,7 @@ import { atkinson, bricolage } from "@/lib/design/fonts";
 export const metadata: Metadata = {
   metadataBase: new URL("https://verygoodmelon.fun"),
   title: "VeryGoodMelon.Fun - Thoughtful Games to Reduce Anxiety",
-  description: "Creative, accessible, AI-powered games designed to help you relax. No ads, no sign-up, no stress - just thoughtful experiences.",
+  description: "Creative, accessible games designed to help you relax. No ads, no sign-up, no stress - just thoughtful experiences.",
   keywords: ["games", "relaxation", "anxiety relief", "accessible games", "creative games", "watermelon"],
   authors: [{ name: "VeryGoodMelon.Fun" }],
   creator: "VeryGoodMelon.Fun",
