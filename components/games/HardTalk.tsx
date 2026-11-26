@@ -643,7 +643,7 @@ function HardTalkGame() {
         <div className={styles.art}><ThresholdArt progress={progress} reducedMotion={reducedMotion} /></div>
       )}
 
-      <StatusLine>{welcomeBack ? 'Welcome back. You were here.' : null}</StatusLine>
+      {welcomeBack && <StatusLine>Welcome back. You were here.</StatusLine>}
       {!storageWorks && (
         <Note>This browser isn’t keeping anything, so this will last only while the page is open.</Note>
       )}

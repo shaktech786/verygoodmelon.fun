@@ -185,7 +185,7 @@ export function ComposeArt({ text, motion, className }: { text: string; motion: 
       <g transform="rotate(38 116 58)">
         <rect x="104" y="56" width="18" height="4" className="fill-clay" />
         <rect x="104" y="56" width="18" height="1" className="fill-ink/20" />
-        <rect x="122" y="56" width="3" height="4" className="fill-flesh/70" />
+        <rect x="122" y="56" width="3" height="4" className="fill-seed/70" />
         <path d="M104 56 L99 58 L104 60 Z" className={styles.paperFill} shapeRendering="auto" />
         <rect x="99" y="57.5" width="1.5" height="1" className="fill-ink/70" />
       </g>
