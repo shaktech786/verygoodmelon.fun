@@ -53,7 +53,7 @@ export default function TimelessMindsChooser({ care, onChoose, onSurprise, onInt
         ))}
       </ul>
       <div className="mt-5 flex justify-center">
-        <Stamp icon="dice" onClick={onSurprise}>
+        <Stamp icon="dice" onClick={onSurprise} onPointerEnter={onIntent} onFocus={onIntent}>
           Surprise me
         </Stamp>
       </div>

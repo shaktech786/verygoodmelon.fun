@@ -1056,3 +1056,25 @@ test('Send cannot go while the box is empty or the mic is listening', async ({ p
   await input(page).fill('Hello')
   await expect(sendButton).not.toHaveAttribute('aria-disabled', 'true')
 })
+
+test('if the call cannot load, the chooser stays and says so plainly, and trying again connects', async ({ page }) => {
+  await setUpBrowser(page)
+  await stubChat(page)
+  await page.goto('/games/ancient-voices')
+  await expect(chooser(page)).toBeVisible()
+  await page.waitForLoadState('load')
+  // From here every script the page asks for fails, as it would offline or after a deploy removed the old files
+  await page.route('**/_next/static/chunks/**', (route) => route.abort())
+  const socrates = chooser(page).getByRole('button', { name: /^Socrates/ })
+  await expect(async () => {
+    await socrates.click({ timeout: 1000 })
+    await expect(page.getByRole('alert').filter({ hasText: 'could not connect' })).toBeVisible({ timeout: 1000 })
+  }).toPass()
+  await expect(chooser(page)).toBeVisible()
+  await expectOneGo(page)
+
+  await page.unroute('**/_next/static/chunks/**')
+  await page.getByRole('alert').filter({ hasText: 'could not connect' }).getByRole('button', { name: 'Try again' }).click()
+  await expect(chooser(page)).toHaveCount(0)
+  await expect(bubbles(page).first()).toBeVisible()
+})

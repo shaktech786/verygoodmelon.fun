@@ -82,15 +82,18 @@ const THINKER_PRESET_FALLBACKS: Record<string, string> = {
  * Load custom face IDs from the generated mapping file.
  * Called once on module init.
  */
-export async function loadCustomFaceIds(): Promise<void> {
-  try {
-    const response = await fetch('/api/timeless-minds/simli-faces')
-    if (response.ok) {
-      customFaceIds = await response.json()
-    }
-  } catch {
-    // Custom faces not available, will use presets
-  }
+let loadingFaceIds: Promise<void> | null = null
+
+export function loadCustomFaceIds(): Promise<void> {
+  // One fetch per page, so the chooser can start it and the call can wait on the same one
+  loadingFaceIds ??= fetch('/api/timeless-minds/simli-faces')
+    .then(async (response) => {
+      if (response.ok) customFaceIds = await response.json()
+    })
+    .catch(() => {
+      // Custom faces not available, will use presets
+    })
+  return loadingFaceIds
 }
 
 /**

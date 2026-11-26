@@ -12,7 +12,7 @@ export type AvatarProviderType = 'talkinghead' | 'simli' | 'static'
 
 /**
  * Props shared by all avatar provider components.
- * The parent (TimelessMinds) passes these regardless of which provider is active.
+ * The parent (SageCall) passes these regardless of which provider is active.
  */
 export interface AvatarComponentProps {
   /** Provider-specific avatar identifier (face UUID, GLB URL, or the thinker id for the static portrait) */
