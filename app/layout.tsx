@@ -1,23 +1,17 @@
 import type { Metadata } from "next";
-import { Quicksand } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/ui/Header";
-import { Footer } from "@/components/ui/Footer";
+import "@/components/seedpress/seedpress.css";
+import { Header } from "@/components/seedpress/Header";
+import { Footer } from "@/components/seedpress/Footer";
 import { AccessibilityControls } from "@/components/accessibility/AccessibilityControls";
 import { SiteAnalytics } from "@/components/SiteAnalytics";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
-import { AmbientParticles } from "@/components/ui/AmbientParticles";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { CareModeProvider } from "@/components/games/CareMode";
 import { ACCESSIBILITY_BOOT_SCRIPT } from "@/lib/accessibility/boot-script";
-
-const quicksand = Quicksand({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-quicksand",
-  display: "swap",
-});
+import { PALETTES } from "@/lib/design/tokens";
+import { atkinson, bricolage } from "@/lib/design/fonts";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://verygoodmelon.fun"),
@@ -56,7 +50,7 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#e63946",
+  themeColor: PALETTES.light.paper,
 };
 
 export default function RootLayout({
@@ -65,7 +59,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`${atkinson.variable} ${bricolage.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: ACCESSIBILITY_BOOT_SCRIPT }} />
         {/* Import map for TalkingHead 3D avatar library (loaded at runtime from /talkinghead/) */}
@@ -87,8 +81,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="VeryGoodMelon" />
       </head>
-      <body className={`${quicksand.variable} antialiased`} suppressHydrationWarning>
-        <AmbientParticles />
+      <body suppressHydrationWarning>
         <a href="#main-content" className="skip-to-content">
           Skip to main content
         </a>

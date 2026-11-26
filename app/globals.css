@@ -1,71 +1,7 @@
 @import "tailwindcss";
-
-:root {
-  /* Light, airy palette with subtle watermelon-inspired accents */
-  --background: #fafafa;
-  --foreground: #1a1a1a;
-  --primary: #2d3748;
-  --primary-light: #4a5568;
-  --accent: #d32f3f;
-  --accent-hover: #b8283a;
-  --accent-soft: #ffe8e9;
-  --success: #74c69d;
-  --danger: #d32f3f;
-  --warm: #f6ad55;
-  --melon-green: #1a4d2e;
-  --melon-green-light: #74c69d;
-  --melon-red: #e63946;
-
-  /* Extended game palette (Phase 2) */
-  --melon-purple: #8b5cf6;
-  --melon-blue: #3b82f6;
-  --melon-orange: #f97316;
-  --melon-pink: #ec4899;
-  --melon-teal: #14b8a6;
-  --melon-yellow: #f6ad55;
-  --melon-indigo: #6366f1;
-  --melon-emerald: #10b981;
-
-  --card-bg: #ffffff;
-  --card-border: #e8e8e8;
-  --hover-bg: #f7f7f7;
-  /* Rind green, like --chosen: red is kept for the main action, and a red ring reads as "wrong". */
-  --focus-ring: var(--melon-green);
-  /* "Yours" and "selected": rind green, so red stays for the main action. Built from --melon-green, so every theme and contrast setting follows. */
-  --chosen: color-mix(in srgb, var(--melon-green) 12%, var(--card-bg));
-  --chosen-line: var(--melon-green);
-}
-
-/* Dark mode color palette */
-html[data-theme="dark"] {
-  --background: #1a1a1a;
-  --foreground: #f0f0f0;
-  --primary: #e8e8e8;
-  --primary-light: #a0a0a0;
-  --accent: #ff6b7a;
-  --accent-hover: #ff8a96;
-  --accent-soft: #3a1f21;
-  --success: #68b892;
-  --danger: #ff6b7a;
-  --warm: #ffb366;
-  --melon-green: #74c69d;
-  --melon-green-light: #a8dcc0;
-  --melon-red: #ff6b7a;
-
-  /* Extended game palette - dark variants (Phase 2) */
-  --melon-purple: #a78bfa;
-  --melon-blue: #60a5fa;
-  --melon-orange: #fb923c;
-  --melon-pink: #f472b6;
-  --melon-teal: #2dd4bf;
-  --melon-yellow: #fbbf24;
-  --melon-indigo: #818cf8;
-  --melon-emerald: #34d399;
-
-  --card-bg: #2a2a2a;
-  --card-border: #404040;
-  --hover-bg: #333333;
-}
+@import "./styles/tokens.css";
+@import "./styles/legacy-aliases.css";
+@import "./styles/base.css";
 
 /* Dark mode overrides for hardcoded Tailwind classes */
 html[data-theme="dark"] .bg-white,
@@ -111,36 +47,6 @@ html[data-theme="dark"] .text-gray-900 {
 
 /* Auto theme: respect system preference */
 @media (prefers-color-scheme: dark) {
-  html[data-theme="auto"] {
-    --background: #1a1a1a;
-    --foreground: #f0f0f0;
-    --primary: #e8e8e8;
-    --primary-light: #a0a0a0;
-    --accent: #ff6b7a;
-    --accent-hover: #ff8a96;
-    --accent-soft: #3a1f21;
-    --success: #68b892;
-    --danger: #ff6b7a;
-    --warm: #ffb366;
-    --melon-green: #74c69d;
-    --melon-green-light: #a8dcc0;
-    --melon-red: #ff6b7a;
-
-    /* Extended game palette - dark variants (Phase 2) */
-    --melon-purple: #a78bfa;
-    --melon-blue: #60a5fa;
-    --melon-orange: #fb923c;
-    --melon-pink: #f472b6;
-    --melon-teal: #2dd4bf;
-    --melon-yellow: #fbbf24;
-    --melon-indigo: #818cf8;
-    --melon-emerald: #34d399;
-
-    --card-bg: #2a2a2a;
-    --card-border: #404040;
-    --hover-bg: #333333;
-  }
-
   /* Dark mode overrides for auto mode */
   html[data-theme="auto"] .bg-white,
   html[data-theme="auto"] [class*="bg-white/"] {
@@ -184,6 +90,7 @@ html[data-theme="dark"] .text-gray-900 {
 }
 
 @theme inline {
+  /* Legacy names, kept until Phase 7 so game code that still says bg-accent or text-foreground re-inks. */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
@@ -202,36 +109,46 @@ html[data-theme="dark"] .text-gray-900 {
   --color-hover-bg: var(--hover-bg);
   --color-chosen: var(--chosen);
   --color-chosen-line: var(--chosen-line);
-  --font-sans: var(--font-quicksand), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Seedpress system colours (docs/design-system/PLAN.md section 10.1). */
+  --color-paper: var(--paper);
+  --color-sheet: var(--sheet);
+  --color-well: var(--well);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-rind: var(--rind);
+  --color-rind-wash: var(--rind-wash);
+  --color-flesh: var(--flesh);
+  --color-flesh-press: var(--flesh-press);
+  --color-on-flesh: var(--on-flesh);
+  --color-flesh-wash: var(--flesh-wash);
+  --color-seed: var(--seed);
+  --color-moss: var(--moss);
+  --color-dusk: var(--dusk);
+  --color-clay: var(--clay);
+
+  --text-meta: var(--t-meta);
+  --text-small: var(--t-small);
+  --text-body: var(--t-body);
+  --text-lead: var(--t-lead);
+  --text-h3: var(--t-h3);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  line-height: 1.6;
-  position: relative;
-}
+@theme {
+  /* Phase 2 resets only these three families; colours, eases and the rest follow in Phase 7. */
+  --shadow-*: initial;
+  --radius-*: initial;
+  --font-*: initial;
 
-/* ============================================
-   PHASE 0: ANTI-GENERIC DESIGN - TEXTURES
-   ============================================ */
-
-/* Paper grain texture overlay */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.03;
-  z-index: -1;
-  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIiB4PSIwIiB5PSIwIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxwYXRoIGQ9Ik0wIDBoMzAwdjMwMEgweiIgZmlsdGVyPSJ1cmwoI2EpIiBvcGFjaXR5PSIuMDUiLz48L3N2Zz4=');
-  pointer-events: none;
+  --font-body: var(--font-atkinson), system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-atkinson), system-ui, sans-serif;
+  --radius-sheet: 14px;
+  --radius-stamp: 10px;
+  --radius-slice: 999px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-stamp: cubic-bezier(0.3, 1.35, 0.5, 1);
 }
 
 /* ============================================
@@ -250,11 +167,6 @@ body::before {
 /* ============================================
    PHASE 0: TYPOGRAPHY TREATMENTS
    ============================================ */
-
-/* Headings with subtle text shadow for depth */
-h1, h2, h3 {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
 
 /* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
@@ -342,127 +254,6 @@ html[data-reduce-motion="true"] [role="dialog"][aria-labelledby*="accessibility"
   transition: none !important;
 }
 
-/*
- * Contrast palettes, one per theme. The single-attribute rules are the light
- * palettes; the dark ones carry two attributes so they win over them whatever
- * the source order, which is what keeps Dark + High from going black on grey.
- */
-html[data-contrast="high"] {
-  --background: #ffffff;
-  --foreground: #000000;
-  --primary: #111111;
-  --primary-light: #333333;
-  --accent: #b01c2e;
-  --accent-hover: #8f1524;
-  --accent-soft: #ffe0e3;
-  --danger: #b01c2e;
-  --success: #1e6b45;
-  --melon-green: #0f3d22;
-  --melon-green-light: #1e6b45;
-  --melon-red: #b01c2e;
-  --card-bg: #ffffff;
-  --card-border: #333333;
-  --hover-bg: #f0f0f0;
-  --focus-ring: #0f3d22;
-}
-
-html[data-contrast="extra-high"] {
-  --background: #ffffff;
-  --foreground: #000000;
-  --primary: #000000;
-  --primary-light: #1a1a1a;
-  --accent: #990000;
-  --accent-hover: #6e0000;
-  --accent-soft: #ffe0e0;
-  --danger: #990000;
-  --success: #005a2b;
-  --melon-green: #003d1d;
-  --melon-green-light: #005a2b;
-  --melon-red: #990000;
-  --card-bg: #ffffff;
-  --card-border: #000000;
-  --hover-bg: #e8e8e8;
-  --focus-ring: #000000;
-}
-
-html[data-theme="dark"][data-contrast="high"] {
-  --background: #000000;
-  --foreground: #ffffff;
-  --primary: #f5f5f5;
-  --primary-light: #d0d0d0;
-  --accent: #ff8f9a;
-  --accent-hover: #ffb0b8;
-  --accent-soft: #3d1a1e;
-  --danger: #ff8f9a;
-  --success: #8fdcb4;
-  --melon-green: #8fdcb4;
-  --melon-green-light: #c2eed6;
-  --melon-red: #ff8f9a;
-  --card-bg: #121212;
-  --card-border: #bdbdbd;
-  --hover-bg: #262626;
-  --focus-ring: #8fdcb4;
-}
-
-html[data-theme="dark"][data-contrast="extra-high"] {
-  --background: #000000;
-  --foreground: #ffffff;
-  --primary: #ffffff;
-  --primary-light: #ebebeb;
-  --accent: #ffb3ba;
-  --accent-hover: #ffd1d5;
-  --accent-soft: #3d1a1e;
-  --danger: #ffb3ba;
-  --success: #a8f0c8;
-  --melon-green: #a8f0c8;
-  --melon-green-light: #d4f8e4;
-  --melon-red: #ffb3ba;
-  --card-bg: #000000;
-  --card-border: #ffffff;
-  --hover-bg: #1f1f1f;
-  --focus-ring: #ffffff;
-}
-
-@media (prefers-color-scheme: dark) {
-  html[data-theme="auto"][data-contrast="high"] {
-    --background: #000000;
-    --foreground: #ffffff;
-    --primary: #f5f5f5;
-    --primary-light: #d0d0d0;
-    --accent: #ff8f9a;
-    --accent-hover: #ffb0b8;
-    --accent-soft: #3d1a1e;
-    --danger: #ff8f9a;
-    --success: #8fdcb4;
-    --melon-green: #8fdcb4;
-    --melon-green-light: #c2eed6;
-    --melon-red: #ff8f9a;
-    --card-bg: #121212;
-    --card-border: #bdbdbd;
-    --hover-bg: #262626;
-    --focus-ring: #8fdcb4;
-  }
-
-  html[data-theme="auto"][data-contrast="extra-high"] {
-    --background: #000000;
-    --foreground: #ffffff;
-    --primary: #ffffff;
-    --primary-light: #ebebeb;
-    --accent: #ffb3ba;
-    --accent-hover: #ffd1d5;
-    --accent-soft: #3d1a1e;
-    --danger: #ffb3ba;
-    --success: #a8f0c8;
-    --melon-green: #a8f0c8;
-    --melon-green-light: #d4f8e4;
-    --melon-red: #ffb3ba;
-    --card-bg: #000000;
-    --card-border: #ffffff;
-    --hover-bg: #1f1f1f;
-    --focus-ring: #ffffff;
-  }
-}
-
 html[data-contrast="high"] body {
   font-weight: 500;
 }
@@ -476,10 +267,9 @@ html[data-contrast="extra-high"] a:not(:has(h2, h3)) {
   text-decoration: underline;
 }
 
-/* The sticky header is about 4.3rem tall; anything scrolled into view (a focused heading or control,
-   a jump link) stops just below it instead of underneath. */
+/* The header scrolls away, so only a little room is needed above anything scrolled into view. */
 html {
-  scroll-padding-top: 5rem;
+  scroll-padding-top: 1rem;
 }
 
 /* From sm up, the accessibility and sound buttons float at the bottom right. Anything scrolled into view
@@ -555,27 +345,6 @@ html[data-greyscale="true"] {
 
 .button-squeeze:active {
   transform: scale(0.92) rotate(-1deg);
-}
-
-/* ============================================
-   PHASE 0: CUSTOM FOCUS STATES
-   ============================================ */
-
-/* Watermelon-themed focus indicator. Deliberately unlayered so no component utility (shadows included) can hide keyboard focus. */
-*:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 3px var(--background),
-    0 0 0 6px var(--focus-ring);
-}
-
-/* Headings and regions the page moves focus to (tabindex="-1") are places, not controls: a faint mark
-   is enough, and a bold box would sit over a calm scene such as a breathing guide. */
-[tabindex="-1"]:focus-visible {
-  box-shadow: none;
-  outline: 2px solid color-mix(in srgb, var(--focus-ring) 30%, transparent);
-  outline-offset: 4px;
-  border-radius: 4px;
 }
 
 /* ============================================

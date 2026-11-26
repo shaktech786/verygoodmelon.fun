@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import { openFeedback } from '@/components/FeedbackDialog'
 import { InkLink } from './Link'
+import { recordVisit } from '@/lib/analytics/visits'
 import { QuietButton } from './QuietButton'
 
 const SHOP_LINKS = [
@@ -13,8 +15,12 @@ const SHOP_LINKS = [
 
 /** The back of the packet: someone to talk to first, then the shop. The give column stays hidden until it has content. */
 export function Footer() {
+  useEffect(() => {
+    recordVisit()
+  }, [])
+
   return (
-    <footer className="sp-footer" role="contentinfo">
+    <footer className="sp-footer">
       <div className="sp-shop sp-footer__cols">
         <section aria-labelledby="footer-talk" className="sp-footer__col">
           <h2 id="footer-talk" className="sp-footer__head">

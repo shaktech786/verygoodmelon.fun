@@ -1,0 +1,63 @@
+/* Element defaults for the whole site: paper, type, grain, focus, and the Roomy spacing setting. */
+
+body {
+  position: relative;
+  min-height: 100vh;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --mr: var(--misreg);
+}
+
+/* Grain on the paper only, never under reading surfaces (those are sheets above it). */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url('/press/grain.png');
+  opacity: var(--grain);
+}
+
+:where(html[data-theme='dark']) body::before {
+  filter: invert(1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :where(html[data-theme='auto']) body::before {
+    filter: invert(1);
+  }
+}
+
+/* One focus mark everywhere. It is unlayered, so no utility class can hide it. */
+:root :focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+/* Headings and regions the page moves focus to (tabindex="-1") are places, not controls: a faint mark is enough. */
+:root [tabindex='-1']:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--rind) 40%, transparent);
+}
+
+/* Roomy: inside the WCAG 1.4.12 envelope, offered and never imposed (PLAN section 4.3). */
+html[data-spacing='roomy'] body {
+  letter-spacing: 0.05em;
+  word-spacing: 0.12em;
+  line-height: 1.8;
+}
+
+html[data-spacing='roomy'] :where(p, li, dd, blockquote, figcaption, label) {
+  line-height: 1.8;
+}
+
+html[data-spacing='roomy'] :where(p) + :where(p) {
+  margin-top: 2em;
+}
