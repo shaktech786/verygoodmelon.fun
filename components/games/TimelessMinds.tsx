@@ -148,11 +148,12 @@ export default function TimelessMinds() {
   const speechRecognitionRef = useRef<SpeechRecognitionManager | null>(null)
 
   // Provider-agnostic avatar state
-  const [providerReady, setProviderReady] = useState(false)
+  const [faceIdsLoaded, setFaceIdsLoaded] = useState(false)
   const avatarHandleRef = useRef<AvatarHandle | null>(null)
 
   // Read provider config once
   const activeProvider = useMemo(() => getActiveProvider(), [])
+  const providerReady = activeProvider !== 'simli' || faceIdsLoaded
   const providerMeta = useMemo(() => getProviderMeta(activeProvider), [activeProvider])
 
   // Resolve avatar ID for current thinker + provider
@@ -252,13 +253,10 @@ export default function TimelessMinds() {
 
   // Load Simli custom face IDs if using Simli provider, otherwise mark ready immediately
   useEffect(() => {
-    if (activeProvider === 'simli') {
-      loadCustomFaceIds()
-        .catch(() => {})
-        .finally(() => setProviderReady(true))
-    } else {
-      setProviderReady(true)
-    }
+    if (activeProvider !== 'simli') return
+    loadCustomFaceIds()
+      .catch(() => {})
+      .finally(() => setFaceIdsLoaded(true))
   }, [activeProvider])
 
   useEffect(() => {
@@ -505,7 +503,7 @@ export default function TimelessMinds() {
 
   const closeDirectory = () => setShowPhoneBook(false)
 
-  const fromMenu = (action: () => void) => () => {
+  const fromMenu = (action: () => void) => {
     setMenuOpen(false)
     returnFocusRef.current = menuButtonRef.current
     action()
@@ -928,16 +926,16 @@ export default function TimelessMinds() {
                 id={MENU_ID}
                 className={cn(styles.menu, 'absolute right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2 z-30 w-64 p-1.5')}
               >
-                <button type="button" className={styles.menuItem} onClick={fromMenu(() => setShowPhoneBook(true))}>
+                <button type="button" className={styles.menuItem} onClick={() => fromMenu(() => setShowPhoneBook(true))}>
                   <Icon name="people" size={24} />
                   Choose who to talk with
                 </button>
-                <button type="button" className={styles.menuItem} onClick={fromMenu(() => setShowKeptLines(true))}>
+                <button type="button" className={styles.menuItem} onClick={() => fromMenu(() => setShowKeptLines(true))}>
                   <Icon name="library" size={24} />
                   Kept lines
                 </button>
                 {requestsAvailable && (
-                  <button type="button" className={styles.menuItem} onClick={fromMenu(() => setShowRequestModal(true))}>
+                  <button type="button" className={styles.menuItem} onClick={() => fromMenu(() => setShowRequestModal(true))}>
                     <Icon name="plus" size={24} />
                     Request
                   </button>
