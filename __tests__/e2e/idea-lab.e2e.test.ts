@@ -544,7 +544,10 @@ test('has no accessibility violations in light or dark, including the letter', a
   await combine(page, 'Wisdom', 'Courage')
   await expect(letter(page)).toBeVisible()
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
-  await page.waitForTimeout(200)
+  // The letter prints line by line; axe would read a line mid-fade as low contrast
+  await page.evaluate(() =>
+    Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined)))
+  )
   expect(await axeViolations(page)).toEqual([])
   await expectOneGo(page)
 })
