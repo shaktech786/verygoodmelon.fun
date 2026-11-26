@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { openFeedback } from '@/components/FeedbackDialog'
 import { InkLink } from './Link'
 import { recordVisit } from '@/lib/analytics/visits'
+import { GiveBlock } from './GiveBlock'
 import { QuietButton } from './QuietButton'
 
 const SHOP_LINKS = [
@@ -13,7 +14,7 @@ const SHOP_LINKS = [
   { href: '/terms', label: 'Terms' },
 ] as const
 
-/** The back of the packet: someone to talk to first, then the shop. The give column stays hidden until it has content. */
+/** The back of the packet: someone to talk to first, then a place to give, then the shop. The give column stays hidden until the owner turns it on, and while care mode lasts. */
 export function Footer() {
   useEffect(() => {
     recordVisit()
@@ -30,6 +31,7 @@ export function Footer() {
             Need to talk?
           </InkLink>
         </section>
+        <GiveBlock placement="footer" />
         <section aria-labelledby="footer-shop" className="sp-footer__col">
           <h2 id="footer-shop" className="sp-footer__head">
             The shop

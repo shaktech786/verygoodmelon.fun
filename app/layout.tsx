@@ -95,8 +95,8 @@ export default function RootLayout({
               {children}
             </main>
           </ErrorBoundary>
+          <Footer />
         </CareModeProvider>
-        <Footer />
         <AccessibilityControls />
         <FeedbackDialog />
         <SiteAnalytics />
