@@ -581,7 +581,7 @@ export default function MindDebate() {
     return (
       <div className="max-w-2xl mx-auto" role="region" aria-label="Support">
         <OwnSupportMark />
-        <div className="grid gap-4">
+        <section aria-labelledby="arena-care-heading" className="grid gap-4">
           <h2 id="arena-care-heading" ref={careHeadingRef} tabIndex={-1} className={cn(styles.careTitle, 'scroll-mt-20')}>
             You don&apos;t have to hold this alone
           </h2>
@@ -590,7 +590,7 @@ export default function MindDebate() {
           <div>
             <QuietButton onClick={() => backToSetup('topic')}>Back to the start</QuietButton>
           </div>
-        </div>
+        </section>
       </div>
     )
   }

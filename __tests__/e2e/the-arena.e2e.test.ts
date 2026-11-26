@@ -381,6 +381,24 @@ test.describe('The Arena', () => {
     await expect(page.getByLabel('Topic')).toHaveValue('')
   })
 
+  test('care entered from a scrolled-down transcript brings the helplines into view', async ({ page }) => {
+    let calls = 0
+    await mockDebate(page, {
+      turn: async (route, body) => {
+        calls += 1
+        if (calls === 4) return route.fulfill({ json: { declined: true, reason: 'care' } })
+        return route.fulfill({ json: { argument: argumentFor(body), round: body.round } })
+      },
+    })
+    await openArena(page)
+    await page.setViewportSize({ width: 390, height: 700 })
+    await setUp(page, 'Plato', 'Aristotle', 'Are ideas real?')
+    await page.getByRole('button', { name: 'Begin' }).click()
+    const support = page.getByRole('region', { name: 'Support' })
+    await expect(support.getByRole('link', { name: /988/ })).toBeInViewport({ timeout: 30_000 })
+    await expect(page.getByRole('heading', { name: "You don't have to hold this alone" })).toBeInViewport()
+  })
+
   test('a decline that names neither part ends quietly, with no refusal, no closing and a way forward', async ({ page }) => {
     const { turns, judged } = await mockDebate(page, {
       turn: (route) => route.fulfill({ json: { declined: true } }),
