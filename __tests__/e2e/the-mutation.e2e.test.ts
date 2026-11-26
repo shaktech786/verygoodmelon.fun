@@ -165,19 +165,30 @@ async function restUntilOpen(page: Page) {
 }
 
 /**
- * Opens a lone clue by pulsing, as a player who gathers would. The time the runner spent on the
- * assertions before this counts as rest in the engine, so a slow runner could let resting win;
- * that idle time is cleared first, since it was the test's pause, not the player's.
+ * Opens a lone clue by pulsing, as a player who gathers would. The engine counts any second
+ * without input as rest, so a slow runner's round trips could let resting win. That time is the
+ * test's, not the player's, so it is cleared before each pulse, and each pulse is waited for
+ * (the orb ignores presses while the last pulse is still spreading).
  */
 async function gatherUntilOpen(page: Page) {
-  await page.evaluate(() => {
-    for (const z of (window as CascadeWindow).__cascadeState?.seeds ?? []) {
-      z.growth -= z.byRest
-      z.byRest = 0
-    }
-  })
-  // The orb ignores presses while a pulse is still spreading, so they go one at a time until it opens
-  for (let i = 0; i < 15 && (await engine(page)).seeds.length; i++) await page.keyboard.press(' ')
+  const clearRestAndCount = () =>
+    page.evaluate(() => {
+      const s = (window as CascadeWindow).__cascadeState as unknown as { seeds: { growth: number; byRest: number }[]; clickTotal: number }
+      for (const z of s.seeds) {
+        z.growth -= z.byRest
+        z.byRest = 0
+      }
+      return { clicks: s.clickTotal, seeds: s.seeds.length }
+    })
+  for (let i = 0; i < 10; i++) {
+    const before = await clearRestAndCount()
+    if (before.seeds === 0) return
+    await expect(async () => {
+      const now = await clearRestAndCount()
+      if (now.clicks === before.clicks && now.seeds > 0) await page.keyboard.press(' ')
+      expect((await clearRestAndCount()).clicks > before.clicks || (await clearRestAndCount()).seeds === 0).toBe(true)
+    }).toPass({ timeout: 5_000 })
+  }
 }
 
 /** Skips a long rest at a crossroads: every clue settles and sleeps. */
