@@ -6,7 +6,7 @@ import { Stamp } from '@/components/seedpress/Stamp'
 import { QuietButton } from '@/components/seedpress/QuietButton'
 import { StickyTray } from '@/components/seedpress/StickyTray'
 import { cn } from '@/lib/utils/cn'
-import { keptValues, readingLine } from '@/lib/games/hard-choices/reading'
+import { keptValues } from '@/lib/games/hard-choices/reading'
 import styles from './HardChoices.module.css'
 import { useRealtimeVotes } from '@/lib/hooks/useRealtimeVotes'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
@@ -85,9 +85,8 @@ function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index:
 
   return (
     <div className="grid gap-5 text-left">
-      {/* The reading prints first: its few values as stamps, one after the other, then the print itself. */}
+      {/* The reading is in the print itself (and its description); here its few values print first as stamps, one after the other. */}
       <div className={styles.reading}>
-        <p className={styles.readingLine}>{readingLine(chosen)}</p>
         {kept.length > 0 && (
           <ul className={styles.values} aria-label="What you reached for">
             {kept.map((value, index) => (
