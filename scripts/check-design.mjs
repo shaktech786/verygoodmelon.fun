@@ -89,8 +89,7 @@ const RATCHET = [
     id: 'infinite',
     why: 'a loop outside a game: chrome never loops',
     applies: (file) => !/^(?:components|app|lib)\/games\//.test(file),
-    // The one sanctioned chrome loop reports a live process: Loading's settling seeds (PLAN.md section 7.18)
-    pattern: /^(?!.*sp-settle).*\binfinite\b/gm,
+    pattern: /\binfinite\b/g,
   },
 ]
 

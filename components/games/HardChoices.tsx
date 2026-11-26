@@ -363,8 +363,8 @@ export default function HardChoices() {
   const answeredCount = Object.keys(answers).filter((id) => DILEMMAS.some((d) => d.id === id)).length
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 max-w-3xl">
+    <div>
+      <div className="mx-auto max-w-3xl">
         <div className="animate-fade">
           <div className="mb-8">
             <div className="flex items-center justify-between text-sm text-foreground/70 mb-2">

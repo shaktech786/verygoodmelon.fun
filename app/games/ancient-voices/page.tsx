@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function TheSagePage() {
   return (
-    <GameStage gameId="timeless-minds" title="The Sage" lead="Talk through what is on your mind with a great thinker from history" sound>
+    <GameStage gameId="timeless-minds" title="The Sage" lead="Talk through what is on your mind with a great thinker from history" wide sound>
       <TimelessMinds />
     </GameStage>
   )

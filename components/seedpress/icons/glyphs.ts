@@ -231,7 +231,7 @@ export const GLYPHS = {
     '............',
     '............',
     '.XXXXXXXXXX.',
-    '.X.X.X.X.X.X',
+    '.X.X.X.X.XX.',
     '.XXXXXXXXXX.',
     '.X.X.X.X.XX.',
     '.XXXXXXXXXX.',

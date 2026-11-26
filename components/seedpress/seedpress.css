@@ -1593,7 +1593,7 @@ a.sp-packet:focus-visible .sp-print {
   width: 6px;
   height: 6px;
   background-color: currentColor;
-  animation: sp-settle calc(1200ms * var(--motion)) steps(4, end) infinite;
+  animation: sp-seed-drop calc(1200ms * var(--motion)) steps(4, end) 1;
 }
 
 .sp-loading__seeds i:nth-child(2) {
@@ -1604,7 +1604,7 @@ a.sp-packet:focus-visible .sp-print {
   animation-delay: calc(320ms * var(--motion));
 }
 
-@keyframes sp-settle {
+@keyframes sp-seed-drop {
   0%,
   60%,
   100% {
@@ -1670,7 +1670,7 @@ a.sp-packet:focus-visible .sp-print {
   padding-top: var(--s-3);
   padding-bottom: max(var(--s-3), env(safe-area-inset-bottom));
   border-top: 1px solid var(--rule);
-  background-color: var(--paper);
+  background-color: var(--sheet);
 }
 
 .sp-tray.is-pinned::before {
@@ -1678,7 +1678,7 @@ a.sp-packet:focus-visible .sp-print {
   position: absolute;
   inset: -12px 0 auto;
   height: 12px;
-  background: linear-gradient(to bottom, transparent, var(--paper));
+  background: linear-gradient(to bottom, transparent, var(--sheet));
   pointer-events: none;
 }
 
@@ -1687,6 +1687,8 @@ a.sp-packet:focus-visible .sp-print {
 .sp-game {
   --game-w: var(--w-stage);
   --game-gutter: 16px;
+  /* What the site header, the strip and the stage frame take of the screen, for games that fill what is left */
+  --game-chrome: 15rem;
   width: 100%;
   max-width: calc(var(--game-w) + 2 * var(--game-gutter));
   margin-inline: auto;
@@ -1700,12 +1702,14 @@ a.sp-packet:focus-visible .sp-print {
 @media (min-width: 640px) {
   .sp-game {
     --game-gutter: 24px;
+    --game-chrome: 18.5rem;
   }
 }
 
 @media (min-width: 1024px) {
   .sp-game {
     --game-gutter: 48px;
+    --game-chrome: 16.5rem;
   }
 }
 

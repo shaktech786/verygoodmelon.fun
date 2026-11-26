@@ -413,11 +413,11 @@ export default function IdeaLab() {
 
   if (showIntro) {
     return (
-      <div className="min-h-[60vh] bg-background flex items-center justify-center px-6">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <div className="max-w-lg text-center animate-fade">
           <FlaskConical className="mx-auto mb-6 text-warm" size={56} strokeWidth={1.5} aria-hidden="true" />
           <p className="text-lg text-foreground/80 mb-3 leading-relaxed">
-            Mix two ideas and see what they become. Seven of them are gold, each hidden behind a riddle, and the heaviest feelings are often the way there.
+            Seven of them are gold, each hidden behind a riddle, and the heaviest feelings are often the way there.
           </p>
           <p className="text-foreground/70 mb-8">
             No timer, no wrong answers. Clues grow plainer if you are stuck, and everything you make is kept.
@@ -515,9 +515,9 @@ export default function IdeaLab() {
   )
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <style>{GOLD_MOMENT_CSS}</style>
-      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 max-w-6xl">
+      <div className="mx-auto max-w-6xl">
         <div className={reducedMotion ? '' : 'animate-fade'}>
           <div className="flex justify-end gap-4 mb-6 sm:mb-8">
               <div className="flex items-center gap-3">

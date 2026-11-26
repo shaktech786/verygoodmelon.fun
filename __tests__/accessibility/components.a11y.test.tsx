@@ -58,7 +58,7 @@ describe('Accessibility Tests', () => {
   })
 
   describe('Keyboard Navigation', () => {
-    it('interactive elements in an tray should be keyboard focusable', async () => {
+    it('interactive elements in a tray should be keyboard focusable', async () => {
       const { container } = render(
         <StickyTray>
           <Button>Button 1</Button>

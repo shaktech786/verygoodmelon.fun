@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function IdeaLabPage() {
   return (
-    <GameStage gameId="idea-lab" title="The Alchemist" lead="Mix two ideas and see what they become." sound>
+    <GameStage gameId="idea-lab" title="The Alchemist" lead="Mix two ideas and see what they become." wide sound>
       <IdeaLab />
     </GameStage>
   )

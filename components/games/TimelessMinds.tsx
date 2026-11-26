@@ -726,7 +726,7 @@ export default function TimelessMinds() {
   const offerGoodbye = messages.filter((m) => m.role === 'user' && !m.unanswered).length >= GOODBYE_AFTER_EXCHANGES && !farewell
 
   return (
-    <div className="sage-call call-stage max-w-[1200px] mx-auto h-[calc(100dvh-12rem)] min-h-[36rem] sm:h-[calc(100dvh-11.5rem)] flex flex-col rounded-2xl">
+    <div className="sage-call call-stage max-w-[1200px] mx-auto h-[calc(100dvh-var(--game-chrome,12rem))] min-h-[26rem] flex flex-col rounded-2xl">
       <style>{SAGE_CALL_CSS}</style>
       {/* At some widths the call reaches the site's floating buttons, so its right edge leaves them a rail there. */}
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3 sm:pr-[5.5rem] xl:pr-3">

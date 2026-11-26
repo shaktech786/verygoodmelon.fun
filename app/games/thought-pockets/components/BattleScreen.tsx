@@ -355,7 +355,7 @@ function ShakenMeter({ battle }: { battle: BattleState }) {
           <span key={i} className={`h-2.5 w-1.5 border border-[var(--tp-good)] ${i < shaken ? 'bg-[var(--tp-good)]' : ''}`} />
         ))}
       </span>
-      <span >
+      <span className="text-[var(--tp-muted)]">
         {threshold !== null ? `lands when it changes at ${threshold}: ${releaseWords(shaken)}` : `lands when it changes: ${releaseWords(shaken)}`}
       </span>
     </div>
