@@ -969,10 +969,11 @@ a.sp-packet:focus-visible .sp-print {
 @media (min-width: 1024px) {
   .sp-band {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    /* The moods run under both columns, so the band ends in one line instead of a gap under the packet. */
     grid-template-areas:
       'sign counter'
-      'moods counter';
-    grid-template-rows: auto 1fr;
+      'moods moods';
+    grid-template-rows: auto;
     align-items: start;
     column-gap: var(--s-8);
     row-gap: var(--s-6);
