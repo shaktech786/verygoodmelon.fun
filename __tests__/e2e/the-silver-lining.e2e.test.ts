@@ -121,8 +121,10 @@ test('a first-time player reads the first part of the good news and finds the wo
   await expectKeepsakeSaves(page, {
     within: ending(page),
     fileName: /^the-optimist-\d{4}-\d{2}-\d{2}\.png$/,
-    describedAs: /^A newspaper clipping of today’s good news.*The missing word, SOLAR, is inked into its place by hand..*solar/i,
+    describedAs: /^A newspaper clipping of today’s good news.*The missing word, SOLAR, is inked into its place by hand\./,
   })
+  // The story shows the word as written, not in capitals
+  await expect(ending(page).getByTestId('keepsake-canvas')).toHaveAccessibleDescription(/It reads: .*solar/i)
 })
 
 test('a wrong guess is summed up in the words the page uses, and the story unfolds', async ({ page }) => {
