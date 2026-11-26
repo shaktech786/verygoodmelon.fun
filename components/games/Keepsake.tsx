@@ -125,6 +125,8 @@ interface KeepsakeProps {
   /** Heading read before the picture; visible unless `hideLabel`. */
   label?: string
   hideLabel?: boolean
+  /** Draws the picture on screen without grain or offset, for an opening that fades into it; Save still prints the full picture. */
+  flat?: boolean
   className?: string
 }
 
@@ -132,7 +134,7 @@ interface KeepsakeProps {
  * A picture of the visit drawn on the device, to save or share. Nothing is uploaded: the
  * image is made here and handed straight to the download or the system's share sheet.
  */
-export function Keepsake({ plan, label = 'A keepsake of this visit', hideLabel = false, className }: KeepsakeProps) {
+export function Keepsake({ plan, label = 'A keepsake of this visit', hideLabel = false, flat = false, className }: KeepsakeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const descriptionId = useId()
   // The palette is read only to redraw when the page's theme, sense or contrast changes
@@ -141,7 +143,9 @@ export function Keepsake({ plan, label = 'A keepsake of this visit', hideLabel =
   useEffect(() => {
     let current = true
     const draw = () => {
-      if (current && canvasRef.current) renderKeepsake(canvasRef.current, plan, currentKeepsakeLook())
+      if (!current || !canvasRef.current) return
+      const look = currentKeepsakeLook()
+      renderKeepsake(canvasRef.current, plan, flat ? { ...look, plain: true } : look)
     }
     draw()
     // Draw again once the page's fonts have arrived, so the words use the site's typeface.
@@ -149,9 +153,9 @@ export function Keepsake({ plan, label = 'A keepsake of this visit', hideLabel =
     return () => {
       current = false
     }
-  }, [plan, inks])
+  }, [plan, inks, flat])
 
-  const picture = async () => (canvasRef.current ? canvasBlob(canvasRef.current) : null)
+  const picture = async () => (flat ? offscreenPicture(plan) : canvasRef.current ? canvasBlob(canvasRef.current) : null)
 
   return (
     <PrintTray label={label} hideLabel={hideLabel} className={className}>

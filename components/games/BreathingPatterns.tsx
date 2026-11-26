@@ -540,9 +540,16 @@ function OpeningMelon({ breaths }: { breaths: Breath[] }) {
 function MelonEnding({ breaths, still }: { breaths: Breath[]; still: boolean }) {
   const [day] = useState(() => new Date())
   const plan = useMemo(() => harmonistKeepsake({ breaths, day }), [breaths, day])
+  // The opening is drawn flat, so the picture it fades into is flat too; the grain settles in once it has finished (3 s)
+  const [settled, setSettled] = useState(still)
+  useEffect(() => {
+    if (still) return
+    const timer = setTimeout(() => setSettled(true), 3200)
+    return () => clearTimeout(timer)
+  }, [still])
   return (
     <div className="relative mb-6">
-      <Keepsake plan={plan} label="Keep this melon" hideLabel />
+      <Keepsake plan={plan} label="Keep this melon" hideLabel flat={!settled} />
       {!still && <OpeningMelon breaths={breaths} />}
     </div>
   )
