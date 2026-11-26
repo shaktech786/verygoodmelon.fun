@@ -1,8 +1,13 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { Button } from '@/components/ui/Button'
+import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react'
+import { Go } from '@/components/seedpress/Go'
+import { Stamp } from '@/components/seedpress/Stamp'
+import { QuietButton } from '@/components/seedpress/QuietButton'
 import { StickyTray } from '@/components/seedpress/StickyTray'
+import { cn } from '@/lib/utils/cn'
+import { keptValues, readingLine } from '@/lib/games/hard-choices/reading'
+import styles from './HardChoices.module.css'
 import { useRealtimeVotes } from '@/lib/hooks/useRealtimeVotes'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { DILEMMAS, type Choice, type ChoiceId } from '@/lib/games/hard-choices/dilemmas'
@@ -63,12 +68,6 @@ function crowdLine(ownPercent: number): string {
   return 'People are almost evenly split on this one.'
 }
 
-// The player's side is rind green and the other neutral, so neither answer is shown as the red, "wrong" one.
-const CROWD_STYLES = {
-  mine: { bar: 'bg-chosen-line', glow: 'shadow-[0_0_8px_color-mix(in_srgb,var(--chosen-line)_40%,transparent)]' },
-  other: { bar: 'bg-foreground/35', glow: 'shadow-[0_0_8px_color-mix(in_srgb,var(--foreground)_25%,transparent)]' },
-} as const
-
 function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index: number) => void }) {
   const chosen = useMemo(
     () => DILEMMAS.flatMap((dilemma) => {
@@ -82,52 +81,60 @@ function Portrait({ answers, onRevisit }: { answers: Answers; onRevisit: (index:
   const [day] = useState(() => new Date())
   const plan = useMemo(() => dilemmaKeepsake({ chosen, day }), [chosen, day])
   const clusters = useMemo(() => dilemmaConstellation(chosen), [chosen])
+  const kept = useMemo(() => keptValues(chosen), [chosen])
 
   return (
-    <div className="space-y-5 text-left">
+    <div className="grid gap-5 text-left">
+      {/* The reading prints first: its few values as stamps, one after the other, then the print itself. */}
+      <div className={styles.reading}>
+        <p className={styles.readingLine}>{readingLine(chosen)}</p>
+        {kept.length > 0 && (
+          <ul className={styles.values} aria-label="What you reached for">
+            {kept.map((value, index) => (
+              <li key={value} className={styles.value} style={{ '--n': index } as CSSProperties}>
+                {value}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <Keepsake plan={plan} label="Tonight's sky of what you reached for" hideLabel />
 
       {/* The chart's own labels shrink to a few pixels on a phone, so the same names are written out here; the picture's description already reads them */}
       {clusters.length > 0 && (
-        <dl data-testid="sky-legend" aria-hidden="true" className="sm:hidden mx-auto max-w-[22rem] grid grid-cols-2 gap-x-4 gap-y-3 text-base">
+        <dl data-testid="sky-legend" aria-hidden="true" className={styles.legend}>
           {clusters.map((cluster) => (
             <div key={cluster.theme}>
-              <dt className="font-semibold text-foreground">{cluster.title}</dt>
-              <dd className="text-foreground/80">{cluster.stars.map((star) => star.value).join(', ')}</dd>
+              <dt>{cluster.title}</dt>
+              <dd>{cluster.stars.map((star) => star.value).join(', ')}</dd>
             </div>
           ))}
         </dl>
       )}
 
-      <p className="text-foreground/85 text-center leading-relaxed">
+      <p className={styles.kind}>
         {chosen.length > 0 && passed > 0 && `You let ${passed === 1 ? 'one question' : `${passed} questions`} pass, and that is allowed too. `}
         None of this is a verdict on who you are. It is what mattered to you today, and it is allowed to change.
       </p>
 
-      <details className="rounded-lg border border-card-border bg-background">
-        <summary className="cursor-pointer select-none px-4 py-3 font-medium text-foreground rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
-          See or change each answer
-        </summary>
-        <ol className="divide-y divide-card-border">
+      <details className={styles.review}>
+        <summary>See or change each answer</summary>
+        <ol className={styles.reviewList}>
           {DILEMMAS.map((dilemma, index) => {
             const answer = answers[dilemma.id]
             const choice: Choice | null = isChoice(answer) ? (answer === 'A' ? dilemma.choiceA : dilemma.choiceB) : null
             return (
-              <li key={dilemma.id} className="flex items-start justify-between gap-3 px-4 py-3">
+              <li key={dilemma.id} className={styles.reviewRow}>
                 <div className="min-w-0">
-                  <p className="text-sm text-primary-light">{dilemma.scenario}</p>
-                  <p className="text-foreground">
-                    {choice ? <><span className="font-medium">{choice.value}</span>: {choice.text}</> : 'Let it pass'}
+                  <p className={styles.reviewScenario}>{dilemma.scenario}</p>
+                  <p className={styles.reviewChoice}>
+                    {choice ? <><strong>{choice.value}</strong>: {choice.text}</> : 'Let it pass'}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onRevisit(index)}
-                  aria-label={`Revisit: ${dilemma.scenario}`}
-                  className="shrink-0 text-sm text-foreground underline underline-offset-4 rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-                >
+                <QuietButton onClick={() => onRevisit(index)} aria-label={`Revisit: ${dilemma.scenario}`}>
                   Revisit
-                </button>
+                </QuietButton>
               </li>
             )
           })}
@@ -360,204 +367,145 @@ export default function HardChoices() {
     { id: 'A', choice: currentDilemma.choiceA },
     { id: 'B', choice: currentDilemma.choiceB },
   ]
-  const answeredCount = Object.keys(answers).filter((id) => DILEMMAS.some((d) => d.id === id)).length
 
   return (
-    <div>
-      <div className="mx-auto max-w-3xl">
-        <div className="animate-fade">
-          <div className="mb-8">
-            <div className="flex items-center justify-between text-sm text-foreground/70 mb-2">
-              <div className="flex items-center gap-2">
-                <span data-dilemma-at={finished ? 'end' : currentDilemmaIndex + 1}>
-                  {finished ? 'The whole set' : dilemmaInWords(currentDilemmaIndex, DILEMMAS.length)}
-                </span>
-                {isRealtimeConnected && showResults && !finished && (
-                  <span className="inline-flex items-center gap-1 text-xs">
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse" aria-hidden="true" />
-                    Live
-                    <span className="sr-only"> updates active</span>
-                  </span>
-                )}
-              </div>
-              {!finished && (
-                <span className="text-xs">{currentDilemma.category}</span>
-              )}
-            </div>
-            <div className="h-1 bg-foreground/10 rounded-full overflow-hidden" aria-hidden="true">
-              <div
-                className="h-full bg-melon-green transition-all duration-300"
-                style={{ width: `${(finished ? 1 : answeredCount / DILEMMAS.length) * 100}%` }}
-              />
+    <div className={styles.wrap}>
+      <div>
+        <div className={styles.head}>
+          <div className={styles.place}>
+            <span data-dilemma-at={finished ? 'end' : currentDilemmaIndex + 1}>
+              {finished ? 'The whole set' : dilemmaInWords(currentDilemmaIndex, DILEMMAS.length)}
+            </span>
+            {isRealtimeConnected && showResults && !finished && (
+              <span className={styles.live}>
+                <span className={styles.liveDot} aria-hidden="true" />
+                Live
+                <span className="sr-only"> updates active</span>
+              </span>
+            )}
+          </div>
+          {!finished && <span>{currentDilemma.category}</span>}
+        </div>
+        {/* Twelve seed marks: where you are, never how many. The question itself is named in the heading below. */}
+        <ul className={styles.seeds} aria-hidden="true">
+          {DILEMMAS.map((dilemma, index) => (
+            <li
+              key={dilemma.id}
+              className={cn(styles.seed, (finished || answers[dilemma.id]) && styles.seedDone, !finished && index === currentDilemmaIndex && styles.seedHere)}
+            />
+          ))}
+        </ul>
+
+        {finished ? (
+          <div className={cn(styles.sheet, styles.card)}>
+            <h2 ref={headingRef} tabIndex={-1} className={styles.ending}>
+              What you chose to protect
+            </h2>
+            <Portrait answers={answers} onRevisit={navigate} />
+            <div className={styles.endActions}>
+              <Stamp onClick={() => navigate(0)}>Look back from the start</Stamp>
+              <QuietButton onClick={handleStartFresh}>Clear my answers and start fresh</QuietButton>
             </div>
           </div>
-
-          {finished ? (
-            <div className="bg-card-bg border border-card-border rounded-lg p-5 sm:p-8 mb-6">
-              <h2
-                ref={headingRef}
-                tabIndex={-1}
-                className="text-xl sm:text-2xl font-medium mb-4 text-center focus:outline-none focus-visible:shadow-none!"
-              >
-                What you chose to protect
+        ) : (
+          <>
+            <div className={cn(styles.sheet, styles.card)}>
+              <p className={styles.context}>{currentDilemma.context}</p>
+              <h2 ref={headingRef} tabIndex={-1} className={styles.scenario}>
+                {currentDilemma.scenario}
               </h2>
-              <Portrait answers={answers} onRevisit={navigate} />
-              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-                <Button onClick={() => navigate(0)} variant="secondary">
-                  Look back from the start
-                </Button>
-                <Button onClick={handleStartFresh} variant="ghost">
-                  Clear my answers and start fresh
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="bg-card-bg border border-card-border rounded-lg p-4 sm:p-8 mb-6">
-                <p className="text-foreground/70 mb-3 text-sm sm:text-base">{currentDilemma.context}</p>
-                <h2
-                  ref={headingRef}
-                  tabIndex={-1}
-                  className="text-xl sm:text-2xl font-medium mb-6 sm:mb-8 focus:outline-none focus-visible:shadow-none!"
-                >
-                  {currentDilemma.scenario}
-                </h2>
 
-                <ul className="space-y-4" aria-label="The two answers">
-                  {choices.map(({ id, choice }, index) => {
-                    const selected = selectedChoice === id
-                    const perspectiveId = `perspective-${id}`
-                    return (
-                      <li
-                        key={id}
-                        className={`rounded-lg border-2 transition-colors ${
-                          selected ? 'border-melon-green bg-success/10' : 'border-foreground/15'
-                        } ${hasVoted ? '' : 'hover:border-foreground/40 hover:bg-hover-bg'}`}
+              <ul className={styles.answers} aria-label="The two answers">
+                {choices.map(({ id, choice }, index) => {
+                  const selected = selectedChoice === id
+                  const perspectiveId = `perspective-${id}`
+                  return (
+                    <li key={id} className={cn(styles.answer, selected && styles.answerChosen, !hasVoted && styles.answerOpen)}>
+                      <button
+                        ref={index === 0 ? firstChoiceRef : undefined}
+                        onClick={() => handleChoice(id)}
+                        aria-disabled={hasVoted}
+                        aria-label={`Choice ${id}: ${choice.text}`}
+                        aria-pressed={selected}
+                        aria-describedby={showResults ? perspectiveId : undefined}
+                        className={cn(styles.pick, hasVoted && styles.pickDone)}
                       >
-                        <button
-                          ref={index === 0 ? firstChoiceRef : undefined}
-                          onClick={() => handleChoice(id)}
-                          aria-disabled={hasVoted}
-                          aria-label={`Choice ${id}: ${choice.text}`}
-                          aria-pressed={selected}
-                          aria-describedby={showResults ? perspectiveId : undefined}
-                          className={`w-full text-left p-4 sm:p-6 rounded-lg flex items-start gap-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
-                            hasVoted ? 'cursor-default' : 'cursor-pointer'
-                          }`}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className={`flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-semibold ${
-                              selected ? 'border-melon-green bg-melon-green text-background' : 'border-foreground/25 text-foreground/75'
-                            }`}
-                          >
-                            {selected ? <Icon name="done" size={12} /> : id}
-                          </span>
-                          <span className="flex-1 pt-0.5 text-lg">
-                            {choice.text}
-                            {selected && (
-                              <span className="block mt-1 text-sm font-medium text-foreground/80">Your choice</span>
-                            )}
-                          </span>
-                        </button>
-                        {showResults && (
-                          <div className="px-4 pb-4 sm:px-6 sm:pb-6 pl-16 sm:pl-[4.5rem] -mt-1 sm:-mt-2">
-                            <p id={perspectiveId} className="text-foreground/80 italic leading-relaxed">
-                              {choice.perspective}
-                            </p>
-                            {displayResults && (
-                              <div className="mt-3">
-                                <div className="flex items-center justify-between text-sm mb-1">
-                                  <span className="text-foreground/75">
-                                    {percentages[id]}% chose this
-                                  </span>
-                                  <span
-                                    className={`transition-colors duration-300 ${
-                                      pulseChoice === id ? 'text-foreground font-medium' : 'text-foreground/75'
-                                    }`}
-                                  >
-                                    {counts[id]} {counts[id] === 1 ? 'vote' : 'votes'}
-                                  </span>
-                                </div>
-                                <div className="h-2 bg-foreground/5 rounded-full overflow-hidden" aria-hidden="true">
-                                  <div
-                                    className={`h-full transition-all duration-300 ${CROWD_STYLES[selected ? 'mine' : 'other'].bar} ${
-                                      pulseChoice === id ? CROWD_STYLES[selected ? 'mine' : 'other'].glow : ''
-                                    }`}
-                                    style={{ width: `${percentages[id]}%` }}
-                                  />
-                                </div>
+                        <span aria-hidden="true" className={cn(styles.letter, selected && styles.letterChosen)}>
+                          {selected ? <Icon name="done" size={12} /> : id}
+                        </span>
+                        <span className={styles.pickText}>
+                          {choice.text}
+                          {selected && <span className={styles.chosenWord}>Your choice</span>}
+                        </span>
+                      </button>
+                      {showResults && (
+                        <div className={styles.after}>
+                          <p id={perspectiveId} className={styles.perspective}>
+                            {choice.perspective}
+                          </p>
+                          {displayResults && (
+                            <div className={styles.crowd}>
+                              <div className={styles.crowdLine}>
+                                <span>{percentages[id]}% chose this</span>
+                                <span className={pulseChoice === id ? styles.crowdStrong : undefined}>
+                                  {counts[id]} {counts[id] === 1 ? 'vote' : 'votes'}
+                                </span>
                               </div>
-                            )}
-                          </div>
-                        )}
-                      </li>
-                    )
-                  })}
-                </ul>
+                              <div className={styles.track} aria-hidden="true">
+                                <div className={cn(styles.bar, selected && styles.barMine)} style={{ width: `${percentages[id]}%` }} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
 
-                {/* Not atomic: counts arriving later are read alone, not with the whole result again.
-                    The perspectives are on screen and describe each choice, so they are not read out here. */}
-                <div role="status" aria-atomic="false">
-                  {showResults && selectedChoice && (
-                    <div className="mt-6 p-5 bg-background border border-card-border rounded-lg text-center">
-                      <p className="text-sm text-foreground/75 mb-2">
-                        You chose <span className="font-medium text-foreground">{currentDilemma[selectedChoice === 'A' ? 'choiceA' : 'choiceB'].value}</span>.
-                        {displayResults && <span> {crowdLine(percentages[selectedChoice])}</span>}
-                      </p>
-                      <p className="text-foreground/90 leading-relaxed">{currentDilemma.carry}</p>
-                    </div>
-                  )}
-                </div>
-
-                {currentAnswer === 'skip' && (
-                  <p className="mt-6 text-sm text-foreground/70 text-center">
-                    You let this one pass earlier. You can answer it now, or keep moving.
-                  </p>
+              {/* Not atomic: counts arriving later are read alone, not with the whole result again.
+                  The perspectives are on screen and describe each choice, so they are not read out here. */}
+              <div role="status" aria-atomic="false">
+                {showResults && selectedChoice && (
+                  <div className={styles.result}>
+                    <p className={styles.resultLine}>
+                      You chose <strong>{currentDilemma[selectedChoice === 'A' ? 'choiceA' : 'choiceB'].value}</strong>.
+                      {displayResults && <span> {crowdLine(percentages[selectedChoice])}</span>}
+                    </p>
+                    <p>{currentDilemma.carry}</p>
+                  </div>
                 )}
               </div>
 
-              <StickyTray pinned={showResults || currentAnswer === 'skip'} className="flex gap-3">
-                {currentDilemmaIndex > 0 && (
-                  <Button
-                    onClick={() => navigate(currentDilemmaIndex - 1)}
-                    variant="secondary"
-                    className="py-4"
-                  >
-                    Previous
-                  </Button>
-                )}
-                {(showResults || currentAnswer === 'skip') && (
-                  <Button
-                    onClick={handleNext}
-                    variant="primary"
-                    className="flex-1 py-4"
-                  >
-                    {currentDilemmaIndex === DILEMMAS.length - 1 ? 'Finish' : 'Next Dilemma'}
-                  </Button>
-                )}
-              </StickyTray>
-              <div ref={resultEndRef} className="scroll-mb-4" aria-hidden="true" />
+              {currentAnswer === 'skip' && (
+                <p className={styles.passed}>
+                  You let this one pass earlier. You can answer it now, or keep moving.
+                </p>
+              )}
+            </div>
 
-              <div className="mt-6 text-center text-sm text-foreground/70">
-                {hasVoted ? (
-                  <Button variant="ghost" size="sm" onClick={handleChangeAnswer}>
-                    Change my answer
-                  </Button>
-                ) : (
-                  <>
-                    <p>Choose the option that feels truer to you. There is no judgment, only reflection.</p>
-                    {currentAnswer !== 'skip' && (
-                      <Button variant="ghost" size="sm" className="mt-2" onClick={handleSkip}>
-                        Let this one pass
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+            <StickyTray pinned={showResults || currentAnswer === 'skip'} className="flex flex-wrap items-center gap-3">
+              {currentDilemmaIndex > 0 && <Stamp onClick={() => navigate(currentDilemmaIndex - 1)}>Previous</Stamp>}
+              {(showResults || currentAnswer === 'skip') && (
+                <Go onClick={handleNext} onward className="flex-1">
+                  {currentDilemmaIndex === DILEMMAS.length - 1 ? 'Finish' : 'Next Dilemma'}
+                </Go>
+              )}
+            </StickyTray>
+            <div ref={resultEndRef} className="scroll-mb-4" aria-hidden="true" />
+
+            <div className={styles.below}>
+              {hasVoted ? (
+                <QuietButton onClick={handleChangeAnswer}>Change my answer</QuietButton>
+              ) : (
+                <>
+                  <p>Choose the option that feels truer to you. There is no judgment, only reflection.</p>
+                  {currentAnswer !== 'skip' && <QuietButton onClick={handleSkip}>Let this one pass</QuietButton>}
+                </>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

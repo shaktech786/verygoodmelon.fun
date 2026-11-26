@@ -1,0 +1,429 @@
+/*
+ * The Dilemma: dusk and clay. The two answers are stamp cards; the chosen one is rind, never flesh. Progress is a row of seed
+ * marks that say where you are without counting. Everything is a Seedpress role.
+ */
+
+.wrap {
+  max-width: 48rem;
+  margin-inline: auto;
+}
+
+.sheet {
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+  color: var(--ink);
+}
+
+.soft {
+  color: var(--ink-soft);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-bottom: var(--s-2);
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.place {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.liveDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-slice);
+  background-color: var(--rind);
+}
+
+/* Twelve seed marks: done ones filled, the one you are on ringed. Place, not score. */
+.seeds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 var(--s-5);
+  padding: 0;
+  list-style: none;
+}
+
+.seed {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-slice);
+}
+
+.seedDone {
+  border-color: var(--rind);
+  background-color: var(--rind);
+}
+
+.seedHere {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.card {
+  padding: var(--s-4);
+  margin-bottom: var(--s-5);
+}
+
+@media (min-width: 640px) {
+  .card {
+    padding: var(--s-6);
+  }
+}
+
+.context {
+  margin: 0 0 var(--s-3);
+  color: var(--ink-soft);
+}
+
+.scenario {
+  margin: 0 0 var(--s-5);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+@media (min-width: 640px) {
+  .scenario {
+    margin-bottom: var(--s-6);
+    font-size: 1.875rem;
+  }
+}
+
+.answers {
+  display: grid;
+  gap: var(--s-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A stamp card: the whole card is the control, and chosen is a rind edge with a tick and the words "Your choice". */
+.answer {
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-stamp);
+  background-color: var(--sheet);
+  box-shadow: 0 3px 0 var(--rule-strong);
+  transition: background-color calc(var(--d-quick) * var(--motion)) var(--e-out);
+}
+
+.answerOpen:hover {
+  background-color: var(--rind-wash);
+}
+
+.answerChosen {
+  border-width: 3px;
+  border-color: var(--rind);
+  background-color: var(--rind-wash);
+  box-shadow: 0 3px 0 var(--rind);
+}
+
+.pick {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+  width: 100%;
+  padding: var(--s-4);
+  border-radius: var(--r-stamp);
+  color: var(--ink);
+  font-size: var(--t-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+@media (min-width: 640px) {
+  .pick {
+    padding: var(--s-5);
+  }
+}
+
+.pickDone {
+  cursor: default;
+}
+
+.pick:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-slice);
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.letterChosen {
+  border-color: var(--rind);
+  background-color: var(--rind);
+  color: var(--sheet);
+}
+
+.pickText {
+  flex: 1;
+  padding-top: 2px;
+}
+
+.chosenWord {
+  display: block;
+  margin-top: var(--s-1);
+  font-size: var(--t-small);
+  font-weight: 700;
+}
+
+.after {
+  padding: 0 var(--s-4) var(--s-4) calc(var(--s-4) + 2rem + var(--s-4));
+  margin-top: -4px;
+}
+
+@media (min-width: 640px) {
+  .after {
+    padding: 0 var(--s-5) var(--s-5) calc(var(--s-5) + 2rem + var(--s-4));
+  }
+}
+
+.perspective {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.crowd {
+  margin-top: var(--s-3);
+}
+
+.crowdLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.crowdStrong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: var(--r-slice);
+  background-color: var(--well);
+}
+
+/* Your side is rind and the other neutral, so neither answer is ever the red, wrong one. */
+.bar {
+  height: 100%;
+  border-radius: var(--r-slice);
+  background-color: var(--ink-soft);
+  transition: width calc(var(--d-settle) * var(--motion)) var(--e-out);
+}
+
+.barMine {
+  background-color: var(--rind);
+}
+
+.result {
+  margin-top: var(--s-5);
+  padding: var(--s-4);
+  border-radius: var(--r-sheet);
+  background-color: var(--well);
+  text-align: center;
+}
+
+.result p {
+  margin: 0;
+}
+
+.result .resultLine {
+  margin-bottom: var(--s-2);
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.below {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-2);
+  margin-top: var(--s-5);
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+  text-align: center;
+}
+
+.below p {
+  margin: 0;
+}
+
+.passed {
+  margin: var(--s-5) 0 0;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+  text-align: center;
+}
+
+/* ---------- The ending: what you chose to protect ---------- */
+
+.ending {
+  margin: 0 0 var(--s-4);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.reading {
+  display: grid;
+  gap: var(--s-3);
+  justify-items: center;
+}
+
+.readingLine {
+  margin: 0;
+  max-width: var(--w-prose);
+  text-align: center;
+}
+
+/* Three values printed as stamps, one after the other, before the print itself. Quiet and reduced motion show them at once. */
+.values {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.value {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--s-4);
+  border: 2px solid var(--rind);
+  border-radius: var(--r-stamp);
+  background-color: var(--rind-wash);
+  box-shadow: 0 3px 0 var(--rind);
+  color: var(--ink);
+  font-weight: 700;
+  animation: print calc(280ms * var(--motion)) var(--e-stamp) backwards;
+  animation-delay: calc(var(--n) * 400ms * var(--motion));
+}
+
+@keyframes print {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3) var(--s-4);
+  max-width: 22rem;
+  margin: 0 auto;
+}
+
+@media (min-width: 640px) {
+  .legend {
+    display: none;
+  }
+}
+
+.legend dt {
+  font-weight: 700;
+}
+
+.legend dd {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.kind {
+  max-width: var(--w-prose);
+  margin: 0 auto;
+  text-align: center;
+}
+
+.review {
+  border: 2px solid var(--rule);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+}
+
+.review summary {
+  min-height: 44px;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-sheet);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.review summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.reviewList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reviewRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-top: 2px solid var(--rule);
+}
+
+.reviewScenario {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.reviewChoice {
+  margin: 0;
+}
+
+.endActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  margin-top: var(--s-5);
+}

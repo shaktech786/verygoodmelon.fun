@@ -37,3 +37,13 @@ export function readingLine(chosen: readonly ChosenValue[]): string {
   if (leaders.length === 2) return `Two pulls kept returning today: ${PHRASE[leaders[0]]}, and ${PHRASE[leaders[1]]}.`
   return 'Your answers spread wide today: each question was weighed on its own.'
 }
+
+/** Up to three values to print as stamps: from the pulls that returned most, each value once, in the order they were reached for. */
+export function keptValues(chosen: readonly ChosenValue[], limit = 3): string[] {
+  const count = (theme: Theme) => chosen.filter((c) => c.theme === theme).length
+  const ranked = chosen
+    .map((c, order) => ({ c, order }))
+    .sort((a, b) => count(b.c.theme) - count(a.c.theme) || a.order - b.order)
+    .map(({ c }) => c.value)
+  return [...new Set(ranked)].slice(0, limit)
+}

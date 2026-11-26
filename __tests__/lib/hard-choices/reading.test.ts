@@ -1,4 +1,4 @@
-import { readingLine, type ChosenValue, type Theme } from '@/lib/games/hard-choices/reading'
+import { keptValues, readingLine, type ChosenValue, type Theme } from '@/lib/games/hard-choices/reading'
 
 const value = (theme: Theme, i: number): ChosenValue => ({ value: `${theme}-${i}`, theme })
 const mix = (counts: Partial<Record<Theme, number>>) =>
@@ -29,5 +29,26 @@ describe('readingLine: one kind line about which pulls kept returning', () => {
     for (const counts of [{ ease: 5 }, { growth: 3, self: 3 }, { ease: 2, growth: 2, others: 2, self: 2 }]) {
       expect(readingLine(mix(counts))).not.toMatch(/\d/)
     }
+  })
+})
+
+describe('keptValues: the few values printed as stamps on the closing keepsake', () => {
+  it('is empty when every question was let pass', () => {
+    expect(keptValues([])).toEqual([])
+  })
+
+  it('keeps at most three, most-returned pull first, each value once', () => {
+    const chosen = [
+      { value: 'Joy', theme: 'ease' as const },
+      { value: 'Friendship', theme: 'others' as const },
+      { value: 'Family', theme: 'others' as const },
+      { value: 'Friendship', theme: 'others' as const },
+      { value: 'Growth', theme: 'growth' as const },
+    ]
+    expect(keptValues(chosen)).toEqual(['Friendship', 'Family', 'Joy'])
+  })
+
+  it('keeps fewer when fewer were chosen', () => {
+    expect(keptValues([{ value: 'Joy', theme: 'ease' }])).toEqual(['Joy'])
   })
 })
