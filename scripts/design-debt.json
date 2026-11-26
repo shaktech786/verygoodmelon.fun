@@ -29,9 +29,6 @@
   "lib/email/templates.ts": {
     "raw-colour": 6
   },
-  "lib/games/calm-garden/colours.ts": {
-    "raw-colour": 5
-  },
   "lib/games/hope-daily/words.ts": {
     "banned-utility": 1
   },
