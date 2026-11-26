@@ -1417,6 +1417,16 @@ Each batch converts the buttons and choice cards to seedpress, moves art onto `g
 
 **Risk:** low.
 
+**As built (Phase 6):**
+- `components/seedpress/Prose.tsx` exports `Prose`, `ProseSection`, `ProseList`, `Term` and `ProseSign`; `LegalPage` is deleted. Prose sits at the left of `--w-shop`, so on wide screens the paper is empty to its right. Page copy and headings are unchanged. The About, Privacy and Terms sign-off lines lost their italics and are plain `--ink-soft` lines; Privacy and Terms show "Last updated" as small print under the title.
+- Support uses the Care block at page scale (its lead is "You do not need to be in crisis to reach out. These lines are free and open at any hour.") and keeps the "Or breathe slowly for a minute" Stamp. The old paragraph "The people on these lines are kind, they listen, and you can stop whenever you like." is now the Care block's own closing line.
+- Thoughts: slips are `.sp-flap` (a flap line with theme and date, then title and a one-line excerpt cut by CSS). The list no longer fades in or staggers. The submit form uses two `WritingSlip`s and stamp-choice radios for the theme; the submit Go shows its reason beside it while it cannot be pressed, instead of being disabled. Theme labels moved to `THEME_LABELS` in `lib/thoughts/thoughts-data.ts`. The placeholders became hints.
+- Privacy's published totals are two plain tables (`.sp-table`), with no big numbers.
+- 404: the `packet` seed stamp (48 px, torn-open top) above "This packet is empty", Go "Back to the shop", Stamp "All games", then three Slow down packets (the first three Calm games; the shelf has five). The "Or slow down for a minute" region and its care behaviour are unchanged.
+- Offline: the inline logo, system fonts and its own `<style>`; every colour falls back to a system colour. `sw.js` is `vgm-v4`: on install it reads the cached `/offline` HTML for `/_next/static/` URLs, caches those, and caches the fonts its stylesheets name, so the page has its chrome offline too.
+- Give: `lib/give/config.ts` (`enabled: false`, no organisations) and `GiveBlock` (client, reads care mode). The footer now sits inside `CareModeProvider` so it can hide the column; the give column is the footer's middle column and the grid becomes three columns only when it shows. About ends with it.
+- The skip link's resting `top` is `-10rem`, because at Larger text it peeked into the header.
+
 ### Phase 7: Harden (S)
 
 **What ships:**
