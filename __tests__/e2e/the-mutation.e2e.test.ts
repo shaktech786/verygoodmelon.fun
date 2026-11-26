@@ -283,6 +283,8 @@ async function openGame(page: Page) {
   await quietTelemetry(page)
   await page.goto('/games/the-mutation')
   await expect(title(page)).toBeVisible()
+  // The title is server-rendered, so wait for the game's effects to run before pressing keys at it
+  await page.waitForFunction(() => (window as CascadeWindow).__cascadeState !== undefined)
 }
 
 async function begin(page: Page) {
