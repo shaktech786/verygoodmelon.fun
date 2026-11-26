@@ -34,6 +34,7 @@ interface EngineSeed {
   x: number
   y: number
   growth: number
+  byRest: number
 }
 
 interface EngineState {
@@ -160,6 +161,22 @@ async function restUntilOpen(page: Page) {
     if (lone) lone.growth = 0.999
   })
   await expect.poll(async () => (await engine(page)).seeds).toEqual([])
+}
+
+/**
+ * Opens a lone clue by pulsing, as a player who gathers would. The time the runner spent on the
+ * assertions above counts as rest in the engine, so a slow runner could let resting win; that
+ * idle time is cleared first, since it was the test's pause, not the player's.
+ */
+async function gatherUntilOpen(page: Page) {
+  await page.evaluate(() => {
+    for (const z of (window as CascadeWindow).__cascadeState?.seeds ?? []) {
+      z.growth -= z.byRest
+      z.byRest = 0
+    }
+  })
+  // Five pulses open it (0.2 each), sent back to back
+  for (let i = 0; i < 5; i++) await page.keyboard.press(' ')
 }
 
 /** Skips a long rest at a crossroads: every clue settles and sleeps. */
@@ -339,9 +356,7 @@ test.describe('The Shapeshifter', () => {
     expect((await offered(page))[0]).toMatch(/^(arrow_keys|mouse_follow)$/)
     await expect(page.getByText('Something is growing. Press Space, or just rest.')).toBeVisible()
     await expect(status(page)).toHaveText('Something new is growing close to your orb: a small sign of four arrows. Pulse the orb, or rest, and it will open.')
-    // Five pulses open it (0.2 each). Sent back to back: reading the engine between presses let a slow
-    // runner idle long enough for resting to outgrow the gathering.
-    for (let i = 0; i < 5; i++) await page.keyboard.press(' ')
+    await gatherUntilOpen(page)
     await expect.poll(async () => (await engine(page)).activeMechanics.length).toBe(1)
     expect((await engine(page)).foundBy).toEqual(['gathered'])
     await expect(page.getByRole('dialog')).toHaveCount(0)
