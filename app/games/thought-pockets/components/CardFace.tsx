@@ -121,7 +121,7 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
           </span>
         )}
       </span>
-      <span className={`hyphens-auto px-1.5 pt-1 font-body font-semibold leading-tight sm:px-2 sm:text-[0.95rem] ${hand ? 'text-[0.82rem]' : 'text-[0.9rem]'}`} lang="en">
+      <span data-testid="card-name" className={`hyphens-auto px-1.5 pt-1 font-body font-semibold leading-tight sm:px-2 sm:text-[0.95rem] ${hand ? 'text-[0.82rem]' : 'text-[0.9rem]'}`} lang="en">
         {card.name}
       </span>
       {!hand && (school || card.rarity === 'rare') && (

@@ -333,7 +333,7 @@ test.describe('The Philosopher', () => {
     expect(intent && intent.y >= 0).toBe(true)
     expect(last && bar && last.y + last.height <= bar.y + 2, 'the whole hand sits above the End turn bar').toBe(true)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
-    for (const name of await hand(page).locator('span.font-serif').all()) {
+    for (const name of await hand(page).getByTestId('card-name').all()) {
       expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), 'card names fit').toBe(true)
     }
   })

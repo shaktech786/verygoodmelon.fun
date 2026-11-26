@@ -266,7 +266,7 @@ function Chip({ children, tone = 'plain' }: { children: React.ReactNode; tone?: 
     warn: 'border-[var(--tp-warn)] text-[var(--tp-warn)]',
     good: 'border-[var(--tp-good)] text-[var(--tp-good)]',
   }
-  return <span className={`inline-flex items-center gap-1 rounded-stamp border px-1.5 py-0.5 text-meta font-semibold ${tones[tone]}`}>{children}</span>
+  return <span className={`inline-flex items-center gap-1 rounded-stamp border px-1.5 py-0.5 text-meta leading-tight font-semibold ${tones[tone]}`}>{children}</span>
 }
 
 /** While the round plays out, the bias's Resolve counts down in step with the show. */
@@ -453,7 +453,7 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
           </div>
           {hit > 0 && (
             <span
-              className={`tp-rise tp-after-pause pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded-stamp bg-[var(--tp-ink)] px-1 font-display font-bold text-[var(--tp-mark)] ${big ? 'text-h2' : 'text-body'}`}
+              className={`tp-rise tp-after-pause pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded-stamp bg-[var(--tp-ink)] px-1 font-bold text-[var(--tp-mark)] ${big ? 'font-display text-h2' : 'font-body text-body'}`}
               aria-hidden="true"
             >
               −{hit}
