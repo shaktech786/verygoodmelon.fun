@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
-import { Copy, Download, Share } from 'lucide-react'
-import { buttonClassName } from '@/components/ui/Button'
+import { PrintTray } from '@/components/seedpress/PrintTray'
+import { Stamp } from '@/components/seedpress/Stamp'
+import { StatusLine } from '@/components/seedpress/StatusLine'
 import type { KeepsakePlan } from '@/lib/keepsake/plan'
 import { renderKeepsake, type KeepsakeTheme } from '@/lib/keepsake/render'
 import { cn } from '@/lib/utils/cn'
@@ -101,29 +102,22 @@ function KeepsakeActions({ plan, picture, saveLabel, className }: KeepsakeAction
     }
   }
 
-  const action = buttonClassName('secondary', 'sm', 'inline-flex items-center gap-2 min-h-11')
-
   return (
-    <div className={cn('flex flex-col items-center', className)}>
-      <div className="flex flex-wrap justify-center gap-2">
-        <button type="button" onClick={save} className={action}>
-          <Download size={16} aria-hidden="true" />
+    <div className={cn('sp-printtray__actions', className)}>
+      <div className="sp-stamp-row">
+        <Stamp icon="save" onClick={save}>
           {saveLabel}
-        </button>
+        </Stamp>
         {shareable && (
-          <button type="button" onClick={share} className={action}>
-            <Share size={16} aria-hidden="true" />
+          <Stamp icon="share" onClick={share}>
             Share
-          </button>
+          </Stamp>
         )}
-        <button type="button" onClick={copy} className={action}>
-          <Copy size={16} aria-hidden="true" />
+        <Stamp icon="copy" onClick={copy}>
           Copy as text
-        </button>
+        </Stamp>
       </div>
-      <p role="status" className="mt-2 min-h-5 text-sm text-foreground/70">
-        {status}
-      </p>
+      <StatusLine>{status}</StatusLine>
     </div>
   )
 }
@@ -177,9 +171,7 @@ export function Keepsake({ plan, label = 'A keepsake of this visit', hideLabel =
   const picture = async () => (canvasRef.current ? canvasBlob(canvasRef.current) : null)
 
   return (
-    // The heading alone carries the title; naming the section after it too made screen readers say it twice.
-    <section className={cn('flex flex-col items-center', className)}>
-      <h3 className={hideLabel ? 'sr-only' : 'text-sm text-foreground/70 mb-3'}>{label}</h3>
+    <PrintTray label={label} hideLabel={hideLabel} className={className}>
       <canvas
         ref={canvasRef}
         width={plan.width}
@@ -188,13 +180,13 @@ export function Keepsake({ plan, label = 'A keepsake of this visit', hideLabel =
         aria-describedby={descriptionId}
         aria-label={`${plan.title}, a picture to keep`}
         data-testid="keepsake-canvas"
-        className="w-full max-w-[22rem] h-auto rounded-lg soft-shadow-md bg-card-bg"
+        className="sp-printtray__print"
         style={{ aspectRatio: `${plan.width} / ${plan.height}` }}
       />
       <p id={descriptionId} className="sr-only">
         {plan.alt}
       </p>
-      <KeepsakeActions plan={plan} picture={picture} saveLabel="Save image" className="mt-4" />
-    </section>
+      <KeepsakeActions plan={plan} picture={picture} saveLabel="Save image" />
+    </PrintTray>
   )
 }

@@ -128,7 +128,7 @@ export default function FinaleScreen({
             plan={plan}
             label="The path you took, one colour and shape for each rule"
             hideLabel
-            className={`w-full mx-auto sm:col-start-1 sm:row-start-1 [&_canvas]:max-w-none ${fade}`}
+            className={`w-full mx-auto sm:col-start-1 sm:row-start-1 [--print-max:none] ${fade}`}
           />
         )}
       </div>

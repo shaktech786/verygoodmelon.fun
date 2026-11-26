@@ -2282,3 +2282,53 @@ a.sp-packet:focus-visible .sp-print {
   transform: none;
 }
 
+/* ---------- The print tray (PLAN.md section 7.19) ---------- */
+
+.sp-printtray {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  justify-items: center;
+  gap: var(--s-4);
+  width: 100%;
+  color: var(--ink);
+}
+
+/*
+ * The sheet is drawn around the print, not under it: the print and everything laid over it keep their
+ * place. Its bottom edge is deckled, a row of half circles bitten along its foot.
+ */
+.sp-printtray::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: calc(var(--s-3) * -1) calc(var(--s-3) * -1) calc(var(--s-5) * -1);
+  background-color: var(--flesh-wash);
+  mask:
+    linear-gradient(black 0 0) top / 100% calc(100% - 6px) no-repeat,
+    radial-gradient(circle at 7px 6px, black 5px, transparent 5.5px) bottom / 14px 12px repeat-x;
+}
+
+.sp-printtray__label {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.sp-printtray__print {
+  width: 100%;
+  max-width: var(--print-max, 22rem);
+  height: auto;
+  background-color: var(--paper);
+  box-shadow: 0 0 0 3px var(--paper);
+}
+
+.sp-printtray__actions {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-2);
+}
+
+.sp-printtray__actions .sp-stamp-row {
+  justify-content: center;
+}
