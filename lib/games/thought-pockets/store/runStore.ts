@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 import { Mode, RunLength, RunState, School } from '@/types/thought-pockets'
 import { RUN_VERSION, migrateRun, newRun, opensNextLevel } from '../engine/run'
 import { ALL_LESSONS, Lesson } from '../engine/lessons'
+import { INSIGHT_KEY, RUN_KEY } from './keys'
 
 interface RunStore {
   run: RunState | null
@@ -34,7 +35,7 @@ export const useRunStore = create<RunStore>()(
         }),
     }),
     {
-      name: 'thought-pockets-run',
+      name: RUN_KEY,
       version: RUN_VERSION,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ run: state.run }),
@@ -84,7 +85,7 @@ export const useInsightStore = create<InsightStore>()(
         }),
     }),
     {
-      name: 'thought-pockets-insights',
+      name: INSIGHT_KEY,
       version: 1,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ beaten: state.beaten, finishedWith: state.finishedWith, tutorialDone: state.tutorialDone, rigorWon: state.rigorWon, seen: state.seen }),

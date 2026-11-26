@@ -13,6 +13,9 @@ import { SCHOOLS, schoolDifficulty } from '@/lib/games/thought-pockets/data/scho
 import { BattleState, CardInstance, MapNode, Mode, RunState, School } from '@/types/thought-pockets'
 import { playRun, planning } from '../lib/thought-pockets/bots'
 import { expectOneGo } from './helpers/design'
+import { waitForHydrationOnEveryLoad } from './helpers/hydration'
+
+waitForHydrationOnEveryLoad()
 
 /**
  * The Philosopher (Thought Pockets). Every test is seeded: either a fixed ?seed= or a run

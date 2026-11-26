@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
 import { expectOneGo } from './helpers/design'
+import { waitForHydrationOnEveryLoad } from './helpers/hydration'
+
+waitForHydrationOnEveryLoad()
 
 /**
  * The Keeper (/games/the-slow-post): seal one worry, come back after the chosen date,

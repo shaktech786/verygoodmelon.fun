@@ -414,9 +414,9 @@ export default function CascadeGame() {
       {/* Overlays share the canvas's grid cell so a tall screen grows the box instead of being clipped.
           Play happens on a dark arcade screen in a bezel; the finished game is printed back on the site's paper. */}
       <div className={phase === 'finale' ? undefined : 'shapeshifter-bezel'}>
-      <div ref={boxRef} style={screen.vars as CSSProperties} className={cn('grid overflow-hidden scroll-mt-20', phase === 'finale' ? 'shapeshifter-paper' : 'shapeshifter-screen')}>
+      <div ref={boxRef} style={{ ...screen.vars, '--portrait-aspect': `${PORTRAIT_W} / ${PORTRAIT_H}` } as CSSProperties} className={cn('grid overflow-hidden scroll-mt-20', phase === 'finale' ? 'shapeshifter-paper' : 'shapeshifter-screen')}>
         {/* Hidden under the finale, so the box takes the finale's height rather than the field's */}
-        <div className={cn('col-start-1 row-start-1', phase === 'finale' && 'hidden', !hydrated && 'max-sm:aspect-[480/720]')}>
+        <div className={cn('col-start-1 row-start-1', phase === 'finale' && 'hidden', !hydrated && 'max-sm:aspect-[var(--portrait-aspect)]')}>
           <GameCanvas
             key={`${runId}-${fieldW}`}
             width={fieldW}
@@ -433,7 +433,7 @@ export default function CascadeGame() {
 
         {showHud && (
           <div
-            className="col-start-1 row-start-1 self-start relative w-full pointer-events-none z-10"
+            className={cn('col-start-1 row-start-1 self-start relative w-full pointer-events-none z-10', !hydrated && 'max-sm:aspect-[var(--portrait-aspect)]!')}
             style={{ aspectRatio: `${fieldW} / ${fieldH}` }}
           >
             {/* The name comes last: the rule has already been seen and used by the time it appears */}

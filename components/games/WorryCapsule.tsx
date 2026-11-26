@@ -608,7 +608,8 @@ function Composer({ draft, restored, today, snapshot, motion, focus, onChange, o
         note={left <= 100 ? `${left} characters left` : null}
       />
 
-      <fieldset className="m-0 grid min-w-0 gap-2 border-0 p-0">
+      {/* A pick made before hydration would be undone by it, so the choices wait for the day too */}
+      <fieldset className="m-0 grid min-w-0 gap-2 border-0 p-0" inert={today === null}>
         <legend className="mb-2 p-0 font-bold">When should it come back?</legend>
         <div className="grid gap-3 sm:grid-cols-3">
           {HORIZONS.map((horizon) => (

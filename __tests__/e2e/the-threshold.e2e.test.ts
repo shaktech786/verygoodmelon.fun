@@ -3,6 +3,9 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { expectOneGo, expectStillCare } from './helpers/design'
+import { waitForHydrationOnEveryLoad } from './helpers/hydration'
+
+waitForHydrationOnEveryLoad()
 
 /**
  * The Plain Speaker (/games/the-threshold): a player-paced minute before a hard conversation.
