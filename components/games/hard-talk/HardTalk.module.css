@@ -22,10 +22,6 @@
   }
 }
 
-.skeleton {
-  min-height: 32rem;
-}
-
 .head {
   display: flex;
   flex-wrap: wrap;

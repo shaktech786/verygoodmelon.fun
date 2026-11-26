@@ -10,6 +10,7 @@ import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { CareModeProvider } from "@/components/games/CareMode";
 import { ACCESSIBILITY_BOOT_SCRIPT } from "@/lib/accessibility/boot-script";
+import { KEPT_BOOT_SCRIPT } from "@/lib/games/kept-boot";
 import { PALETTES } from "@/lib/design/tokens";
 import { atkinson, bricolage } from "@/lib/design/fonts";
 
@@ -65,6 +66,7 @@ export default function RootLayout({
     <html lang="en" className={`${atkinson.variable} ${bricolage.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: ACCESSIBILITY_BOOT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: KEPT_BOOT_SCRIPT }} />
         {/* Import map for TalkingHead 3D avatar library (loaded at runtime from /talkinghead/) */}
         <script
           type="importmap"

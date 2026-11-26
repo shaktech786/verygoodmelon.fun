@@ -126,17 +126,43 @@ const subscribeToNothing = () => () => {}
 const clock = () => Date.now()
 const stamped = (session: Session): Session => ({ ...session, updatedAt: clock() })
 
+/** The first screen of a new visit: what the server draws, and what a visitor with nothing kept is left looking at. */
+const FIRST_VISIT: Opening = {
+  view: 'steps',
+  session: newSession(0, 0),
+  storageWorks: true,
+  welcomeBack: false,
+  replacesSaved: false,
+}
+
+function isFirstVisit({ view, session, storageWorks, welcomeBack, replacesSaved }: Opening): boolean {
+  return (
+    view === 'steps' &&
+    storageWorks &&
+    !welcomeBack &&
+    !replacesSaved &&
+    session.run === 0 &&
+    session.step === 'kind' &&
+    session.kind === null &&
+    !session.who &&
+    !session.understand &&
+    !session.ownOpening
+  )
+}
+
 export default function HardTalk() {
-  // Saved progress lives only in this browser, so the game is drawn once the page has hydrated.
+  // Saved progress lives only in this browser. The server draws the first screen of a new visit, so it is there at once;
+  // a visitor with something kept gets theirs once the page has hydrated, and kept-boot.ts hides the first screen for them until then.
   const hydrated = useSyncExternalStore(subscribeToNothing, () => true, () => false)
+  const opening = useMemo(() => {
+    if (!hydrated) return FIRST_VISIT
+    const opened = openGame()
+    return isFirstVisit(opened) ? FIRST_VISIT : opened
+  }, [hydrated])
   const { care } = useCareMode()
   return (
     <div id="hard-talk" className={styles.root}>
-      {hydrated ? (
-        <HardTalkGame />
-      ) : (
-        <section aria-label="Before the talk" aria-busy="true" className={cn(styles.card, styles.skeleton)} />
-      )}
+      <HardTalkGame key={opening === FIRST_VISIT ? 'first' : 'kept'} opening={opening} booting={!hydrated} />
       <p className="sp-soft">What you write stays in this browser and is never sent anywhere. Starting over clears it.</p>
       {/* In care the page's own care block carries the helplines, so this note steps aside */}
       {!care && (
@@ -152,10 +178,9 @@ export default function HardTalk() {
   )
 }
 
-function HardTalkGame() {
+function HardTalkGame({ opening, booting }: { opening: Opening; booting: boolean }) {
   const { motionScale } = useSense()
   const reducedMotion = motionScale === 0
-  const [opening] = useState(openGame)
   const [view, setView] = useState<View>(opening.view)
   const [session, setSession] = useState<Session>(opening.session)
   const [storageWorks, setStorageWorks] = useState(opening.storageWorks)
@@ -624,7 +649,7 @@ function HardTalkGame() {
   const hasBack = view === 'steps' && previousStep(session.kind, session.step) !== null
 
   return (
-    <section aria-label="Before the talk" className={styles.card}>
+    <section aria-label="Before the talk" data-booting={booting ? 'hard-talk' : undefined} className={styles.card}>
       <div className={styles.head}>
         {view === 'steps' ? (
           <PlaceStamps places={STAGES} here={session.step === 'carry' ? STAGES.length : stage - 1} label="Where you are" />

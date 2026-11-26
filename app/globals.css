@@ -170,6 +170,13 @@ html[data-contrast="extra-high"] a:not(:has(h2, h3)) {
   text-decoration: underline;
 }
 
+/* A game drawn for a first visit holds its place, unseen, for a visitor with something kept until the page has hydrated (lib/games/kept-boot.ts). */
+html[data-kept~="hard-talk"] [data-booting="hard-talk"],
+html[data-kept~="keeper"] [data-booting="keeper"],
+html[data-kept~="thought-pockets"] [data-booting="thought-pockets"] {
+  visibility: hidden;
+}
+
 /* The header scrolls away, so only a little room is needed above anything scrolled into view. */
 html {
   scroll-padding-top: 1rem;
