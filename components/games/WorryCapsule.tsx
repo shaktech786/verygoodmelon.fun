@@ -68,6 +68,8 @@ type View =
   | { kind: 'closed'; id: string; first: boolean }
 
 const EMPTY_DRAFT: Draft = { text: '', horizon: 'week' }
+const FIRST_VISIT: KeeperSnapshot = { loaded: true, capsules: [], storage: 'ok', writable: true, draft: null, nowMs: 0, devOffsetDays: 0 }
+const noop = () => {}
 
 const IMPORT_PROBLEMS: Record<ArchiveProblem, string> = {
   unreadable: 'That file isn’t a copy saved from here, so nothing was changed.',
@@ -113,6 +115,20 @@ function KeeperCare({ lead }: { lead: string }) {
   )
 }
 
+function RestoreBlock({ onChoose, children }: { onChoose: () => void; children: ReactNode }) {
+  return (
+    <div className="grid gap-2 border-t border-rule pt-5">
+      <p className="sp-soft m-0">
+        Sealed some before, on another device or before this browser was cleared? They can come back from a saved copy.
+      </p>
+      <div>
+        <QuietButton onClick={onChoose}>Restore from a copy</QuietButton>
+      </div>
+      {children}
+    </div>
+  )
+}
+
 export default function WorryCapsule() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
   const { motionScale } = useSense()
@@ -128,10 +144,27 @@ export default function WorryCapsule() {
   const { care, enterCareMode } = useCareMode()
 
   if (!snapshot.loaded) {
+    // What the server draws, and what a visitor with nothing kept is left looking at: the first view, with no day named yet.
+    // kept-boot.ts hides it for a visitor who has kept something, until the page has hydrated.
     return (
       <div className="mx-auto max-w-2xl">
-        <div className="sp-sheet min-h-[460px]" aria-busy="true">
-          <p className="sr-only">Opening the shelf</p>
+        <div className="sp-sheet text-left" data-booting="keeper">
+          <div aria-live="polite" />
+          <p aria-live="polite" className="sr-only" />
+          <div key="compose">
+            <Composer
+              draft={EMPTY_DRAFT}
+              restored={false}
+              today={null}
+              snapshot={FIRST_VISIT}
+              motion={motion}
+              focus={false}
+              onChange={noop}
+              onDiscard={noop}
+              onNext={noop}
+              restore={<RestoreBlock onChoose={noop}><StatusLine /></RestoreBlock>}
+            />
+          </div>
         </div>
       </div>
     )
@@ -256,17 +289,7 @@ export default function WorryCapsule() {
         }}
         onCancel={capsules.length > 0 ? () => go({ kind: 'shelf' }) : undefined}
         restore={
-          capsules.length === 0 && (
-            <div className="grid gap-2 border-t border-rule pt-5">
-              <p className="sp-soft m-0">
-                Sealed some before, on another device or before this browser was cleared? They can come back from a saved copy.
-              </p>
-              <div>
-                <QuietButton onClick={chooseFile}>Restore from a copy</QuietButton>
-              </div>
-              {importStatus}
-            </div>
-          )
+          capsules.length === 0 && <RestoreBlock onChoose={chooseFile}>{importStatus}</RestoreBlock>
         }
       />
     )
@@ -525,7 +548,8 @@ function StorageNotes({ snapshot }: { snapshot: KeeperSnapshot }) {
 interface ComposerProps {
   draft: Draft
   restored: boolean
-  today: DateKey
+  /** Null until the browser has said which day it is; no day is named before then. */
+  today: DateKey | null
   snapshot: KeeperSnapshot
   motion: boolean
   focus: boolean
@@ -577,6 +601,8 @@ function Composer({ draft, restored, today, snapshot, motion, focus, onChange, o
         value={draft.text}
         maxLength={MAX_WORRY_LENGTH}
         rows={4}
+        // Words typed before the page has hydrated would not survive it, so the box waits for the day
+        readOnly={today === null}
         placeholder="I’m worried that…"
         onChange={(event) => onChange({ ...draft, text: event.target.value })}
         note={left <= 100 ? `${left} characters left` : null}
@@ -598,7 +624,7 @@ function Composer({ draft, restored, today, snapshot, motion, focus, onChange, o
                 <span className="sp-choice__mark">{draft.horizon === horizon.id && <Icon name="done" />}</span>
                 <span>
                   <span className="sp-choice__title">{horizon.label}</span>
-                  <span className="sp-choice__detail">{formatDay(opensOnFor(today, horizon.id), today, 'short')}</span>
+                  <span className="sp-choice__detail">{today ? formatDay(opensOnFor(today, horizon.id), today, 'short') : ' '}</span>
                 </span>
               </span>
             </label>
