@@ -155,6 +155,7 @@ export default function MindDebate() {
   const focusNextRef = useRef<FocusTarget | null>(null)
 
   const stickToBottomRef = useRef(true)
+  const lastScrollRef = useRef(0)
   // The session covers a whole debate; play covers what is being shown now, so Stop can pause the show without dropping a reply already paid for
   const sessionRef = useRef<AbortController | null>(null)
   const playRef = useRef<AbortController | null>(null)
@@ -213,9 +214,17 @@ export default function MindDebate() {
   const handleTranscriptScroll = useCallback(() => {
     const el = debateRef.current
     if (!el) return
-    stickToBottomRef.current = window.matchMedia(TRANSCRIPT_BOX_QUERY).matches
+    const inBox = window.matchMedia(TRANSCRIPT_BOX_QUERY).matches
+    const atBottom = inBox
       ? el.scrollTop + el.clientHeight >= el.scrollHeight - STICK_TO_BOTTOM_PX
       : el.getBoundingClientRect().bottom <= visibleBottom(barRef.current) + STICK_TO_BOTTOM_PX
+    const position = inBox ? el.scrollTop : window.scrollY
+    const movedUp = position < lastScrollRef.current - 1
+    lastScrollRef.current = position
+    // Only the reader moving up counts as reading back. A long turn landing grows the transcript
+    // before the follow scroll catches up, and a scroll event in that gap must not pause the debate.
+    if (atBottom) stickToBottomRef.current = true
+    else if (movedUp) stickToBottomRef.current = false
     // Reading back pauses the debate; coming back down to the newest turn lets it go on
     if (stickToBottomRef.current && !turnByTurnRef.current) advanceRef.current?.()
   }, [])
