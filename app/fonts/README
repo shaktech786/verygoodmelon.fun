@@ -47,3 +47,9 @@ Press Start 2P (The Shapeshifter's arcade screen only, loaded in app/games/the-m
     sha256 034c77f1f05ec89421e4a63f0e3a4ca1ecf852cc6d2bf611f126f275728e017d
   Subset to Basic Latin, Latin-1, ‘ ’ “ ” – — … • and the four arrows, woff2, hinting kept:
   PressStart2P-arcade.woff2  11,932 B
+
+OG image faces (app/games/**/opengraph-image.tsx via lib/og/game-card.tsx): ImageResponse reads ttf, otf and woff but not woff2
+(Next docs, ImageResponse), so static ttf instances are cut from the woff2 files above, same subset plus the bullet, unhinted:
+  instancer.instantiateVariableFont(font, {'wght': 400}) and 700 for AtkinsonHyperlegibleNext-wght.woff2
+  instancer.instantiateVariableFont(font, {'wght': 800}) for BricolageGrotesque-display.woff2
+  saved with flavor=None into app/fonts/og/ (Regular 28 KB, Bold 28 KB, ExtraBold 29 KB).

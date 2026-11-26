@@ -3,12 +3,6 @@
     "animate": 1,
     "banned-utility": 1
   },
-  "app/games/[slug]/opengraph-image.tsx": {
-    "raw-colour": 11
-  },
-  "app/games/the-still-point/opengraph-image.tsx": {
-    "raw-colour": 7
-  },
   "app/privacy/page.tsx": {
     "banned-utility": 1
   },
@@ -40,49 +34,6 @@
   },
   "lib/games/hope-daily/words.ts": {
     "banned-utility": 1
-  },
-  "lib/keepsake/alchemist.ts": {
-    "banned-utility": 1
-  },
-  "lib/keepsake/arena.ts": {
-    "banned-utility": 2
-  },
-  "lib/keepsake/awakening.ts": {
-    "banned-utility": 1,
-    "raw-colour": 25
-  },
-  "lib/keepsake/dilemma.ts": {
-    "banned-utility": 1,
-    "raw-colour": 7
-  },
-  "lib/keepsake/final-word.ts": {
-    "raw-colour": 2
-  },
-  "lib/keepsake/gardener.ts": {
-    "raw-colour": 55
-  },
-  "lib/keepsake/harmonist.ts": {
-    "banned-utility": 1
-  },
-  "lib/keepsake/optimist.ts": {
-    "banned-utility": 1
-  },
-  "lib/keepsake/patient-one.ts": {
-    "banned-utility": 9,
-    "raw-colour": 6
-  },
-  "lib/keepsake/plain-speaker.ts": {
-    "banned-utility": 1
-  },
-  "lib/keepsake/plan.ts": {
-    "banned-utility": 2
-  },
-  "lib/keepsake/render.ts": {
-    "banned-utility": 2,
-    "raw-colour": 17
-  },
-  "lib/keepsake/shapeshifter.ts": {
-    "raw-colour": 12
   },
   "lib/utils/constants.ts": {
     "infinite": 1
