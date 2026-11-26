@@ -193,11 +193,14 @@ async function gatherUntilOpen(page: Page) {
 
 /** Skips a long rest at a crossroads: every clue settles and sleeps. */
 async function restUntilAsleep(page: Page) {
-  await page.evaluate(() => {
-    const s = (window as CascadeWindow).__cascadeState
-    if (s) s.stillness = 0.999
-  })
-  await expect.poll(async () => (await engine(page)).seeds).toEqual([])
+  // Set on every poll, as bringClues does: a slow runner can let stillness ebb before it tips over
+  await expect.poll(async () => {
+    await page.evaluate(() => {
+      const s = (window as CascadeWindow).__cascadeState
+      if (s && s.seeds.length) s.stillness = Math.max(s.stillness, 0.999)
+    })
+    return (await engine(page)).seeds
+  }).toEqual([])
 }
 
 /** Puts the orb beside a clue, as if the player had walked there. */
