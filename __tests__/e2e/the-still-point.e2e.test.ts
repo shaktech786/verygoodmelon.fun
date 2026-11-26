@@ -3,6 +3,7 @@ import path from 'path'
 import { test, expect, type Page } from '@playwright/test'
 import { expectKeepsakeSaves } from './helpers/keepsake'
 import { ambientSoundIsOn, setAmbientSound } from './helpers/ambient-sound'
+import { expectOneGo } from './helpers/design'
 
 /**
  * The Harmonist (/games/the-still-point): guided breathing drawn on a canvas, where every
@@ -517,8 +518,10 @@ test.describe('The Harmonist', () => {
       describedAs: /cut open along a triangle.*4-7-8 Relaxation/,
     })
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
 
     await page.getByRole('button', { name: 'Breathe again' }).click()
     await startPattern(page, /Box Breathing/)
@@ -649,6 +652,7 @@ test.describe('The Harmonist on a phone with reduced motion', () => {
     expect(box!.x + box!.width).toBeLessThanOrEqual(390)
     await expectKeepsakeSaves(page, { within: guide(page), fileName: /^the-harmonist-2026-11-21\.png$/ })
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
   })
 
   test('keyboard hints stay hidden on a touch screen until a key is pressed', async ({ page }) => {

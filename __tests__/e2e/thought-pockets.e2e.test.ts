@@ -12,6 +12,7 @@ import { ARROW_MIN, BURIDAN_GUARD, OPENERS, OVERFLOW, OVERFLOW_TEXT, SORITES_CAP
 import { SCHOOLS, schoolDifficulty } from '@/lib/games/thought-pockets/data/schools'
 import { BattleState, CardInstance, MapNode, Mode, RunState, School } from '@/types/thought-pockets'
 import { playRun, planning } from '../lib/thought-pockets/bots'
+import { expectOneGo } from './helpers/design'
 
 /**
  * The Philosopher (Thought Pockets). Every test is seeded: either a fixed ?seed= or a run
@@ -342,6 +343,7 @@ test.describe('The Philosopher', () => {
       await page.emulateMedia({ colorScheme })
       await fresh(page, 116)
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
       await page.getByTestId('school-rationalist').click()
       expect(await axeViolations(page)).toEqual([])
       await page.locator('button[data-available]').first().click()
@@ -355,6 +357,7 @@ test.describe('The Philosopher', () => {
       await page.getByTestId('end-turn').click()
       await expect(page.getByTestId('screen-reward')).toBeVisible()
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
     })
   }
 
@@ -784,6 +787,7 @@ test.describe('The Philosopher', () => {
     await expect(page.getByTestId('short-victory')).toContainText(getEnemyDef(boss.enemyId as string).name)
     await expect(page.getByTestId('run-summary')).toContainText('Short walk')
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
     await page.getByTestId('take-long').click()
     await expect(page.getByTestId('player-resolve')).toContainText(`Resolve ${START_RESOLVE}/${START_RESOLVE}`)
     await expect(page.getByText('Early in the walk', { exact: true })).toBeVisible()
@@ -806,6 +810,7 @@ test.describe('The Philosopher', () => {
     await expect(page.getByTestId('mode-gentle')).toBeChecked()
     await expect(page.getByTestId('school-pragmatist')).toBeVisible()
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
     await begin.click()
     await expect(page.getByTestId('screen-map')).toBeVisible()
     const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).state.run as RunState, RUN_KEY)
@@ -878,6 +883,7 @@ test.describe('The Philosopher', () => {
     if (attack > 0) await expect(page.getByTestId('fight-warning')).toContainText(`an attack of ${attack}`)
     await expect(page.getByTestId('node-boss')).toHaveAttribute('aria-label', /You would face .* with 6 Resolve/)
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
   })
 
   test('with The Long View, the held-Focus line says what the relic carries forward', async ({ page }) => {
@@ -1239,6 +1245,7 @@ test.describe('The Philosopher', () => {
       await load(page, ready)
       await expect(page.getByTestId('boss-choice')).toBeVisible()
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
       const started = chooseNode(ready, node.id)
       const battle = started.battle as BattleState
       await load(page, { ...started, battle: { ...battle, enemy: { ...battle.enemy, health: 1, phase: 2 as const, shaken: 4 }, hand: cards(['observation']), focus: 3 } })
@@ -1254,6 +1261,7 @@ test.describe('The Philosopher', () => {
       await page.getByTestId('continue').click()
       await expect(page.getByTestId('walk-argument')).toBeVisible()
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
     })
   }
 
@@ -1291,6 +1299,7 @@ test.describe('The Philosopher', () => {
       await page.getByTestId('end-turn').click()
       await expect(page.getByTestId('final-argument')).toBeVisible()
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
     })
   }
 
@@ -1300,6 +1309,7 @@ test.describe('The Philosopher', () => {
       await fresh(page, 156)
       await page.getByTestId('length-long').check()
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
       for (const length of ['short', 'long'] as const) {
         const run = newRun('rationalist', 156, 'gentle', [], undefined, length)
         const boss = run.map.find((n) => n.type === 'boss') as MapNode
@@ -1308,6 +1318,7 @@ test.describe('The Philosopher', () => {
         await page.getByTestId('continue').click()
         await expect(page.getByTestId('screen-victory')).toBeVisible()
         expect(await axeViolations(page)).toEqual([])
+        await expectOneGo(page)
       }
     })
   }
@@ -1417,6 +1428,7 @@ test.describe('The Philosopher', () => {
     await expect(page.getByTestId('enemy-rule')).not.toContainText('halfway mark')
     expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).state.seen, INSIGHT_KEY)).toEqual(['unsettle'])
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
 
     const third = battleAt(2)
     await load(page, { ...run, position: before(third).id, visited: [before(third).id] })
@@ -1459,6 +1471,7 @@ test.describe('The Philosopher', () => {
     await expect(page.getByTestId('continue')).toHaveText('Skip the card and rest')
     await expect(page.getByRole('button', { name: /skip/i })).toHaveCount(1)
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
     await choices.first().click()
     await expect(page.getByTestId('continue')).toHaveText('On to rest')
     await page.getByTestId('continue').click()

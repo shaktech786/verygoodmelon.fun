@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Locator, type Page, type WebSocketRoute } from '@playwright/test'
 import { expectKeepsakeSaves } from './helpers/keepsake'
+import { expectOneGo } from './helpers/design'
 
 /**
  * The Dilemma (Hard Choices): choose A or B (or let it pass) on 12 dilemmas,
@@ -374,6 +375,7 @@ test.describe('reading it with a screen reader, and how it looks', () => {
       await choose(choiceB(page))
       await expect(card(page, choiceB(page))).toContainText('% chose this')
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
 
       await page.evaluate((ids) => localStorage.setItem('hardChoicesVotes',
         JSON.stringify(Object.fromEntries(ids.map((id, i) => [id, i % 3 ? 'A' : 'B'])))), IDS)
@@ -381,6 +383,7 @@ test.describe('reading it with a screen reader, and how it looks', () => {
       await expect(sky(page)).toBeVisible()
       await page.getByText('See or change each answer').click()
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
     })
   }
 })

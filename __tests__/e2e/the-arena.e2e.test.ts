@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect as baseExpect, type Page, type Route } from '@playwright/test'
 import { expectKeepsakeSaves } from './helpers/keepsake'
+import { expectOneGo, expectStillCare } from './helpers/design'
 
 /**
  * The Arena (/games/the-arena): pick two people and a topic, watch six rounds, then read a
@@ -368,6 +369,8 @@ test.describe('The Arena', () => {
 
     const support = page.getByRole('region', { name: 'Support' })
     await expect(support.getByRole('link', { name: '988' })).toBeVisible()
+    await expectStillCare(page)
+    await expectOneGo(page)
     await expect(page.getByRole('heading', { name: "You don't have to hold this alone" })).toBeFocused()
     await expect(page.getByText(/will not hold/)).toHaveCount(0)
     await expect(page.getByText(/end my life/)).toHaveCount(0)
@@ -590,10 +593,12 @@ test.describe('The Arena', () => {
       await mockDebate(page)
       await openArena(page)
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
       await setUp(page, 'Ada Lovelace', 'Mary Shelley', 'Should we fear what we create?')
       await page.getByRole('button', { name: 'Begin' }).click()
       await expect(closing(page)).toBeVisible()
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
     })
   }
 

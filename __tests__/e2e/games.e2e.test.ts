@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
 import { SHOWCASE_GAMES } from '@/lib/games/config'
+import { expectOneGo } from './helpers/design'
 
 /**
  * Site-wide smoke checks. Each game's own behaviour is covered by its
@@ -101,6 +102,7 @@ test.describe('Every page', () => {
       expect(overflow).toBeLessThanOrEqual(0)
 
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
       expect(errors).toEqual([])
     })
   }

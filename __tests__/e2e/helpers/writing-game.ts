@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs'
 import path from 'path'
 import { test, expect, type Page, type Route } from '@playwright/test'
+import { expectOneGo, expectStillCare } from './design'
 
 const AXE_SOURCE = readFileSync(path.join(process.cwd(), 'node_modules/axe-core/axe.min.js'), 'utf8')
 
@@ -172,12 +173,14 @@ export function describeWritingGame(config: WritingGameConfig) {
       const db = await databaseDown(page, config)
       await mockReflection(page, config)
       await page.goto(`/games/${config.slug}`)
+      await expectOneGo(page)
 
       await write(page, config, 'Thank you for the ordinary days.')
 
       await expect(page.locator('blockquote')).toHaveText('“Thank you for the ordinary days.”')
       await expect(page.getByText(REFLECTION)).toBeVisible()
       await expectNoErrorPanel(page)
+      await expectOneGo(page)
       // The shared cloud quietly stays away instead of a loading card that later vanishes
       await expect(cloud(page)).toHaveCount(0)
       await expect(page.getByText(/Gathering/)).toHaveCount(0)
@@ -251,6 +254,8 @@ export function describeWritingGame(config: WritingGameConfig) {
       await expect(page.locator('blockquote')).toHaveCount(0)
       await expect(page.locator('main')).not.toContainText('Everyone is better off without me')
       await expectSupportOnce(page)
+      await expectStillCare(page)
+      await expectOneGo(page)
       await expect(support(page).getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
       await expect(support(page).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
       if (config.careAgainLabel) {

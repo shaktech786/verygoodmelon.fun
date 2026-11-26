@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
 import { expectKeepsakeSaves } from './helpers/keepsake'
+import { expectOneGo } from './helpers/design'
 
 /**
  * The Shapeshifter (/games/the-mutation): a calm canvas arcade game that cannot be lost.
@@ -736,6 +737,7 @@ test.describe('The Shapeshifter', () => {
     await mockMutations(page)
     await openGame(page)
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
     await page.keyboard.press('Enter')
     await bringClues(page)
     expect(await axeViolations(page)).toEqual([])
@@ -755,6 +757,7 @@ test.describe('The Shapeshifter', () => {
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
     await page.waitForTimeout(200)
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
   })
 
   test('the finale draws the path the orb took, coloured and shaped by each chosen rule, ready to save', async ({ page }) => {

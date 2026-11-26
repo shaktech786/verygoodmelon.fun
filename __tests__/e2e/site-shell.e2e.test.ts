@@ -5,6 +5,7 @@ import { SHOWCASE_GROUPS } from '@/lib/games/config'
 import { PICK_REASONS, dailyPick } from '@/lib/games/daily-pick'
 import { gamesForMood } from '@/lib/games/moods'
 import { axeViolations } from './helpers/writing-game'
+import { expectOneGo, expectStillCare } from './helpers/design'
 
 /**
  * The shared shell every page sits in: accessibility settings, the feedback
@@ -534,6 +535,8 @@ test.describe('Finding your way', () => {
       // The helplines come first, in the care block, and the gentle games follow it
       const support = page.getByRole('complementary', { name: 'Support' })
       await expect(support.getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+      await expectStillCare(page)
+      await expectOneGo(page)
       await expect(support.getByRole('link', { name: '116 123' })).toHaveAttribute('href', 'tel:116123')
       await expect(support.getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
       expect((await support.boundingBox())!.y).toBeLessThan((await gentle.boundingBox())!.y)
@@ -596,6 +599,8 @@ test.describe('Care and support', () => {
       const support = page.getByRole('complementary', { name: 'Support' })
       await expect(support, slug).toHaveCount(1)
       await expect(support.getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+      await expectStillCare(page)
+      await expectOneGo(page)
       await expect(support.getByRole('link', { name: '116 123' })).toHaveAttribute('href', 'tel:116123')
       await expect(support.getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
       await expect(page.locator('main a[href="tel:988"]'), slug).toHaveCount(1)

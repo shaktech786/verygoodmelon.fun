@@ -2,6 +2,7 @@ import { expectKeepsakeSaves } from './helpers/keepsake'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Page, type Route } from '@playwright/test'
+import { expectOneGo } from './helpers/design'
 
 /**
  * The Alchemist (Idea Lab): pick two concepts and discover what they make together.
@@ -538,12 +539,14 @@ test('has no accessibility violations in light or dark, including the letter', a
   await combine(page, 'Love', 'Fear')
   await expect(announcement(page)).toContainText('New discovery')
   expect(await axeViolations(page)).toEqual([])
+  await expectOneGo(page)
 
   await combine(page, 'Wisdom', 'Courage')
   await expect(letter(page)).toBeVisible()
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
   await page.waitForTimeout(200)
   expect(await axeViolations(page)).toEqual([])
+  await expectOneGo(page)
 })
 
 test('a found gold warms its riddle on the shelf, and what it answers arrives one beat later', async ({ page }) => {

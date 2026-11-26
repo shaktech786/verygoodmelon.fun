@@ -3,6 +3,7 @@ import path from 'path'
 import { test, expect, type Page } from '@playwright/test'
 import { expectKeepsakeSaves } from './helpers/keepsake'
 import { ambientSoundIsOn, setAmbientSound } from './helpers/ambient-sound'
+import { expectOneGo } from './helpers/design'
 
 /**
  * The Patient One (/games/the-long-breath): five moments of unhurried noticing, each ending
@@ -442,6 +443,7 @@ test.describe('The Patient One', () => {
       describedAs: /I heard birds and traffic\./,
     })
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
     expect(await axeViolations(page)).toEqual([])
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'))
@@ -477,6 +479,7 @@ test.describe('The Patient One', () => {
     expect(await axeViolations(page)).toEqual([])
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
     await cards.last().click()
     await expect(page.getByTestId('keepsake-canvas')).toHaveCount(0)
     expect(errors).toEqual([])
@@ -574,6 +577,7 @@ test.describe('The Patient One on a phone with reduced motion', () => {
     const box = await canvas.boundingBox()
     expect(box!.x + box!.width).toBeLessThanOrEqual(390)
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
   })
 
   test('a phone can offer a gentle buzz at the end of the listening minute', async ({ page }) => {

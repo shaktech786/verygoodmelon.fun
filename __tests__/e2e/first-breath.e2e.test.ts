@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { axeViolations, describeWritingGame } from './helpers/writing-game'
 import { expectKeepsakeSaves } from './helpers/keepsake'
+import { expectOneGo, expectStillCare } from './helpers/design'
 
 /**
  * The Awakening (First Words): imagine the moment after your life ends, say
@@ -130,6 +131,7 @@ test.describe('The Awakening', () => {
       await page.getByRole('button', { name: 'Wake up' }).click()
       await expect(page.getByTestId('keepsake-canvas')).toBeVisible()
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
     })
   }
 
@@ -188,6 +190,8 @@ test.describe('The Awakening', () => {
 
     await speak(page, 'I hope it is over for good this time')
     await expect(page.getByRole('complementary', { name: 'Support' })).toBeVisible()
+    await expectStillCare(page)
+    await expectOneGo(page)
     await expect(intentionBox(page)).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Wake up' }).click()

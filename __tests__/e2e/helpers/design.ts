@@ -12,3 +12,23 @@ export async function expectOneGo(page: Page): Promise<void> {
   })
   for (const count of counts) expect(count).toBeLessThanOrEqual(1)
 }
+
+/** In care mode the Support block stays still and plain: no running animation, no go-action, nothing to give. */
+export async function expectStillCare(page: Page): Promise<void> {
+  const care = await page.evaluate(() => {
+    const blocks = [...document.querySelectorAll('[aria-label="Support"]')]
+    return {
+      blocks: blocks.length,
+      animations: document.getAnimations().filter((a) => {
+        const target = (a.effect as KeyframeEffect | null)?.target
+        return target ? blocks.some((block) => block.contains(target)) : false
+      }).length,
+      goes: blocks.reduce((sum, block) => sum + block.querySelectorAll('[data-go]').length, 0),
+      gives: blocks.reduce((sum, block) => sum + block.querySelectorAll('[data-give]').length + (/\b(donate|give)\b/i.test(block.textContent ?? '') ? 1 : 0), 0),
+    }
+  })
+  expect(care.blocks).toBeGreaterThan(0)
+  expect(care.animations).toBe(0)
+  expect(care.goes).toBe(0)
+  expect(care.gives).toBe(0)
+}

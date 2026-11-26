@@ -2,6 +2,7 @@ import { readFileSync } from 'fs'
 import path from 'path'
 import { test, expect, type Page, type Route } from '@playwright/test'
 import { getThinkerById, thinkers } from '@/lib/games/timeless-minds/thinkers'
+import { expectOneGo, expectStillCare } from './helpers/design'
 
 /**
  * The Sage (Timeless Minds): a conversation with a thinker from history in a quiet sitting room,
@@ -687,6 +688,7 @@ test('when someone may be at risk, tappable support stays for the visit, the nex
   await send(page, 'Everyone would be fine without me')
   await expect(bubbles(page).nth(2)).toHaveText(CARE_REPLY)
   await expect(support(page)).toBeVisible()
+  await expectStillCare(page)
   await expect(support(page).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
   await expect(support(page).getByRole('link', { name: '116 123' })).toHaveAttribute('href', 'tel:116123')
   await expect(support(page).getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
@@ -705,6 +707,7 @@ test('when someone may be at risk, tappable support stays for the visit, the nex
 
   const parting = page.getByRole('dialog', { name: 'Parting words from Socrates' })
   await expect(parting.getByRole('complementary', { name: 'Support' })).toBeVisible()
+  await expectStillCare(page)
   await expect(parting.getByRole('button', { name: 'Meet someone new' })).toHaveCount(0)
   // Care words are for now, not for a keepsake shelf.
   await expect(parting.getByRole('button', { name: 'Keep this' })).toHaveCount(0)
@@ -775,6 +778,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await send(page, 'Everyone would be fine without me')
     await expect(support(page)).toBeVisible()
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
 
     await menuButton(page).click()
     expect(await axeViolations(page)).toEqual([])
@@ -782,6 +786,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await fromMenu(page, 'Choose who to talk with')
     await expect(page.getByRole('dialog', { name: 'Directory' })).toBeVisible()
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
   })
 }
 
@@ -965,10 +970,12 @@ for (const colorScheme of ['light', 'dark'] as const) {
     const parting = page.getByRole('dialog', { name: 'Parting words from Socrates' })
     await parting.getByRole('button', { name: 'Keep this' }).click()
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
     await parting.getByRole('button', { name: 'Meet someone new' }).click()
 
     await fromMenu(page, 'Kept lines')
     await expect(page.getByRole('dialog', { name: 'Kept lines' }).locator('blockquote')).toHaveCount(1)
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
   })
 }

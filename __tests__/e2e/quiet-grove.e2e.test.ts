@@ -1,5 +1,6 @@
 import { test, expect, type Page, type Route } from '@playwright/test'
 import { expectKeepsakeSaves } from './helpers/keepsake'
+import { expectOneGo } from './helpers/design'
 
 /**
  * The Gardener (/games/quiet-grove): place plants on a canvas garden that persists in
@@ -100,6 +101,7 @@ test.describe('The Gardener', () => {
     const errors = collectPageErrors(page)
     const bodies = await mockSuggestion(page)
     await openGarden(page)
+    await expectOneGo(page)
 
     await plantAt(page, 0.2, 0.5)
     await page.getByRole('radio', { name: 'Oak Tree' }).click()
@@ -107,6 +109,7 @@ test.describe('The Gardener', () => {
     await page.getByRole('radio', { name: 'Crystal' }).click()
     await plantAt(page, 0.3, 0.9)
     await expect(contents(page)).toHaveText('In your garden: a daisy, an oak tree and a crystal.')
+    await expectOneGo(page)
 
     // The third plant asks for an idea, sending only what is planted and where.
     await expect.poll(() => bodies.length).toBe(1)

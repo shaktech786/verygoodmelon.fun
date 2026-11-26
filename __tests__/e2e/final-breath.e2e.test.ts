@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { axeViolations, describeWritingGame } from './helpers/writing-game'
 import { expectKeepsakeSaves } from './helpers/keepsake'
+import { expectOneGo } from './helpers/design'
 
 async function leaveWords(page: Page, words: string) {
   await page.route('**/api/last-words', (route) => route.fulfill({ status: 503, json: { stored: false } }))
@@ -163,6 +164,7 @@ test.describe('The Final Word', () => {
       await page.getByRole('button', { name: 'Blow out the candle' }).click()
       await expect(page.getByTestId('keepsake-canvas')).toBeVisible()
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
     })
   }
 

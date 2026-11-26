@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
+import { expectOneGo } from './helpers/design'
 
 /**
  * The Keeper (/games/the-slow-post): seal one worry, come back after the chosen date,
@@ -121,6 +122,7 @@ test.describe('The Keeper', () => {
   test('first visit: an empty, calm composer with the help line and no blame', async ({ page }) => {
     const errors = collectPageErrors(page)
     await openKeeper(page)
+    await expectOneGo(page)
     await expect(composerHeading(page)).toBeVisible()
     await expect(page.getByText('Sealed some before, on another device')).toBeVisible()
     await expect(page.getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
@@ -137,6 +139,7 @@ test.describe('The Keeper', () => {
     await page.getByRole('button', { name: 'Fold it up' }).click()
 
     await expect(page.getByRole('heading', { name: 'Ready to seal it?' })).toBeFocused()
+    await expectOneGo(page)
     await expect(page.getByText('It comes back to you on Monday, December 21.')).toBeVisible()
     await expect(page.getByText('It lives only in this browser, on this device.')).toBeVisible()
     await page.getByRole('button', { name: 'Change it' }).click()

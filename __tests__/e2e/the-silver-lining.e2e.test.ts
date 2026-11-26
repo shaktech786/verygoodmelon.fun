@@ -7,6 +7,7 @@ import { fallbackCommentary } from '../../lib/games/hope-daily/commentary'
 import { buildLadder, lettersInPlace, nextLetter, storyText } from '../../lib/games/hope-daily/puzzle'
 import { expectKeepsakeSaves } from './helpers/keepsake'
 import { setAmbientSound } from './helpers/ambient-sound'
+import { expectOneGo } from './helpers/design'
 
 /**
  * The Optimist: a true piece of good news with one word missing. The story unfolds a part
@@ -545,10 +546,12 @@ for (const colorScheme of ['light', 'dark'] as const) {
     for (let step = 2; step < LADDER.length; step++) await page.getByRole('button', { name: 'Read on' }).click()
     await page.getByRole('button', { name: 'Tell me the word' }).click()
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
 
     await guess(page, 'solar')
     await expect(page.getByTestId('good-news')).toHaveText(FACT)
     expect(await axeViolations(page)).toEqual([])
+    await expectOneGo(page)
   })
 }
 

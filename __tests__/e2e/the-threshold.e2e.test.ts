@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { test, expect, type Locator, type Page } from '@playwright/test'
+import { expectOneGo, expectStillCare } from './helpers/design'
 
 /**
  * The Plain Speaker (/games/the-threshold): a player-paced minute before a hard conversation.
@@ -378,6 +379,8 @@ test.describe('The Plain Speaker', () => {
     await openGame(page)
     await expect(heading(page, FIRST)).toBeVisible()
     await expect(page.getByRole('complementary', { name: 'Support' })).toHaveCount(1)
+    await expectStillCare(page)
+    await expectOneGo(page)
     await expect(page.getByRole('region', { name: 'Something gentle, if it helps' })).toBeVisible()
   })
 
@@ -616,6 +619,7 @@ test.describe('The Plain Speaker', () => {
       await openGame(page)
       await expect(heading(page, FIRST)).toBeVisible()
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
 
       await page.getByRole('button', { name: /Asking for something/ }).click()
       await page.getByLabel('Who the talk is with').fill('Ana')
@@ -648,6 +652,7 @@ test.describe('The Plain Speaker', () => {
       await expect(heading(page, 'Welcome back. How did it go?')).toBeVisible()
       await page.getByText('Better than I feared').click()
       expect(await axeViolations(page)).toEqual([])
+      await expectOneGo(page)
     })
   }
 })
