@@ -64,10 +64,11 @@ export function NoteDialog({
     if (!dialog) return
     openerRef.current ??= document.activeElement instanceof HTMLElement ? document.activeElement : null
     const opener = openerRef.current
+    const returnTo = returnRef.current
     dialog.showModal()
     ;(initialRef.current?.current ?? headingRefStable.current.current ?? dialog).focus()
     return () => {
-      const target = returnRef.current?.current ?? opener
+      const target = returnTo?.current ?? opener
       if (target?.isConnected) target.focus()
     }
   }, [])
