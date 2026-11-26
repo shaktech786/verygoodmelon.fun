@@ -261,60 +261,56 @@ function alchemist(s: Screens): PacketPrint {
   }
 }
 
-/** A fanned hand of argument cards, held up to a small horned bias creature. */
+/** A playing card with a thought bubble rising from it: dusk for the card and bubble, flesh for what is thought. */
 function philosopher(s: Screens): PacketPrint {
-  const card = 'M66 168 L126 168 Q132 168 132 174 L132 262 Q132 268 126 268 L66 268 Q60 268 60 262 L60 174 Q60 168 66 168 Z'
   return {
     a: (
       <>
-        <path d={card} transform="rotate(-22 96 300)" fill={s.a} />
-        <path d={card} transform="rotate(-22 96 300)" {...ROUND} strokeWidth="5" />
-        <path d={card} transform="rotate(0 96 300)" fill={s.a} />
-        <path d={card} transform="rotate(0 96 300)" {...ROUND} strokeWidth="5" />
-        <g transform="rotate(22 96 300)">
-          <path d={card} style={{ fill: 'var(--sheet)' }} />
-          <path d={card} {...ROUND} strokeWidth="6" />
-          <path d="M96 196 L110 218 L96 240 L82 218 Z" fill="currentColor" />
-        </g>
-        <circle cx="160" cy="98" r="4.5" fill="currentColor" />
-        <circle cx="184" cy="98" r="4.5" fill="currentColor" />
+        <rect x="52" y="132" width="116" height="152" rx="12" fill={s.a} />
+        <rect x="52" y="132" width="116" height="152" rx="12" {...ROUND} strokeWidth="7" />
+        <rect x="64" y="144" width="92" height="128" rx="6" {...ROUND} strokeWidth="3" />
+        <path d="M110 180 L134 214 L110 248 L86 214 Z" {...ROUND} strokeWidth="5" />
+        <path d="M120 72 C100 72 98 48 116 44 C118 26 148 22 156 38 C176 30 196 44 190 62 C206 70 196 94 176 92 C168 102 144 104 136 92 C128 96 118 90 120 72 Z" {...ROUND} strokeWidth="6" />
+        <circle cx="126" cy="116" r="8" {...ROUND} strokeWidth="5" />
+        <circle cx="116" cy="134" r="4" fill="currentColor" />
       </>
     ),
     b: (
       <>
-        <path d="M134 110 C134 80 150 66 172 66 C194 66 210 80 210 110 C210 134 196 146 172 146 C148 146 134 134 134 110 Z" fill="currentColor" />
-        <path d="M150 72 Q140 56 146 46 Q156 56 162 67 Z M194 72 Q204 56 198 46 Q188 56 182 67 Z" fill="currentColor" />
-        <circle cx="160" cy="98" r="9" style={{ fill: 'var(--sheet)' }} />
-        <circle cx="184" cy="98" r="9" style={{ fill: 'var(--sheet)' }} />
-        <path d="M162 122 L182 122" {...ROUND} strokeWidth="4" style={{ stroke: 'var(--sheet)' }} />
-        <path d="M154 146 L150 162 M190 146 L194 162" {...ROUND} strokeWidth="7" />
+        <path d="M110 190 L128 214 L110 238 L92 214 Z" fill="currentColor" />
+        <path d="M144 60 Q150 46 160 60 Q168 72 156 78 Q146 82 144 72" {...ROUND} strokeWidth="5" />
+        <circle cx="152" cy="82" r="3.5" fill="currentColor" />
+        <circle cx="66" cy="158" r="5" fill="currentColor" />
+        <circle cx="154" cy="258" r="5" fill="currentColor" />
       </>
     ),
   }
 }
 
-/** A little arcade toy: an orb on a glowing screen, with the rules it keeps rewriting around it. */
+/** An orb trailing a line through the spot inks: moss, dusk, clay and rind, each a separate mark. */
 function shapeshifter(s: Screens): PacketPrint {
+  const spot = (name: string) => ({ style: { fill: `var(--${name})` } })
   return {
     a: (
       <>
-        <rect x="40" y="56" width="160" height="150" rx="20" {...ROUND} strokeWidth="12" />
-        <circle cx="120" cy="131" r="54" fill={s.a} />
-        <path d="M56 214 L184 214 L200 274 Q202 282 194 282 L46 282 Q38 282 40 274 Z" fill="currentColor" />
-        <circle cx="96" cy="248" r="10" style={{ fill: 'var(--sheet)' }} />
-        <circle cx="140" cy="248" r="10" style={{ fill: 'var(--sheet)' }} />
+        <path d="M30 262 C60 262 70 210 104 206 C142 202 130 150 164 140" {...ROUND} strokeWidth="6" strokeDasharray="2 12" />
+        <circle cx="182" cy="112" r="38" fill={s.a} />
+        <circle cx="182" cy="112" r="38" {...ROUND} strokeWidth="7" />
+        <circle cx="168" cy="98" r="9" style={{ fill: 'var(--sheet)' }} />
+        <circle cx="138" cy="158" r="9" fill="currentColor" />
+        <circle cx="104" cy="206" r="12" fill="currentColor" />
       </>
     ),
     b: (
       <>
-        <circle cx="120" cy="131" r="26" fill="currentColor" />
-        <circle cx="111" cy="122" r="7" style={{ fill: 'var(--sheet)' }} />
-        <circle cx="120" cy="131" r="40" {...ROUND} strokeWidth="4" strokeDasharray="3 9" />
-        <path d="M60 96 L70 78 L80 96 Z" fill="currentColor" />
-        <rect x="162" y="80" width="16" height="16" rx="2" fill="currentColor" />
-        <path d="M170 168 L170 188 M160 178 L180 178" {...ROUND} strokeWidth="5" />
-        <path d="M60 182 Q70 166 80 182" {...ROUND} strokeWidth="5" />
-        <circle cx="118" cy="248" r="4" fill="currentColor" />
+        <circle cx="182" cy="112" r="14" {...spot('rind')} />
+        <circle cx="140" cy="160" r="10" {...spot('moss')} />
+        <path d="M96 190 L108 210 L84 210 Z" {...spot('dusk')} />
+        <rect x="58" y="224" width="16" height="16" rx="2" {...spot('clay')} />
+        <circle cx="38" cy="262" r="7" {...spot('moss')} />
+        <path d="M30 80 L40 62 L50 80 Z" {...spot('dusk')} />
+        <rect x="52" y="104" width="12" height="12" rx="2" {...spot('clay')} />
+        <circle cx="86" cy="76" r="6" {...spot('rind')} />
       </>
     ),
   }
