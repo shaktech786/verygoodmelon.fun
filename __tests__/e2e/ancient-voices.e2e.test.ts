@@ -668,7 +668,6 @@ test.describe('on a phone', () => {
     await expect(bubbles(page).nth(2)).toContainText('Reply 1')
 
     // Once talking the thinker keeps a real video tile, and the messages scroll beneath it
-    const log = page.getByRole('log', { name: 'Conversation' })
     await expectCallFits(page)
     // The thinker is named once on screen; the chat heading is kept for screen readers only
     const heading = page.getByRole('heading', { name: /^Talking with / })
