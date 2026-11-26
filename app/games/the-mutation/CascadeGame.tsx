@@ -62,6 +62,7 @@ function subscribeQuery(query: string) {
     return () => mq.removeEventListener('change', onChange)
   }
 }
+const subscribeToNothing = () => () => {}
 const subscribeTouch = subscribeQuery(TOUCH_QUERY)
 const subscribeNarrow = subscribeQuery(NARROW_QUERY)
 
@@ -143,6 +144,8 @@ export default function CascadeGame() {
   const isNarrow = useSyncExternalStore(subscribeNarrow, () => window.matchMedia(NARROW_QUERY).matches, () => false)
   // The field's shape is fixed once a run starts, so turning the phone never resets a game
   const portrait = lockedPortrait ?? isNarrow
+  // The server cannot tell a phone from a desktop, so until the page has hydrated a narrow screen is given the portrait field's shape by CSS
+  const hydrated = useSyncExternalStore(subscribeToNothing, () => true, () => false)
   const [fieldW, fieldH] = portrait ? [PORTRAIT_W, PORTRAIT_H] : [GAME_W, GAME_H]
   const gameStateRef = useRef<GameState | null>(null)
   // Events arrive from the game loop between renders, so the run's rules are also kept outside state
@@ -413,7 +416,7 @@ export default function CascadeGame() {
       <div className={phase === 'finale' ? undefined : 'shapeshifter-bezel'}>
       <div ref={boxRef} style={screen.vars as CSSProperties} className={cn('grid overflow-hidden scroll-mt-20', phase === 'finale' ? 'shapeshifter-paper' : 'shapeshifter-screen')}>
         {/* Hidden under the finale, so the box takes the finale's height rather than the field's */}
-        <div className={`col-start-1 row-start-1 ${phase === 'finale' ? 'hidden' : ''}`}>
+        <div className={cn('col-start-1 row-start-1', phase === 'finale' && 'hidden', !hydrated && 'max-sm:aspect-[480/720]')}>
           <GameCanvas
             key={`${runId}-${fieldW}`}
             width={fieldW}
