@@ -71,17 +71,8 @@
   "components/ErrorBoundary.tsx": {
     "infinite": 1
   },
-  "components/games/FirstWords.tsx": {
-    "animate": 1,
-    "banned-utility": 2,
-    "raw-colour": 9
-  },
   "components/games/HardChoices.tsx": {
     "animate": 2,
-    "banned-utility": 3
-  },
-  "components/games/HardTalk.tsx": {
-    "animate": 1,
     "banned-utility": 3
   },
   "components/games/HopeDaily.tsx": {
@@ -92,10 +83,6 @@
     "animate": 3,
     "banned-utility": 4
   },
-  "components/games/LastWords.tsx": {
-    "animate": 1,
-    "banned-utility": 1
-  },
   "components/games/MindDebate.tsx": {
     "animate": 3,
     "banned-utility": 1
@@ -103,9 +90,6 @@
   "components/games/TimelessMinds.tsx": {
     "banned-utility": 1,
     "raw-colour": 16
-  },
-  "components/games/WorryCapsule.tsx": {
-    "banned-utility": 1
   },
   "components/games/avatars/SimliAvatar.tsx": {
     "animate": 2,
@@ -122,9 +106,6 @@
     "banned-utility": 2,
     "tailwind-palette": 1
   },
-  "components/games/community-words/WritingParts.tsx": {
-    "banned-utility": 1
-  },
   "components/games/idea-lab/GoldShelf.tsx": {
     "banned-utility": 2
   },
@@ -134,9 +115,6 @@
   },
   "components/games/idea-lab/LetterScene.tsx": {
     "animate": 1
-  },
-  "components/games/worry-capsule/parts.tsx": {
-    "banned-utility": 2
   },
   "components/ui/Button.tsx": {
     "banned-utility": 1

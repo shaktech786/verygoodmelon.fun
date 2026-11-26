@@ -1073,10 +1073,12 @@ For each game: its packet motif and inks, its chrome, and **its stimulating mome
    - *Packet:* a candle with a pixel flame; dusk and clay.
    - *Chrome:* the writing slip, with "Send" as the Go. `final-word-wax` moves into a game ink map (wax = clay-light).
    - *Moment (S2):* when the words are judged safe, the candle's flame is "printed" (not animated flicker; a single 700 ms settle). Before judgement nothing celebrates. If care triggers, the Care block replaces the moment.
+   - *As built (4b):* the game ink map is in `LastWords.module.css`: wax is clay lifted toward the sheet, and the flame is clay with a clay-light core as its second ink. The candle is a 32 by 48 pixel print. The flame is lit and still while writing, and never flickers; once the words are judged safe, its core settles into register in one 700 ms press, and before that nothing marks the moment. In care there is no candle at all. "Blow out the candle" is the Go once the words are safe: the dusk fades in over 1,600 ms (a wash of the dusk ink on the light sheet, the deepest well on the dark one), the smoke rises over the same time, then the closing line and the keepsake arrive at 1,600 ms and 2,300 ms. Quiet and reduced motion show that end state at once. The old `final-word-dusk` and `final-word-wax` classes are gone from `globals.css`.
 7. **The Awakening** (`FirstWords.tsx`)
    - *Packet:* a sun half-risen over a line; clay and dusk.
    - *Chrome:* the writing slip and Go. The steps are a stamp row of places ("Imagine", "Say", "Wake").
    - *Moment (S3):* the dawn, which already waits for safe words (commit `e3543df`). It becomes a 1,600 ms sky cross-fade from dusk to clay with no brightness pulse. Quiet goes straight to dawn.
+   - *As built (4b):* the places row is "Imagine" until the words are spoken, "Say" while they are heard and the plan is written, and "Wake" once awake. The sky is three layers over a night layer that is always opaque: the dawn (dusk into clay) fades in over it when the words are judged safe, in 1,600 ms, and the morning (pale clay) fades in over that on waking, in 700 ms. Layers only ever fade in, so no cross-fade dips toward the page and nothing pulses; the old `sunrise-glow` is gone. The kitchen table and the note are game ink, wood and paper mixed from clay with black and white, with a printed-edge shadow instead of a blurred one. In care and for unjudged words there is still no sky.
 8. **The Arena** (`MindDebate.tsx`, `ArenaPairingDeck.tsx`)
    - *Packet:* two facing profiles with overprinted colours where they overlap; dusk and clay.
    - *Chrome:* pairing uses stamp cards; the two voices use `voiceA` (dusk) and `voiceB` (clay). Each voice is always labelled by name, not just colour.
@@ -1085,10 +1087,12 @@ For each game: its packet motif and inks, its chrome, and **its stimulating mome
    - *Packet:* a doorway with a single line of light; moss and ink.
    - *Chrome:* the steps (settle, find words, walk in) are stamps. The "Carry on where I was" and "Start fresh" pair is Go plus Stamp. `ThresholdArt` is re-inked.
    - *Moment (S2):* the carried line is printed onto a small card in the Carry screen dialog.
+   - *As built (4b):* the three stages keep their words ("Settling in", "Finding your words", "Nearly there") as a row of places; Next is the Go and Skip a Stamp, with Back and Start over Quiet in the tray. Choices are stamp cards, chosen with a tick and a rind edge. `ThresholdArt` is a moss door in an ink frame with clay light, and the envoy keeps its melon. The Carry screen is a `NoteDialog` ("Your line to carry in") with Done as a Stamp, and its line rises onto a small printed card in 700 ms (still in Quiet); the wake lock is kept.
 10. **The Keeper** (`WorryCapsule.tsx`, `Keeper.module.css`, 374 lines)
     - *Packet:* a sealed jar with a paper label; clay and rind.
     - *Chrome:* the writing slip plus "Seal the jar" Go. Its CSS module moves its colours onto system tokens and keeps its layout.
     - *Moment (S3):* the seal. The lid presses down as an S2 stamp, then a paper label prints with the date. When opening later, "see how it turned out", the label simply reads; no reveal theatrics on worries.
+    - *As built (4b):* sealing is one 1,600 ms beat: the lid presses down (600 ms), a paper label prints with the day it was sealed (700 ms, from 600 ms), and the words settle in from 1,300 ms; Quiet and reduced motion show the sealed jar at once. The wax seal is gone, so the label is the only mark on the jar, and sealed jars on the shelf show their dates as words beneath, as before. Opening only shows the opened jar and the worry, with no unfolding; answering prints the new jar's label in 700 ms on a shelf where it already stands. The fold, drop and travel of the old scenes are removed, and so is the three-frame still. The care Support block is the Care block, and sealing in care is a Stamp or Quiet, never a Go.
 
 **Play (clay)**
 
