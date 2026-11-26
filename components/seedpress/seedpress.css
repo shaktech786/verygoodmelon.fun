@@ -633,9 +633,10 @@ a.sp-packet:focus-visible .sp-print {
 
 .sp-header__row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s-3);
+  gap: 0 var(--s-3);
   min-height: 64px;
 }
 
@@ -662,9 +663,11 @@ a.sp-packet:focus-visible .sp-print {
   }
 }
 
+/* At larger text sizes on a phone the wordmark cannot share the row, so the nav wraps under it, still on the right. */
 .sp-header__nav {
   display: flex;
   flex-shrink: 0;
+  margin-left: auto;
   align-items: center;
   gap: var(--s-1);
 }
