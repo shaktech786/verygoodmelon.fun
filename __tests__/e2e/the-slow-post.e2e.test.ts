@@ -559,6 +559,38 @@ test.describe('The Keeper', () => {
     expect(copy.capsules[0]).toMatchObject({ worry: WORRY, opensOn: '2026-11-28' })
   })
 
+  test('care: a heavy worry kept in a jar anyway, with storage failing, leaves no main action to seal it again', async ({ page }) => {
+    await page.addInitScript(() => {
+      const real = Storage.prototype.setItem
+      Storage.prototype.setItem = function (key: string, value: string) {
+        if (key.includes('worry-capsule')) {
+          const error = new Error('full')
+          error.name = 'QuotaExceededError'
+          throw error
+        }
+        return real.call(this, key, value)
+      }
+    })
+    await openKeeper(page)
+    await page.getByLabel('Your worry').fill('I do not want to be alive anymore')
+    await page.getByRole('button', { name: 'Fold it up' }).click()
+    await expect(page.getByRole('complementary', { name: 'Support' })).toBeVisible()
+    await page.getByRole('button', { name: 'Keep it in a jar anyway' }).click()
+    await expect(page.getByRole('heading', { name: /This browser couldn.t keep it/ })).toBeFocused()
+    await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
+    await expect(page.locator('main [data-go]')).toHaveCount(0)
+  })
+
+  test('care: with care already on, sealing an everyday worry is a Stamp, never the main action', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('verygoodmelon:care', JSON.stringify({ until: Date.now() + 60 * 60 * 1000 })))
+    await openKeeper(page)
+    await page.getByLabel('Your worry').fill('That the landlord will not renew')
+    await page.getByRole('button', { name: 'Fold it up' }).click()
+    await expect(page.getByRole('heading', { name: 'Ready to seal it?' })).toBeFocused()
+    await expect(page.getByRole('button', { name: 'Seal it' })).toBeVisible()
+    await expect(page.locator('main [data-go]')).toHaveCount(0)
+  })
+
   test('the worry never leaves the browser, half-written or sealed', async ({ page }) => {
     const leaks: string[] = []
     page.on('request', (request) => {

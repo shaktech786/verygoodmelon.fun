@@ -297,7 +297,8 @@ export default function WorryCapsule() {
         <p className="sp-soft m-0">It lives only in this browser, on this device.</p>
         <StickyTray className={actions}>
           <Stamp onClick={() => go({ kind: 'compose', draft })}>Change it</Stamp>
-          <Go onClick={() => seal(draft)}>Seal it</Go>
+          {/* In care, sealing is never the main next step */}
+          {care ? <Stamp onClick={() => seal(draft)}>Seal it</Stamp> : <Go onClick={() => seal(draft)}>Seal it</Go>}
         </StickyTray>
       </div>
     )
@@ -339,7 +340,7 @@ export default function WorryCapsule() {
       </div>
     ) : null
   } else if (current.kind === 'rescue') {
-    body = <Rescue draft={current.draft} reason={current.reason} today={today} focus={navigated} onRetry={() => seal(current.draft)} onBack={() => go({ kind: 'compose', draft: current.draft })} />
+    body = <Rescue calm={care || soundsLikeDistress(current.draft.text)} draft={current.draft} reason={current.reason} today={today} focus={navigated} onRetry={() => seal(current.draft)} onBack={() => go({ kind: 'compose', draft: current.draft })} />
   } else if (current.kind === 'closed') {
     const capsule = capsules.find((c) => c.id === current.id)
     bodyKey = `closed-${current.id}`
@@ -840,6 +841,8 @@ function Reread({ capsule, today, focus, onBack, onLetGo }: CapsuleViewProps & {
 }
 
 interface RescueProps {
+  /** In care, or for words that sound heavy, sealing again is never the main next step. */
+  calm: boolean
   draft: Draft
   reason: 'full' | 'unavailable'
   today: DateKey
@@ -848,7 +851,7 @@ interface RescueProps {
   onBack: () => void
 }
 
-function Rescue({ draft, reason, today, focus, onRetry, onBack }: RescueProps) {
+function Rescue({ calm, draft, reason, today, focus, onRetry, onBack }: RescueProps) {
   const [copied, setCopied] = useState('')
   const worry = draft.text.trim()
   const copyWords = async () => {
@@ -885,7 +888,7 @@ function Rescue({ draft, reason, today, focus, onRetry, onBack }: RescueProps) {
       <p className="sp-soft m-0">A saved file can be brought back here later with “Restore from a copy”.</p>
       <div className={actions}>
         <QuietButton onClick={onBack}>Back</QuietButton>
-        <Go onClick={onRetry}>Try again</Go>
+        {calm ? <Stamp onClick={onRetry}>Try again</Stamp> : <Go onClick={onRetry}>Try again</Go>}
       </div>
       <HelpLine />
     </div>
