@@ -588,6 +588,20 @@ test.describe('Care and support', () => {
     await expect(calm.getByRole('link', { name: 'findahelpline.com' })).toBeVisible()
   })
 
+  test('in care mode every game page shows the helplines exactly once, whether or not the game has its own support', async ({ page }) => {
+    await enterCare(page)
+    // Worry Capsule and Mind Debate render their own support after they trigger care; Quiet Grove has none
+    for (const slug of ['the-slow-post', 'the-arena', 'quiet-grove', 'the-threshold']) {
+      await page.goto(`/games/${slug}`)
+      const support = page.getByRole('complementary', { name: 'Support' })
+      await expect(support, slug).toHaveCount(1)
+      await expect(support.getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+      await expect(support.getByRole('link', { name: '116 123' })).toHaveAttribute('href', 'tel:116123')
+      await expect(support.getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
+      await expect(page.locator('main a[href="tel:988"]'), slug).toHaveCount(1)
+    }
+  })
+
   test('the lost page offers no helpline outside care mode', async ({ page }) => {
     await page.goto('/no-such-page')
     await expect(page.getByRole('region', { name: 'Or slow down for a minute' })).toBeVisible()

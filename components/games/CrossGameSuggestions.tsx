@@ -2,6 +2,7 @@
 
 import { ALL_GAMES, type GameConfig } from '@/lib/games/config'
 import { useCareMode } from '@/components/games/CareMode'
+import { useOwnSupportShown } from '@/components/games/OwnSupport'
 import { CareBlock } from '@/components/seedpress/CareBlock'
 import { GentleRow } from '@/components/seedpress/GentleRow'
 import { Packet } from '@/components/seedpress/Packet'
@@ -72,18 +73,16 @@ export function GentleGames({ className = '', helplines = true }: { className?: 
   )
 }
 
-/** Games whose own care panel already carries the helplines, so the row does not repeat them. */
-const OWN_HELPLINES: ReadonlySet<string> = new Set(['timeless-minds', 'last-words', 'first-words', 'hard-talk', 'worry-capsule', 'mind-debate'])
-
 interface CrossGameSuggestionsProps {
   currentGameId: string
 }
 
 export function CrossGameSuggestions({ currentGameId }: CrossGameSuggestionsProps) {
   const { care, awaitingJudgement } = useCareMode()
+  const ownSupport = useOwnSupportShown()
   const className = 'mt-12 pt-8 border-t border-rule'
 
-  if (care) return <GentleGames className={className} helplines={!OWN_HELPLINES.has(currentGameId)} />
+  if (care) return <GentleGames className={className} helplines={!ownSupport} />
   if (awaitingJudgement) return null
 
   const related = RELATED_GAME[currentGameId]

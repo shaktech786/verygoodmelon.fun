@@ -4,6 +4,7 @@ import { type ReactNode, useId, useRef, useState, useSyncExternalStore } from 'r
 import { flushSync } from 'react-dom'
 import { Button } from '@/components/ui/Button'
 import { useCareMode } from '@/components/games/CareMode'
+import { OwnSupportMark } from '@/components/games/OwnSupport'
 import { HelplineSentence } from '@/components/games/HelplineSentence'
 import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
@@ -262,6 +263,7 @@ export default function WorryCapsule() {
       <div className="space-y-5">
         <ViewHeading focus={navigated}>You don’t have to hold this alone</ViewHeading>
         <aside aria-label="Support" className={careAside}>
+          <OwnSupportMark />
           <p>
             <HelplineSentence lead="What you wrote sounds very heavy. Please talk to someone who can be with you in it." />
           </p>
@@ -299,6 +301,7 @@ export default function WorryCapsule() {
       <div className="space-y-4">
         <ViewHeading focus={navigated}>It is kept</ViewHeading>
         <aside aria-label="Support" className={careAside}>
+          <OwnSupportMark />
           <p>
             <HelplineSentence lead="If things feel too heavy right now, you can talk to someone." />
           </p>

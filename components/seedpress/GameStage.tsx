@@ -1,6 +1,7 @@
 import NextLink from 'next/link'
 import type { CSSProperties, ReactNode } from 'react'
 import { CrossGameSuggestions } from '@/components/games/CrossGameSuggestions'
+import { OwnSupportProvider } from '@/components/games/OwnSupport'
 import { GameVisitTracker } from '@/components/games/GameVisitTracker'
 import { AmbientSoundscape } from '@/components/ui/AmbientSoundscape'
 import { ALL_GAMES } from '@/lib/games/config'
@@ -31,6 +32,7 @@ export function GameStage({ gameId, title, lead, wide = false, keys, sound = fal
   const shelf = SHELF_STYLE[category]
   return (
     <div className={wide ? 'sp-game sp-game--wide' : 'sp-game'}>
+      <OwnSupportProvider>
       <GameVisitTracker gameId={gameId} />
       <header className="sp-strip" style={{ ['--shelf-ink' as string]: `var(--${shelf.ink})` } as CSSProperties}>
         <NextLink href="/games" className="sp-quiet sp-strip__back">
@@ -51,6 +53,7 @@ export function GameStage({ gameId, title, lead, wide = false, keys, sound = fal
       <div className="sp-after">
         <CrossGameSuggestions currentGameId={gameId} />
       </div>
+      </OwnSupportProvider>
     </div>
   )
 }

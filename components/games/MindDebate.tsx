@@ -11,6 +11,7 @@ import { ARENA_VOICES_CSS, Emblem, OWN_CARD, PairingDeck, VOICE, VoiceMarker, vo
 import { Keepsake } from '@/components/games/Keepsake'
 import { arenaKeepsake } from '@/lib/keepsake/arena'
 import { useCareMode } from '@/components/games/CareMode'
+import { OwnSupportMark } from '@/components/games/OwnSupport'
 import { HelplineSentence } from '@/components/games/HelplineSentence'
 import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
 
@@ -586,6 +587,7 @@ export default function MindDebate() {
   if (phase === 'care') {
     return (
       <div className="max-w-2xl mx-auto animate-fade" role="region" aria-label="Support">
+        <OwnSupportMark />
         <section
           aria-labelledby="arena-care-heading"
           className="scroll-mt-20 rounded-xl border border-card-border border-l-4 border-l-[var(--melon-green)] bg-card-bg px-5 py-6 sm:px-8 text-left text-foreground leading-relaxed"

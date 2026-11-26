@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent, type RefObject } from 'react'
 import Link from 'next/link'
+import { OwnSupportMark } from '@/components/games/OwnSupport'
 import { Button } from '@/components/ui/Button'
 import { DIRECTORY_LINE, UK_IE_LINE, US_LINE } from '@/lib/care/helplines'
 import { CARE_GAMES } from '@/components/games/CrossGameSuggestions'
@@ -140,6 +141,7 @@ export function CarePanel() {
       aria-label="Support"
       className="rounded-lg border border-card-border border-l-4 border-l-[var(--melon-green)] bg-card-bg p-5 text-left text-foreground leading-relaxed"
     >
+      <OwnSupportMark />
       <p>
         If these words are closer to home than an imagined ending, you don&apos;t have to hold them alone.
       </p>

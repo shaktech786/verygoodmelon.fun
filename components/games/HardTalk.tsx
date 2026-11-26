@@ -5,6 +5,7 @@ import { Button, buttonClassName } from '@/components/ui/Button'
 import { KeepsakeSave } from '@/components/games/Keepsake'
 import { useCareMode } from '@/components/games/CareMode'
 import { HelplineSentence } from '@/components/games/HelplineSentence'
+import { OwnSupportMark } from '@/components/games/OwnSupport'
 import { DIRECTORY_LINE } from '@/lib/care/helplines'
 import { InlineConfirm } from '@/components/seedpress/InlineConfirm'
 import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
@@ -131,6 +132,7 @@ const stamped = (session: Session): Session => ({ ...session, updatedAt: clock()
 export default function HardTalk() {
   // Saved progress lives only in this browser, so the game is drawn once the page has hydrated.
   const hydrated = useSyncExternalStore(subscribeToNothing, () => true, () => false)
+  const { care } = useCareMode()
   return (
     <div id="hard-talk" className="mx-auto max-w-xl">
       {hydrated ? (
@@ -141,22 +143,25 @@ export default function HardTalk() {
       <p className="mt-4 text-center text-sm text-foreground/75">
         What you write stays in this browser and is never sent anywhere. Starting over clears it.
       </p>
-      <aside
-        aria-label="Support"
-        className="mt-3 rounded-lg border border-card-border bg-card-bg px-4 py-3 text-center text-sm leading-relaxed text-foreground/80"
-      >
-        This is a moment to steady yourself, not a substitute for support. If a conversation could put your safety at
-        risk, you deserve help with it:{' '}
-        <a
-          href={DIRECTORY_LINE.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-medium text-foreground underline underline-offset-4 rounded"
+      {/* In care the page's own care block carries the helplines, so this note steps aside */}
+      {!care && (
+        <aside
+          aria-label="Support"
+          className="mt-3 rounded-lg border border-card-border bg-card-bg px-4 py-3 text-center text-sm leading-relaxed text-foreground/80"
         >
-          {DIRECTORY_LINE.label}
-        </a>{' '}
-        lists free, confidential support.
-      </aside>
+          This is a moment to steady yourself, not a substitute for support. If a conversation could put your safety at
+          risk, you deserve help with it:{' '}
+          <a
+            href={DIRECTORY_LINE.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-foreground underline underline-offset-4 rounded"
+          >
+            {DIRECTORY_LINE.label}
+          </a>{' '}
+          lists free, confidential support.
+        </aside>
+      )}
     </div>
   )
 }
@@ -290,6 +295,7 @@ function HardTalkGame() {
       aria-label="Support"
       className="rounded-lg border border-card-border border-l-4 border-l-[var(--melon-green)] bg-background px-4 py-3 text-left leading-relaxed text-foreground"
     >
+      <OwnSupportMark />
       <p>
         <HelplineSentence lead="What you wrote sounds very heavy. You don’t have to carry it alone." />
       </p>
