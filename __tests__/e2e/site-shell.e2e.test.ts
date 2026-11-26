@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
-import { SHOWCASE_GROUPS } from '@/lib/games/config'
+import { SHOWCASE_GAMES, SHOWCASE_GROUPS } from '@/lib/games/config'
 import { PICK_REASONS, dailyPick } from '@/lib/games/daily-pick'
 import { gamesForMood } from '@/lib/games/moods'
 import { axeViolations } from './helpers/writing-game'
@@ -587,7 +587,8 @@ test.describe('Care and support', () => {
   test('in care mode every game page shows the helplines exactly once, whether or not the game has its own support', async ({ page }) => {
     await enterCare(page)
     // Worry Capsule and Mind Debate render their own support after they trigger care; Quiet Grove has none
-    for (const slug of ['the-slow-post', 'the-arena', 'quiet-grove', 'the-threshold']) {
+    test.setTimeout(180_000)
+    for (const { slug } of SHOWCASE_GAMES) {
       await page.goto(`/games/${slug}`)
       const support = page.getByRole('complementary', { name: 'Support' })
       await expect(support, slug).toHaveCount(1)
