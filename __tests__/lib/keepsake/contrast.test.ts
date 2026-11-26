@@ -77,7 +77,8 @@ function overprint(under: Rgb, ink: Rgb, theme: KeepsakeLook['theme']): Rgb {
 
 /** The colour the shapes leave at a point, every one painted in order over the last, the second ink a pixel out of register. */
 function backgroundAt(plan: KeepsakePlan, look: KeepsakeLook, x: number, y: number): Rgb {
-  let colour: Rgb = [255, 255, 255]
+  // Nothing is drawn under the first sheet of paper, so the model starts from the paper ink itself
+  let colour: Rgb = rgb(look.inks.paper)
   for (const op of plan.ops) {
     if (op.kind === 'text') continue
     const shift = op.b && !look.plain ? PIXEL : 0
@@ -154,7 +155,7 @@ const KEEPSAKES: KeepsakePlan[] = [
   }),
 ]
 
-// The six palettes tokens.css emits: Gentle, Quiet and high contrast, each light and dark.
+// The palettes tokens.css emits: Gentle, Quiet and high contrast, each light and dark, and highest contrast, which also sets every rule strong.
 const LOOKS = [
   ['Light', lookFor('light')],
   ['Dark', lookFor('dark')],
@@ -162,6 +163,8 @@ const LOOKS = [
   ['Dark Quiet', lookFor('dark', 'quiet')],
   ['Light High', lookFor('light', 'gentle', 'high')],
   ['Dark High', lookFor('dark', 'gentle', 'high')],
+  ['Light Highest', lookFor('light', 'gentle', 'extra-high')],
+  ['Dark Highest', lookFor('dark', 'gentle', 'extra-high')],
 ] as const
 
 describe('every keepsake is readable on its own paper', () => {
@@ -175,10 +178,14 @@ describe('every keepsake is readable on its own paper', () => {
 describe('every keepsake sets its words plainly', () => {
   const words = KEEPSAKES.flatMap((plan) => plan.ops.filter((op): op is TextOp => op.kind === 'text'))
 
-  it('has no word in capitals but a single tile letter, and no italics', () => {
-    const shouting = words.filter((op) => /[A-Z]{2,}/.test(op.text) && op.text === op.text.toUpperCase()).map((op) => op.text)
+  it('has no word in capitals but a single tile letter', () => {
+    const shouting = words.flatMap((op) => op.text.split(/\s+/).map((word) => word.replace(/^[^A-Za-z]+|[^A-Za-z]+$/g, ''))).filter((word) => /^[A-Z]{2,}$/.test(word))
     expect(shouting).toEqual([])
-    expect(words.some((op) => 'italic' in op)).toBe(false)
+  })
+
+  it('sets every word in one of the two faces, upright', () => {
+    expect(new Set(words.map((op) => op.font))).toEqual(new Set(['sans', 'display']))
+    expect(words.every((op) => !('italic' in op))).toBe(true)
   })
 
   it('sets short titles in the display face and everything long in the reading face', () => {
