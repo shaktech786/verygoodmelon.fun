@@ -54,6 +54,7 @@ import {
 import { gardenerKeepsake } from '@/lib/keepsake/gardener'
 import type { KeepsakePlan } from '@/lib/keepsake/plan'
 import { Keepsake } from '@/components/games/Keepsake'
+import { useLoadedOnClient } from '@/lib/hooks/useLoadedOnClient'
 import { drawGround, drawMarker, drawNewGrowth, drawPlant, drawSitLight, drawSky, drawVisitor } from './calm-garden/draw'
 import { Icon } from '@/components/seedpress/icons/Icon'
 import { alpha, gardenColours } from './calm-garden/inks'
@@ -141,6 +142,20 @@ function visitorsSentence(count: number, kind: 'butterfly' | 'firefly'): string 
   return count === 1 ? ` A ${kind} is visiting.` : ` ${numberWord(count).replace(/^./, (c) => c.toUpperCase())} ${plural} are visiting.`
 }
 
+/** The garden as the visitor finds it now: grown while it was left, with the time of day and season it opens in. */
+function arriveInGarden() {
+  const now = Date.now()
+  let raw: string | null = null
+  try {
+    raw = localStorage.getItem(STORAGE_KEY)
+  } catch {
+    // Storage can be blocked; the garden simply starts fresh.
+  }
+  const back = returnToGarden(loadGarden(raw, now), now, Math.random)
+  const southern = isSouthernTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  return { back, clock: { tod: timeOfDayAt(new Date(now)), season: seasonAt(new Date(now), southern) } }
+}
+
 export default function CalmGarden() {
   const [garden, setGarden] = useState<Garden | null>(null)
   const [clock, setClock] = useState<{ tod: TimeOfDay; season: Season }>({ tod: 'day', season: 'summer' })
@@ -194,25 +209,23 @@ export default function CalmGarden() {
 
   // Load once on the client. A garden left for a while has grown, and may have
   // seeded a flower of its own.
+  const arrival = useLoadedOnClient(arriveInGarden)
+  const [arrivedFrom, setArrivedFrom] = useState<typeof arrival>(null)
+  if (arrival && arrival !== arrivedFrom) {
+    setArrivedFrom(arrival)
+    setClock(arrival.clock)
+    setGarden(arrival.back.garden)
+    if (arrival.back.note) {
+      setNote(arrival.back.note)
+      setAnnouncement(arrival.back.note)
+      setReturnLine(arrival.back.note)
+    }
+  }
+
   useEffect(() => {
-    const now = Date.now()
-    let raw: string | null = null
-    try {
-      raw = localStorage.getItem(STORAGE_KEY)
-    } catch {
-      // Storage can be blocked; the garden simply starts fresh.
-    }
-    const back = returnToGarden(loadGarden(raw, now), now, Math.random)
-    const southern = isSouthernTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone)
-    setClock({ tod: timeOfDayAt(new Date(now)), season: seasonAt(new Date(now), southern) })
-    setGarden(back.garden)
-    if (back.note) {
-      setNote(back.note)
-      setAnnouncement(back.note)
-      returnRef.current = { start: performance.now(), skipAt: null, grew: new Map(back.grew.map((g) => [g.id, g.from])) }
-      setReturnLine(back.note)
-    }
-  }, [])
+    if (!arrival?.back.note) return
+    returnRef.current = { start: performance.now(), skipAt: null, grew: new Map(arrival.back.grew.map((g) => [g.id, g.from])) }
+  }, [arrival])
 
   // Any key or tap ends the look early; the view eases back rather than cutting.
   useEffect(() => {
