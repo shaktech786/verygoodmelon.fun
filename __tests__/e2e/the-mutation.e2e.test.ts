@@ -165,8 +165,8 @@ async function restUntilOpen(page: Page) {
 
 /**
  * Opens a lone clue by pulsing, as a player who gathers would. The time the runner spent on the
- * assertions above counts as rest in the engine, so a slow runner could let resting win; that
- * idle time is cleared first, since it was the test's pause, not the player's.
+ * assertions before this counts as rest in the engine, so a slow runner could let resting win;
+ * that idle time is cleared first, since it was the test's pause, not the player's.
  */
 async function gatherUntilOpen(page: Page) {
   await page.evaluate(() => {
@@ -175,8 +175,8 @@ async function gatherUntilOpen(page: Page) {
       z.byRest = 0
     }
   })
-  // Five pulses open it (0.2 each), sent back to back
-  for (let i = 0; i < 5; i++) await page.keyboard.press(' ')
+  // The orb ignores presses while a pulse is still spreading, so they go one at a time until it opens
+  for (let i = 0; i < 15 && (await engine(page)).seeds.length; i++) await page.keyboard.press(' ')
 }
 
 /** Skips a long rest at a crossroads: every clue settles and sleeps. */
