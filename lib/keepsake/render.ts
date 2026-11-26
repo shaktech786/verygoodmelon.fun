@@ -131,6 +131,7 @@ function weightOf(op: TextOp): number {
 /** The lines a text op sets, as the canvas wraps them. */
 function lay(ctx: CanvasRenderingContext2D, op: TextOp): string[] {
   ctx.font = `${weightOf(op)} ${op.size}px ${fontFamily(op.font)}`
+  ctx.textBaseline = 'alphabetic'
   let lines = op.maxWidth ? wrapLines((line) => ctx.measureText(line).width, op.text, op.maxWidth) : op.text.split('\n')
   if (op.maxLines && lines.length > op.maxLines) {
     lines = lines.slice(0, op.maxLines)
@@ -156,13 +157,21 @@ interface Box {
   bottom: number
 }
 
-/** Where a text op's words land, a little generous, so grain can stay clear of them. */
+/** Where a text op's words land: each line as the canvas measures it, ascenders and descenders included, plus one art pixel all round. */
 function wordsBox(ctx: CanvasRenderingContext2D, op: TextOp): Box {
   const lines = lay(ctx, op)
-  const width = Math.max(...lines.map((line) => ctx.measureText(line).width))
-  const left = op.align === 'center' ? op.x - width / 2 : op.align === 'right' ? op.x - width : op.x
   const lineHeight = op.lineHeight ?? op.size * 1.35
-  return { left, right: left + width, top: op.y - op.size * 0.85, bottom: op.y + (lines.length - 1) * lineHeight + op.size * 0.25 }
+  const box: Box = { left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity }
+  lines.forEach((line, i) => {
+    const m = ctx.measureText(line)
+    const left = op.align === 'center' ? op.x - m.width / 2 : op.align === 'right' ? op.x - m.width : op.x
+    const baseline = op.y + i * lineHeight
+    box.left = Math.min(box.left, left - PIXEL)
+    box.right = Math.max(box.right, left + m.width + PIXEL)
+    box.top = Math.min(box.top, baseline - m.actualBoundingBoxAscent - PIXEL)
+    box.bottom = Math.max(box.bottom, baseline + m.actualBoundingBoxDescent + PIXEL)
+  })
+  return box
 }
 
 /** A seeded speckle on the art grid, a pixel at a time, left off wherever words will sit. */
