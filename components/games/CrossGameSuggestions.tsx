@@ -2,7 +2,8 @@
 
 import { ALL_GAMES, type GameConfig } from '@/lib/games/config'
 import { useCareMode } from '@/components/games/CareMode'
-import { HelplineSentence } from '@/components/games/HelplineSentence'
+import { CareBlock } from '@/components/seedpress/CareBlock'
+import { GentleRow } from '@/components/seedpress/GentleRow'
 import { Packet } from '@/components/seedpress/Packet'
 
 /** Each game's closest neighbour, offered once at the foot of its page. */
@@ -39,26 +40,17 @@ export function stepsAsideInCare(gameId: string): boolean {
   return HEAVY_GAMES.has(gameId) || CARE_GAMES.some((game) => game.id === gameId)
 }
 
-const GENTLE_HEADING = 'Something gentle, if it helps'
-
 interface SuggestionRowProps {
-  heading: string
   games: readonly GameConfig[]
   className: string
-  helplines?: boolean
 }
 
-function SuggestionRow({ heading, games, className, helplines = false }: SuggestionRowProps) {
+function ContinueRow({ games, className }: SuggestionRowProps) {
   return (
     <section aria-labelledby="related-games-heading" className={className}>
       <h2 id="related-games-heading" className="sp-h3">
-        {heading}
+        Continue your journey
       </h2>
-      {helplines && (
-        <p className="mt-2 max-w-prose">
-          <HelplineSentence lead="If things feel too heavy right now, you can talk to someone." />
-        </p>
-      )}
       <ul className="sp-shelf__packets mt-5" style={{ maxWidth: `${games.length * 15}rem` }}>
         {games.map((game, index) => (
           <li key={game.id}>
@@ -70,9 +62,14 @@ function SuggestionRow({ heading, games, className, helplines = false }: Suggest
   )
 }
 
-/** Leads the game lists while care mode lasts, with the helplines beside it. */
+/** Leads the game lists while care mode lasts: the helplines first, then the calmest games. */
 export function GentleGames({ className = '', helplines = true }: { className?: string; helplines?: boolean }) {
-  return <SuggestionRow heading={GENTLE_HEADING} games={CARE_GAMES} className={className} helplines={helplines} />
+  return (
+    <>
+      {helplines && <CareBlock lead="If things feel too heavy right now, you can talk to someone." className={className} />}
+      <GentleRow games={CARE_GAMES} className={className} />
+    </>
+  )
 }
 
 /** Games whose own care panel already carries the helplines, so the row does not repeat them. */
@@ -92,5 +89,5 @@ export function CrossGameSuggestions({ currentGameId }: CrossGameSuggestionsProp
   const related = RELATED_GAME[currentGameId]
   const suggestions = findGames(related ? [related] : [])
   if (suggestions.length === 0) return null
-  return <SuggestionRow heading="Continue your journey" games={suggestions} className={className} />
+  return <ContinueRow games={suggestions} className={className} />
 }

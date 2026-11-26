@@ -531,9 +531,12 @@ test.describe('Finding your way', () => {
       await page.goto(listing)
       const gentle = page.getByRole('region', { name: 'Something gentle, if it helps' })
       await expect(gentle).toBeVisible()
-      await expect(gentle.getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
-      await expect(gentle.getByRole('link', { name: '116 123' })).toHaveAttribute('href', 'tel:116123')
-      await expect(gentle.getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
+      // The helplines come first, in the care block, and the gentle games follow it
+      const support = page.getByRole('complementary', { name: 'Support' })
+      await expect(support.getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+      await expect(support.getByRole('link', { name: '116 123' })).toHaveAttribute('href', 'tel:116123')
+      await expect(support.getByRole('link', { name: 'findahelpline.com' })).toHaveAttribute('href', 'https://findahelpline.com')
+      expect((await support.boundingBox())!.y).toBeLessThan((await gentle.boundingBox())!.y)
       await expect(page.getByRole('link', { name: '988' })).toHaveCount(1)
       for (const slug of ['the-still-point', 'quiet-grove']) {
         await expect(page.locator(`main section a[href="/games/${slug}"]`)).toHaveCount(1)
@@ -573,11 +576,11 @@ test.describe('Care and support', () => {
     expect(await axeViolations(page)).toEqual([])
   })
 
-  test('in care mode every gentle row comes with the helpline sentence: on a game page and on the lost page', async ({ page }) => {
+  test('in care mode every gentle row comes with the helplines: on a game page and on the lost page', async ({ page }) => {
     await enterCare(page)
     await page.goto('/games/quiet-grove')
-    const gentle = page.getByRole('region', { name: 'Something gentle, if it helps' })
-    await expect(gentle.getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
+    await expect(page.getByRole('region', { name: 'Something gentle, if it helps' })).toBeVisible()
+    await expect(page.getByRole('complementary', { name: 'Support' }).getByRole('link', { name: '988' })).toHaveAttribute('href', 'tel:988')
 
     await page.goto('/no-such-page')
     const calm = page.getByRole('region', { name: 'Or slow down for a minute' })
