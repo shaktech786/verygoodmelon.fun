@@ -13,8 +13,8 @@ jobs:
   lighthouse:
     name: Lighthouse Audit
     runs-on: ubuntu-latest
-    # Reported, not blocking, until Phase 2 of docs/design-system/PLAN.md raises the gates: it has never run on main before.
-    continue-on-error: true
+    # Blocking (docs/design-system/PLAN.md section 12.2). Three runs per URL, judged on the median, because the first
+    # request to a cold server on a shared runner can cost a single run 15 points.
 
     steps:
       - name: Checkout

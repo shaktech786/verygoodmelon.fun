@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Lists every utility class written in app/ and components/ that the production build has no rule for.
+// Lists every utility class written in app/, components/ and lib/ that the production build has no rule for.
 // After the Tailwind namespace reset (docs/design-system/PLAN.md section 10.1) a stock name such as `rounded-lg`,
 // `text-xs` or `bg-accent` generates nothing, and the element silently loses its style. Run `npm run build`
 // first. Classes built from a template (`bg-${tone}`) cannot be read statically and are listed for review.
@@ -7,7 +7,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const CSS_DIR = join(process.cwd(), '.next', 'static')
-const ROOTS = ['app', 'components']
+const ROOTS = ['app', 'components', 'lib']
 
 function* files(dir, test) {
   for (const name of readdirSync(dir)) {
@@ -49,7 +49,12 @@ const WORDS = new Set([
   'invisible', 'resize', 'grow', 'shrink', 'isolate', 'tabular-nums', 'transform', 'filter',
 ])
 // Words that read like utilities and are not classes: a DOM event, a CSS value in a style string, prose, an element id.
-const NOT_CLASSES = new Set(['!container', 'blur', 'content-page', 'ease-in-out', 'fill-box', 'left-aligned', 'right-hand', 'self-harm', 'self-hosted', 'shadow'])
+const NOT_CLASSES = new Set([
+  '!container', 'blur', 'content-page', 'ease-in-out', 'fill-box', 'left-aligned', 'right-hand', 'self-harm', 'self-hosted', 'shadow',
+  // Words in game text and data files, and an inline style in an email template
+  'display:inline-block', 'right-or-close', 'rounded', 'self-acceptance', 'self-compassion', 'self-defense', 'self-governing',
+  'self-portrait', 'self-portraits', 'text-size',
+])
 const prefixed = new RegExp(`^-?(?:${PREFIXES.join('|')})-`)
 
 function baseOf(token) {
@@ -105,4 +110,4 @@ if (missing.size) {
   }
   process.exit(1)
 }
-console.log('check-classes: every utility class used in app/ and components/ has a rule in the build.')
+console.log('check-classes: every utility class used in app/, components/ and lib/ has a rule in the build.')
