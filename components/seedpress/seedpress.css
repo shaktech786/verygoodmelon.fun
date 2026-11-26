@@ -1690,7 +1690,7 @@ a.sp-packet:focus-visible .sp-print {
   width: 100%;
   max-width: calc(var(--game-w) + 2 * var(--game-gutter));
   margin-inline: auto;
-  padding: var(--s-5) var(--game-gutter) var(--s-8);
+  padding: var(--s-2) var(--game-gutter) var(--s-8);
 }
 
 .sp-game--wide {
@@ -1710,74 +1710,148 @@ a.sp-packet:focus-visible .sp-print {
 }
 
 .sp-strip {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--s-4);
-  margin-bottom: var(--s-5);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'back tools'
+    'title title'
+    'lead lead';
+  align-items: start;
+  column-gap: var(--s-4);
+  row-gap: 0;
+  margin-bottom: var(--s-3);
   padding-left: var(--s-4);
   border-left: 6px solid var(--shelf-ink);
 }
 
-.sp-strip__words {
-  display: grid;
-  gap: var(--s-2);
-  min-width: 0;
-  flex: 1 1 24rem;
-}
-
 .sp-strip__back {
+  grid-area: back;
   justify-self: start;
   gap: var(--s-1);
   font-size: var(--t-small);
 }
 
 .sp-strip__title {
+  grid-area: title;
   display: flex;
   align-items: center;
   gap: var(--s-3);
+  font-size: clamp(1.75rem, 1.4rem + 1.4vw, var(--t-h1));
 }
 
 .sp-strip__glyph {
   flex-shrink: 0;
+  width: 24px;
+  height: 24px;
   color: var(--shelf-ink);
 }
 
 .sp-strip__lead {
+  grid-area: lead;
   max-width: var(--w-prose);
   color: var(--ink-soft);
+  font-size: var(--t-small);
+  line-height: 1.4;
 }
 
 .sp-strip__tools {
+  position: relative;
+  grid-area: tools;
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: flex-start;
-  gap: var(--s-3);
+  gap: var(--s-2);
+}
+
+.sp-strip__tools .sp-stamp {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: var(--t-small);
+}
+
+.sp-strip__tools .sp-keys__body {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 5;
+  width: min(28rem, calc(100vw - 2 * var(--game-gutter)));
+}
+
+@media (min-width: 640px) {
+  .sp-strip {
+    grid-template-areas:
+      'back tools'
+      'title tools'
+      'lead tools';
+    row-gap: var(--s-2);
+    margin-bottom: var(--s-4);
+  }
+
+  .sp-strip__glyph {
+    width: 36px;
+    height: 36px;
+  }
+
+  .sp-strip__lead {
+    font-size: var(--t-lead);
+    line-height: var(--lh-lead);
+  }
+
+  .sp-strip__tools .sp-stamp {
+    min-height: 48px;
+    padding: 0 18px;
+    font-size: var(--t-body);
+  }
 }
 
 .sp-stage {
-  padding: var(--s-4);
+  padding: var(--s-2) var(--s-3) var(--s-3);
   border: 2px solid var(--rind);
   border-radius: var(--r-sheet);
   background-color: var(--sheet);
 }
 
 @media (min-width: 640px) {
+  .sp-game {
+    padding-top: var(--s-4);
+  }
+
   .sp-stage {
-    padding: var(--s-5);
+    padding: var(--s-4);
   }
 }
 
+/* On a phone the stage runs edge to edge: games keep the old 16px of width, canvas games take all of it. */
 @media (max-width: 639px) {
-  .sp-game--wide .sp-stage {
+  .sp-stage {
     margin-inline: calc(-1 * var(--game-gutter));
-    padding-inline: 0;
+    padding-inline: var(--game-gutter);
     border-inline: 0;
     border-radius: 0;
+  }
+
+  .sp-game--wide .sp-stage {
+    padding: 0;
   }
 }
 
 .sp-after {
   margin-top: var(--s-6);
+}
+
+@media (min-width: 1024px) {
+  /* Title and lead share a row, so the strip leaves the game as much of the screen as the old header did. */
+  .sp-strip {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'back back tools'
+      'title lead tools';
+    column-gap: var(--s-5);
+    align-items: center;
+  }
+
+  .sp-strip__lead {
+    align-self: center;
+  }
 }

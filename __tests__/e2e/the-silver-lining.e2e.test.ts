@@ -559,7 +559,7 @@ test.describe('on a phone', () => {
     await pinDailyWord(page)
     await openGame(page)
     const hint = await page.getByText('5 letters. No limit on guesses.').boundingBox()
-    const game = await page.locator('main > div').first().boundingBox()
+    const game = await page.locator('.sp-stage').boundingBox()
     const gameBottom = (game?.y ?? 0) + (game?.height ?? 0)
     expect(gameBottom - ((hint?.y ?? 0) + (hint?.height ?? 0))).toBeLessThanOrEqual(48)
   })

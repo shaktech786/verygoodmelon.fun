@@ -689,7 +689,8 @@ test.describe('The Philosopher', () => {
     await expect(end).toContainText('you fall')
     await expect(end).toHaveAttribute('data-danger', 'certain')
     await expect(end).toHaveAccessibleName(/That is all your Resolve/)
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+    // The page now ends in the suggested next game and the footer, so go to the end of the game, not of the page
+    await end.scrollIntoViewIfNeeded()
     const compact = page.getByTestId('intent-compact')
     await expect(compact).toBeInViewport()
     await expect(compact).toContainText(`You lose ${getEnemyDef(TUTORIAL_ENEMY).moves[0].attack}`)

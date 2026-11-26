@@ -33,17 +33,15 @@ export function GameStage({ gameId, title, lead, wide = false, keys, sound = fal
     <div className={wide ? 'sp-game sp-game--wide' : 'sp-game'}>
       <GameVisitTracker gameId={gameId} />
       <header className="sp-strip" style={{ ['--shelf-ink' as string]: `var(--${shelf.ink})` } as CSSProperties}>
-        <div className="sp-strip__words">
-          <NextLink href="/games" className="sp-quiet sp-strip__back">
-            <Icon name="back" />
-            The shop
-          </NextLink>
-          <h1 className="sp-h1 sp-strip__title">
-            <Icon name={shelf.glyph} size={36} className="sp-strip__glyph" />
-            {title}
-          </h1>
-          <p className="sp-lead sp-strip__lead">{lead}</p>
-        </div>
+        <NextLink href="/games" className="sp-quiet sp-strip__back">
+          <Icon name="back" />
+          The shop
+        </NextLink>
+        <h1 className="sp-h1 sp-strip__title">
+          <Icon name={shelf.glyph} size={36} className="sp-strip__glyph" />
+          {title}
+        </h1>
+        <p className="sp-lead sp-strip__lead">{lead}</p>
         <div className="sp-strip__tools">
           {keys && <KeyHints>{keys}</KeyHints>}
           <AmbientSoundscape gameId={gameId} stamp={sound} />
