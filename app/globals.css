@@ -149,6 +149,19 @@ html[data-theme="dark"] .text-gray-900 {
   --radius-slice: 999px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-stamp: cubic-bezier(0.3, 1.35, 0.5, 1);
+
+  /* Transition aliases until each game is restyled (Phase 4): the stock names untouched games still
+     use keep their old values, so nothing in a game squares off or changes face before its turn. */
+  --font-sans: var(--font-body);
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
 }
 
 /* ============================================

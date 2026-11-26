@@ -41,3 +41,9 @@ Output:
   AtkinsonHyperlegibleNext-wght.woff2   34,044 B
   BricolageGrotesque-display.woff2      25,044 B  (target was 30 KB or less)
   Total                                 59,088 B  (budget 64 KB)
+
+Press Start 2P (The Shapeshifter's arcade screen only, loaded in app/games/the-mutation/CascadeGame.tsx):
+  google/fonts main, ofl/pressstart2p/PressStart2P-Regular.ttf, fetched 2026-11-25
+    sha256 034c77f1f05ec89421e4a63f0e3a4ca1ecf852cc6d2bf611f126f275728e017d
+  Subset to Basic Latin, Latin-1, ‘ ’ “ ” – — … • and the four arrows, woff2, hinting kept:
+  PressStart2P-arcade.woff2  11,932 B

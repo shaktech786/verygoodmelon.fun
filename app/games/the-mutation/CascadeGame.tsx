@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
-import { Press_Start_2P } from 'next/font/google'
+import localFont from 'next/font/local'
 import { Pause } from 'lucide-react'
 import type { CluePlace, DiscoveryEvent, GameState, MutationResult, MutationRecord, PathPoint, Sleeping } from './engine/types'
 import { DEFAULT_PARAMS, GAME_W, GAME_H, ENDING } from './engine/types'
@@ -18,7 +18,8 @@ import { isControlTarget } from './components/controls'
 import { MechanicIcon } from './components/MechanicIcon'
 import './screen.css'
 
-const retroFont = Press_Start_2P({ weight: '400', subsets: ['latin'], display: 'swap' })
+// The Shapeshifter's arcade screen keeps its pixel face, self-hosted like the Seedpress fonts (app/fonts/README)
+const retroFont = localFont({ src: '../../fonts/PressStart2P-arcade.woff2', weight: '400', display: 'swap' })
 
 type GamePhase = 'title' | 'playing' | 'paused' | 'finale'
 
