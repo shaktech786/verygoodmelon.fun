@@ -308,11 +308,20 @@
 }
 
 .waiting {
-  /* Holds the place of the story, so what follows the game does not jump when it arrives */
-  min-height: 90svh;
   padding-block: var(--s-6);
   color: var(--ink-soft);
   text-align: left;
+}
+
+/* Holds about the height of the story while it loads, so what follows the game does not jump when it arrives */
+.waitingStory {
+  min-height: 90svh;
+}
+
+@media (min-width: 640px) {
+  .waitingStory {
+    min-height: 36rem;
+  }
 }
 
 .rule {

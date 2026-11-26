@@ -191,7 +191,7 @@ export default function HopeDaily() {
 
   if (!puzzle) {
     return (
-      <div className={styles.waiting} role="status" aria-live="polite">
+      <div className={`${styles.waiting} ${styles.waitingStory}`} role="status" aria-live="polite">
         <p>Unfolding today&apos;s good news...</p>
       </div>
     )

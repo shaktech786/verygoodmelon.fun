@@ -51,6 +51,7 @@
   --radius-slice: 999px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-stamp: cubic-bezier(0.3, 1.35, 0.5, 1);
+  --ease-breath: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ============================================

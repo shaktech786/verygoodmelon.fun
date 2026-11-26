@@ -138,7 +138,7 @@ export function BreathMelon({ breathingIn, reducedMotion }: BreathMelonProps) {
         viewBox="0 0 100 100"
         className={cn(
           'h-full w-auto',
-          !reducedMotion && 'transition-transform duration-[2500ms] ease-out',
+          !reducedMotion && 'transition-transform duration-[2500ms] ease-breath',
           breathingIn ? 'scale-100' : 'scale-[0.72]',
         )}
       >
