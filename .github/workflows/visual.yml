@@ -1,8 +1,7 @@
 name: Visual
 
-# Screenshots differ by OS, so the baselines are made here on Linux. With no Linux baselines
-# committed yet (or when asked), the run writes them and uploads them to commit. It stays reported,
-# not blocking, until those baselines are committed; then `continue-on-error` below is removed.
+# Screenshots differ by OS, so the baselines are made here on Linux and committed. Run this workflow
+# by hand with `update` to rewrite them after an intended change, then commit the uploaded set.
 on:
   push:
     branches: [main]
@@ -17,7 +16,6 @@ jobs:
   visual:
     name: Visual snapshots
     runs-on: ubuntu-latest
-    continue-on-error: true
 
     env:
       GOOGLE_GEMINI_API_KEY: ${{ secrets.GOOGLE_GEMINI_API_KEY || '' }}
