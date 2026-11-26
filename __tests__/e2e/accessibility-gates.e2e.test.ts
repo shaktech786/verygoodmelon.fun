@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
 import { ALL_ROUTES, LOOKS, SETTINGS_KEY } from './helpers/routes'
+import { settle } from './helpers/animations'
+import { aiWordingIn } from './helpers/ai-wording'
 
 /**
  * The route-wide gates of PLAN.md 12.1, run over every page (the content pages plus every game in the game config):
@@ -28,24 +30,12 @@ async function open(page: Page, route: string) {
   await page.evaluate(() => document.fonts.ready)
 }
 
-/** Waits for every finite animation to finish, so no fade is measured half-way. Endless game loops are left running. */
-async function settle(page: Page) {
-  await page.evaluate(() =>
-    Promise.all(
-      document
-        .getAnimations()
-        .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
-        .map((animation) => animation.finished.catch(() => undefined))
-    )
-  )
-}
-
 async function axeViolations(page: Page): Promise<string[]> {
   await settle(page)
   await page.evaluate(AXE_SOURCE)
   return page.evaluate(async () => {
     const axe = (window as unknown as {
-      axe: { run: (context: unknown, options: unknown) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[]; passes: { id: string }[]; incomplete: { id: string }[] }> }
+      axe: { run: (context: unknown, options: unknown) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[]; passes: { id: string }[]; incomplete: { id: string }[]; inapplicable: { id: string }[] }> }
     }).axe
     const result = await axe.run(
       { exclude: [['nextjs-portal']] },
@@ -55,7 +45,7 @@ async function axeViolations(page: Page): Promise<string[]> {
       }
     )
     // A run that never looked at contrast or target size would pass for the wrong reason
-    const looked = new Set([...result.violations, ...result.passes, ...result.incomplete].map((rule) => rule.id))
+    const looked = new Set([...result.violations, ...result.passes, ...result.incomplete, ...result.inapplicable].map((rule) => rule.id))
     const skipped = ['color-contrast', 'target-size'].filter((id) => !looked.has(id)).map((id) => `${id}: never ran`)
     return [...skipped, ...result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)]
   })
@@ -92,7 +82,8 @@ async function motionThatIsNotAllowed(page: Page): Promise<string[]> {
       const target = effect?.target
       if (!effect || !target || target.closest('nextjs-portal')) return []
       const timing = effect.getComputedTiming()
-      const lasts = Number(timing.endTime)
+      // The active time, without any delay: a clamped animation that waits first is still no motion
+      const lasts = Number(timing.activeDuration)
       if (lasts <= 0.01) return []
       const properties = new Set(effect.getKeyframes().flatMap((frame) => Object.keys(frame).filter((key) => !['offset', 'easing', 'composite', 'computedOffset'].includes(key))))
       const name = animation instanceof CSSAnimation ? animation.animationName : animation instanceof CSSTransition ? `transition ${animation.transitionProperty}` : 'script'
@@ -117,6 +108,33 @@ test.describe('reduced motion leaves only short opacity fades', () => {
       await open(page, route)
       await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'true')
       expect(await motionThatIsNotAllowed(page), `${route} by setting`).toEqual([])
+    })
+  }
+})
+
+test.describe('reduced motion is set before first paint, from the server HTML and the boot script alone', () => {
+  // With the page's scripts blocked, nothing can hydrate: only the HTML and its inline boot script can have set the attribute
+  const attributeWithoutScripts = async (page: Page, route: string) => {
+    await page.route('**/_next/static/**', (request) => request.abort())
+    await page.goto(route, { waitUntil: 'commit' })
+    await page.waitForLoadState('domcontentloaded')
+    return page.locator('html').getAttribute('data-reduce-motion')
+  }
+
+  for (const route of ['/', '/games', '/games/the-mutation', '/games/quiet-grove']) {
+    test(`${route}: saved on, saved off, and from the device when nothing is saved`, async ({ browser }) => {
+      for (const { saved, media, expected } of [
+        { saved: { reduceMotion: true }, media: 'no-preference', expected: 'true' },
+        { saved: { reduceMotion: false }, media: 'reduce', expected: 'false' },
+        { saved: null, media: 'reduce', expected: 'true' },
+        { saved: null, media: 'no-preference', expected: 'false' },
+      ] as const) {
+        const context = await browser.newContext({ reducedMotion: media })
+        const page = await context.newPage()
+        if (saved) await storeSettings(page, saved)
+        expect(await attributeWithoutScripts(page, route), `${route} saved ${JSON.stringify(saved)}, device ${media}`).toBe(expected)
+        await context.close()
+      }
     })
   }
 })
@@ -146,24 +164,14 @@ test.describe('Quiet leaves nothing moving outside the game', () => {
   }
 })
 
-/**
- * The player never reads that the site is made with AI, or about a model, or about something being generated.
- * Each entry says why a match is not that.
- */
-const ALLOWED_WORDS: RegExp[] = [
-  // Ordinary English, not a system: a person to look up to, and the people who come after us
-  /role models?/i,
-  /(?:future|coming|next) generations?/i,
-]
-
-const AI_WORDING = /\bAI\b|artificial intelligence|model|generat/i
-
 /** Legal pages must name the AI services and what they do plainly; invisible AI is for play, never for disclosure. */
 const DISCLOSURES = ['/privacy', '/terms']
 
 test.describe('no player-facing words say AI, model or generating', () => {
   for (const route of ALL_ROUTES.filter((route) => !DISCLOSURES.includes(route))) {
     test(route, async ({ page }) => {
+      // The Optimist's story changes daily; the date is fixed here, and every story is scanned in __tests__/lib/flash-detector.test.ts
+      await page.clock.setFixedTime(new Date('2026-11-26T12:00:00Z'))
       await open(page, route)
       await settle(page)
       const texts = await page.evaluate(() => {
@@ -183,7 +191,7 @@ test.describe('no player-facing words say AI, model or generating', () => {
         for (const el of document.body.querySelectorAll('.sr-only, [role="status"], [aria-live]')) add(el.textContent)
         return [...seen]
       })
-      const found = texts.filter((line) => AI_WORDING.test(line) && !ALLOWED_WORDS.some((allowed) => allowed.test(line)))
+      const found = texts.filter((line) => aiWordingIn(line) !== null)
       expect(found).toEqual([])
     })
   }
