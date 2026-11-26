@@ -1338,6 +1338,14 @@ No visual change.
 
 **Risk:** medium. Dialog migration changes focus behaviour, so each dialog's e2e must cover open, Esc and focus return. The care paths are the highest-stakes part; their existing e2e coverage (`final-breath`, `first-breath`, `ancient-voices`, `the-arena`, `the-threshold`, `the-slow-post`) must stay green unchanged.
 
+**As built (3a to 3c):**
+- `GameStage` is on all 14 games with `KeyHints`/`Keycap`, `StickyTray`, `StatusLine`, `Note` and `Loading`; the game pages' own headers and `GamePageWrapper` are gone.
+- The modal dialogs run on one native `NoteDialog`, with `InlineConfirm` for the small yes-or-no asks. Deviation: the Shapeshifter keeps its own pause and rule cards, because they are part of its arcade screen (Phase 4 re-inks them inside the bezel).
+- `CareBlock` and `GentleRow` read one source, `lib/care/helplines.ts`. Deviation: a game that renders its own support after it triggers care (the Worry Capsule, Mind Debate, the Plain Speaker, the Sage's parting words) says so through `OwnSupportProvider`, and the page then does not add a second shared `CareBlock`. The helplines show exactly once per page.
+- `PrintTray` frames the keepsake canvas. Errors are a gentle `Note`, never a red alert.
+- Icons: 34 new seed stamps (pause, stop, hand, mic, camera, hang-up, people, library, dice, reset, undo, trash and the Shapeshifter's eleven rule marks among them) joined the original set, so `lucide-react` is uninstalled and its ESLint ban is an error. The mic and camera "off" stamps are the same drawing with a slash. Send reuses `next`, and `Icon` gained a 16 px size for inline text (the 12-cell grid is no longer a whole multiple there, so `crispEdges` carries it). The Mind Debate's two spinning loaders were dropped: the words beside them already say what is happening.
+- `expectOneGo` runs at the first screen and at least one later state in every game spec. `expectStillCare` (in `helpers/design.ts`) runs wherever a spec reaches care: site-shell, the writing games, the Sage, the Arena, the Plain Speaker.
+
 ### Phase 4: Games, in four batches (L overall; each batch M)
 
 Each batch converts the buttons and choice cards to seedpress, moves art onto `getInks()` and game ink maps, adds the packet illustration and builds the §9 stimulating moment with its Quiet and reduced-motion equivalents. Each batch removes its files from `design-debt.json`.
