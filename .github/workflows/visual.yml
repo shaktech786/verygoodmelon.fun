@@ -1,8 +1,8 @@
 name: Visual
 
 # Screenshots differ by OS, so the baselines are made here on Linux. With no Linux baselines
-# committed yet (or when asked), the run writes them and uploads them to commit. Reported, not
-# blocking, until Phase 7 of docs/design-system/PLAN.md.
+# committed yet (or when asked), the run writes them and uploads them to commit. It stays reported,
+# not blocking, until those baselines are committed; then `continue-on-error` below is removed.
 on:
   push:
     branches: [main]
