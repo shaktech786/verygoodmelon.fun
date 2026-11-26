@@ -10,6 +10,7 @@ import { keptValues } from '@/lib/games/hard-choices/reading'
 import styles from './HardChoices.module.css'
 import { useRealtimeVotes } from '@/lib/hooks/useRealtimeVotes'
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { useLoadedOnClient } from '@/lib/hooks/useLoadedOnClient'
 import { DILEMMAS, type Choice, type ChoiceId } from '@/lib/games/hard-choices/dilemmas'
 import { keepKnownAnswers, keepKnownIds, type Answer, type Answers } from '@/lib/games/hard-choices/answers'
 import { dilemmaConstellation, dilemmaKeepsake } from '@/lib/keepsake/dilemma'
@@ -155,14 +156,12 @@ export default function HardChoices() {
   const [currentDilemmaIndex, setCurrentDilemmaIndex] = useState(0)
   const [answers, setAnswers] = useState<Answers>({})
   const [finished, setFinished] = useState(false)
-  const [pulseChoice, setPulseChoice] = useState<ChoiceId | null>(null)
-  const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const firstChoiceRef = useRef<HTMLButtonElement>(null)
   const moveFocusToHeading = useRef(false)
   const moveFocusToChoices = useRef(false)
   const resumedAtEnd = useRef(false)
-  const hasChosen = useRef(false)
+  const [hasChosen, setHasChosen] = useState(false)
   const revealResult = useRef(false)
   const resultEndRef = useRef<HTMLDivElement>(null)
   const reduceMotion = useReducedMotion()
@@ -186,24 +185,13 @@ export default function HardChoices() {
 
   const displayResults = votes[currentDilemma.id] ?? null
 
-  // Trigger pulse animation when a realtime update arrives for the current dilemma
+  // A realtime update for the current dilemma pulses its choice briefly, then is cleared
+  const pulseChoice = showResults ? recentlyUpdated[currentDilemma.id] ?? null : null
   useEffect(() => {
-    const update = recentlyUpdated[currentDilemma.id]
-    if (update && showResults) {
-      setPulseChoice(update)
-      if (pulseTimeoutRef.current) clearTimeout(pulseTimeoutRef.current)
-      pulseTimeoutRef.current = setTimeout(() => {
-        setPulseChoice(null)
-      }, 600)
-      clearUpdated(currentDilemma.id)
-    }
-  }, [recentlyUpdated, currentDilemma.id, showResults, clearUpdated])
-
-  useEffect(() => {
-    return () => {
-      if (pulseTimeoutRef.current) clearTimeout(pulseTimeoutRef.current)
-    }
-  }, [])
+    if (!pulseChoice) return
+    const timer = setTimeout(() => clearUpdated(currentDilemma.id), 600)
+    return () => clearTimeout(timer)
+  }, [recentlyUpdated, pulseChoice, currentDilemma.id, clearUpdated])
 
   // The reflection never depends on the crowd counts: if they can't be
   // reached, the choice and both perspectives are still shown without them.
@@ -230,21 +218,27 @@ export default function HardChoices() {
   }
 
   // Pick up where the player left off
-  useEffect(() => {
-    const stored = loadAnswers()
-    const resumeIndex = firstUnansweredIndex(stored)
+  const stored = useLoadedOnClient(loadAnswers)
+  const [resumedFrom, setResumedFrom] = useState<typeof stored>(null)
+  if (stored && stored !== resumedFrom) {
+    setResumedFrom(stored)
     setAnswers((current) => ({ ...stored, ...current }))
     // A choice made while the page was still hydrating keeps the player where they are
-    if (hasChosen.current) return
-    if (resumeIndex === -1) {
-      // Returning to a finished game opens on the ending itself, not the intro above it
-      resumedAtEnd.current = true
-      setCurrentDilemmaIndex(DILEMMAS.length - 1)
-      setFinished(true)
-    } else {
-      setCurrentDilemmaIndex(resumeIndex)
+    if (!hasChosen) {
+      const resumeIndex = firstUnansweredIndex(stored)
+      if (resumeIndex === -1) {
+        // Returning to a finished game opens on the ending itself, not the intro above it
+        setCurrentDilemmaIndex(DILEMMAS.length - 1)
+        setFinished(true)
+      } else {
+        setCurrentDilemmaIndex(resumeIndex)
+      }
     }
-  }, [])
+  }
+
+  useEffect(() => {
+    if (stored && !hasChosen && firstUnansweredIndex(stored) === -1) resumedAtEnd.current = true
+  }, [stored, hasChosen])
 
   // Keep keyboard and screen-reader users oriented when the card changes, and land every new card the same way:
   // its top just below the site header
@@ -287,7 +281,7 @@ export default function HardChoices() {
 
   const handleChoice = async (choiceId: ChoiceId) => {
     if (hasVoted) return
-    hasChosen.current = true
+    setHasChosen(true)
     revealResult.current = true
 
     const dilemmaId = currentDilemma.id
@@ -334,7 +328,7 @@ export default function HardChoices() {
   }
 
   const handleSkip = () => {
-    hasChosen.current = true
+    setHasChosen(true)
     recordAnswer(currentDilemma.id, 'skip')
     handleNext()
   }
