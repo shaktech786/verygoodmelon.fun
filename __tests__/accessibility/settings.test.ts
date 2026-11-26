@@ -26,9 +26,23 @@ describe('migrateSettings', () => {
       greyscale: true,
       muted: true,
       volume: 40,
+      sense: 'lively',
+      spacing: 'roomy',
     }
 
     expect(migrateSettings(current)).toEqual(current)
+  })
+
+  it('gives settings saved before the sensory dial and Spacing existed the defaults for both', async () => {
+    const { migrateSettings } = await loadModule()
+    const migrated = migrateSettings({ theme: 'dark', textSize: 'large', contrast: 'high', reduceMotion: true, greyscale: false, muted: true, volume: 40 })
+    expect(migrated).toMatchObject({ sense: 'gentle', spacing: 'standard', theme: 'dark', muted: true })
+  })
+
+  it('replaces an unknown sense or spacing with the default', async () => {
+    const { migrateSettings } = await loadModule()
+    expect(migrateSettings({ sense: 'loud', spacing: 'huge' })).toMatchObject({ sense: 'gentle', spacing: 'standard' })
+    expect(migrateSettings({ sense: 'quiet', spacing: 'roomy' })).toMatchObject({ sense: 'quiet', spacing: 'roomy' })
   })
 
   it('turns a removed colour-blind simulation into no filter and keeps the rest', async () => {
@@ -93,9 +107,13 @@ describe('applySettings', () => {
       contrast: 'extra-high',
       theme: 'dark',
       greyscale: true,
+      sense: 'quiet',
+      spacing: 'roomy',
     })
 
     const root = document.documentElement
+    expect(root.getAttribute('data-sense')).toBe('quiet')
+    expect(root.getAttribute('data-spacing')).toBe('roomy')
     expect(root.getAttribute('data-text-size')).toBe('larger')
     expect(root.getAttribute('data-contrast')).toBe('extra-high')
     expect(root.getAttribute('data-theme')).toBe('dark')
@@ -154,36 +172,5 @@ describe('useAccessibility', () => {
     expect(result.current.settings).toEqual(DEFAULT_ACCESSIBILITY_SETTINGS)
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
     expect(document.documentElement.getAttribute('data-text-size')).toBe('default')
-  })
-
-  it('applies a preset without touching settings the preset does not mention', async () => {
-    const { useAccessibility } = await loadModule()
-    const { result } = renderHook(() => useAccessibility())
-
-    act(() => result.current.updateSetting('textSize', 'larger'))
-    act(() => result.current.applyPreset('sensory-friendly'))
-
-    expect(result.current.settings.textSize).toBe('larger')
-    expect(result.current.settings.reduceMotion).toBe(true)
-    expect(result.current.settings.muted).toBe(true)
-  })
-
-  it('lets each preset replace the last one instead of keeping its leftovers', async () => {
-    const { useAccessibility } = await loadModule()
-    const { result } = renderHook(() => useAccessibility())
-
-    act(() => result.current.applyPreset('calm'))
-    act(() => result.current.applyPreset('focus'))
-
-    expect(result.current.settings).toMatchObject({ reduceMotion: false, volume: 70, muted: true, contrast: 'high', greyscale: false })
-  })
-})
-
-describe('preset summaries', () => {
-  it('name everything a preset turns on, and nothing it does not', async () => {
-    const { ACCESSIBILITY_PRESETS, presetSummary } = await import('@/types/accessibility')
-    expect(presetSummary(ACCESSIBILITY_PRESETS.calm.settings)).toBe('Turns on reduce motion, with sound at 30%')
-    expect(presetSummary(ACCESSIBILITY_PRESETS.focus.settings)).toBe('Turns on high contrast and mute')
-    expect(presetSummary(ACCESSIBILITY_PRESETS['sensory-friendly'].settings)).toBe('Turns on reduce motion, mute and greyscale')
   })
 })

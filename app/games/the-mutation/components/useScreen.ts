@@ -20,10 +20,9 @@ function subscribe(onChange: () => void): () => void {
   const queries = [window.matchMedia(DARK_QUERY), window.matchMedia(REDUCED_QUERY)]
   for (const q of queries) q.addEventListener('change', onChange)
   const observer = new MutationObserver(onChange)
-  // data-sense lives on the Seedpress scope, below the root, so the whole tree is watched for that one attribute
+  // Theme, contrast, motion and the sensory dial are all attributes of <html>
   observer.observe(document.documentElement, {
     attributes: true,
-    subtree: true,
     attributeFilter: ['data-theme', 'data-contrast', 'data-reduce-motion', 'data-sense'],
   })
   return () => {

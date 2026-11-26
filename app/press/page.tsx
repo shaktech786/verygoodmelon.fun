@@ -1,7 +1,5 @@
 import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
-import { Footer } from '@/components/seedpress/Footer'
-import { Header } from '@/components/seedpress/Header'
 import { IconStamp } from '@/components/seedpress/IconStamp'
 import { InkLink } from '@/components/seedpress/Link'
 import { Packet } from '@/components/seedpress/Packet'
@@ -66,7 +64,6 @@ export default function PressSpecimen() {
   return (
     <>
       <ProofBar other={{ href: '/press/home', label: 'The seed rack', icon: 'back' }} />
-      <Header home="/press/home" />
       <div className="sp-shop sp-specimen">
         <div className="sp-specimen__intro">
           <h1 className="sp-h1">Seedpress</h1>
@@ -278,7 +275,6 @@ export default function PressSpecimen() {
           </ul>
         </section>
       </div>
-      <Footer />
     </>
   )
 }

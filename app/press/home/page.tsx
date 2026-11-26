@@ -1,7 +1,5 @@
 import type { Metadata } from 'next'
 import { CounterPacket } from '@/components/seedpress/CounterPacket'
-import { Footer } from '@/components/seedpress/Footer'
-import { Header } from '@/components/seedpress/Header'
 import { MoodStamps } from '@/components/seedpress/MoodStamps'
 import { Rack } from '@/components/seedpress/Rack'
 import { dailyPick } from '@/lib/games/daily-pick'
@@ -17,7 +15,6 @@ export default function PressHome() {
   return (
     <>
       <ProofBar other={{ href: '/press', label: 'The specimen sheet', icon: 'next' }} />
-      <Header home="/press/home" />
       <div className="sp-shop sp-home">
         <div className="sp-band">
           <div className="sp-sign">
@@ -29,7 +26,6 @@ export default function PressHome() {
         </div>
         <Rack />
       </div>
-      <Footer />
     </>
   )
 }

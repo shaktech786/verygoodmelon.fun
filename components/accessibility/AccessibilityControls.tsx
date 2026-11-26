@@ -10,7 +10,6 @@ export function openAccessibilitySettings(): void {
   window.dispatchEvent(new Event(OPEN_ACCESSIBILITY_EVENT))
 }
 
-// The panel is mounted at the body, outside the header, whose backdrop blur would trap a fixed panel inside it
 export function AccessibilityControls() {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
 

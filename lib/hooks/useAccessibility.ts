@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import {
   AccessibilitySettings,
-  AccessibilityPreset,
   ContrastMode,
+  SpacingMode,
   TextSize,
   ThemeMode,
   DEFAULT_ACCESSIBILITY_SETTINGS,
-  ACCESSIBILITY_PRESETS,
 } from '@/types/accessibility'
+import { SENSES } from '@/lib/design/tokens'
 import { ACCESSIBILITY_STORAGE_KEY } from '@/lib/accessibility/boot-script'
 
 const STORAGE_KEY = ACCESSIBILITY_STORAGE_KEY
@@ -17,6 +17,7 @@ const STORAGE_KEY = ACCESSIBILITY_STORAGE_KEY
 const THEMES: readonly ThemeMode[] = ['light', 'dark', 'auto']
 const TEXT_SIZES: readonly TextSize[] = ['default', 'large', 'larger']
 const CONTRASTS: readonly ContrastMode[] = ['normal', 'high', 'extra-high']
+const SPACINGS: readonly SpacingMode[] = ['standard', 'roomy']
 
 function oneOf<T extends string>(options: readonly T[], value: unknown, fallback: T): T {
   return options.find((option) => option === value) ?? fallback
@@ -48,6 +49,8 @@ export function migrateSettings(stored: unknown): AccessibilitySettings | null {
     greyscale: raw.colorblindMode === 'monochrome' || bool(raw.greyscale, defaults.greyscale),
     muted: bool(raw.muted, defaults.muted),
     volume,
+    sense: oneOf(SENSES, raw.sense, defaults.sense),
+    spacing: oneOf(SPACINGS, raw.spacing, defaults.spacing),
   }
 }
 
@@ -73,6 +76,8 @@ function loadSettings(): AccessibilitySettings {
 export function applySettings(settings: AccessibilitySettings): void {
   const root = document.documentElement
   root.setAttribute('data-theme', settings.theme)
+  root.setAttribute('data-sense', settings.sense)
+  root.setAttribute('data-spacing', settings.spacing)
   root.setAttribute('data-text-size', settings.textSize)
   root.setAttribute('data-contrast', settings.contrast)
   root.setAttribute('data-reduce-motion', String(settings.reduceMotion))
@@ -129,12 +134,7 @@ export function useAccessibility() {
     [updateSettings]
   )
 
-  const applyPreset = useCallback(
-    (preset: AccessibilityPreset) => updateSettings(ACCESSIBILITY_PRESETS[preset].settings),
-    [updateSettings]
-  )
-
   const resetToDefaults = useCallback(() => commit(detectSystemPreferences(), false), [])
 
-  return { settings, updateSetting, updateSettings, applyPreset, resetToDefaults }
+  return { settings, updateSetting, updateSettings, resetToDefaults }
 }

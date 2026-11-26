@@ -1,7 +1,7 @@
 import localFont from 'next/font/local'
 
 export const atkinson = localFont({
-  src: '../fonts/AtkinsonHyperlegibleNext-wght.woff2',
+  src: '../../app/fonts/AtkinsonHyperlegibleNext-wght.woff2',
   weight: '200 800',
   variable: '--font-atkinson',
   display: 'swap',
@@ -11,7 +11,7 @@ export const atkinson = localFont({
 
 // Titles only. Preloaded because the home sign, the largest text on the page, is set in it.
 export const bricolage = localFont({
-  src: '../fonts/BricolageGrotesque-display.woff2',
+  src: '../../app/fonts/BricolageGrotesque-display.woff2',
   weight: '600 800',
   variable: '--font-bricolage',
   display: 'swap',

@@ -1,68 +1,8 @@
 /*
- * Seedpress components (docs/design-system/PLAN.md §7). Until the shell flips in Phase 2 every rule
- * lives under .press, so nothing outside the /press proof route changes. Durations are multiplied by
+ * Seedpress components (docs/design-system/PLAN.md section 7), site-wide since Phase 2. Page defaults
+ * (paper, type, grain, focus) are in app/styles/base.css. Durations are multiplied by
  * --motion, which Quiet and reduced motion set to 0. No blurred shadows: height is a printed edge.
  */
-
-/* The proof route brings its own counter top and back of the packet. */
-body:has(.press) > header[role='banner'],
-body:has(.press) > footer[role='contentinfo'],
-body:has(.press) > canvas {
-  display: none;
-}
-
-.press {
-  position: relative;
-  isolation: isolate;
-  min-height: 100vh;
-  background-color: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-body);
-  font-size: var(--t-body);
-  line-height: var(--lh-body);
-  font-weight: 400;
-  --mr: var(--misreg);
-}
-
-/* Grain on the paper only, never under reading surfaces (those are sheets above it). */
-.press::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image: url('/press/grain.png');
-  opacity: var(--grain);
-}
-
-:where(html[data-theme='dark']) .press::before {
-  filter: invert(1);
-}
-
-@media (prefers-color-scheme: dark) {
-  :where(html[data-theme='auto']) .press::before {
-    filter: invert(1);
-  }
-}
-
-:where(.press) :where(h1, h2, h3) {
-  text-shadow: none;
-  margin: 0;
-}
-
-:where(.press) :where(p) {
-  margin: 0;
-}
-
-.press :focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 3px;
-  box-shadow: none;
-}
-
-.press [tabindex='-1']:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--rind) 40%, transparent);
-}
 
 .sp-shop {
   width: 100%;
@@ -525,7 +465,7 @@ a.sp-packet:focus-visible::after {
 }
 
 /* Lively: the lift lands with the stamp's small overshoot. */
-.press[data-sense='lively'] a.sp-packet {
+:root[data-sense='lively'] a.sp-packet {
   transition:
     transform calc(var(--d-quick) * var(--motion)) var(--e-stamp),
     box-shadow calc(var(--d-quick) * var(--motion)) var(--e-stamp);
@@ -536,8 +476,8 @@ a.sp-packet:active {
   box-shadow: 0 calc(6px - 3px * var(--motion)) 0 var(--rule-strong);
 }
 
-.press[data-sense='quiet'] a.sp-packet:hover,
-.press[data-sense='quiet'] a.sp-packet:focus-visible {
+:root[data-sense='quiet'] a.sp-packet:hover,
+:root[data-sense='quiet'] a.sp-packet:focus-visible {
   border-color: var(--rind);
   box-shadow:
     inset 0 0 0 1px var(--rind),
@@ -644,7 +584,7 @@ a.sp-packet:focus-visible .sp-print {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  :where(html:not([data-reduce-motion='true'])) .press[data-sense='lively'] a.sp-packet:is(:hover, :focus-visible) .ink-b {
+  :where(html:not([data-reduce-motion='true'])) :root[data-sense='lively'] a.sp-packet:is(:hover, :focus-visible) .ink-b {
     animation: sp-reink calc(520ms * var(--motion)) var(--e-out) both;
   }
 }
@@ -961,6 +901,12 @@ a.sp-packet:focus-visible .sp-print {
 
 .sp-mood:hover {
   background-color: var(--rind-wash);
+}
+
+.sp-mood[aria-current='page'] {
+  border-color: var(--rind);
+  background-color: var(--rind-wash);
+  box-shadow: 0 3px 0 var(--rind);
 }
 
 .sp-mood:active {
@@ -1382,4 +1328,201 @@ a.sp-packet:focus-visible .sp-print {
   align-items: center;
   justify-content: space-between;
   gap: var(--s-4);
+}
+
+/* ---------- The games page head, and the care slot on the home band ---------- */
+
+.sp-games-head {
+  display: grid;
+  gap: var(--s-6);
+  max-width: 36rem;
+}
+
+.sp-games-head__mood {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-3);
+}
+
+@media (min-width: 1024px) {
+  .sp-band > .sp-care-slot {
+    grid-area: counter;
+  }
+}
+
+/* ---------- The settings drawer (PLAN.md section 7.7) ---------- */
+
+.sp-dial__mix {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 2px dashed var(--rule-strong);
+  border-radius: var(--r-stamp);
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.sp-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-scrim);
+  background-color: color-mix(in oklab, var(--ink) 40%, transparent);
+  animation: sp-scrim-in calc(var(--d-quick) * var(--motion)) linear both;
+}
+
+/* A full-height bottom sheet on phones, a right-hand sheet from sm. */
+.sp-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scroll-padding-block: 5rem 2rem;
+  background-color: var(--sheet);
+  color: var(--ink);
+  animation: sp-drawer-up calc(var(--d-settle) * var(--motion)) var(--e-out) both;
+}
+
+@media (min-width: 640px) {
+  .sp-drawer {
+    left: auto;
+    width: 26rem;
+    border-left: 2px solid var(--rule-strong);
+    animation-name: sp-drawer-in;
+  }
+}
+
+.sp-drawer__bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-raised);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s-3) var(--s-4) var(--s-3) var(--s-5);
+  border-bottom: 1px solid var(--rule);
+  background-color: var(--sheet);
+}
+
+.sp-drawer__body {
+  display: grid;
+  gap: var(--s-6);
+  padding: var(--s-5);
+}
+
+.sp-drawer__section {
+  display: grid;
+  gap: var(--s-4);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--rule);
+}
+
+.sp-drawer__body > .sp-drawer__section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.sp-drawer__heading {
+  margin: 0;
+  font-size: var(--t-body);
+  font-weight: 700;
+}
+
+.sp-drawer__group {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sp-drawer__legend {
+  padding: 0;
+  margin-bottom: var(--s-2);
+  font-size: var(--t-small);
+  font-weight: 600;
+}
+
+.sp-drawer__hint {
+  max-width: 34ch;
+  color: var(--ink-soft);
+  font-size: var(--t-meta);
+  line-height: var(--lh-meta);
+}
+
+.sp-drawer__volume {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+  width: 100%;
+}
+
+.sp-range {
+  width: 100%;
+  min-height: 44px;
+  accent-color: var(--rind);
+}
+
+.sp-drawer__keys {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+}
+
+.sp-drawer__keys > div {
+  display: flex;
+  gap: var(--s-3);
+  align-items: baseline;
+}
+
+.sp-drawer__keys dd {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.sp-keycap {
+  display: inline-block;
+  min-width: 2.5rem;
+  padding: 2px 8px;
+  border: 2px solid var(--rule-strong);
+  border-radius: 6px;
+  background-color: var(--well);
+  box-shadow: 0 2px 0 var(--rule-strong);
+  font: inherit;
+  font-size: var(--t-meta);
+  font-weight: 700;
+  text-align: center;
+}
+
+.sp-drawer__confirm {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-sheet);
+  background-color: var(--well);
+}
+
+@keyframes sp-scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sp-drawer-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes sp-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
 }

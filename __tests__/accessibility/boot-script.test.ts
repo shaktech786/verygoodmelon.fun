@@ -8,25 +8,27 @@ function runBootScript() {
     theme: root.getAttribute('data-theme'),
     textSize: root.getAttribute('data-text-size'),
     contrast: root.getAttribute('data-contrast'),
+    sense: root.getAttribute('data-sense'),
+    spacing: root.getAttribute('data-spacing'),
   }
 }
 
 describe('accessibility boot script', () => {
   afterEach(() => {
     localStorage.clear()
-    for (const name of ['data-theme', 'data-text-size', 'data-contrast']) document.documentElement.removeAttribute(name)
+    for (const name of ['data-theme', 'data-text-size', 'data-contrast', 'data-sense', 'data-spacing']) document.documentElement.removeAttribute(name)
   })
 
-  it('applies a saved dark theme, text size and contrast before React mounts', () => {
+  it('applies a saved dark theme, text size, contrast, sense and spacing before React mounts', () => {
     localStorage.setItem(
       ACCESSIBILITY_STORAGE_KEY,
-      JSON.stringify({ theme: 'dark', textSize: 'larger', contrast: 'extra-high' })
+      JSON.stringify({ theme: 'dark', textSize: 'larger', contrast: 'extra-high', sense: 'quiet', spacing: 'roomy' })
     )
-    expect(runBootScript()).toEqual({ theme: 'dark', textSize: 'larger', contrast: 'extra-high' })
+    expect(runBootScript()).toEqual({ theme: 'dark', textSize: 'larger', contrast: 'extra-high', sense: 'quiet', spacing: 'roomy' })
   })
 
   it('follows the system theme when nothing is saved', () => {
-    expect(runBootScript()).toEqual({ theme: 'auto', textSize: 'default', contrast: 'normal' })
+    expect(runBootScript()).toEqual({ theme: 'auto', textSize: 'default', contrast: 'normal', sense: 'gentle', spacing: 'standard' })
   })
 
   it('ignores corrupt or unknown saved values', () => {
@@ -34,6 +36,6 @@ describe('accessibility boot script', () => {
     expect(runBootScript().theme).toBe('auto')
 
     localStorage.setItem(ACCESSIBILITY_STORAGE_KEY, JSON.stringify({ theme: 'purple', textSize: 7 }))
-    expect(runBootScript()).toEqual({ theme: 'auto', textSize: 'default', contrast: 'normal' })
+    expect(runBootScript()).toEqual({ theme: 'auto', textSize: 'default', contrast: 'normal', sense: 'gentle', spacing: 'standard' })
   })
 })

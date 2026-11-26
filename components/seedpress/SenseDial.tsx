@@ -1,9 +1,11 @@
 'use client'
 
 import { useId } from 'react'
+import { isOwnMix } from '@/lib/accessibility/own-mix'
 import { SENSES, type Sense } from '@/lib/design/tokens'
+import { useAccessibility } from '@/lib/hooks/useAccessibility'
 import { Icon } from './icons/Icon'
-import { useSenseDial } from './SenseContext'
+import { useSenseDial } from './useSenseDial'
 
 const STOPS: Readonly<Record<Sense, { label: string; line: string; turn: number }>> = {
   quiet: { label: 'Quiet', line: 'Nothing moves unless you move it. Softer colours.', turn: -60 },
@@ -14,6 +16,7 @@ const STOPS: Readonly<Record<Sense, { label: string; line: string; turn: number 
 /** The sensory dial: three native radios under a knob that shows where it is set. */
 export function SenseDial({ compact = false }: { compact?: boolean }) {
   const { sense, setSense } = useSenseDial()
+  const { settings } = useAccessibility()
   const lineId = useId()
   return (
     <fieldset className={compact ? 'sp-dial sp-dial--compact' : 'sp-dial'}>
@@ -41,6 +44,7 @@ export function SenseDial({ compact = false }: { compact?: boolean }) {
             </span>
           </label>
         ))}
+        {isOwnMix(settings) && <span className="sp-dial__mix">Your own mix</span>}
       </div>
       <p id={lineId} className="sp-dial__line">
         {STOPS[sense].line}
