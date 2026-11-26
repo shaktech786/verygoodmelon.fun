@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { InkLink } from '@/components/seedpress/Link'
 import { createClient } from '@/lib/supabase/server'
 import { ALL_GAMES } from '@/lib/games/config'
 
@@ -90,62 +90,77 @@ function formatDuration(seconds: number): string {
   return `${Math.round(seconds / 60)} min`
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="bg-card-bg border border-card-border rounded-xl px-4 py-3">
-      <dt className="text-sm text-primary-light">{label}</dt>
-      <dd className="text-2xl font-semibold text-foreground">{value.toLocaleString()}</dd>
-    </div>
-  )
-}
-
 // Counts are a nicety, so an unreachable database is a warning and the section shows zeros
 /** The same anonymous totals the site's makers see, read live from the database. */
 export async function SiteNumbers() {
   const [visits, gameUsage] = await Promise.all([getVisitTotals(), getGameUsage()])
 
+  const periods = [
+    ['Total visits', visits.total],
+    ['Today', visits.today],
+    ['This week', visits.thisWeek],
+    ['This month', visits.thisMonth],
+  ] as const
+
   return (
     <>
-      <dl className="grid grid-cols-2 gap-3">
-        <Stat label="Total visits" value={visits.total} />
-        <Stat label="Today" value={visits.today} />
-        <Stat label="This week" value={visits.thisWeek} />
-        <Stat label="This month" value={visits.thisMonth} />
-      </dl>
+      <div className="sp-table-wrap">
+        <table className="sp-table">
+          <caption>Visits to the site</caption>
+          <thead>
+            <tr>
+              <th scope="col">Period</th>
+              <th scope="col" className="sp-table__num">
+                Visits
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {periods.map(([label, value]) => (
+              <tr key={label}>
+                <th scope="row">{label}</th>
+                <td className="sp-table__num">{value.toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {gameUsage.length > 0 && (
-        <div className="pt-2">
-          <h3 id="game-usage-heading" className="text-base font-semibold text-foreground mb-1">
+        <>
+          <h3 id="game-usage-heading" className="sp-h3 sp-prose__subhead">
             What people explore
           </h3>
-          <p className="mb-3">Last {USAGE_WINDOW_DAYS} days. Time spent is the typical (median) visit.</p>
-          <div className="bg-card-bg border border-card-border rounded-xl overflow-x-auto">
-            <table className="w-full text-left" aria-labelledby="game-usage-heading">
+          <p>Last {USAGE_WINDOW_DAYS} days. Time spent is the typical (median) visit.</p>
+          <div className="sp-table-wrap">
+            <table className="sp-table" aria-labelledby="game-usage-heading">
               <thead>
-                <tr className="text-sm text-primary-light border-b border-card-border">
-                  <th scope="col" className="px-4 py-2 font-medium">Game</th>
-                  <th scope="col" className="px-4 py-2 font-medium text-right">Times opened</th>
-                  <th scope="col" className="px-4 py-2 font-medium text-right">Time spent</th>
+                <tr>
+                  <th scope="col">Game</th>
+                  <th scope="col" className="sp-table__num">
+                    Times opened
+                  </th>
+                  <th scope="col" className="sp-table__num">
+                    Time spent
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {gameUsage.map((game) => (
-                  <tr key={game.gameId} className="border-b border-card-border last:border-b-0">
-                    <th scope="row" className="px-4 py-2 font-medium">
-                      <Link href={`/games/${game.slug}`} className="text-foreground underline-offset-2 hover:underline">
-                        {game.title}
-                      </Link>
+                  <tr key={game.gameId}>
+                    <th scope="row">
+                      <InkLink href={`/games/${game.slug}`}>{game.title}</InkLink>
                     </th>
-                    <td className="px-4 py-2 text-right font-mono text-foreground">{game.opens.toLocaleString()}</td>
-                    <td className="px-4 py-2 text-right">
-                      {game.medianSeconds === null ? '—' : formatDuration(game.medianSeconds)}
+                    <td className="sp-table__num">{game.opens.toLocaleString()}</td>
+                    <td className="sp-table__num">
+                      {game.medianSeconds === null ? '\u2014' : formatDuration(game.medianSeconds)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </>
       )}
     </>
   )

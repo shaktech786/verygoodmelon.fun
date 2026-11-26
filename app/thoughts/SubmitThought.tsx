@@ -1,17 +1,15 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { Go } from '@/components/seedpress/Go'
+import { Icon } from '@/components/seedpress/icons/Icon'
 import { Note } from '@/components/seedpress/Note'
+import { ProseSection } from '@/components/seedpress/Prose'
+import { QuietButton } from '@/components/seedpress/QuietButton'
+import { WritingSlip } from '@/components/seedpress/WritingSlip'
+import { THEME_LABELS } from '@/lib/thoughts/thoughts-data'
 
-const THEMES = [
-  { value: 'patience', label: 'Patience' },
-  { value: 'wonder', label: 'Wonder' },
-  { value: 'impermanence', label: 'Impermanence' },
-  { value: 'creativity', label: 'Creativity' },
-  { value: 'rest', label: 'Rest' },
-  { value: 'connection', label: 'Connection' },
-  { value: 'perspective', label: 'Perspective' },
-] as const
+const THEMES = Object.entries(THEME_LABELS).map(([value, label]) => ({ value, label }))
 
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error'
 
@@ -21,11 +19,11 @@ export function SubmitThought() {
   const [authorName, setAuthorName] = useState('')
   const [state, setState] = useState<SubmitState>('idle')
   const [errorMessage, setErrorMessage] = useState('')
-  const formRef = useRef<HTMLFormElement>(null)
   const statusRef = useRef<HTMLDivElement>(null)
 
   const charCount = body.length
   const isValidLength = charCount >= 20 && charCount <= 2000
+  const submitting = state === 'submitting'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -69,156 +67,71 @@ export function SubmitThought() {
 
   if (state === 'success') {
     return (
-      <section
-        aria-label="Thought submitted"
-        className="mt-16 pt-8 border-t border-card-border"
-      >
-        <div
-          ref={statusRef}
-          tabIndex={-1}
-          className="bg-card-bg border border-card-border rounded-lg p-8 text-center"
-          role="status"
-        >
-          <p className="text-foreground text-lg font-medium mb-2">
-            Thank you. Your thought will be reviewed.
+      <ProseSection id="share-thought" title="Share a thought">
+        <div ref={statusRef} tabIndex={-1} className="sp-thanks" role="status">
+          <p>
+            <strong>Thank you. Your thought will be reviewed.</strong>
           </p>
-          <p className="text-primary-light text-sm">
-            If it resonates, it will appear here for others to read.
-          </p>
-          <button
-            type="button"
-            onClick={() => setState('idle')}
-            className="mt-6 text-sm text-accent hover:text-accent/80 transition-colors underline underline-offset-4"
-          >
-            Share another thought
-          </button>
+          <p>If it resonates, it will appear here for others to read.</p>
+          <QuietButton onClick={() => setState('idle')}>Share another thought</QuietButton>
         </div>
-      </section>
+      </ProseSection>
     )
   }
 
   return (
-    <section
-      aria-label="Share a thought"
-      className="mt-16 pt-8 border-t border-card-border"
-    >
-      <h2 className="text-xl font-semibold text-foreground mb-2">
-        Share a thought
-      </h2>
-      <p className="text-primary-light text-sm mb-8">
-        If something is on your mind, write it down. Thoughtful submissions may
-        appear here for others to find.
+    <ProseSection id="share-thought" title="Share a thought">
+      <p>
+        If something is on your mind, write it down. Thoughtful submissions may appear here for others to find.
       </p>
 
-      <form
-        ref={formRef}
-        onSubmit={handleSubmit}
-        className="space-y-6"
-        noValidate
-      >
-        {/* Thought body */}
-        <div>
-          <label
-            htmlFor="thought-body"
-            className="block text-sm font-medium text-foreground mb-2"
-          >
-            Your thought
-          </label>
-          <textarea
-            id="thought-body"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={6}
-            className="w-full rounded-lg border border-card-border bg-card-bg px-4 py-3 text-foreground text-sm leading-relaxed placeholder:text-primary-light focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2 focus:ring-offset-background resize-y"
-            placeholder="Write something honest..."
-            aria-describedby="thought-body-hint"
-            required
-            disabled={state === 'submitting'}
-          />
-          <p
-            id="thought-body-hint"
-            className={`mt-1.5 text-xs ${
-              charCount > 0 && !isValidLength
-                ? 'text-accent'
-                : 'text-primary-light'
-            }`}
-          >
-            {charCount > 0
-              ? `${charCount.toLocaleString()} / 2,000 characters${
-                  charCount < 20 ? ' (a little longer, please)' : ''
-                }`
-              : '20\u20132,000 characters'}
-          </p>
-        </div>
+      <form onSubmit={handleSubmit} className="sp-thoughts-form" noValidate>
+        <WritingSlip
+          label="Your thought"
+          hint="Write something honest."
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          required
+          disabled={submitting}
+          note={
+            charCount > 0
+              ? `${charCount.toLocaleString()} / 2,000 characters${charCount < 20 ? ' (a little longer, please)' : ''}`
+              : '20–2,000 characters'
+          }
+        />
 
-        {/* Theme */}
         <fieldset>
-          <legend className="block text-sm font-medium text-foreground mb-3">
-            Theme
-          </legend>
-          <div
-            className="flex flex-wrap gap-2"
-            role="radiogroup"
-            aria-label="Choose a theme"
-          >
+          <legend>Theme</legend>
+          <div className="sp-stamp-row" role="radiogroup" aria-label="Choose a theme">
             {THEMES.map((t) => (
-              <label
-                key={t.value}
-                className={`
-                  inline-flex items-center cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-medium
-                  border transition-colors
-                  focus-within:ring-2 focus-within:ring-focus-ring focus-within:ring-offset-2 focus-within:ring-offset-background
-                  ${
-                    theme === t.value
-                      ? 'border-chosen-line bg-chosen text-foreground'
-                      : 'border-card-border bg-card-bg text-primary-light hover:border-accent/30 hover:text-foreground'
-                  }
-                  ${state === 'submitting' ? 'opacity-60 pointer-events-none' : ''}
-                `}
-              >
+              <label key={t.value} className="sp-choice">
                 <input
                   type="radio"
                   name="theme"
                   value={t.value}
                   checked={theme === t.value}
                   onChange={(e) => setTheme(e.target.value)}
-                  className="sr-only"
-                  disabled={state === 'submitting'}
+                  disabled={submitting}
                 />
-                {t.label}
+                <span className="sp-choice__face">
+                  {theme === t.value && <Icon name="done" />}
+                  {t.label}
+                </span>
               </label>
             ))}
           </div>
         </fieldset>
 
-        {/* Author name (optional) */}
-        <div>
-          <label
-            htmlFor="author-name"
-            className="block text-sm font-medium text-foreground mb-2"
-          >
-            Your name{' '}
-            <span className="font-normal text-primary-light">
-              (optional)
-            </span>
-          </label>
-          <input
-            id="author-name"
-            type="text"
-            value={authorName}
-            onChange={(e) => setAuthorName(e.target.value)}
-            maxLength={100}
-            className="w-full rounded-lg border border-card-border bg-card-bg px-4 py-2.5 text-foreground text-sm placeholder:text-primary-light focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2 focus:ring-offset-background"
-            placeholder="Leave blank to stay anonymous"
-            aria-describedby="author-name-hint"
-            disabled={state === 'submitting'}
-          />
-          <p id="author-name-hint" className="mt-1.5 text-xs text-primary-light">
-            Shown alongside your thought if approved.
-          </p>
-        </div>
+        <WritingSlip
+          line
+          label="Your name (optional)"
+          hint="Leave blank to stay anonymous. Shown alongside your thought if approved."
+          value={authorName}
+          onChange={(e) => setAuthorName(e.target.value)}
+          maxLength={100}
+          disabled={submitting}
+        />
 
-        {/* Error message */}
         {state === 'error' && (
           <div ref={statusRef} tabIndex={-1}>
             <Note tone="look" role="alert">
@@ -227,21 +140,16 @@ export function SubmitThought() {
           </div>
         )}
 
-        {/* Submit */}
-        <button data-go=""
-          type="submit"
-          disabled={state === 'submitting' || !isValidLength || !theme}
-          className="
-            inline-flex items-center gap-2 rounded-lg px-5 py-2.5
-            bg-flesh text-on-flesh text-sm font-medium
-            transition-colors hover:bg-flesh-press
-            focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2 focus:ring-offset-background
-            disabled:opacity-50 disabled:cursor-not-allowed
-          "
-        >
-          {state === 'submitting' ? 'Submitting...' : 'Submit thought'}
-        </button>
+        <div>
+          <Go
+            type="submit"
+            loading={submitting}
+            unavailable={!isValidLength ? 'Write a little more first.' : !theme ? 'Choose a theme first.' : undefined}
+          >
+            Submit thought
+          </Go>
+        </div>
       </form>
-    </section>
+    </ProseSection>
   )
 }

@@ -1,18 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { THOUGHTS, getThoughtBySlug, getRelatedThought } from '@/lib/thoughts/thoughts-data'
-import { Icon } from '@/components/seedpress/icons/Icon'
-
-const THEME_LABELS: Record<string, string> = {
-  patience: 'Patience',
-  wonder: 'Wonder',
-  impermanence: 'Impermanence',
-  creativity: 'Creativity',
-  rest: 'Rest',
-  connection: 'Connection',
-  perspective: 'Perspective',
-}
+import { THEME_LABELS, THOUGHTS, getThoughtBySlug, getRelatedThought } from '@/lib/thoughts/thoughts-data'
+import { Prose, ProseSection } from '@/components/seedpress/Prose'
+import { Stamp } from '@/components/seedpress/Stamp'
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
@@ -73,84 +64,37 @@ export default async function ThoughtPage({ params }: PageProps) {
   const paragraphs = thought.body.split('\n\n').filter(Boolean)
 
   return (
-    <div className="container mx-auto px-6 py-12 max-w-[640px]">
-      <div className="animate-fade">
-        {/* Back link */}
-        <Link
-          href="/thoughts"
-          className="inline-flex items-center gap-2 text-primary-light hover:text-foreground transition-colors text-sm mb-8"
-        >
-          <Icon name="back" size={12} />
-          All thoughts
-        </Link>
+    <Prose
+      title={thought.title}
+      meta={
+        <>
+          {THEME_LABELS[thought.theme]} &middot; <time dateTime={thought.createdAt}>{formatDate(thought.createdAt)}</time>
+        </>
+      }
+    >
+      {paragraphs.map((paragraph, i) => (
+        <p key={i}>{paragraph}</p>
+      ))}
 
-        <article aria-labelledby="thought-title">
-          {/* Meta */}
-          <div className="flex items-center gap-3 mb-4 text-sm">
-            <span className="inline-block bg-accent/10 text-foreground px-2.5 py-0.5 rounded-full text-xs font-medium">
-              {THEME_LABELS[thought.theme]}
+      {related && (
+        <ProseSection id="keep-reading" title="Keep reading">
+          <Link href={`/thoughts/${related.slug}`} className="sp-flap">
+            <span className="sp-flap__top">
+              <span>{THEME_LABELS[related.theme]}</span>
             </span>
-            <time dateTime={thought.createdAt} className="text-primary-light">
-              {formatDate(thought.createdAt)}
-            </time>
-          </div>
-
-          {/* Title */}
-          <h1
-            id="thought-title"
-            className="text-3xl md:text-4xl font-semibold text-foreground mb-8"
-          >
-            {thought.title}
-          </h1>
-
-          {/* Body */}
-          <div className="space-y-6">
-            {paragraphs.map((paragraph, i) => (
-              <p
-                key={i}
-                className="text-foreground/80 text-base md:text-lg leading-[1.8]"
-              >
-                {paragraph}
-              </p>
-            ))}
-          </div>
-        </article>
-
-        {/* Related thought */}
-        {related && (
-          <div className="mt-16 pt-8 border-t border-card-border">
-            <p className="text-primary-light text-xs uppercase tracking-widest mb-4">
-              Keep reading
-            </p>
-            <Link
-              href={`/thoughts/${related.slug}`}
-              className="block bg-card-bg border border-card-border rounded-lg p-5 hover:border-accent/30 transition-colors focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2 focus:ring-offset-background"
-            >
-              <span className="inline-block bg-accent/10 text-foreground px-2 py-0.5 rounded-full text-xs font-medium mb-2">
-                {THEME_LABELS[related.theme]}
-              </span>
-              <h2 className="text-foreground font-semibold">{related.title}</h2>
-            </Link>
-          </div>
-        )}
-
-        {/* Bottom nav */}
-        <div className="mt-12 pt-8 border-t border-card-border flex justify-between items-center">
-          <Link
-            href="/thoughts"
-            className="inline-flex items-center gap-2 text-primary-light hover:text-foreground transition-colors text-sm"
-          >
-            <Icon name="back" size={12} />
-            All thoughts
+            <span className="sp-flap__body">
+              <span className="sp-flap__title">{related.title}</span>
+            </span>
           </Link>
-          <Link
-            href="/"
-            className="text-primary-light hover:text-foreground transition-colors text-sm"
-          >
-            Home
-          </Link>
-        </div>
-      </div>
-    </div>
+        </ProseSection>
+      )}
+
+      <p className="sp-prose__actions sp-prose__row">
+        <Stamp href="/thoughts" icon="back">
+          All thoughts
+        </Stamp>
+        <Stamp href="/">Home</Stamp>
+      </p>
+    </Prose>
   )
 }

@@ -2,7 +2,7 @@ import { render } from '@testing-library/react'
 import { axe, toHaveNoViolations } from 'jest-axe'
 import { Stamp } from '@/components/seedpress/Stamp'
 import { KeyHints } from '@/components/seedpress/KeyHints'
-import { LegalPage, LegalSection } from '@/components/ui/LegalPage'
+import { Prose, ProseSection } from '@/components/seedpress/Prose'
 import { StickyTray } from '@/components/seedpress/StickyTray'
 import { expect } from 'vitest'
 
@@ -17,14 +17,14 @@ describe('Accessibility Tests', () => {
     })
   })
 
-  describe('LegalPage Component', () => {
+  describe('Prose Component', () => {
     it('should not have accessibility violations', async () => {
       const { container } = render(
-        <LegalPage title="Privacy" lastUpdated="1 January 2026">
-          <LegalSection id="what" title="What we keep">
+        <Prose title="Privacy" meta="Last updated: 1 January 2026">
+          <ProseSection id="what" title="What we keep">
             <p>Nothing that names you.</p>
-          </LegalSection>
-        </LegalPage>,
+          </ProseSection>
+        </Prose>,
       )
       const results = await axe(container)
       expect(results).toHaveNoViolations()

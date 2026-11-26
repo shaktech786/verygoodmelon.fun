@@ -15,6 +15,16 @@ export interface Thought {
   createdAt: string
 }
 
+export const THEME_LABELS: Record<Thought['theme'], string> = {
+  patience: 'Patience',
+  wonder: 'Wonder',
+  impermanence: 'Impermanence',
+  creativity: 'Creativity',
+  rest: 'Rest',
+  connection: 'Connection',
+  perspective: 'Perspective',
+}
+
 export const THOUGHTS: Thought[] = [
   {
     id: 'rushing-nowhere',

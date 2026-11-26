@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { THOUGHTS } from '@/lib/thoughts/thoughts-data'
 import { ThoughtsList } from './ThoughtsList'
 import { SubmitThought } from './SubmitThought'
-import { Icon } from '@/components/seedpress/icons/Icon'
+import { Prose } from '@/components/seedpress/Prose'
+import { Stamp } from '@/components/seedpress/Stamp'
 
 export const metadata: Metadata = {
   title: 'Thoughts - VeryGoodMelon.Fun',
@@ -23,35 +23,14 @@ const sortedThoughts = [...THOUGHTS].sort(
 
 export default function ThoughtsPage() {
   return (
-    <div className="container mx-auto px-6 py-12 max-w-[640px]">
-      <div className="animate-fade">
-        {/* Header */}
-        <header className="mb-12">
-          <h1 className="text-4xl md:text-5xl font-semibold text-foreground mb-3">
-            Thoughts
-          </h1>
-          <p className="text-primary-light text-lg leading-relaxed">
-            Short reflections on thinking, feeling, and being.
-          </p>
-        </header>
-
-        {/* Thought cards — client component handles staggered animation */}
-        <ThoughtsList thoughts={sortedThoughts} />
-
-        {/* User submission form */}
-        <SubmitThought />
-
-        {/* Back link */}
-        <div className="mt-16 pt-8 border-t border-card-border">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-primary-light hover:text-foreground transition-colors text-sm"
-          >
-            <Icon name="back" size={12} />
-            Back home
-          </Link>
-        </div>
-      </div>
-    </div>
+    <Prose title="Thoughts" lead={<p>Short reflections on thinking, feeling, and being.</p>}>
+      <ThoughtsList thoughts={sortedThoughts} />
+      <SubmitThought />
+      <p className="sp-prose__actions">
+        <Stamp href="/" icon="back">
+          Back home
+        </Stamp>
+      </p>
+    </Prose>
   )
 }

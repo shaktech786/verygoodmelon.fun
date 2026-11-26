@@ -2680,3 +2680,305 @@ a.sp-packet:focus-visible .sp-print {
   width: 1px;
   height: 1px;
 }
+
+/* ---------- Content pages: Prose, flap list, give block, lost page (PLAN.md 7.22, 7.26, 8.3) ---------- */
+
+.sp-prose {
+  max-width: var(--w-prose);
+  padding-block: var(--s-7) 0;
+}
+
+.sp-prose__head {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.sp-prose__meta {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-meta);
+  line-height: var(--lh-meta);
+}
+
+.sp-prose__lead {
+  display: grid;
+  gap: var(--s-3);
+  font-size: var(--t-lead);
+  line-height: var(--lh-lead);
+}
+
+.sp-prose p,
+.sp-prose li {
+  max-width: 66ch;
+}
+
+.sp-prose :where(p, ul, ol, h1, h2) {
+  margin: 0;
+}
+
+.sp-prose > * + *,
+.sp-prose__section > * + * {
+  margin-top: var(--s-4);
+}
+
+.sp-prose > .sp-prose__head + *,
+.sp-prose > .sp-prose__section {
+  margin-top: var(--s-7);
+}
+
+.sp-prose__section {
+  padding-top: var(--s-6);
+  border-top: 1px solid var(--rule);
+}
+
+.sp-prose__list {
+  display: grid;
+  gap: var(--s-3);
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.sp-prose__list li::marker {
+  color: var(--ink-soft);
+}
+
+/* A short stack of outside links, each a comfortable target */
+.sp-prose__links {
+  display: grid;
+  justify-items: start;
+  padding: 0;
+  list-style: none;
+}
+
+.sp-prose__links .sp-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.sp-prose > .sp-prose__sign {
+  margin-top: var(--s-7);
+  padding-top: var(--s-6);
+  border-top: 1px solid var(--rule);
+  color: var(--ink-soft);
+}
+
+.sp-prose > .sp-prose__actions {
+  margin-top: var(--s-6);
+}
+
+/* The published totals: a plain table, no big numbers */
+.sp-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+}
+
+.sp-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: var(--t-small);
+}
+
+.sp-table caption {
+  padding: var(--s-3) var(--s-4);
+  text-align: left;
+  font-weight: 700;
+}
+
+.sp-table th,
+.sp-table td {
+  padding: var(--s-2) var(--s-4);
+  border-top: 1px solid var(--rule);
+  font-weight: 400;
+}
+
+.sp-table thead th {
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.sp-table tbody th {
+  font-weight: 600;
+}
+
+.sp-table__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-table-note {
+  margin-top: var(--s-3);
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+/* ---------- Thoughts: slips with a flap line ---------- */
+
+.sp-flaps {
+  display: grid;
+  gap: var(--s-4);
+  padding: 0;
+  list-style: none;
+}
+
+.sp-flap {
+  display: block;
+  min-width: 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+  color: var(--ink);
+  text-decoration: none;
+  overflow: hidden;
+}
+
+a.sp-flap:hover {
+  border-color: var(--rind);
+}
+
+a.sp-flap:hover .sp-flap__title {
+  text-decoration: underline 1.5px var(--rind);
+  text-underline-offset: 3px;
+}
+
+.sp-flap--fresh {
+  background-color: var(--rind-wash);
+  border-color: var(--rule-strong);
+}
+
+.sp-flap__top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-4);
+  padding: var(--s-2) var(--s-4);
+  border-bottom: 2px solid var(--rule);
+  color: var(--ink-soft);
+  font-size: var(--t-meta);
+  line-height: var(--lh-meta);
+  font-weight: 500;
+}
+
+.sp-flap__body {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-4);
+}
+
+.sp-flap__title {
+  margin: 0;
+  font-size: var(--t-h3);
+  line-height: var(--lh-h3);
+  font-weight: 700;
+}
+
+.sp-flap__excerpt {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.sp-flap__full {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+}
+
+.sp-flap__full p {
+  margin: 0;
+  max-width: 66ch;
+}
+
+.sp-thoughts-form {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.sp-thoughts-form fieldset {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.sp-thoughts-form legend {
+  padding: 0;
+  margin-bottom: var(--s-2);
+  font-weight: 600;
+  font-size: var(--t-small);
+}
+
+.sp-thanks {
+  display: grid;
+  gap: var(--s-2);
+  justify-items: start;
+  padding: var(--s-5);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--rind);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+}
+
+.sp-thanks p {
+  margin: 0;
+}
+
+/* ---------- Give block ---------- */
+
+.sp-give {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-3);
+}
+
+.sp-give p {
+  margin: 0;
+  max-width: 66ch;
+}
+
+.sp-give__orgs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 1024px) {
+  .sp-footer__cols:has(.sp-footer__give) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr);
+  }
+}
+
+/* ---------- The lost page ---------- */
+
+.sp-lost__stamp {
+  display: block;
+  margin-bottom: var(--s-3);
+  color: var(--rind);
+}
+
+.sp-prose__section > .sp-prose__subhead {
+  margin-top: var(--s-6);
+}
+
+.sp-prose > .sp-prose__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
+.sp-lost__packets {
+  max-width: 48rem;
+}
+
+.sp-home > * {
+  min-width: 0;
+}

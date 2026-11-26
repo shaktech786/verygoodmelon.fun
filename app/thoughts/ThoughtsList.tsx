@@ -1,21 +1,6 @@
-'use client'
-
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import type { Thought } from '@/lib/thoughts/thoughts-data'
+import { THEME_LABELS, type Thought } from '@/lib/thoughts/thoughts-data'
 import { FreshThought } from './FreshThought'
-
-const THEME_LABELS: Record<Thought['theme'], string> = {
-  patience: 'Patience',
-  wonder: 'Wonder',
-  impermanence: 'Impermanence',
-  creativity: 'Creativity',
-  rest: 'Rest',
-  connection: 'Connection',
-  perspective: 'Perspective',
-}
-
-const STAGGERED_CARDS = 5
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
@@ -25,75 +10,31 @@ function formatDate(iso: string): string {
   })
 }
 
-function truncate(text: string, maxLength: number): string {
-  const firstParagraph = text.split('\n\n')[0]
-  if (firstParagraph.length <= maxLength) return firstParagraph
-  return firstParagraph.slice(0, maxLength).replace(/\s+\S*$/, '') + '...'
-}
-
 interface ThoughtsListProps {
   thoughts: Thought[]
 }
 
+/** A slip for each thought: a flap line with its theme and date, then its title and first line. */
 export function ThoughtsList({ thoughts }: ThoughtsListProps) {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    queueMicrotask(() => setMounted(true))
-  }, [])
-
   return (
-    <div className="space-y-6" role="feed" aria-label="Thoughts">
-      {/* Fresh thought from AI — appears at the top when available */}
-      <FreshThought mounted={mounted} />
-
-      {thoughts.map((thought, index) => (
-        <article
-          key={thought.id}
-          className={`
-            group block
-            transition-all duration-500 ease-out
-            ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}
-          `}
-          style={{
-            // Only the first few cards stagger, so the whole list has settled within a second and no
-            // card further down is still half-faded (and so too faint to read) when someone reaches it
-            transitionDelay: mounted ? `${Math.min(index, STAGGERED_CARDS) * 60}ms` : '0ms',
-          }}
-          aria-labelledby={`thought-title-${thought.id}`}
-        >
-          <Link
-            href={`/thoughts/${thought.slug}`}
-            className="block bg-card-bg border border-card-border rounded-lg p-6 hover:border-rind transition-colors focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2 focus:ring-offset-background"
-          >
-            {/* Meta row */}
-            <div className="flex items-center gap-3 mb-3 text-sm">
-              <span className="inline-block bg-rind-wash text-foreground px-2.5 py-0.5 rounded-full text-xs font-medium">
-                {THEME_LABELS[thought.theme]}
+    <>
+      <FreshThought />
+      <ul className="sp-flaps" aria-label="Thoughts">
+        {thoughts.map((thought) => (
+          <li key={thought.id}>
+            <Link href={`/thoughts/${thought.slug}`} className="sp-flap">
+              <span className="sp-flap__top">
+                <span>{THEME_LABELS[thought.theme]}</span>
+                <time dateTime={thought.createdAt}>{formatDate(thought.createdAt)}</time>
               </span>
-              <time
-                dateTime={thought.createdAt}
-                className="text-primary-light"
-              >
-                {formatDate(thought.createdAt)}
-              </time>
-            </div>
-
-            {/* Title */}
-            <h2
-              id={`thought-title-${thought.id}`}
-              className="text-lg font-semibold text-foreground mb-2 group-hover:text-accent transition-colors"
-            >
-              {thought.title}
-            </h2>
-
-            {/* Preview */}
-            <p className="text-foreground/80 text-sm leading-relaxed">
-              {truncate(thought.body, 120)}
-            </p>
-          </Link>
-        </article>
-      ))}
-    </div>
+              <span className="sp-flap__body">
+                <h2 className="sp-flap__title">{thought.title}</h2>
+                <span className="sp-flap__excerpt">{thought.body.split('\n\n')[0]}</span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </>
   )
 }
