@@ -51,19 +51,19 @@ const PICKER_TEXT = {
 const CARD_CHOICES: Partial<Record<EventId, string>> = { lecture: 'attend', archive: 'dig', study_group: 'learn' }
 
 const panel = 'rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-4 text-[var(--tp-text)]'
-export const primaryButton =
-  'rounded-md bg-[var(--tp-accent)] px-4 py-2 text-sm font-semibold text-[var(--tp-on-accent)] hover:brightness-110 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]'
-export const quietButton =
-  'rounded-md border border-[var(--tp-line)] px-4 py-2 text-sm text-[var(--tp-text)] hover:bg-[var(--tp-ink)] disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]'
+/** The one go-action of a view: a melon-flesh slice. Every use also carries data-go. */
+export const primaryButton = 'sp-go'
+/** Everything else is a stamp. */
+export const quietButton = 'sp-stamp'
 
 export function RelicTile({ relicId, children }: { relicId: RelicId; children?: React.ReactNode }) {
   const relic = getRelicDef(relicId)
   return (
-    <div className="flex w-full max-w-xs flex-col gap-1 rounded-md border-2 border-[var(--tp-logic)] bg-[var(--tp-paper)] p-3 text-[var(--tp-paper-ink)] shadow-[3px_3px_0_0_var(--tp-shadow)]">
-      <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-[var(--tp-paper-muted)]">{relic.ruleBending ? 'Relic · bends a rule' : 'Relic'}</p>
+    <div className="flex w-full max-w-xs flex-col gap-1 rounded-md border-2 border-[var(--tp-logic)] bg-[var(--tp-paper)] p-3 text-[var(--tp-paper-ink)] tp-edge">
+      <p className="text-[0.7rem] font-semibold text-[var(--tp-paper-muted)]">{relic.ruleBending ? 'Relic · bends a rule' : 'Relic'}</p>
       <p className="font-serif text-base font-semibold">{relic.name}</p>
       <p className="text-sm leading-snug">{relic.text}</p>
-      <p className="text-xs italic text-[var(--tp-paper-muted)]">{relic.flavor}</p>
+      <p className="text-xs text-[var(--tp-paper-muted)]">{relic.flavor}</p>
       {children}
     </div>
   )
@@ -226,7 +226,7 @@ export function RewardScreen({ run }: { run: RunState }) {
               <RelicTile key={relicId} relicId={relicId}>
                 <button
                   type="button"
-                  className={`${primaryButton} mt-2`}
+                  className={`${quietButton} mt-2`}
                   disabled={reward.relicTaken}
                   onClick={() => act((r) => takeRelic(r, relicId))}
                 >
@@ -278,7 +278,7 @@ export function RewardScreen({ run }: { run: RunState }) {
           Skip the card and rest
         </button>
       ) : (
-        <button type="button" className={`${primaryButton} mt-5`} onClick={() => act(leaveReward)} data-testid="continue">
+        <button data-go="" type="button" className={`${primaryButton} mt-5`} onClick={() => act(leaveReward)} data-testid="continue">
           {last ? 'Finish the walk' : reward.source === 'boss' ? 'On to the next floor' : study ? 'On to rest' : 'Continue'}
           {!study && (!reward.cardTaken || !reward.relicTaken) && ' (leave the rest)'}
         </button>
@@ -328,7 +328,7 @@ export function ShopScreen({ run }: { run: RunState }) {
       <div className="mt-4 flex flex-wrap gap-3">
         {shop.relics.map((item, i) => (
           <RelicTile key={item.relicId} relicId={item.relicId}>
-            <button type="button" className={`${primaryButton} mt-2`} disabled={item.sold || run.gold < item.price} onClick={() => act((r) => buyRelic(r, i))}>
+            <button type="button" className={`${quietButton} mt-2`} disabled={item.sold || run.gold < item.price} onClick={() => act((r) => buyRelic(r, i))}>
               {item.sold ? 'Sold' : `Buy for ${item.price} gold`}
             </button>
           </RelicTile>
@@ -353,7 +353,7 @@ export function ShopScreen({ run }: { run: RunState }) {
         >
           {shop.removed ? 'Card removed' : `Remove a card: ${shop.removePrice} gold`}
         </button>
-        <button type="button" className={primaryButton} onClick={() => act(leaveShop)} data-testid="continue">
+        <button data-go="" type="button" className={primaryButton} onClick={() => act(leaveShop)} data-testid="continue">
           Leave the shop
         </button>
       </div>
@@ -373,7 +373,7 @@ export function RestScreen({ run }: { run: RunState }) {
       </h2>
       <p className="mt-1 text-sm">Choose one.</p>
       <div className="mt-4 flex flex-wrap gap-3">
-        <button type="button" className={primaryButton} onClick={() => act(restHeal)} disabled={heal === 0} data-testid="rest-heal">
+        <button data-go="" type="button" className={primaryButton} onClick={() => act(restHeal)} disabled={heal === 0} data-testid="rest-heal">
           {heal === 0 ? `Rest: no Resolve back at Rigorous ${run.rigor}` : `Rest: restore ${Math.min(heal, run.maxResolve - run.resolve)} Resolve`}
         </button>
         <button type="button" className={quietButton} onClick={() => act(startRestUpgrade)} disabled={!run.deck.some(canUpgrade)} data-testid="rest-upgrade">
@@ -410,7 +410,7 @@ export function EventScreen({ run }: { run: RunState }) {
           <p className="mt-4 font-semibold" role="status">
             {event.result}
           </p>
-          <button type="button" className={`${primaryButton} mt-4`} onClick={() => act(leaveEvent)} data-testid="continue">
+          <button data-go="" type="button" className={`${primaryButton} mt-4`} onClick={() => act(leaveEvent)} data-testid="continue">
             Continue
           </button>
         </>

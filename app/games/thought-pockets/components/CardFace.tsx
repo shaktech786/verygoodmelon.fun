@@ -15,6 +15,16 @@ export const TYPE_COLORS: Record<CardType, string> = {
   doubt: 'var(--tp-doubt)',
 }
 
+/** A type is never colour alone: its glyph and its name sit with every type-coloured edge. */
+export function TypeMark({ type }: { type: CardType }) {
+  return (
+    <>
+      <TypeGlyph type={type} className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />
+      <span className="sr-only">{TYPE_LABELS[type]}: </span>
+    </>
+  )
+}
+
 const LONG_PRESS_MS = 450
 
 function emphasise(line: string): React.ReactNode[] {
@@ -86,8 +96,8 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
         label ??
         `${card.name}. ${TYPE_LABELS[card.type]}${school ? `, ${school} card` : ''}${card.rarity === 'rare' ? ', rare' : ''}${unplayable ? '' : `, costs ${card.cost} Focus${freeNote ? `, ${freeNote.toLowerCase()}` : ''}`}. ${lines.join(' ')}`
       }${fits ? `. ${fits}` : ''}`}
-      className={`relative flex flex-col overflow-hidden rounded-md border-2 bg-[var(--tp-paper)] text-left text-[var(--tp-paper-ink)] shadow-[3px_3px_0_0_var(--tp-shadow)] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] ${
-        hand
+      className={`relative flex flex-col overflow-hidden rounded-md border-2 bg-[var(--tp-paper)] text-left text-[var(--tp-paper-ink)] tp-edge focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] ${
+ hand
           ? 'w-full min-h-[5.75rem] sm:w-36 sm:min-h-[9.75rem]'
           : size === 'compact'
             ? 'w-[6.75rem] min-h-[8.75rem] sm:w-[7.25rem] sm:min-h-[9.5rem]'
@@ -96,7 +106,7 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
       style={{ borderColor: color }}
     >
       <span
-        className="flex items-center gap-1 px-1.5 py-1 text-[0.68rem] font-semibold uppercase tracking-wide sm:gap-1.5 sm:px-2"
+        className="flex items-center gap-1 px-1.5 py-1 text-[0.68rem] font-semibold sm:gap-1.5 sm:px-2"
         style={{ backgroundColor: `color-mix(in srgb, ${color} 28%, var(--tp-paper))` }}
       >
         <TypeGlyph type={card.type} className="h-4 w-4 shrink-0" />
@@ -115,7 +125,7 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
         {card.name}
       </span>
       {!hand && (school || card.rarity === 'rare') && (
-        <span className="px-1.5 text-[0.66rem] font-semibold uppercase tracking-wide text-[var(--tp-paper-muted)] sm:px-2" aria-hidden="true" data-testid="card-school">
+        <span className="px-1.5 text-[0.66rem] font-semibold text-[var(--tp-paper-muted)] sm:px-2" aria-hidden="true" data-testid="card-school">
           {[school, card.rarity === 'rare' ? 'Rare' : null].filter(Boolean).join(' · ')}
         </span>
       )}
@@ -129,7 +139,7 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
         </span>
       )}
       {freeNote && (
-        <span className="mx-1.5 mt-1 self-start rounded-sm bg-[var(--tp-accent)] px-1 text-[0.66rem] font-semibold text-[var(--tp-on-accent)] sm:mx-2" aria-hidden="true">
+        <span className="mx-1.5 mt-1 self-start rounded-sm bg-[var(--tp-mark)] px-1 text-[0.66rem] font-semibold text-[var(--tp-on-mark)] sm:mx-2" aria-hidden="true">
           {freeNote}
         </span>
       )}
@@ -145,7 +155,7 @@ export function CardFace({ card, freeNote, hotkey, disabled, size = 'full', labe
           </span>
         ))}
       </span>
-      {size !== 'compact' && <span className="hidden px-2 pb-1 pt-1 text-[0.68rem] italic leading-snug text-[var(--tp-paper-muted)] sm:block">{card.flavor}</span>}
+      {size !== 'compact' && <span className="hidden px-2 pb-1 pt-1 text-[0.68rem] leading-snug text-[var(--tp-paper-muted)] sm:block">{card.flavor}</span>}
       {hotkey !== undefined && (
         <span className="absolute bottom-1 right-1.5 hidden text-[0.68rem] font-semibold text-[var(--tp-paper-muted)] sm:block" aria-hidden="true">
           {hotkey}

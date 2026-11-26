@@ -1167,7 +1167,10 @@ test.describe('The Philosopher', () => {
     await load(page, run)
     await hand(page).first().click()
     const step = page.getByTestId('argument-step').first()
-    await expect(step).toHaveClass(/tp-arrive/)
+    // The card stamps onto the table, and its type is a glyph and a name as well as an edge colour
+    await expect(step).toHaveClass(/tp-stamp/)
+    await expect(step.locator('svg')).toHaveCount(1)
+    await expect(step).toContainText('Evidence:')
     await expect(page.getByTestId('damage-preview')).toHaveClass(/tp-tick/)
     const announcer = page.getByTestId('announcer')
     await expect(announcer).toContainText(/^Observation added\. Weight \d+ × [\d.]+ = \d+ damage\./)

@@ -30,7 +30,7 @@ import { useInsightStore, useRunStore } from '@/lib/games/thought-pockets/store/
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 import { wakeTones } from '@/components/games/gentleCues'
 import { KeyHints } from '@/components/seedpress/KeyHints'
-import { CardFace, TYPE_COLORS, keywordsOnCard } from './CardFace'
+import { CardFace, TYPE_COLORS, TypeMark, keywordsOnCard } from './CardFace'
 import { BiasPortrait, Mood, crackCount, impactLines } from './Sprites'
 import { LessonNote, Term } from './Term'
 import { AFTER_MS, BIG_HIT, Counting, HIT_PAUSE_MS, RoundShow, RoundShowState, format, showProgress, useRoundShow } from './RoundShow'
@@ -75,7 +75,7 @@ export const SHOW_CSS = `
 @keyframes tp-burst { from { opacity: 1; transform: translate(0, 0); } to { opacity: 0; transform: translate(var(--tp-dx), var(--tp-dy)); } }
 @keyframes tp-sink { 0% { transform: none; } 30%, 100% { transform: translateY(3px); } }
 @keyframes tp-hurt {
-  0% { transform: none; background-color: color-mix(in srgb, var(--warm) 35%, transparent); }
+  0% { transform: none; background-color: color-mix(in srgb, var(--seed) 20%, transparent); }
   12% { transform: translateX(-2px); }
   26% { transform: translateX(2px); }
   40% { transform: translateX(-1px); }
@@ -85,28 +85,32 @@ export const SHOW_CSS = `
 @keyframes tp-nudge { 0% { transform: none; } 20% { transform: translateY(2px); } 100% { transform: none; } }
 @keyframes tp-tick { from { transform: translateY(-3px) scale(1.14); } to { transform: none; } }
 @keyframes tp-settle { 0% { transform: none; } 35% { transform: scale(1.2); } 70% { transform: translateY(1px) scale(0.97); } 100% { transform: none; } }
-@keyframes tp-arrive { from { opacity: 0; transform: translateY(14px) rotate(-2deg) scale(0.94); } 70% { opacity: 1; transform: translateY(-2px) rotate(0.5deg); } to { opacity: 1; transform: none; } }
+@keyframes tp-stamp { from { opacity: 0; transform: translateY(-6px) scale(1.04); } 60% { opacity: 1; transform: translateY(1px) scale(0.99); } to { opacity: 1; transform: none; } }
+@keyframes tp-defeat { from { opacity: 1; filter: drop-shadow(0 0 0 var(--clay)) drop-shadow(0 0 0 var(--dusk)); } to { opacity: 0.6; filter: drop-shadow(4px 0 0 var(--clay)) drop-shadow(-4px 0 0 var(--dusk)); } }
 @keyframes tp-break { 0% { transform: none; } 18% { transform: scale(1.06); } 45% { transform: translateY(2px) scale(0.98); } 100% { transform: none; } }
 @keyframes tp-ring { from { opacity: 0.8; transform: scale(0.9); } to { opacity: 0; transform: scale(1.45); } }
 @media (prefers-reduced-motion: no-preference) {
-  html:not([data-reduce-motion="true"]) .tp-tick { display: inline-block; animation: tp-tick 200ms ease-out; }
-  html:not([data-reduce-motion="true"]) .tp-settle { animation: tp-settle 360ms ease-out both; }
-  html:not([data-reduce-motion="true"]) .tp-arrive { animation: tp-arrive 240ms ease-out both; }
-  html:not([data-reduce-motion="true"]) .tp-break { animation: tp-break 520ms ease-out; }
-  html:not([data-reduce-motion="true"]) .tp-ring { animation: tp-ring 700ms ease-out both; }
-  html:not([data-reduce-motion="true"]) .tp-appear { animation: tp-appear 220ms ease-out both; }
-  html:not([data-reduce-motion="true"]) .tp-pop { display: inline-block; animation: tp-pop 360ms ease-out; }
-  html:not([data-reduce-motion="true"]) .tp-rise { animation: tp-rise 900ms ease-out both; }
-  html:not([data-reduce-motion="true"]) .tp-deal { animation: tp-deal 220ms ease-out both; }
-  html:not([data-reduce-motion="true"]) .tp-recoil { animation: tp-recoil 480ms linear; }
-  html:not([data-reduce-motion="true"]) .tp-after-pause { animation-delay: ${HIT_PAUSE_MS}ms; animation-fill-mode: both; }
-  html:not([data-reduce-motion="true"]) .tp-shake-lines { animation: tp-lines 480ms steps(4, end) both; }
-  html:not([data-reduce-motion="true"]) .tp-burst { animation: tp-burst 900ms ease-out both; }
-  html:not([data-reduce-motion="true"]) .tp-sink { animation: tp-sink 1000ms ease-out both; }
-  html:not([data-reduce-motion="true"]) .tp-hurt { animation: tp-hurt ${AFTER_MS}ms ease-out; }
-  html:not([data-reduce-motion="true"]) .tp-nudge { animation: tp-nudge 360ms ease-out; animation-delay: ${HIT_PAUSE_MS}ms; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-tick { display: inline-block; animation: tp-tick 200ms ease-out; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-settle { animation: tp-settle 360ms ease-out both; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-stamp { animation: tp-stamp 700ms var(--e-stamp) both; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-defeat { animation: tp-defeat 1600ms var(--e-out) both; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-break { animation: tp-break 520ms ease-out; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-ring { animation: tp-ring 700ms ease-out both; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-appear { animation: tp-appear 220ms ease-out both; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-pop { display: inline-block; animation: tp-pop 360ms ease-out; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-rise { animation: tp-rise 900ms ease-out both; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-deal { animation: tp-deal 220ms ease-out both; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-recoil { animation: tp-recoil 480ms linear; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-after-pause { animation-delay: ${HIT_PAUSE_MS}ms; animation-fill-mode: both; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-shake-lines { animation: tp-lines 480ms steps(4, end) both; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-burst { animation: tp-burst 900ms ease-out both; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-sink { animation: tp-sink 1000ms ease-out both; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-hurt { animation: tp-hurt ${AFTER_MS}ms ease-out; }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-nudge { animation: tp-nudge 360ms ease-out; animation-delay: ${HIT_PAUSE_MS}ms; }
 }
-html[data-reduce-motion="true"] .tp-shake-lines, html[data-reduce-motion="true"] .tp-burst, html[data-reduce-motion="true"] .tp-ring { display: none; }
+html[data-reduce-motion="true"] .tp-shake-lines, html[data-reduce-motion="true"] .tp-burst, html[data-reduce-motion="true"] .tp-ring, html[data-sense="quiet"] .tp-shake-lines, html[data-sense="quiet"] .tp-burst, html[data-sense="quiet"] .tp-ring { display: none; }
+/* Quiet and reduced motion show the end of it: a defeated bias is simply faded, its inks apart */
+html[data-reduce-motion="true"] .tp-defeat, html[data-sense="quiet"] .tp-defeat { opacity: 0.6; filter: drop-shadow(4px 0 0 var(--clay)) drop-shadow(-4px 0 0 var(--dusk)); }
 @media (prefers-reduced-motion: reduce) { .tp-shake-lines, .tp-burst, .tp-ring { display: none; } }
 `
 
@@ -428,6 +432,7 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
   const health = shownHealth(live, show)
   const impact = impactLines(hit, battle.enemy.maxHealth)
   const bursting = now === 'shift' && report !== null && report.released > 0
+  const defeated = health <= 0 && report !== null && !bursting
   const gamble = def.gamble
   const threshold = phaseThreshold(battle)
   const first = beforeItActs(view.preview)
@@ -436,7 +441,7 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
     <section aria-label="Opponent" className={`${big ? 'tp-nudge' : ''} grid gap-2 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-2.5 sm:grid-cols-[1fr_15rem] sm:gap-3 sm:p-4`} data-big-hit={big || undefined}>
       <div className="flex gap-3">
         <div className="relative shrink-0" data-testid="portrait">
-          <div className={hit > 0 ? 'tp-recoil' : bursting ? 'tp-sink' : ''} style={{ '--tp-recoil': `${RECOIL_PX[impact]}px` } as React.CSSProperties}>
+          <div className={hit > 0 ? 'tp-recoil' : bursting ? 'tp-sink' : defeated ? 'tp-defeat' : ''} style={{ '--tp-recoil': `${RECOIL_PX[impact]}px` } as React.CSSProperties}>
             <BiasPortrait
               enemyId={def.id}
               tier={def.tier}
@@ -448,7 +453,7 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
           </div>
           {hit > 0 && (
             <span
-              className={`tp-rise tp-after-pause pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded-sm bg-[var(--tp-ink)] px-1 font-serif font-bold text-[var(--tp-accent)] ${big ? 'text-3xl' : 'text-lg'}`}
+              className={`tp-rise tp-after-pause pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 rounded-sm bg-[var(--tp-ink)] px-1 font-serif font-bold text-[var(--tp-mark)] ${big ? 'text-3xl' : 'text-lg'}`}
               aria-hidden="true"
             >
               −{hit}
@@ -465,7 +470,7 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
             ))}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[0.68rem] uppercase tracking-wider text-[var(--tp-muted)]">
+          <p className="text-[0.68rem] text-[var(--tp-muted)]">
             {TIER_LABELS[def.tier]}
             {battle.enemy.phase === 2 && def.phase2 && ' · changed'}
           </p>
@@ -533,7 +538,7 @@ function ThreatPanel({ battle: live, view, known, show, lastOfWalk }: { battle: 
         className="flex flex-wrap items-baseline gap-x-2 rounded-md border border-[var(--tp-line)] bg-[var(--tp-ink)] px-2.5 py-1.5 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:block sm:p-3"
         data-testid="intent"
       >
-        <p className="text-[0.68rem] uppercase tracking-wider text-[var(--tp-muted)]">Next, it will</p>
+        <p className="text-[0.68rem] text-[var(--tp-muted)]">Next, it will</p>
         <p className="font-serif text-base font-semibold text-[var(--tp-text)] sm:text-lg" data-testid="intent-move">
           {intentText(move, view.intent).join(' · ')}
         </p>
@@ -598,11 +603,12 @@ function ArgumentPanel({ battle, preview, show, reduced }: { battle: BattleState
             {preview.steps.map((step, i) => (
               <li
                 key={step.uid}
-                className={`tp-arrive rounded-sm border-l-4 bg-[var(--tp-paper)] px-2 py-1 text-xs text-[var(--tp-paper-ink)] ${step.conclusion ? 'outline-2 outline-[var(--tp-accent)]' : ''}`}
+                className={`tp-stamp rounded-sm border-l-4 bg-[var(--tp-paper)] px-2 py-1 text-xs text-[var(--tp-paper-ink)] ${step.conclusion ? 'outline-2 outline-[var(--tp-mark)]' : ''}`}
                 data-testid="argument-step"
                 style={{ borderLeftColor: TYPE_COLORS[step.type] }}
               >
                 <span className="font-semibold">
+                  <TypeMark type={step.type} />
                   {i + 1}. {step.name}
                 </span>{' '}
                 {stepValue(step)}
@@ -989,9 +995,8 @@ export function BattleScreen({ run }: { run: RunState }) {
                 act((r) => battleAction(r, endTurn))
               }}
               aria-label={`End turn: ${action}.${danger ? ` ${danger.line}` : ''}`}
-              className={`rounded-md px-3 py-1.5 text-sm font-semibold hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)] sm:px-4 ${
-                danger ? 'border-2 border-[var(--tp-warn)] bg-[var(--tp-ink)] text-[var(--tp-warn)]' : 'bg-[var(--tp-accent)] text-[var(--tp-on-accent)]'
-              }`}
+              className={danger ? 'sp-stamp tp-danger' : 'sp-go'}
+              data-go={danger ? undefined : ''}
               data-testid="end-turn"
               data-danger={danger ? (danger.certain ? 'certain' : 'risk') : undefined}
             >

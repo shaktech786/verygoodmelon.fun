@@ -10,7 +10,7 @@ import { FLOOR_ROWS } from '@/lib/games/thought-pockets/engine/map'
 import { useRunStore } from '@/lib/games/thought-pockets/store/runStore'
 import { NODE_LABELS, NodeGlyph } from './Glyphs'
 import { BiasPortrait } from './Sprites'
-import { primaryButton } from './NodeScreens'
+import { quietButton } from './NodeScreens'
 
 export const FLOOR_NAMES = { 1: 'First Impressions', 2: 'Habits of Mind', 3: 'The Big Questions' } as const
 
@@ -132,7 +132,7 @@ export function MapScreen({ run }: { run: RunState }) {
                     y1={a.y}
                     x2={b.x}
                     y2={b.y}
-                    stroke={travelled || live ? 'var(--tp-accent)' : 'var(--tp-line)'}
+                    stroke={travelled || live ? 'var(--tp-mark)' : 'var(--tp-line)'}
                     strokeWidth={travelled || live ? 3 : 2}
                   />
                 )
@@ -164,11 +164,11 @@ export function MapScreen({ run }: { run: RunState }) {
                     data-focus-start={(!bossOpen && node.id === open[0]?.id) || undefined}
                     className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-md border-2 sm:h-12 sm:w-12 ${portrait ? 'p-0.5' : ''} ${
                       available
-                        ? 'cursor-pointer border-[var(--tp-accent)] bg-[var(--tp-paper)] text-[var(--tp-paper-ink)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--tp-accent)_25%,transparent)] motion-safe:hover:scale-105'
+                        ? 'cursor-pointer border-[var(--tp-mark)] bg-[var(--tp-paper)] text-[var(--tp-paper-ink)] tp-ring-mark motion-safe:hover:scale-105'
                         : here
-                          ? 'border-[var(--tp-accent)] bg-[var(--tp-accent)] text-[var(--tp-on-accent)]'
+                          ? 'border-[var(--tp-mark)] bg-[var(--tp-mark)] text-[var(--tp-on-mark)]'
                           : past
-                            ? 'border-[var(--tp-accent)] bg-[var(--tp-ink)] text-[var(--tp-accent)]'
+                            ? 'border-[var(--tp-mark)] bg-[var(--tp-ink)] text-[var(--tp-mark)]'
                             : 'border-[var(--tp-line)] bg-[var(--tp-ink)] text-[var(--tp-muted)]'
                     } focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--tp-focus)]`}
                   >
@@ -192,7 +192,7 @@ export function MapScreen({ run }: { run: RunState }) {
           </ol>
         </div>
         {bossOpen && (
-          <section ref={choiceRef} aria-labelledby="boss-choice-title" className="mx-auto mt-3 max-w-[520px] rounded-md border-2 border-[var(--tp-accent)] bg-[var(--tp-ink)] p-3 text-[var(--tp-text)]" data-testid="boss-choice">
+          <section ref={choiceRef} aria-labelledby="boss-choice-title" className="mx-auto mt-3 max-w-[520px] rounded-md border-2 border-[var(--tp-mark)] bg-[var(--tp-ink)] p-3 text-[var(--tp-text)]" data-testid="boss-choice">
             <h2 id="boss-choice-title" className="font-serif text-lg font-semibold">
               Two problems wait. Choose which to sit with.
             </h2>
@@ -202,7 +202,7 @@ export function MapScreen({ run }: { run: RunState }) {
                   <ProblemSummary enemy={problem} run={run} />
                   <button
                     type="button"
-                    className={`${primaryButton} mt-2 w-full sm:w-auto`}
+                    className={`${quietButton} mt-2 w-full sm:w-auto`}
                     onClick={() => act((r) => chooseNode(r, boss.id, problem.id))}
                     data-testid={`face-${problem.id}`}
                     data-focus-start={i === 0 || undefined}
@@ -218,7 +218,7 @@ export function MapScreen({ run }: { run: RunState }) {
       <aside className="space-y-3 text-sm text-[var(--tp-text)]">
         {!bossOpen && (
           <section aria-labelledby="floor-problems" className="space-y-2.5 rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3" data-testid="floor-problems">
-            <h2 id="floor-problems" className="text-xs uppercase tracking-wider text-[var(--tp-muted)]">
+            <h2 id="floor-problems" className="text-xs text-[var(--tp-muted)]">
               At the end of this floor: one of two problems, your choice when you reach it
             </h2>
             {problems.map((problem) => (
@@ -227,7 +227,7 @@ export function MapScreen({ run }: { run: RunState }) {
           </section>
         )}
         <section aria-labelledby="floor-biases" className="rounded-lg border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-3">
-          <h2 id="floor-biases" className="text-xs uppercase tracking-wider text-[var(--tp-muted)]">
+          <h2 id="floor-biases" className="text-xs text-[var(--tp-muted)]">
             Biases on this floor
           </h2>
           <ul className="mt-1.5 space-y-2" data-testid="floor-biases">

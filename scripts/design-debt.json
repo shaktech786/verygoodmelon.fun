@@ -24,33 +24,6 @@
   "app/games/the-still-point/opengraph-image.tsx": {
     "raw-colour": 7
   },
-  "app/games/thought-pockets/components/BattleScreen.tsx": {
-    "banned-utility": 4
-  },
-  "app/games/thought-pockets/components/CardFace.tsx": {
-    "banned-utility": 6
-  },
-  "app/games/thought-pockets/components/MapScreen.tsx": {
-    "banned-utility": 5
-  },
-  "app/games/thought-pockets/components/MenuScreens.tsx": {
-    "banned-utility": 9
-  },
-  "app/games/thought-pockets/components/NodeScreens.tsx": {
-    "banned-utility": 4
-  },
-  "app/games/thought-pockets/components/RoundShow.tsx": {
-    "banned-utility": 2
-  },
-  "app/games/thought-pockets/components/Term.tsx": {
-    "banned-utility": 1
-  },
-  "app/games/thought-pockets/components/ThoughtPockets.tsx": {
-    "banned-utility": 2
-  },
-  "app/games/thought-pockets/components/WalkArgument.tsx": {
-    "banned-utility": 3
-  },
   "app/privacy/page.tsx": {
     "banned-utility": 1
   },

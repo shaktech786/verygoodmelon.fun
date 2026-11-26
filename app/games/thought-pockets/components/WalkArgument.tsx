@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { RunState } from '@/types/thought-pockets'
 import { getEnemyDef } from '@/lib/games/thought-pockets/data/enemies'
 import { stepWords, walkArgumentText } from '@/lib/games/thought-pockets/data/walkArgument'
-import { TYPE_COLORS } from './CardFace'
+import { TYPE_COLORS, TypeMark } from './CardFace'
 import { BiasPortrait } from './Sprites'
 import { format } from './RoundShow'
 import { quietButton } from './NodeScreens'
@@ -27,12 +27,12 @@ export function WalkArgument({ run }: { run: RunState }) {
   }
   return (
     <section aria-labelledby="walk-argument-title" className="space-y-2" data-testid="walk-argument">
-      <div className="rounded-md border-2 border-[var(--tp-line)] bg-[var(--tp-paper)] p-1 text-[var(--tp-paper-ink)] shadow-[3px_3px_0_0_var(--tp-shadow)]">
-        <div className="rounded-sm border-2 border-[var(--tp-accent)] p-3">
+      <div className="rounded-md border-2 border-[var(--tp-line)] bg-[var(--tp-paper)] p-1 text-[var(--tp-paper-ink)] tp-edge">
+        <div className="rounded-sm border-2 border-[var(--tp-mark)] p-3">
           <div className="flex items-center gap-3">
             <BiasPortrait enemyId={foe.id} tier={foe.tier} mood="gives" className="h-12 w-12 shrink-0" />
             <div>
-              <h3 id="walk-argument-title" className="text-xs font-semibold uppercase tracking-wider text-[var(--tp-paper-muted)]">
+              <h3 id="walk-argument-title" className="text-xs font-semibold text-[var(--tp-paper-muted)]">
                 Argument of the walk
               </h3>
               <p className="font-serif text-base font-semibold">Against {foe.name}</p>
@@ -41,6 +41,7 @@ export function WalkArgument({ run }: { run: RunState }) {
           <ol className="mt-2 flex flex-wrap gap-1.5" aria-label="The cards, in order">
             {round.steps.map((step) => (
               <li key={step.uid} className="rounded-sm border-l-4 border-y border-r border-[var(--tp-line)] bg-[var(--tp-ink-2)] px-2 py-1 text-xs text-[var(--tp-text)]" style={{ borderLeftColor: TYPE_COLORS[step.type] }}>
+                <TypeMark type={step.type} />
                 {stepWords(step)}
               </li>
             ))}
@@ -53,7 +54,7 @@ export function WalkArgument({ run }: { run: RunState }) {
               → {step.text}: <strong>{step.after}</strong>
             </p>
           ))}
-          <p className="mt-1 font-serif text-2xl font-semibold text-[var(--tp-accent)]">{round.damage} damage</p>
+          <p className="mt-1 font-serif text-2xl font-semibold text-[var(--tp-mark)]">{round.damage} damage</p>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">

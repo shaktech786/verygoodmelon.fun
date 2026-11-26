@@ -15,45 +15,57 @@ import { BattleScreen, PlayerResolve, PlayerShown, PlayerShownContext } from './
 import { MapScreen, FLOOR_NAMES, WALK_STRETCH } from './MapScreen'
 import { EventScreen, RestScreen, RewardScreen, ShopScreen, quietButton } from './NodeScreens'
 import { EndScreen, MenuScreen, paceName, runInProgress } from './MenuScreens'
-import { TYPE_COLORS } from './CardFace'
+import { TYPE_COLORS, TypeMark } from './CardFace'
 
-/** Every colour comes from the site palette in app/globals.css, so the game follows light and dark mode. */
+/**
+ * The game's ink map (PLAN.md 9.13): every --tp-* colour points at a Seedpress role, so the game follows light, dark, Quiet and high
+ * contrast with the rest of the site. Flesh is only for the one Go of a view (--tp-accent); anything the player has chosen or is
+ * standing on is rind (--tp-mark); a gentle problem is seed ink, never red.
+ */
 const THEME_CSS = `
 .tp-root {
-  --tp-ink: var(--background);
-  --tp-ink-2: var(--card-bg);
-  --tp-line: color-mix(in srgb, var(--foreground) 24%, var(--card-bg));
-  --tp-shadow: color-mix(in srgb, var(--foreground) 14%, transparent);
-  --tp-text: var(--foreground);
-  --tp-muted: var(--primary-light);
-  --tp-paper: color-mix(in srgb, var(--card-bg) 94%, var(--warm));
-  --tp-paper-ink: var(--foreground);
-  --tp-paper-muted: var(--primary-light);
-  --tp-accent: var(--accent);
-  --tp-on-accent: var(--background);
-  --tp-focus: var(--foreground);
-  --tp-good: var(--melon-green);
-  --tp-guard: color-mix(in srgb, var(--melon-blue) 70%, var(--foreground));
-  --tp-warn: var(--accent);
-  --tp-enemy-bar: var(--melon-red);
-  --tp-player-bar: var(--success);
-  --tp-evidence: var(--melon-emerald);
-  --tp-logic: var(--warm);
-  --tp-guard-type: var(--melon-blue);
-  --tp-rhetoric: var(--melon-purple);
-  --tp-doubt: var(--primary-light);
+  --tp-ink: var(--paper);
+  --tp-ink-2: var(--sheet);
+  --tp-line: var(--rule-strong);
+  --tp-shadow: var(--rule-strong);
+  --tp-text: var(--ink);
+  --tp-muted: var(--ink-soft);
+  --tp-paper: var(--sheet);
+  --tp-paper-ink: var(--ink);
+  --tp-paper-muted: var(--ink-soft);
+  --tp-accent: var(--flesh);
+  --tp-on-accent: var(--on-flesh);
+  --tp-mark: var(--rind);
+  --tp-on-mark: var(--sheet);
+  --tp-focus: var(--focus);
+  --tp-good: var(--rind);
+  --tp-guard: var(--rind);
+  --tp-warn: var(--seed);
+  --tp-enemy-bar: var(--seed);
+  --tp-player-bar: var(--moss);
+  --tp-evidence: var(--moss);
+  --tp-logic: var(--clay);
+  --tp-guard-type: var(--rind);
+  --tp-rhetoric: var(--dusk);
+  --tp-doubt: var(--ink-soft);
 }
+/* Printed edges, not blurred shadows: height is a hard edge */
+.tp-edge { box-shadow: 3px 3px 0 0 var(--tp-shadow); }
+.tp-ring-mark { box-shadow: 0 0 0 3px var(--rind-wash), 0 0 0 5px var(--tp-mark); }
+.tp-scrim::backdrop { background-color: color-mix(in srgb, var(--ink) 55%, transparent); }
+.tp-danger { border-color: var(--tp-warn); color: var(--tp-warn); }
+.tp-root button.sp-go:disabled, .tp-root button.sp-stamp:disabled { background-color: var(--well); background-image: none; color: var(--ink-soft); border: 2px dashed var(--rule-strong); box-shadow: none; transform: none; cursor: not-allowed; }
 .tp-screen:focus-visible, .tp-screen [tabindex="-1"]:focus-visible { outline: none; box-shadow: none; animation: none; }
 /* A card you point at or reach by keyboard is picked up: its shadow deepens, and with motion it lifts and tilts, alternately, as in a hand. */
 @media (hover: hover) { .tp-lift:hover { box-shadow: 4px 6px 0 0 var(--tp-shadow); } }
 .tp-lift:focus-visible { box-shadow: 4px 6px 0 0 var(--tp-shadow); }
 @media (prefers-reduced-motion: no-preference) {
-  html:not([data-reduce-motion="true"]) .tp-lift { transition: transform 75ms ease-out, box-shadow 75ms ease-out; }
-  @media (hover: hover) { html:not([data-reduce-motion="true"]) .tp-lift:hover { transform: translateY(-4px) rotate(-0.8deg); } }
-  html:not([data-reduce-motion="true"]) .tp-lift:focus-visible { transform: translateY(-4px) rotate(-0.8deg); }
-  @media (hover: hover) { html:not([data-reduce-motion="true"]) .tp-lift:nth-child(even):hover { transform: translateY(-4px) rotate(0.8deg); } }
-  html:not([data-reduce-motion="true"]) .tp-lift:nth-child(even):focus-visible { transform: translateY(-4px) rotate(0.8deg); }
-  html:not([data-reduce-motion="true"]) .tp-lift:active { transform: translateY(-1px) scale(0.98); }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-lift { transition: transform 75ms ease-out, box-shadow 75ms ease-out; }
+  @media (hover: hover) { html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-lift:hover { transform: translateY(-4px) rotate(-0.8deg); } }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-lift:focus-visible { transform: translateY(-4px) rotate(-0.8deg); }
+  @media (hover: hover) { html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-lift:nth-child(even):hover { transform: translateY(-4px) rotate(0.8deg); } }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-lift:nth-child(even):focus-visible { transform: translateY(-4px) rotate(0.8deg); }
+  html:not([data-reduce-motion="true"]):not([data-sense="quiet"]) .tp-lift:active { transform: translateY(-1px) scale(0.98); }
 }
 `
 
@@ -78,7 +90,7 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
       ref={ref}
       onClose={onClose}
       aria-labelledby={`${title}-title`}
-      className="tp-root m-auto max-h-[85dvh] w-[min(42rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-5 text-[var(--tp-text)] backdrop:bg-black/60"
+      className="tp-root m-auto max-h-[85dvh] w-[min(42rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-[var(--tp-line)] bg-[var(--tp-ink-2)] p-5 text-[var(--tp-text)] tp-scrim"
     >
       <div className="flex items-start justify-between gap-4">
         <h2 id={`${title}-title`} className="font-serif text-2xl font-semibold">
@@ -190,6 +202,7 @@ function DeckList({ run }: { run: RunState }) {
           return (
             <li key={`${card.cardId}${card.upgraded}`} className="border-l-4 pl-2" style={{ borderLeftColor: TYPE_COLORS[def.type] }}>
               <strong>
+                <TypeMark type={def.type} />
                 {count > 1 ? `${count}× ` : ''}
                 {def.name}
               </strong>{' '}
@@ -223,7 +236,7 @@ function StatusBar({ run, shown, onMenu, onDeck, onHelp }: { run: RunState; show
       <p>
         Gold <strong data-testid="gold">{run.gold}</strong>
       </p>
-      {run.mode === 'rigorous' && <p className="text-xs font-semibold uppercase tracking-wide text-[var(--tp-muted)]">{paceName(run)}</p>}
+      {run.mode === 'rigorous' && <p className="text-xs font-semibold text-[var(--tp-muted)]">{paceName(run)}</p>}
       <div className="flex w-full gap-1.5 sm:ml-auto sm:w-auto sm:gap-2">
         <button type="button" className={small} onClick={onDeck} data-testid="open-deck">
           Deck {run.deck.length} · Relics {run.relics.length}

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RoundReport } from '@/types/thought-pockets'
 import { playTones } from '@/components/games/gentleCues'
 import { releaseWords } from '@/lib/games/thought-pockets/data/turnText'
-import { TYPE_COLORS } from './CardFace'
+import { TYPE_COLORS, TypeMark } from './CardFace'
 
 const STEP_MS = 260
 const CONCLUSION_MS = 520
@@ -231,7 +231,7 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
       onClick={show.done ? undefined : show.skip}
     >
       <div className="flex min-h-5 items-baseline justify-between gap-2">
-        <p className="text-[0.68rem] uppercase tracking-wider text-[var(--tp-muted)]">{title}</p>
+        <p className="text-[0.68rem] text-[var(--tp-muted)]">{title}</p>
         {!show.done && (
           <button
             type="button"
@@ -264,17 +264,17 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
                 <li
                   key={step.uid}
                   className={`rounded-sm border-l-4 bg-[var(--tp-paper)] px-2 py-1 text-xs text-[var(--tp-paper-ink)] ${on ? '' : 'invisible'} ${
-                    current || counted ? 'outline-2 outline-[var(--tp-accent)]' : ''
-                  } ${current && !reduced ? 'tp-deal' : ''}`}
+                    current || counted ? 'outline-2 outline-[var(--tp-mark)]' : ''
+                  } ${current && !reduced ? 'tp-stamp' : ''}`}
                   style={{ borderLeftColor: TYPE_COLORS[step.type] }}
                 >
-                  <span className="font-semibold">{step.name}</span>
+                  <span className="font-semibold"><TypeMark type={step.type} />{step.name}</span>
                   {step.weight > 0 && <span> +{format(step.weight / times)} Weight</span>}
                   {step.multiplier > 0 && <span> +{format(step.multiplier / times)} Mult</span>}
                   {step.guard > 0 && <span> {step.guard} Guard</span>}
                   {step.unsettle > 0 && <span> Unsettle {step.unsettle}</span>}
                   {times > 1 && (
-                    <strong className={`ml-1 rounded-sm bg-[var(--tp-accent)] px-1 text-[var(--tp-on-accent)] ${current && !reduced ? 'tp-pop' : ''}`} data-testid="conclusion-count">
+                    <strong className={`ml-1 rounded-sm bg-[var(--tp-mark)] px-1 text-[var(--tp-on-mark)] ${current && !reduced ? 'tp-pop' : ''}`} data-testid="conclusion-count">
                       Conclusion ×{times} → {step.weight > 0 ? `${step.weight} Weight` : `${format(step.multiplier)} Mult`}
                     </strong>
                   )}
@@ -300,7 +300,7 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
             <span className={reveal('total')} data-testid="tally-total">
               {' '}={' '}
               <span
-                className={`${tallyBox} border-[var(--tp-accent)] ${now === 'total' && !reduced ? 'tp-settle' : ''}`}
+                className={`${tallyBox} border-[var(--tp-mark)] ${now === 'total' && !reduced ? 'tp-settle' : ''}`}
                 style={now === 'total' && !reduced ? { animationDelay: `${Math.round(SETTLE_AT * beatLength('total', 0, report))}ms` } : undefined}
               >
                 <strong className={totalSize(report)}>
@@ -323,7 +323,7 @@ export function RoundShow({ report, show, reduced, aftermath, title, noArgument 
             </ol>
           )}
           <p className={`mt-1 ${reveal('land')}`}>
-            <strong className={`${big} font-serif text-[var(--tp-accent)] ${landing && !reduced ? 'tp-pop tp-after-pause' : ''}`}>{report.damage} damage</strong>
+            <strong className={`${big} font-serif text-[var(--tp-mark)] ${landing && !reduced ? 'tp-pop tp-after-pause' : ''}`}>{report.damage} damage</strong>
             {report.healedBack > 0 && <> (it recovered {report.healedBack})</>}
             {report.selfLoss > 0 && <>; you lost {report.selfLoss} to Backfire</>}
             {report.growth > 0 && <>; repeating yourself made its attacks +{report.growth}</>}

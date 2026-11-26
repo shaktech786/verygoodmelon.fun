@@ -7,11 +7,11 @@ import { EnemyTier } from '@/types/thought-pockets'
 const INK: Record<string, string> = {
   k: 'var(--tp-text)',
   w: 'var(--tp-paper)',
-  r: 'var(--melon-red)',
-  g: 'var(--melon-green)',
-  l: 'var(--melon-green-light)',
-  y: 'var(--melon-yellow)',
-  b: 'var(--melon-blue)',
+  r: 'var(--clay)',
+  g: 'var(--moss)',
+  l: 'var(--rind)',
+  y: 'var(--brass)',
+  b: 'var(--dusk)',
 }
 
 export const EMBLEMS: Record<string, string[]> = {
@@ -415,8 +415,8 @@ function runs(rows: string[]): { x: number; y: number; w: number; fill: string }
 
 const FRAME: Record<EnemyTier, { outer: string; inner: string }> = {
   normal: { outer: 'var(--tp-line)', inner: 'var(--tp-line)' },
-  elite: { outer: 'var(--melon-red)', inner: 'var(--tp-line)' },
-  boss: { outer: 'var(--melon-green)', inner: 'var(--melon-green-light)' },
+  elite: { outer: 'var(--clay)', inner: 'var(--tp-line)' },
+  boss: { outer: 'var(--moss)', inner: 'var(--rind)' },
 }
 
 /**
@@ -532,7 +532,7 @@ export function BiasPortrait({ enemyId, tier, className, mood = 'idle', cracks =
           [19, 0],
           [0, 19],
           [19, 19],
-        ].map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width="3" height="3" fill="var(--melon-red)" />)}
+        ].map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width="3" height="3" fill="var(--clay)" />)}
       {mood === 'idle' && <Pixels rows={rows} x={3} y={3} />}
       {mood === 'shaken' && (
         <>
