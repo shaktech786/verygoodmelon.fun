@@ -111,6 +111,6 @@ test.describe('Every page', () => {
 test('an unknown address gets the friendly 404 page', async ({ page }) => {
   const response = await page.goto('/this-page-does-not-exist')
   expect(response?.status()).toBe(404)
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('leads nowhere')
-  await expect(page.getByRole('link', { name: 'Back home' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('This packet is empty')
+  await expect(page.getByRole('link', { name: 'Back to the shop' })).toBeVisible()
 })

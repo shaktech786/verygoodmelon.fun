@@ -787,6 +787,20 @@ export const GLYPHS = {
     '.....XXXX...',
     '.....XX.....',
   ],
+  packet: [
+    '............',
+    '..X.X..X.X..',
+    '.X.X.XX.X.X.',
+    '.X........X.',
+    '.X........X.',
+    '.X........X.',
+    '.X........X.',
+    '.X........X.',
+    '.X........X.',
+    '.X........X.',
+    '.X........X.',
+    '.XXXXXXXXXX.',
+  ],
 } as const satisfies Record<string, readonly string[]>
 
 export type IconName = keyof typeof GLYPHS
