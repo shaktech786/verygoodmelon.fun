@@ -57,7 +57,7 @@ describe('FirstWords', () => {
   it('disables submit when empty', () => {
     render(<FirstWords />)
     const button = screen.getByRole('button', { name: /^Speak$/i })
-    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('enables submit with content', () => {
@@ -65,11 +65,11 @@ describe('FirstWords', () => {
     const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'I see light' } })
     const button = screen.getByRole('button', { name: /^Speak$/i })
-    expect(button).not.toBeDisabled()
+    expect(button).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   describe('the sky after speaking', () => {
-    const litSky = () => document.querySelector('[data-sky].opacity-100')?.getAttribute('data-sky')
+    const litSky = () => document.querySelector('[data-sky][data-current]')?.getAttribute('data-sky')
 
     afterEach(() => {
       vi.unstubAllGlobals()

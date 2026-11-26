@@ -1,14 +1,18 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { Button } from '@/components/ui/Button'
+import { Go } from '@/components/seedpress/Go'
+import { Stamp } from '@/components/seedpress/Stamp'
+import { StickyTray } from '@/components/seedpress/StickyTray'
 import { Keepsake } from '@/components/games/Keepsake'
 import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, GentleExit, QuietSupport, WritingForm } from '@/components/games/community-words/WritingParts'
 import { useArrival } from '@/components/games/community-words/arrival'
 import { draftKey } from '@/lib/games/community-words/draft'
 import { useCommunityWords } from '@/lib/games/community-words/useCommunityWords'
-import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { useSense } from '@/lib/design/sense'
 import { finalWordKeepsake } from '@/lib/keepsake/final-word'
+import { cn } from '@/lib/utils/cn'
+import styles from './LastWords.module.css'
 
 const PROMPTS = [
   'What do you want the people you love to know?',
@@ -21,26 +25,20 @@ const PROMPTS = [
   'Who would you thank?',
 ] as const
 
-const FLICKER: Keyframe[] = [
-  { transform: 'scale(1, 1) rotate(-1.5deg)' },
-  { transform: 'scale(0.96, 1.06) rotate(1deg)' },
-  { transform: 'scale(1.02, 0.97) rotate(-0.5deg)' },
-]
-
-const SMOKE_MS = 2000
+const SMOKE_MS = 1600
 // What is left of the smoke once it has risen: a trace, not a line
 const SMOKE_TRACE = 0.45
 // The closing words wait for the smoke and the dusk; the card follows once they have settled
-const LINE_DELAY_MS = 1800
-const CARD_DELAY_MS = 2800
+const LINE_DELAY_MS = 1600
+const CARD_DELAY_MS = 2300
 
 /** One thread of smoke rising from the wick, then thinning to a faint trace. */
-function Smoke({ reduceMotion }: { reduceMotion: boolean }) {
+function Smoke({ motionScale }: { motionScale: 0 | 1 }) {
   const wisp = useRef<SVGPathElement>(null)
 
   useEffect(() => {
     const path = wisp.current
-    if (reduceMotion || !path?.animate) return
+    if (motionScale === 0 || !path?.animate) return
     const rise = path.animate(
       [
         { strokeDashoffset: 80, opacity: 0, transform: 'translateY(6px) scaleX(0.8)' },
@@ -50,7 +48,7 @@ function Smoke({ reduceMotion }: { reduceMotion: boolean }) {
       { duration: SMOKE_MS, easing: 'ease-out', fill: 'backwards' }
     )
     return () => rise.cancel()
-  }, [reduceMotion])
+  }, [motionScale])
 
   return (
     <svg
@@ -61,8 +59,8 @@ function Smoke({ reduceMotion }: { reduceMotion: boolean }) {
     >
       <defs>
         <linearGradient id="candle-smoke-fade" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0" stopColor="var(--primary-light)" stopOpacity="0.9" />
-          <stop offset="1" stopColor="var(--primary-light)" stopOpacity="0" />
+          <stop offset="0" style={{ stopColor: 'var(--ink-soft)', stopOpacity: 0.9 }} />
+          <stop offset="1" style={{ stopColor: 'var(--ink-soft)', stopOpacity: 0 }} />
         </linearGradient>
       </defs>
       <path
@@ -73,45 +71,41 @@ function Smoke({ reduceMotion }: { reduceMotion: boolean }) {
         strokeWidth="2.5"
         strokeLinecap="round"
         strokeDasharray="80"
-        style={{ opacity: SMOKE_TRACE, transform: 'translateY(-4px) scaleX(1.25)', transformOrigin: '50% 100%', filter: 'blur(0.6px)' }}
+        style={{ opacity: SMOKE_TRACE, transform: 'translateY(-4px) scaleX(1.25)', transformOrigin: '50% 100%' }}
       />
     </svg>
   )
 }
 
-/** A small candle that burns while the player writes and goes out when they let it. */
-function Candle({ lit }: { lit: boolean }) {
-  const flame = useRef<HTMLDivElement>(null)
-  const reduceMotion = useReducedMotion()
-
-  useEffect(() => {
-    if (!lit || reduceMotion || !flame.current?.animate) return
-    const flicker = flame.current.animate(FLICKER, {
-      duration: 2600,
-      iterations: Infinity,
-      direction: 'alternate',
-      easing: 'ease-in-out',
-    })
-    return () => flicker.cancel()
-  }, [lit, reduceMotion])
-
+/**
+ * A small candle with a pixel flame. The flame is printed in two inks and never flickers: once the
+ * words are judged safe, its second ink settles into register in one 700 ms press. Nothing marks the
+ * moment before that, and in Quiet or reduced motion the flame is simply already settled.
+ */
+function Candle({ lit, judgedSafe, motionScale }: { lit: boolean; judgedSafe: boolean; motionScale: 0 | 1 }) {
   return (
-    <div className="relative mx-auto h-24 w-16" aria-hidden="true" data-testid="candle">
-      <div
-        className={`absolute left-1/2 top-0 h-16 w-16 -translate-x-1/2 rounded-full transition-opacity duration-1000 ${lit ? 'opacity-60' : 'opacity-0'}`}
-        style={{ background: 'radial-gradient(circle, color-mix(in srgb, var(--warm) 55%, transparent), transparent 65%)' }}
-      />
-      <div
-        ref={flame}
-        className={`absolute left-1/2 top-4 -ml-2 h-7 w-4 origin-bottom transition-opacity duration-500 ${lit ? 'opacity-100' : 'opacity-0'}`}
-        style={{
-          borderRadius: '50% 50% 45% 45% / 65% 65% 35% 35%',
-          background: 'radial-gradient(circle at 50% 75%, var(--melon-yellow), var(--warm) 55%, var(--melon-orange))',
-        }}
-      />
-      {!lit && <Smoke reduceMotion={reduceMotion} />}
-      <div className="absolute left-1/2 top-[2.6rem] h-2 w-0.5 -translate-x-1/2 bg-foreground/60" />
-      <div className="absolute bottom-0 left-1/2 h-12 w-8 -translate-x-1/2 rounded-t-sm final-word-wax" />
+    <div className={cn(styles.candle, judgedSafe && motionScale === 1 && styles.printed)} aria-hidden="true" data-testid="candle">
+      <svg viewBox="0 0 32 48" shapeRendering="crispEdges" focusable="false">
+        <g className={cn(styles.flame, !lit && styles.flameOut)}>
+          <circle cx="16" cy="12" r="14" className={styles.halo} />
+          <g className={styles.flameOuter}>
+            <rect x="15" y="2" width="2" height="2" />
+            <rect x="14" y="4" width="4" height="2" />
+            <rect x="12" y="6" width="8" height="8" />
+            <rect x="14" y="14" width="4" height="2" />
+          </g>
+          <g className={styles.flameCore}>
+            <rect x="15" y="6" width="2" height="2" />
+            <rect x="14" y="8" width="4" height="6" />
+          </g>
+        </g>
+        <rect x="15" y="16" width="2" height="4" className={styles.wick} />
+        <rect x="8" y="20" width="16" height="28" className={styles.waxBody} />
+        <rect x="19" y="20" width="5" height="28" className={styles.waxShade} />
+        <rect x="8" y="20" width="16" height="2" className={styles.waxEdge} />
+        <rect x="8" y="22" width="3" height="6" className={styles.waxEdge} />
+      </svg>
+      {!lit && <Smoke motionScale={motionScale} />}
     </div>
   )
 }
@@ -120,23 +114,23 @@ interface GoodnightProps {
   words: string
   prompt: string
   lineRef: RefObject<HTMLParagraphElement | null>
+  motionScale: 0 | 1
 }
 
 /** After the candle: the closing words, then the player's words on a card to keep. */
-function Goodnight({ words, prompt, lineRef }: GoodnightProps) {
-  const reduceMotion = useReducedMotion()
+function Goodnight({ words, prompt, lineRef, motionScale }: GoodnightProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const [day] = useState(() => new Date())
   const plan = useMemo(() => finalWordKeepsake({ words, prompt, day }), [words, prompt, day])
-  useArrival(lineRef, { delay: LINE_DELAY_MS, reduceMotion })
-  useArrival(cardRef, { delay: CARD_DELAY_MS, reduceMotion })
+  useArrival(lineRef, { delay: LINE_DELAY_MS, motionScale })
+  useArrival(cardRef, { delay: CARD_DELAY_MS, motionScale })
 
   return (
-    <div className="mt-6">
-      <p ref={lineRef} {...FOCUS_TARGET} className="text-lg text-foreground/90 leading-relaxed">
+    <div className={styles.goodnight}>
+      <p ref={lineRef} {...FOCUS_TARGET}>
         The candle is out. What you wrote is still yours to carry, or to say.
       </p>
-      <div ref={cardRef} className="mt-6">
+      <div ref={cardRef}>
         <Keepsake plan={plan} label="Your words, on a card to keep" />
       </div>
     </div>
@@ -150,7 +144,7 @@ export default function LastWords() {
   const unjudged = judgement === 'unjudged'
   const [candleOut, setCandleOut] = useState(false)
   const [prompt, setPrompt] = useState('')
-  const reduceMotion = useReducedMotion()
+  const { motionScale } = useSense()
   const cardRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const thanksRef = useRef<HTMLHeadingElement>(null)
@@ -170,9 +164,9 @@ export default function LastWords() {
   // The smoke rises at the top of the card, so the card comes into view as the candle goes out
   useEffect(() => {
     if (!candleOut) return
-    cardRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
+    cardRef.current?.scrollIntoView({ block: 'start', behavior: motionScale === 0 ? 'auto' : 'smooth' })
     goodnightRef.current?.focus({ preventScroll: true })
-  }, [candleOut, reduceMotion])
+  }, [candleOut, motionScale])
 
   const writeAnother = () => {
     returningToWrite.current = true
@@ -183,22 +177,18 @@ export default function LastWords() {
   const joined = cloud.status === 'ready' && stored ? cloud.total > 1 : null
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className={styles.page}>
       {care && submitted === null && <CarePanel />}
 
-      <div ref={cardRef} className="relative bg-card-bg border border-card-border rounded-lg p-5 sm:p-8 scroll-mt-20">
-        <div
-          aria-hidden="true"
-          data-testid="dusk"
-          className={`final-word-dusk pointer-events-none absolute inset-0 rounded-lg transition-opacity duration-[2000ms] ease-in-out ${candleOut ? 'opacity-100' : 'opacity-0'}`}
-        />
+      <div ref={cardRef} className={styles.scene}>
+        <div aria-hidden="true" data-testid="dusk" className={cn(styles.dusk, candleOut && styles.fallen)} />
         {/* A flame beside words that may come from real danger is the wrong picture, lit or put out */}
-        {!care && <Candle lit={!candleOut} />}
+        {!care && <Candle lit={!candleOut} judgedSafe={safe} motionScale={motionScale} />}
 
         {submitted === null ? (
-          <div className="relative mt-4">
+          <div className={styles.inner}>
             {care && (
-              <p className="mb-5 text-center text-foreground/85 leading-relaxed">
+              <p className="sp-lead">
                 There is no need to write about endings today. If you would rather, gentler games are waiting just below.
               </p>
             )}
@@ -214,35 +204,29 @@ export default function LastWords() {
               textareaRef={textareaRef}
               draftKey={draftKey('last-words')}
             />
-            <p className="mt-4 text-center text-sm text-primary-light">
-              Anonymous. Nothing is asked of you but a few honest words.
-            </p>
+            <p className="sp-soft">Anonymous. Nothing is asked of you but a few honest words.</p>
           </div>
         ) : (
-          <div className="relative mt-4 text-center">
-            <h2 ref={thanksRef} {...FOCUS_TARGET} className="text-xl sm:text-2xl font-semibold text-foreground">
+          <div className={styles.inner}>
+            <h2 ref={thanksRef} {...FOCUS_TARGET} className="sp-h2">
               {care ? 'We’re glad you wrote this down' : 'Thank you for writing this'}
             </h2>
             {/* Silent until the cloud has answered, but its line is kept so nothing below jumps under a second tap */}
-            <p className="mt-1 min-h-[1.6em] text-primary-light">
+            <p className="sp-soft min-h-[1.6em]">
               {joined === null ? null : joined ? 'It joins what others would say.' : 'Yours are the first words here.'}
             </p>
             {/* Words are only framed back once they are known to be an imagined ending, never to someone who may be in danger */}
             {safe ? (
-              <blockquote className="mt-5 text-lg sm:text-xl text-foreground whitespace-pre-wrap break-words leading-relaxed">
-                &ldquo;{submitted}&rdquo;
-              </blockquote>
+              <blockquote className={styles.words}>&ldquo;{submitted}&rdquo;</blockquote>
             ) : (
-              (care || unjudged) && (
-                <p className="mt-5 text-foreground/85 leading-relaxed">What you wrote stays with you. There is no hurry here.</p>
-              )
+              (care || unjudged) && <p>What you wrote stays with you. There is no hurry here.</p>
             )}
             {safe && !candleOut && (
-              <Button variant="primary" onClick={() => setCandleOut(true)} className="mt-6">
-                Blow out the candle
-              </Button>
+              <StickyTray pinned={false}>
+                <Go onClick={() => setCandleOut(true)}>Blow out the candle</Go>
+              </StickyTray>
             )}
-            {candleOut && safe && <Goodnight words={submitted} prompt={prompt} lineRef={goodnightRef} />}
+            {candleOut && safe && <Goodnight words={submitted} prompt={prompt} lineRef={goodnightRef} motionScale={motionScale} />}
           </div>
         )}
       </div>
@@ -251,15 +235,9 @@ export default function LastWords() {
         <>
           {care && <CarePanel />}
 
-          <div aria-live="polite">
-            {judgement === 'awaiting' && (
-              <p className="text-center text-sm text-primary-light py-2">Sitting with your words…</p>
-            )}
-            {reflection.text && (
-              <p className="animate-fade px-2 sm:px-6 text-center text-foreground/85 italic leading-relaxed text-base sm:text-lg">
-                {reflection.text}
-              </p>
-            )}
+          <div aria-live="polite" className="grid gap-3">
+            {judgement === 'awaiting' && <p className="sp-soft">Sitting with your words…</p>}
+            {reflection.text && <p className={styles.reflection}>{reflection.text}</p>}
           </div>
 
           {unjudged && <QuietSupport />}
@@ -272,24 +250,20 @@ export default function LastWords() {
 
           {/* Urging words out into the world is only safe once they have been heard as an imagined ending */}
           {safe && (
-            <section aria-labelledby="final-word-now" className="bg-card-bg border border-card-border rounded-lg p-5 sm:p-6 text-center">
-              <h3 id="final-word-now" className="text-lg font-semibold text-foreground">These don&apos;t have to wait</h3>
-              <p className="mt-2 text-foreground/80 leading-relaxed">
+            <section aria-labelledby="final-word-now" className={cn('sp-sheet', styles.now)}>
+              <h3 id="final-word-now" className="sp-h3">These don&apos;t have to wait</h3>
+              <p>
                 Most last words are things we could already say. Is there someone who would like to hear yours now?
               </p>
-              <div className="mt-4 flex justify-center">
-                <CopyWordsButton words={submitted} label="Copy my words" copiedMessage="Your words are copied, ready to send." />
-              </div>
+              <CopyWordsButton words={submitted} label="Copy my words" copiedMessage="Your words are copied, ready to send." />
             </section>
           )}
 
           {/* Words not known to be safe are not met with an invitation to write about an ending again */}
           {unjudged && <GentleExit />}
           {(safe || care) && (
-            <div className="text-center">
-              <Button variant="secondary" onClick={writeAnother}>
-                Write another
-              </Button>
+            <div>
+              <Stamp onClick={writeAnother}>Write another</Stamp>
             </div>
           )}
         </>

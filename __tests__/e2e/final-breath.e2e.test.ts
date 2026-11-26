@@ -87,15 +87,20 @@ test.describe('The Final Word', () => {
       await expect(page.getByTestId('dusk')).toHaveCSS('opacity', '1')
       // Sample the card behind the words with and without the dusk: it should fall clearly darker
       const [lit, dusk] = await page.getByTestId('dusk').evaluate((el) => {
-        const luminance = () => {
-          const card = el.parentElement!
-          const bg = getComputedStyle(card).backgroundColor.match(/\d+/g)!.map(Number)
-          const top = getComputedStyle(el).backgroundImage.match(/rgba?\([^)]*\)/)![0].match(/[\d.]+/g)!.map(Number)
-          const a = top[3] ?? 1
-          return bg.slice(0, 3).map((c, i) => c * (1 - a) + top[i] * a).reduce((s, c) => s + c, 0) / 3
+        // The wash is a token colour mixed in the browser, which can come back in any CSS colour syntax: let a canvas read it as RGBA
+        const paint = (css: string) => {
+          const canvas = document.createElement('canvas')
+          canvas.width = canvas.height = 1
+          const context = canvas.getContext('2d')!
+          context.fillStyle = css
+          context.fillRect(0, 0, 1, 1)
+          return [...context.getImageData(0, 0, 1, 1).data]
         }
-        const before = getComputedStyle(el.parentElement!).backgroundColor.match(/\d+/g)!.map(Number).slice(0, 3).reduce((s, c) => s + c, 0) / 3
-        return [before, luminance()]
+        const average = (rgb: number[]) => (rgb[0] + rgb[1] + rgb[2]) / 3
+        const card = paint(getComputedStyle(el.parentElement!).backgroundColor)
+        const wash = paint(getComputedStyle(el).backgroundColor)
+        const alpha = wash[3] / 255
+        return [average(card), average([0, 1, 2].map((i) => card[i] * (1 - alpha) + wash[i] * alpha))]
       })
       expect(lit - dusk).toBeGreaterThan(colorScheme === 'light' ? 25 : 12)
     })

@@ -2,24 +2,28 @@
 
 import { useEffect, type RefObject } from 'react'
 
+const ARRIVAL_MS = 700
+
 /**
- * Lets an element settle in after a pause, once, when it first appears. With motion reduced it is
- * simply there. The element is in the page (and readable) the whole time; only its look waits.
+ * Lets an element settle in after a pause, once, when it first appears. With motion off (Quiet or
+ * reduced motion) it is simply there. The element is in the page (and readable) the whole time;
+ * only its look waits.
  */
 export function useArrival(
   ref: RefObject<HTMLElement | null>,
-  { delay, reduceMotion, from = 'translateY(6px)', to = 'none' }: { delay: number; reduceMotion: boolean; from?: string; to?: string }
+  { delay, motionScale, from = 'translateY(6px)' }: { delay: number; motionScale: 0 | 1; from?: string }
 ) {
   useEffect(() => {
     const element = ref.current
-    if (reduceMotion || !element?.animate) return
+    if (motionScale === 0 || !element?.animate) return
     const arrival = element.animate(
       [
         { opacity: 0, transform: from },
-        { opacity: 1, transform: to },
+        // The end is whatever the element's own style says, so a resting tilt is kept
+        { opacity: 1 },
       ],
-      { duration: 900, delay, easing: 'ease-out', fill: 'backwards' }
+      { duration: ARRIVAL_MS, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
     )
     return () => arrival.cancel()
-  }, [ref, delay, reduceMotion, from, to])
+  }, [ref, delay, motionScale, from])
 }

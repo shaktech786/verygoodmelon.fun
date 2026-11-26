@@ -1,15 +1,20 @@
 'use client'
 
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Button } from '@/components/ui/Button'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { Go } from '@/components/seedpress/Go'
+import { PlaceStamps } from '@/components/seedpress/PlaceStamps'
+import { Stamp } from '@/components/seedpress/Stamp'
+import { StickyTray } from '@/components/seedpress/StickyTray'
+import { WritingSlip } from '@/components/seedpress/WritingSlip'
 import { Keepsake } from '@/components/games/Keepsake'
 import { CarePanel, CloudSection, CopyWordsButton, FOCUS_TARGET, GentleExit, QuietSupport, WritingForm } from '@/components/games/community-words/WritingParts'
 import { useArrival } from '@/components/games/community-words/arrival'
 import { draftKey } from '@/lib/games/community-words/draft'
 import { useCommunityWords } from '@/lib/games/community-words/useCommunityWords'
 import { wakingLine } from '@/lib/games/community-words/waking'
-import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { useSense } from '@/lib/design/sense'
 import { awakeningKeepsake } from '@/lib/keepsake/awakening'
+import styles from './FirstWords.module.css'
 
 const PROMPTS = [
   'Who do you hope is there?',
@@ -26,136 +31,65 @@ const MAX_INTENTION_LENGTH = 120
 
 type Light = 'night' | 'dawn' | 'day'
 
-// Night and dawn are dark in both themes and day is a pale blue in both, so waking reads clearly either way
-const SKY: Record<Light, string> = {
-  night:
-    'linear-gradient(to bottom, color-mix(in srgb, var(--melon-indigo) 30%, black), color-mix(in srgb, var(--melon-purple) 40%, black))',
-  dawn: 'linear-gradient(to bottom, color-mix(in srgb, var(--melon-indigo) 45%, black), color-mix(in srgb, var(--melon-pink) 45%, var(--melon-purple)) 60%, var(--warm))',
-  day: 'linear-gradient(to bottom, color-mix(in srgb, var(--melon-blue) 70%, white), color-mix(in srgb, var(--melon-blue) 22%, white))',
-}
+// The note and the card follow the morning sky, which takes its 700 ms once awake (see FirstWords.module.css)
+const NOTE_DELAY_MS = 500
+const CARD_DELAY_MS = 1200
 
-const SUN: Record<Light, { position: string; color: string }> = {
-  night: { position: 'translate-y-[160%]', color: 'var(--melon-orange)' },
-  dawn: { position: 'translate-y-[35%]', color: 'var(--melon-orange)' },
-  day: { position: '-translate-y-[60%]', color: 'var(--melon-yellow)' },
-}
-
-const GROUND_IN_THE_DARK = 'color-mix(in srgb, var(--melon-green) 70%, black)'
-const GROUND_BY_DAY = 'color-mix(in srgb, var(--melon-green-light) 75%, var(--melon-green))'
-
-// Waking is the payoff, so the last change of light takes its time
-const SUNRISE_MS = 4000
-const NOTE_DELAY_MS = 2200
-const CARD_DELAY_MS = 3400
-const fade = (light: Light) => (light === 'day' ? 'duration-[4000ms]' : 'duration-[2000ms]')
-
-// A plain wooden table and a paper note look the same whichever theme the page is in
-const TABLE = 'repeating-linear-gradient(to bottom, #a97c55 0 46px, #9a6e48 46px 48px)'
-const NOTE_PAPER = '#fdf8ec'
-const NOTE_INK = '#2b2620'
-const NOTE_INK_SOFT = '#6b5e50'
-const HAND = '"Segoe Print", "Bradley Hand", "Noteworthy", "Comic Sans MS", cursive'
-const NOTE_TILT = 'rotate(-1.2deg)'
+// Imagine, say, wake: where you are, in words
+const PLACES = ['Imagine', 'Say', 'Wake'] as const
 
 const STARS = [
   [8, 18], [17, 46], [26, 12], [35, 34], [44, 8], [56, 28], [63, 14], [72, 40], [81, 10], [90, 30], [12, 60], [68, 58],
 ] as const
 
-/** The sky over the whole visit: night on the other side, dawn on the way back, morning once awake. */
+/**
+ * The sky over the whole visit: night on the other side, dawn on the way back, morning once awake.
+ * Each later sky fades in over the one before, so it only ever gets lighter and never pulses.
+ */
 function Sky({ light }: { light: Light }) {
-  const reduceMotion = useReducedMotion()
-  const glow = useRef<HTMLDivElement>(null)
-
-  // On waking, warm light spreads from the horizon and gives way to the day
-  useEffect(() => {
-    if (light !== 'day' || reduceMotion || !glow.current?.animate) return
-    const sunrise = glow.current.animate([{ opacity: 0 }, { opacity: 0.9, offset: 0.35 }, { opacity: 0 }], {
-      duration: SUNRISE_MS,
-      easing: 'ease-in-out',
-    })
-    return () => sunrise.cancel()
-  }, [light, reduceMotion])
-
   return (
-    <div className="relative h-32 sm:h-40 overflow-hidden" aria-hidden="true">
-      {(Object.keys(SKY) as Light[]).map((phase) => (
-        <div
-          key={phase}
-          data-sky={phase}
-          className={`absolute inset-0 transition-opacity ${fade(light)} ${phase === light ? 'opacity-100' : 'opacity-0'}`}
-          style={{ background: SKY[phase] }}
-        />
+    <div className={styles.sky} data-light={light} aria-hidden="true">
+      {(['night', 'dawn', 'day'] as const).map((phase) => (
+        <div key={phase} data-sky={phase} data-current={phase === light ? '' : undefined} className={`${styles.layer} ${styles[phase]}`} />
       ))}
-      <div
-        ref={glow}
-        data-testid="sunrise-glow"
-        className="absolute inset-0 opacity-0"
-        style={{ background: 'radial-gradient(120% 90% at 50% 100%, color-mix(in srgb, var(--warm) 85%, white), color-mix(in srgb, var(--melon-pink) 35%, transparent) 45%, transparent 75%)' }}
-      />
       {STARS.map(([left, top]) => (
-        <span
-          key={`${left}-${top}`}
-          className={`absolute h-0.5 w-0.5 rounded-full bg-white transition-opacity ${fade(light)} ${light === 'night' ? 'opacity-80' : light === 'dawn' ? 'opacity-30' : 'opacity-0'}`}
-          style={{ left: `${left}%`, top: `${top}%` }}
-        />
+        <span key={`${left}-${top}`} className={styles.star} style={{ left: `${left}%`, top: `${top}%` }} />
       ))}
-      <div
-        className={`absolute bottom-6 left-1/2 -ml-7 h-14 w-14 rounded-full transition-[transform,background-color,box-shadow] ${fade(light)} ease-in-out ${SUN[light].position}`}
-        style={{
-          backgroundColor: SUN[light].color,
-          boxShadow: `0 0 ${light === 'day' ? '36px 12px' : '24px 6px'} color-mix(in srgb, ${SUN[light].color} 55%, transparent)`,
-        }}
-      />
-      <svg className="absolute inset-x-0 bottom-0 h-10 w-full" viewBox="0 0 400 40" preserveAspectRatio="none">
-        <path
-          d="M0 28 C 60 10, 120 12, 190 24 S 320 8, 400 22 L 400 40 L 0 40 Z"
-          className={`transition-[fill] ${fade(light)}`}
-          style={{ fill: light === 'day' ? GROUND_BY_DAY : GROUND_IN_THE_DARK }}
-        />
+      <div className={styles.sun} />
+      <svg className={styles.ground} viewBox="0 0 400 40" preserveAspectRatio="none">
+        <path d="M0 28 C 60 10, 120 12, 190 24 S 320 8, 400 22 L 400 40 L 0 40 Z" />
       </svg>
     </div>
   )
 }
 
 /** The plan for tomorrow, written by hand on a note left on the kitchen table. */
-function TableNote({ note }: { note: string }) {
-  const reduceMotion = useReducedMotion()
+function TableNote({ note, motionScale }: { note: string; motionScale: 0 | 1 }) {
   const noteRef = useRef<HTMLDivElement>(null)
-  useArrival(noteRef, { delay: NOTE_DELAY_MS, reduceMotion, from: 'translateY(-14px) rotate(-4deg)', to: NOTE_TILT })
+  useArrival(noteRef, { delay: NOTE_DELAY_MS, motionScale, from: 'translateY(-14px) rotate(-4deg)' })
 
   return (
-    <div className="relative -mx-5 sm:-mx-8 mt-5 overflow-hidden px-8 sm:px-14 pt-7 pb-9" style={{ background: TABLE }} data-testid="kitchen-table">
+    <div className={styles.table} data-testid="kitchen-table">
       {/* A cup of something warm, seen from above, half off the edge */}
-      <div aria-hidden="true" className="absolute -right-3 bottom-3 h-16 w-16 rounded-full border-[6px]" style={{ borderColor: '#d6c7b0', background: '#efe7da' }}>
-        <div className="absolute inset-[7px] rounded-full" style={{ background: '#6b4a32' }} />
-      </div>
-      <div
-        ref={noteRef}
-        className="relative mx-auto max-w-sm px-6 pt-6 pb-5 text-left shadow-[0_6px_14px_rgba(60,40,20,0.35)]"
-        style={{ background: NOTE_PAPER, transform: NOTE_TILT }}
-      >
-        <span aria-hidden="true" className="absolute -top-2.5 left-1/2 h-5 w-20 -translate-x-1/2 rotate-2" style={{ background: 'rgba(243, 227, 179, 0.85)' }} />
-        <p className="text-sm" style={{ fontFamily: HAND, color: NOTE_INK_SOFT }}>
-          For tomorrow
-        </p>
-        <p className="mt-1 text-xl sm:text-2xl leading-snug break-words" style={{ fontFamily: HAND, color: NOTE_INK }}>
-          {note}
-        </p>
+      <div aria-hidden="true" className={styles.cup} />
+      <div ref={noteRef} className={styles.note}>
+        <span aria-hidden="true" className={styles.tape} />
+        <p className={styles.noteLabel}>For tomorrow</p>
+        <p className={styles.noteText}>{note}</p>
       </div>
     </div>
   )
 }
 
 /** A morning card to keep: the sunrise, and the note for tomorrow. */
-function MorningCard({ note }: { note: string }) {
-  const reduceMotion = useReducedMotion()
+function MorningCard({ note, motionScale }: { note: string; motionScale: 0 | 1 }) {
   const cardRef = useRef<HTMLDivElement>(null)
   const [day] = useState(() => new Date())
   const plan = useMemo(() => awakeningKeepsake({ note, day }), [note, day])
-  useArrival(cardRef, { delay: CARD_DELAY_MS, reduceMotion })
+  useArrival(cardRef, { delay: CARD_DELAY_MS, motionScale })
 
   return (
-    <div ref={cardRef} className="mt-6">
+    <div ref={cardRef}>
       <Keepsake plan={plan} label="This morning, on a card to keep" />
     </div>
   )
@@ -172,7 +106,7 @@ export default function FirstWords() {
   const [carried, setCarried] = useState<string | null>(null)
   // In care mode the premise waits until someone chooses it, rather than meeting them on arrival
   const [goingOn, setGoingOn] = useState(false)
-  const reduceMotion = useReducedMotion()
+  const { motionScale } = useSense()
   const sceneRef = useRef<HTMLDivElement>(null)
   const careRef = useRef<HTMLDivElement>(null)
   const intentionRef = useRef<HTMLTextAreaElement>(null)
@@ -180,7 +114,7 @@ export default function FirstWords() {
   const beforeWakingRef = useRef<HTMLHeadingElement>(null)
   const morningRef = useRef<HTMLHeadingElement>(null)
   const returningToWrite = useRef(false)
-  const intentionId = useId()
+  const scrollBehavior = motionScale === 0 ? 'auto' : 'smooth'
 
   const awake = carried !== null
   // The suggestion fills the box until the player writes their own
@@ -198,29 +132,29 @@ export default function FirstWords() {
   // keyboard leaves the page scrolled low, so the dawn sky is brought back into view first.
   useEffect(() => {
     if (submitted !== null) {
-      sceneRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
+      sceneRef.current?.scrollIntoView({ block: 'start', behavior: scrollBehavior })
       beforeWakingRef.current?.focus({ preventScroll: true })
     } else if (returningToWrite.current) {
       returningToWrite.current = false
       textareaRef.current?.focus()
     }
-  }, [submitted, reduceMotion])
+  }, [submitted, scrollBehavior])
 
   // Words that called for care, or that no reply could judge, are met by support first, so it is what
   // comes into view, even when that answer (or the lack of one) arrives after the dawn sky has been scrolled to
   const afterWords = submitted !== null
   const supportFirst = afterWords && (care || unjudged)
   useEffect(() => {
-    if (supportFirst) careRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
-  }, [supportFirst, reduceMotion])
+    if (supportFirst) careRef.current?.scrollIntoView({ block: 'start', behavior: scrollBehavior })
+  }, [supportFirst, scrollBehavior])
 
   // The sky turning to morning is the payoff, so bring it on screen before focus moves; in care, the support stays in view
   useEffect(() => {
     if (!awake) return
     const inView = care ? careRef : sceneRef
-    inView.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
+    inView.current?.scrollIntoView({ block: 'start', behavior: scrollBehavior })
     morningRef.current?.focus({ preventScroll: true })
-  }, [awake, care, reduceMotion])
+  }, [awake, care, scrollBehavior])
 
   useEffect(() => {
     if (goingOn) textareaRef.current?.focus()
@@ -246,47 +180,46 @@ export default function FirstWords() {
 
   // The sun only starts to rise once the words are judged safe; until then the sky stays dark
   const light: Light = awake ? 'day' : safe ? 'dawn' : 'night'
+  const place = awake ? 2 : submitted !== null ? 1 : 0
   const joined = cloud.status === 'ready' && stored ? cloud.total > 1 : null
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className={styles.page}>
       {/* Support comes first whenever care is called for, before the scene and anything to press */}
       {care ? (
-        <div ref={careRef} className="scroll-mt-20">
+        <div ref={careRef} className={styles.careSlot}>
           <CarePanel />
         </div>
       ) : (
         unjudged && (
           // Unheard words may still be danger said sideways, so support leads here too, said softly
-          <div ref={careRef} className="scroll-mt-20 rounded-lg border border-card-border bg-card-bg p-4">
+          <div ref={careRef} className={`sp-sheet ${styles.careSlot}`}>
             <QuietSupport />
           </div>
         )
       )}
 
-      <div ref={sceneRef} className="bg-card-bg border border-card-border rounded-lg overflow-hidden scroll-mt-20">
+      <div ref={sceneRef} className={styles.scene}>
         {/* No sky after words that called for care or went unjudged: a sunrise is a celebration, and this is not the moment for one */}
         {!supportFirst && <Sky light={light} />}
 
-        <div className="p-5 sm:p-8 pt-5 sm:pt-6">
+        <div className={styles.inner}>
+          <PlaceStamps places={PLACES} here={place} label="Where you are" />
+
           {submitted === null ? (
             <>
               {care && (
-                <p className="mb-5 text-center text-foreground/85 leading-relaxed">
+                <p className="sp-lead">
                   This one imagines the moment after a life ends. If that is too close today, gentler games are waiting just below.
                 </p>
               )}
               {care && !goingOn ? (
-                <div className="text-center">
-                  <Button variant="secondary" onClick={goOn}>
-                    I&apos;d still like to
-                  </Button>
+                <div>
+                  <Stamp onClick={goOn}>I&apos;d still like to</Stamp>
                 </div>
               ) : (
                 <>
-                  <p className="mb-5 text-center text-lg sm:text-xl text-foreground leading-relaxed">
-                    You open your eyes. It is quiet, and the light is soft.
-                  </p>
+                  <p className="sp-lead">You open your eyes. It is quiet, and the light is soft.</p>
                   <WritingForm
                     prompts={PROMPTS}
                     label="Your first words on arriving"
@@ -296,42 +229,40 @@ export default function FirstWords() {
                     textareaRef={textareaRef}
                     draftKey={draftKey('first-words')}
                   />
-                  <p className="mt-4 text-center text-sm text-primary-light">
+                  <p className="sp-soft">
                     Whatever you believe comes next, or don&apos;t, is welcome here. In a moment, you wake up.
                   </p>
                 </>
               )}
             </>
           ) : awake ? (
-            <div className="text-center">
-              <h2 ref={morningRef} {...FOCUS_TARGET} className="text-2xl sm:text-3xl font-semibold text-foreground">
+            <div className={styles.morning}>
+              <h2 ref={morningRef} {...FOCUS_TARGET} className="sp-h2">
                 Good morning
               </h2>
-              <p className="mt-3 text-foreground/85 leading-relaxed break-words">
-                {wakingLine({ words: submitted, intention: carried, judgement })}
-              </p>
+              <p className="break-words">{wakingLine({ words: submitted, intention: carried, judgement })}</p>
               {carried && safe && (
                 <>
-                  <TableNote note={carried} />
-                  <div className="mt-5">
+                  <TableNote note={carried} motionScale={motionScale} />
+                  <div>
                     <CopyWordsButton
                       words={carried}
                       label="Copy it for tomorrow"
                       copiedMessage="Copied. Put it somewhere you will see it tomorrow."
                     />
                   </div>
-                  <MorningCard note={carried} />
+                  <MorningCard note={carried} motionScale={motionScale} />
                 </>
               )}
             </div>
           ) : (
-            <div className="text-center">
-              <h2 ref={beforeWakingRef} {...FOCUS_TARGET} className="text-xl sm:text-2xl font-semibold text-foreground">
+            <div className={styles.stack}>
+              <h2 ref={beforeWakingRef} {...FOCUS_TARGET} className="sp-h2">
                 Before you wake
               </h2>
               {/* A promise of morning belongs only to words known to be an imagined ending */}
               {safe && (
-                <p className="mt-1 text-primary-light">
+                <p className="sp-soft">
                   {joined === null
                     ? 'Morning is close.'
                     : joined
@@ -341,69 +272,55 @@ export default function FirstWords() {
               )}
               {/* Words are only framed back once they are known to be an imagined ending, never to someone who may be in danger */}
               {safe ? (
-                <blockquote className="mt-5 text-lg sm:text-xl text-foreground whitespace-pre-wrap break-words leading-relaxed">
-                  &ldquo;{submitted}&rdquo;
-                </blockquote>
+                <blockquote className={styles.words}>&ldquo;{submitted}&rdquo;</blockquote>
               ) : (
-                (care || unjudged) && (
-                  <p className="mt-5 text-foreground/85 leading-relaxed">What you said stays with you. There is no hurry here.</p>
-                )
+                (care || unjudged) && <p>What you said stays with you. There is no hurry here.</p>
               )}
 
-              <div aria-live="polite" className="mt-5">
-                {judgement === 'awaiting' && <p className="text-sm text-primary-light">The quiet listens…</p>}
-                {reflection.text && (
-                  <p className="animate-fade text-foreground/85 italic leading-relaxed text-base sm:text-lg">
-                    {reflection.text}
-                  </p>
-                )}
+              <div aria-live="polite" className="grid gap-3">
+                {judgement === 'awaiting' && <p className="sp-soft">The quiet listens…</p>}
+                {reflection.text && <p className={styles.reflection}>{reflection.text}</p>}
                 {reflection.intention && typedIntention === null && !care && (
                   <p className="sr-only">Suggested for tomorrow: {reflection.intention}</p>
                 )}
               </div>
 
               {!unjudged && (
-                <form onSubmit={wake} className="mt-6 text-left">
+                <form onSubmit={wake} className="sp-form w-full">
                   {!care && (
-                    <>
-                      <label htmlFor={intentionId} className="block text-sm sm:text-base font-medium text-foreground">
-                        One small thing to bring back into tomorrow
-                      </label>
-                      <textarea
-                        ref={intentionRef}
-                        id={intentionId}
-                        rows={2}
-                        value={intention}
-                        onChange={(e) => setTypedIntention(e.target.value.replace(/\s*\n\s*/g, ' '))}
-                        onKeyDown={(e) => {
-                          // One line of intention: Enter wakes, as it did before the box could grow
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault()
-                            e.currentTarget.form?.requestSubmit()
-                          }
-                        }}
-                        maxLength={MAX_INTENTION_LENGTH}
-                        placeholder="Something small you could do tomorrow…"
-                        className="mt-2 w-full resize-none overflow-hidden px-4 py-3 border border-card-border rounded-lg bg-background text-foreground text-base sm:text-lg placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                      />
-                      <p className="mt-1 text-xs sm:text-sm text-primary-light">
-                        Change it, or leave it empty. It is never sent or saved anywhere; you can copy it once you wake.
-                      </p>
-                    </>
+                    <WritingSlip
+                      ref={intentionRef}
+                      label="One small thing to bring back into tomorrow"
+                      compact
+                      rows={2}
+                      value={intention}
+                      onChange={(e) => setTypedIntention(e.target.value.replace(/\s*\n\s*/g, ' '))}
+                      onKeyDown={(e) => {
+                        // One line of intention: Enter wakes, as it did before the box could grow
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          e.currentTarget.form?.requestSubmit()
+                        }
+                      }}
+                      maxLength={MAX_INTENTION_LENGTH}
+                      placeholder="Something small you could do tomorrow…"
+                      note="Change it, or leave it empty. It is never sent or saved anywhere; you can copy it once you wake."
+                    />
                   )}
                   {mayWake && (
-                    <div className="mt-4 text-center">
-                      <Button
-                        type="submit"
-                        // In care, going on is a quiet choice beside the support, never a call to action
-                        variant={care ? 'secondary' : 'primary'}
-                        className={care ? undefined : 'px-8 py-3 text-lg'}
+                    <StickyTray>
+                      {/* In care, going on is a quiet choice beside the support, never a call to action */}
+                      {care ? (
+                        <Stamp type="submit" onClick={(event) => event.detail > 1 && event.preventDefault()}>
+                          Wake up
+                        </Stamp>
+                      ) : (
                         // The second click of a double click on Speak can land here; waking should be a choice
-                        onClick={(event) => event.detail > 1 && event.preventDefault()}
-                      >
-                        Wake up
-                      </Button>
-                    </div>
+                        <Go type="submit" onClick={(event) => event.detail > 1 && event.preventDefault()}>
+                          Wake up
+                        </Go>
+                      )}
+                    </StickyTray>
                   )}
                 </form>
               )}
@@ -423,10 +340,8 @@ export default function FirstWords() {
           {/* Words not known to be safe never come with an invitation to picture a death again; in care the calm games wait just below */}
           {unjudged && <GentleExit />}
           {safe && (
-            <div className="text-center">
-              <Button variant="secondary" onClick={imagineAgain}>
-                Imagine it again
-              </Button>
+            <div>
+              <Stamp onClick={imagineAgain}>Imagine it again</Stamp>
             </div>
           )}
         </>

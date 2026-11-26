@@ -58,7 +58,7 @@ describe('LastWords', () => {
   it('disables submit when textarea is empty', () => {
     render(<LastWords />)
     const button = screen.getByRole('button', { name: /Leave these words/i })
-    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('enables submit when textarea has content', () => {
@@ -66,6 +66,6 @@ describe('LastWords', () => {
     const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'My final words' } })
     const button = screen.getByRole('button', { name: /Leave these words/i })
-    expect(button).not.toBeDisabled()
+    expect(button).not.toHaveAttribute('aria-disabled', 'true')
   })
 })

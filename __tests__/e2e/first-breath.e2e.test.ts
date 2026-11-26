@@ -67,7 +67,7 @@ test.describe('The Awakening', () => {
     await expect(page.getByRole('heading', { name: 'Good morning' })).toBeFocused()
     await expect(page.getByText('Over there, you said “I wish I had danced more.” You woke up with this:')).toBeVisible()
     await expect(page.getByText('Dance with Sam after dinner.', { exact: true })).toBeVisible()
-    // The sunrise takes about four seconds
+    // The morning sky fades in over the dawn, in 700 ms
     await expect(daySky(page)).toHaveCSS('opacity', '1', { timeout: 10_000 })
     await expect(page.getByRole('button', { name: 'Wake up' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Copy it for tomorrow' })).toBeVisible()
@@ -83,8 +83,9 @@ test.describe('The Awakening', () => {
     const table = page.getByTestId('kitchen-table')
     await expect(table.getByText('For tomorrow')).toBeVisible()
     await expect(table.getByText('Dance with Sam after dinner.', { exact: true })).toBeVisible()
-    // The sunrise plays out rather than cutting straight to day
-    expect(await page.getByTestId('sunrise-glow').evaluate((el) => el.getAnimations().length)).toBe(1)
+    // The sky fades in rather than cutting straight to day, and only ever lighter: the night stays under it, so nothing pulses
+    expect(await daySky(page).evaluate((el) => getComputedStyle(el).transitionDuration)).toBe('0.7s')
+    await expect(page.locator('[data-sky="night"]')).toHaveCSS('opacity', '1')
     await expect(daySky(page)).toHaveCSS('opacity', '1', { timeout: 10_000 })
 
     await expectKeepsakeSaves(page, {
@@ -114,7 +115,8 @@ test.describe('The Awakening', () => {
       await page.getByRole('button', { name: 'Wake up' }).click()
       await expect(page.getByRole('heading', { name: 'Good morning' })).toBeFocused()
 
-      expect(await page.getByTestId('sunrise-glow').evaluate((el) => [getComputedStyle(el).opacity, el.getAnimations().length])).toEqual(['0', 0])
+      // The sky is simply there: the site's safety net leaves a transition of a hundredth of a millisecond at most
+      expect(await daySky(page).evaluate((el) => parseFloat(getComputedStyle(el).transitionDuration))).toBeLessThan(0.001)
       await expect(daySky(page)).toHaveCSS('opacity', '1', { timeout: 1000 })
       const note = page.getByTestId('kitchen-table').getByText(INTENTION, { exact: true })
       expect(await note.evaluate((el) => el.parentElement!.getAnimations().length)).toBe(0)

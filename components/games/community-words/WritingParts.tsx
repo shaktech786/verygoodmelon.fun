@@ -1,9 +1,13 @@
 'use client'
 
 import { useId, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent, type RefObject } from 'react'
-import Link from 'next/link'
 import { OwnSupportMark } from '@/components/games/OwnSupport'
-import { Button } from '@/components/ui/Button'
+import { CareBlock } from '@/components/seedpress/CareBlock'
+import { Go } from '@/components/seedpress/Go'
+import { QuietButton } from '@/components/seedpress/QuietButton'
+import { Stamp } from '@/components/seedpress/Stamp'
+import { StickyTray } from '@/components/seedpress/StickyTray'
+import { WritingSlip } from '@/components/seedpress/WritingSlip'
 import { DIRECTORY_LINE, UK_IE_LINE, US_LINE } from '@/lib/care/helplines'
 import { CARE_GAMES } from '@/components/games/CrossGameSuggestions'
 import { CommunityWordCloud } from '@/components/games/CommunityWordCloud'
@@ -15,8 +19,8 @@ const KEYBOARD_SETTLE_MS = 350
 
 /**
  * For a heading or line that only code moves focus to, so screen readers follow
- * the change. The site's red focus ring would read as an error on text that
- * cannot be acted on; real controls keep it.
+ * the change. The focus ring would read as an error on text that cannot be
+ * acted on; real controls keep it.
  */
 export const FOCUS_TARGET = { tabIndex: -1, style: { outline: 'none', boxShadow: 'none' } } as const
 
@@ -36,7 +40,7 @@ interface WritingFormProps {
 }
 
 /**
- * The text box, a question to start from that changes only when asked, and the
+ * The writing slip, a question to start from that changes only when asked, and the
  * button to send. On phones the on-screen keyboard covers the lower half of the
  * page, so once it opens the send button is brought back into view.
  */
@@ -47,7 +51,6 @@ export function WritingForm({ prompts, label, placeholder, submitLabel, onSubmit
   const input = typed ?? savedDraft
   const [promptIndex, setPromptIndex] = useState(0)
   const endOfForm = useRef<HTMLDivElement>(null)
-  const textareaId = useId()
 
   const canSend = input.trim().length > 0 && input.length <= MAX_SUBMISSION_LENGTH
 
@@ -72,23 +75,16 @@ export function WritingForm({ prompts, label, placeholder, submitLabel, onSubmit
   }
 
   return (
-    <form onSubmit={send} className="space-y-3">
-      <div className="flex items-start justify-between gap-3 rounded-lg bg-foreground/[0.04] px-4 py-3">
-        <p className="text-sm sm:text-base text-foreground/80 italic" aria-live="polite">
+    <form onSubmit={send} className="sp-form">
+      <div className="sp-asks">
+        <p className="sp-asks__line" aria-live="polite">
           {prompts[promptIndex]}
         </p>
-        <button
-          type="button"
-          onClick={() => setPromptIndex((i) => (i + 1) % prompts.length)}
-          className="shrink-0 text-xs sm:text-sm text-primary-light underline underline-offset-4 decoration-foreground/30 hover:text-foreground rounded px-1 -mx-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-        >
-          Another question
-        </button>
+        <QuietButton onClick={() => setPromptIndex((i) => (i + 1) % prompts.length)}>Another question</QuietButton>
       </div>
 
-      <label className="sr-only" htmlFor={textareaId}>{label}</label>
-      <textarea
-        id={textareaId}
+      <WritingSlip
+        label={label}
         ref={textareaRef}
         value={input}
         onChange={(e) => write(e.target.value)}
@@ -99,22 +95,22 @@ export function WritingForm({ prompts, label, placeholder, submitLabel, onSubmit
         placeholder={placeholder}
         maxLength={MAX_SUBMISSION_LENGTH}
         rows={4}
-        className="w-full min-h-[7.5rem] sm:min-h-[9rem] px-4 py-3 border border-card-border rounded-lg bg-background text-foreground text-base sm:text-lg leading-relaxed resize-y placeholder:text-foreground/60 focus:outline-none focus:ring-2 focus:ring-focus-ring"
+        note={
+          <>
+            <span className="hidden sm:inline">Ctrl or ⌘ + Enter to send</span>
+            <span className="ml-auto">{input.length}/{MAX_SUBMISSION_LENGTH} characters</span>
+          </>
+        }
       />
-      <div className="flex justify-between items-center text-xs sm:text-sm text-primary-light">
-        <span className="hidden sm:inline">Ctrl or ⌘ + Enter to send</span>
-        <span className="ml-auto">{input.length}/{MAX_SUBMISSION_LENGTH} characters</span>
-      </div>
 
-      <Button type="submit" disabled={!canSend} variant="primary" className="w-full py-3 text-lg">
-        {submitLabel}
-      </Button>
-      <div ref={endOfForm} />
+      <StickyTray ref={endOfForm}>
+        <Go type="submit" unavailable={canSend ? undefined : 'Write a few words first.'}>
+          {submitLabel}
+        </Go>
+      </StickyTray>
     </form>
   )
 }
-
-const HELPLINE_LINK = 'font-medium text-foreground underline underline-offset-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
 
 /**
  * For when no one could tell whether the words carry danger: support within
@@ -122,11 +118,11 @@ const HELPLINE_LINK = 'font-medium text-foreground underline underline-offset-4 
  */
 export function QuietSupport() {
   return (
-    <p className="text-center text-sm text-foreground/80 leading-relaxed">
+    <p className="sp-quiet-support">
       If any of this is close to home, there are people to talk to at any hour: call or text{' '}
-      <a href={US_LINE.href} className={HELPLINE_LINK}>{US_LINE.label}</a> in the {US_LINE.region}, call{' '}
-      <a href={UK_IE_LINE.href} className={HELPLINE_LINK}>{UK_IE_LINE.label}</a> in the {UK_IE_LINE.region}, or find a line near you at{' '}
-      <a href={DIRECTORY_LINE.href} target="_blank" rel="noopener noreferrer" className={HELPLINE_LINK}>
+      <a href={US_LINE.href} className="sp-link">{US_LINE.label}</a> in the {US_LINE.region}, call{' '}
+      <a href={UK_IE_LINE.href} className="sp-link">{UK_IE_LINE.label}</a> in the {UK_IE_LINE.region}, or find a line near you at{' '}
+      <a href={DIRECTORY_LINE.href} target="_blank" rel="noopener noreferrer" className="sp-link">
         {DIRECTORY_LINE.label}
       <span className="sr-only"> (opens in a new tab)</span></a>
       .
@@ -137,39 +133,24 @@ export function QuietSupport() {
 /** Shown whenever the words sound like more than an imagined ending. */
 export function CarePanel() {
   return (
-    <aside
-      aria-label="Support"
-      className="rounded-lg border border-card-border border-l-4 border-l-[var(--melon-green)] bg-card-bg p-5 text-left text-foreground leading-relaxed"
-    >
+    <>
       <OwnSupportMark />
-      <p>
-        If these words are closer to home than an imagined ending, you don&apos;t have to hold them alone.
-      </p>
-      <p className="mt-2 text-sm text-foreground/80">
-        Free, confidential support at any hour:{' '}
-        <a href={DIRECTORY_LINE.href} target="_blank" rel="noopener noreferrer" className={HELPLINE_LINK}>
-          {DIRECTORY_LINE.label}
-        <span className="sr-only"> (opens in a new tab)</span></a>{' '}
-        lists lines in most countries. In the {US_LINE.region}, call or text <a href={US_LINE.href} className={HELPLINE_LINK}>{US_LINE.label}</a>. In the {UK_IE_LINE.region}, call <a href={UK_IE_LINE.href} className={HELPLINE_LINK}>{UK_IE_LINE.label}</a>.
-      </p>
-    </aside>
+      <CareBlock lead="If these words are closer to home than an imagined ending, you don't have to hold them alone." />
+    </>
   )
 }
 
 /** In place of writing again, while the words are not known to be safe: somewhere calm to go next. */
 export function GentleExit() {
   return (
-    <nav aria-label="Somewhere calm to go next" className="text-center">
-      <p className="text-foreground/85">When you are ready, somewhere calm:</p>
-      <ul className="mt-3 flex flex-wrap justify-center gap-3">
+    <nav aria-label="Somewhere calm to go next" className="sp-gentle-exit">
+      <p>When you are ready, somewhere calm:</p>
+      <ul className="sp-gentle-exit__list">
         {CARE_GAMES.map((game) => (
           <li key={game.id}>
-            <Link
-              href={`/games/${game.slug}`}
-              className="inline-flex items-center min-h-11 px-5 rounded-lg border border-card-border bg-card-bg text-foreground font-medium hover:bg-hover-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-            >
+            <Stamp href={`/games/${game.slug}`}>
               {game.title}: {game.description}
-            </Link>
+            </Stamp>
           </li>
         ))}
       </ul>
@@ -188,14 +169,12 @@ export function CloudSection({ cloud, heading, label }: CloudSectionProps) {
   const headingId = useId()
   if (cloud.status !== 'ready' || cloud.words.length === 0) return null
   return (
-    <section aria-labelledby={headingId} className="bg-card-bg border border-card-border rounded-lg p-4 sm:p-6">
-      <h3 id={headingId} className="text-lg sm:text-xl font-semibold text-center text-foreground">
+    <section aria-labelledby={headingId} className="sp-sheet sp-cloud">
+      <h3 id={headingId} className="sp-h3">
         {heading}
       </h3>
       <CommunityWordCloud words={cloud.words} label={label} />
-      <p className="mt-2 text-center text-sm text-primary-light">
-        The more people who wrote a word, the larger it appears.
-      </p>
+      <p className="sp-soft">The more people who wrote a word, the larger it appears.</p>
     </section>
   )
 }
@@ -220,9 +199,9 @@ export function CopyWordsButton({ words, label, copiedMessage }: CopyWordsButton
   }
   return (
     <>
-      <Button type="button" variant="secondary" onClick={copy}>
+      <Stamp icon="copy" onClick={copy}>
         {copied ? 'Copied' : label}
-      </Button>
+      </Stamp>
       <span className="sr-only" aria-live="polite">{copied ? copiedMessage : ''}</span>
     </>
   )
