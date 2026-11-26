@@ -105,28 +105,40 @@ describe('useAccessibility', () => {
     expect(document.documentElement.getAttribute('data-contrast')).toBe('extra-high')
   })
 
-  it('does not read the settings that earlier versions saved', async () => {
+  it('carries Pause animations into Reduce motion and the Monochrome filter into Greyscale', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ pauseAnimations: true, colorblindMode: 'monochrome' }))
     const { useAccessibility } = await loadModule()
     const { result } = renderHook(() => useAccessibility())
 
-    expect(result.current.settings).toEqual(DEFAULT_ACCESSIBILITY_SETTINGS)
+    expect(result.current.settings).toEqual({ ...DEFAULT_ACCESSIBILITY_SETTINGS, reduceMotion: true, greyscale: true })
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')).toEqual({ reduceMotion: true, greyscale: true })
   })
 
-  it('removes earlier versions of the saved settings from storage once, keeping the current ones', async () => {
+  it('removes the retired settings and keys, and keeps settings it does not know yet', async () => {
     localStorage.setItem('shakfun:accessibility:settings', '{"theme":"dark"}')
     sessionStorage.setItem('verygoodmelon:press:sense', 'quiet')
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ theme: 'dark', pauseAnimations: true, colorblindMode: 'deuteranopia', animationSpeed: 0.5, sense: 'quiet' })
+      JSON.stringify({ theme: 'dark', pauseAnimations: false, colorblindMode: 'deuteranopia', animationSpeed: 0.5, sense: 'quiet', fromLater: 1 })
     )
     const { useAccessibility } = await loadModule()
     const { result } = renderHook(() => useAccessibility())
 
     expect(localStorage.getItem('shakfun:accessibility:settings')).toBeNull()
     expect(sessionStorage.getItem('verygoodmelon:press:sense')).toBeNull()
-    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')).toEqual({ theme: 'dark', sense: 'quiet' })
-    expect(result.current.settings).toMatchObject({ theme: 'dark', sense: 'quiet' })
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')).toEqual({ theme: 'dark', sense: 'quiet', fromLater: 1 })
+    expect(result.current.settings).toMatchObject({ theme: 'dark', sense: 'quiet', reduceMotion: false, greyscale: false })
+  })
+
+  it('fills a setting that was never saved from the device, so reduced motion still holds', async () => {
+    const original = window.matchMedia
+    window.matchMedia = (query: string) => ({ matches: query.includes('reduced-motion'), media: query }) as MediaQueryList
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ theme: 'dark' }))
+    const { useAccessibility } = await loadModule()
+    const { result } = renderHook(() => useAccessibility())
+
+    expect(result.current.settings).toMatchObject({ theme: 'dark', reduceMotion: true })
+    window.matchMedia = original
   })
 
   it('shares one set of settings between every component that uses it', async () => {

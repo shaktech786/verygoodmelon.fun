@@ -27,48 +27,66 @@ function bool(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
 }
 
-/** Reads saved settings, replacing any value that is not one of the current options with its default. */
-export function parseSettings(stored: unknown): AccessibilitySettings | null {
+/** Reads saved settings, replacing any value that is not one of the current options with the base (the device's own preference). */
+export function parseSettings(
+  stored: unknown,
+  base: AccessibilitySettings = DEFAULT_ACCESSIBILITY_SETTINGS,
+): AccessibilitySettings | null {
   if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return null
   const raw = stored as Record<string, unknown>
-  const defaults = DEFAULT_ACCESSIBILITY_SETTINGS
 
   const volume =
     typeof raw.volume === 'number' && Number.isFinite(raw.volume)
       ? Math.round(Math.min(100, Math.max(0, raw.volume)))
-      : defaults.volume
+      : base.volume
 
   return {
-    theme: oneOf(THEMES, raw.theme, defaults.theme),
-    textSize: oneOf(TEXT_SIZES, raw.textSize, defaults.textSize),
-    contrast: oneOf(CONTRASTS, raw.contrast, defaults.contrast),
-    reduceMotion: bool(raw.reduceMotion, defaults.reduceMotion),
-    greyscale: bool(raw.greyscale, defaults.greyscale),
-    muted: bool(raw.muted, defaults.muted),
+    theme: oneOf(THEMES, raw.theme, base.theme),
+    textSize: oneOf(TEXT_SIZES, raw.textSize, base.textSize),
+    contrast: oneOf(CONTRASTS, raw.contrast, base.contrast),
+    reduceMotion: bool(raw.reduceMotion, base.reduceMotion),
+    greyscale: bool(raw.greyscale, base.greyscale),
+    muted: bool(raw.muted, base.muted),
     volume,
-    sense: oneOf(SENSES, raw.sense, defaults.sense),
-    spacing: oneOf(SPACINGS, raw.spacing, defaults.spacing),
+    sense: oneOf(SENSES, raw.sense, base.sense),
+    spacing: oneOf(SPACINGS, raw.spacing, base.spacing),
   }
 }
 
 /** Storage left by earlier versions of the site, which nothing reads any more. */
 const LEGACY_LOCAL_KEYS = ['shakfun:accessibility:settings']
 const LEGACY_SESSION_KEYS = ['verygoodmelon:press:sense']
+/** Settings earlier versions saved inside the object. Only these are ever removed, so a newer build's settings survive an older tab. */
+const RETIRED_FIELDS = [
+  'animationSpeed',
+  'colorblindMode',
+  'pauseAnimations',
+  'showInstructions',
+  'tutorialMode',
+  'showKeyboardShortcuts',
+  'clickAssist',
+  'timingFlexibility',
+]
 
-/** Once per load: drops the earlier versions' keys, and any setting inside the saved object that is no longer one. */
-function forgetLegacyStorage(): void {
+/**
+ * Carries the two retired choices that still mean something into their new settings
+ * (Pause animations is Reduce motion, the Monochrome filter is Greyscale), then drops the retired fields and keys.
+ */
+function migrateLegacyStorage(): void {
   try {
     for (const key of LEGACY_LOCAL_KEYS) localStorage.removeItem(key)
     for (const key of LEGACY_SESSION_KEYS) sessionStorage.removeItem(key)
     const stored = localStorage.getItem(STORAGE_KEY)
-    const raw = stored ? JSON.parse(stored) : null
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      const current = Object.keys(DEFAULT_ACCESSIBILITY_SETTINGS)
-      const kept = Object.fromEntries(Object.entries(raw).filter(([name]) => current.includes(name)))
-      if (Object.keys(kept).length !== Object.keys(raw).length) localStorage.setItem(STORAGE_KEY, JSON.stringify(kept))
-    }
+    const raw: unknown = stored ? JSON.parse(stored) : null
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return
+    const saved = { ...(raw as Record<string, unknown>) }
+    if (!RETIRED_FIELDS.some((name) => name in saved)) return
+    if (saved.pauseAnimations === true) saved.reduceMotion = true
+    if (saved.colorblindMode === 'monochrome') saved.greyscale = true
+    for (const name of RETIRED_FIELDS) delete saved[name]
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
   } catch {
-    // Storage that cannot be reached has nothing to clean
+    // Storage that cannot be reached has nothing to carry over
   }
 }
 
@@ -81,15 +99,16 @@ function detectSystemPreferences(): AccessibilitySettings {
 }
 
 function loadSettings(): AccessibilitySettings {
-  forgetLegacyStorage()
+  migrateLegacyStorage()
+  const device = detectSystemPreferences()
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    const saved = stored ? parseSettings(JSON.parse(stored)) : null
+    const saved = stored ? parseSettings(JSON.parse(stored), device) : null
     if (saved) return saved
   } catch {
     // Unreadable storage (private mode, corrupt JSON) falls through to system preferences
   }
-  return detectSystemPreferences()
+  return device
 }
 
 export function applySettings(settings: AccessibilitySettings): void {
