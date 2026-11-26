@@ -251,7 +251,7 @@ export default function TimelessMinds() {
     }
   }, [activeProvider, providerMeta])
 
-  // Load Simli custom face IDs if using Simli provider, otherwise mark ready immediately
+  // Only Simli needs its custom face IDs before a call is ready
   useEffect(() => {
     if (activeProvider !== 'simli') return
     loadCustomFaceIds()

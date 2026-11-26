@@ -142,7 +142,6 @@ function visitorsSentence(count: number, kind: 'butterfly' | 'firefly'): string 
   return count === 1 ? ` A ${kind} is visiting.` : ` ${numberWord(count).replace(/^./, (c) => c.toUpperCase())} ${plural} are visiting.`
 }
 
-/** The garden as the visitor finds it now: grown while it was left, with the time of day and season it opens in. */
 function arriveInGarden() {
   const now = Date.now()
   let raw: string | null = null

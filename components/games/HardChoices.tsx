@@ -40,13 +40,17 @@ function store(key: string, value: unknown) {
 
 /** Saved answers, minus any left over from dilemmas that have since been retired. */
 function loadAnswers(): Answers {
+  return keepKnownAnswers(readStored(ANSWERS_KEY))
+}
+
+/** Drops answers and counted votes for dilemmas that no longer exist, so storage stops carrying them. */
+function forgetRetiredDilemmas(): void {
   const raw = readStored(ANSWERS_KEY)
   const answers = keepKnownAnswers(raw)
   if (raw !== null && JSON.stringify(raw) !== JSON.stringify(answers)) store(ANSWERS_KEY, answers)
   const rawCounted = readStored(COUNTED_KEY)
   const counted = keepKnownIds(rawCounted)
   if (rawCounted !== null && JSON.stringify(rawCounted) !== JSON.stringify(counted)) store(COUNTED_KEY, counted)
-  return answers
 }
 
 function firstUnansweredIndex(answers: Answers): number {
@@ -193,6 +197,12 @@ export default function HardChoices() {
     return () => clearTimeout(timer)
   }, [recentlyUpdated, pulseChoice, currentDilemma.id, clearUpdated])
 
+  // Leaving a dilemma mid-pulse forgets the pulse, so revisiting it never shows a vote as just arrived
+  useEffect(() => {
+    const id = currentDilemma.id
+    return () => clearUpdated(id)
+  }, [currentDilemma.id, clearUpdated])
+
   // The reflection never depends on the crowd counts: if they can't be
   // reached, the choice and both perspectives are still shown without them.
   const loadResults = async (dilemmaId: string) => {
@@ -235,6 +245,10 @@ export default function HardChoices() {
       }
     }
   }
+
+  useEffect(() => {
+    if (stored) forgetRetiredDilemmas()
+  }, [stored])
 
   useEffect(() => {
     if (stored && !hasChosen && firstUnansweredIndex(stored) === -1) resumedAtEnd.current = true
