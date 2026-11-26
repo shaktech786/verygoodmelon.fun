@@ -19,6 +19,7 @@ function HelplineRow({ line }: { line: Helpline }) {
       <span className="sp-care__words">
         {line.action} <strong className="sp-care__number">{line.label}</strong>
         {line.region && ` (${line.region})`}
+        {line.external && <span className="sr-only"> (opens in a new tab)</span>}
       </span>
     </a>
   )
