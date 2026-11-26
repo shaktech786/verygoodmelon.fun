@@ -16,10 +16,12 @@ interface TimelessMindsChooserProps {
   care: boolean
   onChoose: (thinker: Thinker) => void
   onSurprise: () => void
+  /** Hover or focus on a choice: the call can start loading before the pick. */
+  onIntent?: () => void
 }
 
 /** Before the first call: a short, calm choice of who to call, as stamp cards, or a surprise. */
-export default function TimelessMindsChooser({ care, onChoose, onSurprise }: TimelessMindsChooserProps) {
+export default function TimelessMindsChooser({ care, onChoose, onSurprise, onIntent }: TimelessMindsChooserProps) {
   const theme = useInkTheme()
   const choices = (care ? CARE_CHOICES : FIRST_CHOICES)
     .map(getThinkerById)
@@ -36,7 +38,7 @@ export default function TimelessMindsChooser({ care, onChoose, onSurprise }: Tim
       <ul className="mt-6 grid gap-4 sm:grid-cols-2">
         {choices.map((thinker) => (
           <li key={thinker.id}>
-            <button type="button" className={styles.card} onClick={() => onChoose(thinker)}>
+            <button type="button" className={styles.card} onClick={() => onChoose(thinker)} onPointerEnter={onIntent} onFocus={onIntent}>
               <span aria-hidden="true" className={styles.cardFace}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={portraitPlates(thinker.id, theme).ink} alt="" width={48} height={48} className="w-full h-full object-cover" style={{ objectPosition: 'center 22%' }} />
