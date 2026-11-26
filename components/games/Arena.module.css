@@ -497,3 +497,13 @@
   font-size: var(--t-small);
   line-height: 1.3;
 }
+
+/* On a phone the deck runs to the screen's edges: it steps out by exactly the page gutter, which
+   is in px, so a larger text size never pushes it past the edge. */
+@media (max-width: 639px) {
+  .deck {
+    margin-inline: calc(-1 * var(--game-gutter));
+    padding-inline: var(--game-gutter);
+    scroll-padding-inline: var(--game-gutter);
+  }
+}

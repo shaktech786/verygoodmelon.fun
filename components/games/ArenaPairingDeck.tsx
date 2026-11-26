@@ -70,10 +70,7 @@ export function PairingDeck({ selected, onPick, onWriteOwn }: PairingDeckProps) 
       role="group"
       aria-label="Pairings"
       onKeyDown={handleKeyDown}
-      className="
-        -mx-4 px-4 pt-3 pb-4 flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-px-4
-        sm:mx-0 sm:px-0 sm:pb-2 sm:grid sm:grid-cols-3 lg:grid-cols-4 sm:overflow-visible
-      "
+      className={`${styles.deck} pt-3 pb-4 flex gap-3 overflow-x-auto snap-x snap-mandatory sm:pb-2 sm:grid sm:grid-cols-3 lg:grid-cols-4 sm:overflow-visible`}
     >
       {PAIRINGS.map((pairing, index) => {
         const chosen = selected === index
