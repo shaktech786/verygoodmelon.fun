@@ -162,6 +162,7 @@ export const CONTRAST_PAIRS: readonly { fg: ColorRole; bg: ColorRole | 'surface'
   { fg: 'clay', bg: 'surface', min: 4.5, why: 'Play shelf label' },
   { fg: 'on-flesh', bg: 'flesh', min: 4.5, why: 'the go label' },
   { fg: 'on-flesh', bg: 'flesh-press', min: 4.5, why: 'the go label, pressed' },
+  { fg: 'paper', bg: 'clay', min: 4.5, why: "the Sage's Leave pill" },
   { fg: 'ink', bg: 'rind-wash', min: 4.5, why: 'a chosen item' },
   { fg: 'ink-soft', bg: 'rind-wash', min: 4.5, why: 'a chosen item, secondary text' },
   { fg: 'ink', bg: 'flesh-wash', min: 4.5, why: 'the print tray' },

@@ -631,6 +631,21 @@ test.describe('on a phone', () => {
     expect(overflow).toBeLessThanOrEqual(0)
   })
 
+  for (const size of [{ width: 390, height: 844 }, { width: 360, height: 740 }]) {
+    for (const text of ['default', 'larger']) {
+      test(`a real video tile, clear labels and the message box fit at ${size.width}x${size.height}, ${text} text`, async ({ page }) => {
+        await page.setViewportSize(size)
+        await setUpBrowser(page)
+        await stubChat(page)
+        await openGame(page)
+        if (text === 'larger') await page.evaluate(() => document.documentElement.setAttribute('data-text-size', 'larger'))
+        await send(page, 'Hello')
+        await expect(bubbles(page).nth(2)).toContainText('Reply 1')
+        await expectCallFits(page)
+      })
+    }
+  }
+
   test('the conversation and every control fit and work', async ({ page }) => {
     await setUpBrowser(page)
     await stubChat(page)
@@ -652,9 +667,9 @@ test.describe('on a phone', () => {
     await input(page).press('Enter')
     await expect(bubbles(page).nth(2)).toContainText('Reply 1')
 
-    // Once talking, the portrait becomes a slim strip and the conversation gets the room
+    // Once talking the thinker keeps a real video tile, and the messages scroll beneath it
     const log = page.getByRole('log', { name: 'Conversation' })
-    expect((await log.boundingBox())!.height).toBeGreaterThan(844 * 0.4)
+    await expectCallFits(page)
     // The thinker is named once on screen; the chat heading is kept for screen readers only
     const heading = page.getByRole('heading', { name: /^Talking with / })
     await expect(heading).toBeAttached()
@@ -664,6 +679,21 @@ test.describe('on a phone', () => {
     expect(overflow).toBeLessThanOrEqual(0)
   })
 })
+
+/** The thinker's tile is a real video tile, its labels do not meet, and the message box sits above the call controls. */
+async function expectCallFits(page: Page) {
+  const box = async (locator: ReturnType<Page['locator']>) => (await locator.boundingBox())!
+  const tile = page.getByTestId('call-tile')
+  expect((await box(tile)).height).toBeGreaterThanOrEqual(200)
+  const pill = await box(page.getByText('Here with you', { exact: true }))
+  const label = await box(page.getByText('Socrates', { exact: true }).first())
+  expect(pill.y + pill.height).toBeLessThanOrEqual(label.y)
+  const composer = await box(input(page))
+  const bar = await box(menuButton(page))
+  expect(composer.y + composer.height).toBeLessThanOrEqual(bar.y)
+  await expect(input(page)).toBeInViewport({ ratio: 1 })
+  await expect(page.getByRole('button', { name: 'Send message' })).toBeInViewport({ ratio: 1 })
+}
 
 const CARE_REPLY = 'I am glad you told me. Please call or text 988 now.'
 
@@ -979,3 +1009,51 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await expectOneGo(page)
   })
 }
+
+test('the speaker ring and the Leave pill keep their contrast in every contrast mode', async ({ page }) => {
+  await setUpBrowser(page)
+  await stubChat(page)
+  await openGame(page)
+  for (const contrast of ['normal', 'high', 'extra-high']) {
+    await page.evaluate((value) => document.documentElement.setAttribute('data-contrast', value), contrast)
+    const ratios = await page.evaluate(() => {
+      const rgb = (css: string) => {
+        const canvas = document.createElement('canvas')
+        canvas.width = canvas.height = 1
+        const ctx = canvas.getContext('2d')!
+        ctx.fillStyle = css
+        ctx.fillRect(0, 0, 1, 1)
+        return Array.from(ctx.getImageData(0, 0, 1, 1).data.slice(0, 3))
+      }
+      const lum = ([r, g, b]: number[]) => {
+        const f = (v: number) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4 }
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+      }
+      const ratio = (a: string, b: string) => {
+        const [x, y] = [lum(rgb(a)), lum(rgb(b))]
+        return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+      }
+      const tile = document.querySelector('[data-testid="call-tile"]') as HTMLElement
+      const ring = getComputedStyle(tile, '::after')
+      const stage = getComputedStyle(document.querySelector('[data-testid="call-stage"]') as HTMLElement).backgroundColor
+      const leave = document.querySelector('[class*="leave"]') as HTMLElement
+      const leaveStyle = getComputedStyle(leave)
+      return { ring: ratio(ring.borderTopColor, stage), inner: ratio(ring.borderTopColor, ring.boxShadow.match(/(rgb[^)]*\)|color\([^)]*\)|oklab\([^)]*\))/)?.[0] ?? stage), leave: ratio(leaveStyle.color, leaveStyle.backgroundColor) }
+    })
+    expect(ratios.ring, `ring in ${contrast}`).toBeGreaterThanOrEqual(3)
+    expect(ratios.inner, `inner line in ${contrast}`).toBeGreaterThanOrEqual(3)
+    expect(ratios.leave, `Leave in ${contrast}`).toBeGreaterThanOrEqual(4.5)
+  }
+})
+
+test('Send cannot go while the box is empty or the mic is listening', async ({ page }) => {
+  await setUpBrowser(page)
+  const requests = await stubChat(page)
+  await openGame(page)
+  const sendButton = page.getByRole('button', { name: 'Send message' })
+  await expect(sendButton).toHaveAttribute('aria-disabled', 'true')
+  await sendButton.click({ force: true })
+  expect(requests).toHaveLength(0)
+  await input(page).fill('Hello')
+  await expect(sendButton).not.toHaveAttribute('aria-disabled', 'true')
+})

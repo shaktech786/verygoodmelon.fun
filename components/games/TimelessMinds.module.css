@@ -13,6 +13,8 @@
   --call-on: color-mix(in oklab, var(--rind) 30%, white);
   --call-on-ink: color-mix(in oklab, black 84%, var(--rind));
   --call-speaking: color-mix(in oklab, var(--moss) 36%, white);
+  /* The speaker's ring is the stage's own pale ink with a stage-dark line inside it, so it reads on any portrait and any palette */
+  --call-ring: var(--call-ink);
   background-color: var(--call-stage);
   color: var(--call-ink);
   border: 2px solid var(--call-edge);
@@ -57,8 +59,9 @@
   position: absolute;
   inset: 0;
   z-index: 15;
-  border: 4px solid var(--call-speaking);
+  border: 4px solid var(--call-ring);
   border-radius: inherit;
+  box-shadow: inset 0 0 0 3px var(--call-stage);
   opacity: 0;
   pointer-events: none;
   transition: opacity calc(var(--d-settle) * var(--motion)) var(--e-out);
@@ -207,7 +210,7 @@
   width: 3.5rem;
   border-color: var(--call-ink);
   background-color: var(--clay);
-  color: var(--on-flesh);
+  color: var(--paper);
 }
 
 @media (min-width: 640px) {
@@ -356,9 +359,6 @@
 }
 
 .care :global(.sp-care) {
-  /* On a short screen, such as a phone with its keyboard open, the block keeps its place and scrolls within itself. */
-  max-height: max(7rem, 26dvh);
-  overflow-y: auto;
   gap: var(--s-2);
   max-width: none;
   padding: var(--s-3);
@@ -486,4 +486,71 @@
   min-height: 0;
   justify-items: start;
   text-align: left;
+}
+
+/* On a phone the thinker keeps a real video tile once the call is going; the messages scroll beneath it.
+   With the keyboard open (a short screen) it narrows to a strip, with the era left off so the labels never meet. */
+.tileTall {
+  height: min(200px, 28dvh);
+}
+
+@media (min-width: 640px) {
+  .tileTall {
+    height: auto;
+  }
+}
+
+@media (max-width: 639px) and (max-height: 560px) {
+  .tileTall {
+    height: 6.5rem;
+  }
+
+  .era {
+    display: none;
+  }
+}
+
+/* Send says why it cannot go for those who use a reader, and stays one quiet line for everyone else */
+.send :global(.sp-reason),
+.inputRow :global(.sp-reason) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.logCare {
+  min-height: 7rem;
+  max-height: 50dvh;
+}
+
+@media (min-width: 640px) {
+  .logCare {
+    max-height: none;
+  }
+}
+
+.system {
+  font-size: 0.8125rem;
+  line-height: 1.3;
+}
+
+@media (min-width: 640px) {
+  .system {
+    font-size: var(--t-small);
+  }
+}
+
+/* On a short phone the pinned notice keeps its first sentence in view and the rest stays for readers, so the messages keep their room */
+@media (max-width: 639px) and (max-height: 800px) {
+  .moreNote {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }

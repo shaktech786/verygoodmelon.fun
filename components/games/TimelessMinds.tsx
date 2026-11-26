@@ -343,7 +343,8 @@ export default function TimelessMinds() {
 
   const sendMessage = async (messageText?: string) => {
     const textToSend = messageText || inputMessage
-    if (!textToSend.trim() || !thinker || isLoading) return
+    // Typed words wait while the mic is listening; a spoken line arrives with its own text
+    if (!textToSend.trim() || !thinker || isLoading || (!messageText && isListening)) return
 
     const userMessage: Message = {
       role: 'user',
@@ -641,7 +642,7 @@ export default function TimelessMinds() {
 
   // On a phone the conversation needs the room once it has begun, so the thinker's tile becomes a slim strip
   const conversationStarted = messages.length > 1
-  const tileHeight = conversationStarted ? 'h-20' : 'h-36'
+  const tileHeight = conversationStarted ? styles.tileTall : 'h-36'
   const statusLabel = isSpeaking ? 'Speaking' : isListening ? 'Listening' : 'Here with you'
   // The first reply that really came back: the portrait's second ink settles into register with it
   const firstReplyIn = messages.some((m, index) => index > 0 && m.role === 'assistant' && !m.unanswered)
@@ -650,11 +651,19 @@ export default function TimelessMinds() {
   const offerGoodbye = messages.filter((m) => m.role === 'user' && !m.unanswered).length >= GOODBYE_AFTER_EXCHANGES && !farewell
 
   return (
-    <div className={cn(styles.call, 'max-w-[1200px] mx-auto h-[calc(100dvh-var(--game-chrome,12rem))] min-h-[26rem] flex flex-col')}>
+    <div
+      data-testid="call-stage"
+      className={cn(
+        styles.call,
+        'max-w-[1200px] mx-auto min-h-[25rem] sm:min-h-[26rem] flex flex-col',
+        // In care every helpline stays in view, so on a phone the page grows and scrolls instead of the panel
+        care ? 'h-auto sm:h-[calc(100dvh-var(--game-chrome,12rem))]' : 'h-[calc(100dvh-var(--game-chrome,12rem))]',
+      )}
+    >
       {/* At some widths the call reaches the site's floating buttons, so its right edge leaves them a rail there. */}
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-2 sm:gap-3 p-2 sm:p-3 sm:pr-[5.5rem] xl:pr-3">
         {/* The thinker's video tile, with your own small tile in its corner */}
-        <div className={cn(styles.tile, isSpeaking && styles.speaking, tileHeight, 'sm:h-auto sm:flex-[3] lg:flex-1 shrink-0 sm:min-h-[12rem] lg:min-h-0')}>
+        <div data-testid="call-tile" className={cn(styles.tile, isSpeaking && styles.speaking, tileHeight, 'sm:h-auto sm:flex-[3] lg:flex-1 shrink-0 sm:min-h-[12rem] lg:min-h-0')}>
           <div className="absolute inset-0">
             {videoEnabled ? (
               avatarId && (
@@ -693,11 +702,11 @@ export default function TimelessMinds() {
 
           <div className={cn(styles.label, 'absolute z-10 bottom-2 left-2 sm:bottom-3 sm:left-3 max-w-[60%] px-2 py-1 sm:px-3 sm:py-1.5')}>
             <p className="font-bold text-xs sm:text-sm truncate">{thinker.name}</p>
-            <p className={cn(styles.labelSoft, 'text-[10px] sm:text-xs truncate')}>{thinker.era}</p>
+            <p className={cn(styles.labelSoft, styles.era, 'text-[11px] sm:text-xs truncate')}>{thinker.era}</p>
           </div>
 
           {/* Your own tile: a placeholder, never a camera */}
-          <div aria-hidden="true" className={cn(styles.self, 'absolute z-10 bottom-2 right-2 sm:bottom-3 sm:right-3 w-16 h-12 sm:w-40 sm:h-24 flex items-center justify-center')}>
+          <div aria-hidden="true" className={cn(styles.self, 'absolute z-10 bottom-2 right-2 sm:bottom-3 sm:right-3 w-24 h-[4.5rem] sm:w-40 sm:h-24 flex items-center justify-center')}>
             <span className={cn(styles.round, 'w-7 h-7 sm:w-12 sm:h-12 rounded-full flex items-center justify-center')}>
               <Icon name="person" size={12} className="sm:w-6 sm:h-6" />
             </span>
@@ -715,6 +724,20 @@ export default function TimelessMinds() {
             In-call messages
           </p>
 
+          {/* The imagined-conversation notice stays pinned at the top, like a meeting's system note */}
+            <p className={cn(styles.system, 'shrink-0 mx-2 mt-2 px-3 py-1.5 sm:mx-3')}>
+              {IMAGINED_NOTE} <span className={styles.moreNote}>Inspired by their life and writing, for reflection only.</span>{' '}
+              {/* Same tab, unless leaving would end a conversation the visitor is in the middle of */}
+              <a
+                href="/games/ancient-voices/disclaimer"
+                {...(userHasSpoken && { target: '_blank' })}
+                className="sp-link sm:inline-flex sm:items-center sm:min-h-11 sm:px-1"
+              >
+                About these conversations
+                {userHasSpoken && <span className="sr-only"> (opens in a new tab)</span>}
+              </a>
+            </p>
+
           {/* Replies are announced once each, when they arrive whole. */}
           <div
             ref={messagesContainerRef}
@@ -722,21 +745,9 @@ export default function TimelessMinds() {
             aria-live="polite"
             aria-label="Conversation"
             tabIndex={0}
-            className={cn(styles.log, 'flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:px-4 space-y-3 focus:outline-none')}
+            className={cn(styles.log, care && styles.logCare, 'flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:px-4 space-y-3 focus:outline-none')}
             style={{ scrollbarGutter: 'stable' }}
           >
-            <p className={cn(styles.system, 'px-3 py-1.5')}>
-              {IMAGINED_NOTE} Inspired by their life and writing, for reflection only.{' '}
-              {/* Same tab, unless leaving would end a conversation the visitor is in the middle of */}
-              <a
-                href="/games/ancient-voices/disclaimer"
-                {...(userHasSpoken && { target: '_blank' })}
-                className="sp-link inline-flex items-center min-h-11 px-1"
-              >
-                About these conversations
-                {userHasSpoken && <span className="sr-only"> (opens in a new tab)</span>}
-              </a>
-            </p>
 
             {messages.length === 1 && showTopicSuggestions && (
               <div>
@@ -785,7 +796,9 @@ export default function TimelessMinds() {
                 <div className="max-w-[88%]">
                   <div className={cn(styles.name, 'mb-1 px-1')}>{thinker.name}</div>
                   <div className={styles.bubble}>
-                    <Loading>One moment…</Loading>
+                    <div aria-hidden="true">
+                      <Loading>One moment…</Loading>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -835,7 +848,14 @@ export default function TimelessMinds() {
                   disabled={isLoading || isListening}
                 />
               </div>
-              <Go onClick={() => sendMessage()} aria-label="Send message">
+              <Go
+                onClick={() => sendMessage()}
+                aria-label="Send message"
+                className={styles.send}
+                unavailable={
+                  isListening ? 'Stop listening to send.' : isLoading ? 'A reply is on its way.' : !inputMessage.trim() ? 'Write a message first.' : undefined
+                }
+              >
                 Send
               </Go>
             </div>
@@ -845,8 +865,10 @@ export default function TimelessMinds() {
 
       {/* The call's control bar */}
       <div className="shrink-0 relative flex items-center justify-center px-2 pt-1 pb-2 sm:pb-3 sm:pr-[5.5rem] xl:pr-3">
-        <p className={cn(styles.hint, 'hidden lg:block absolute left-5 max-w-[20rem] truncate')}>
-          {thinker.name} · an imagined conversation
+        <p className={cn(styles.hint, 'hidden lg:block absolute left-5 max-w-[14rem] leading-snug')}>
+          {thinker.name}
+          <br />
+          an imagined conversation
         </p>
         <div className="flex items-start gap-1 sm:gap-3">
           <button
