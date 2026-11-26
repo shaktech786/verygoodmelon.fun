@@ -19,7 +19,7 @@ export default function SupportPage() {
         </p>
       }
     >
-      <CareBlock lead="You do not need to be in crisis to reach out. These lines are free and open at any hour." />
+      <CareBlock as="section" lead="You do not need to be in crisis to reach out. These lines are free and open at any hour." />
       <p className="sp-prose__actions">
         <Stamp href="/games/the-still-point">Or breathe slowly for a minute</Stamp>
       </p>
