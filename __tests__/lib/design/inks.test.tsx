@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getInks, paletteName, useInks, type InkContrast, type InkTheme } from '@/lib/design/inks'
+import { getInks, paletteName, useInks, useInkTheme, type InkContrast, type InkTheme } from '@/lib/design/inks'
 import { useSense } from '@/lib/design/sense'
 import { PALETTES, SENSES } from '@/lib/design/tokens'
 
@@ -87,6 +87,26 @@ describe('useInks', () => {
       await Promise.resolve()
     })
     expect(result.current).toEqual(PALETTES.darkHigh)
+  })
+})
+
+describe('useInkTheme', () => {
+  beforeEach(() => {
+    for (const a of ATTRIBUTES) html.removeAttribute(a)
+  })
+
+  it('resolves auto from the device and follows a chosen theme', async () => {
+    const scheme = mockScheme({ dark: true })
+    html.setAttribute('data-theme', 'auto')
+    const { result } = renderHook(() => useInkTheme())
+    expect(result.current).toBe('dark')
+    act(() => scheme.set({ dark: false }))
+    expect(result.current).toBe('light')
+    await act(async () => {
+      html.setAttribute('data-theme', 'dark')
+      await Promise.resolve()
+    })
+    expect(result.current).toBe('dark')
   })
 })
 

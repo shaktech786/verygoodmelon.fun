@@ -70,3 +70,8 @@ const DEFAULT_INKS = getInks('light', 'gentle', 'normal')
 export function useInks(): Inks {
   return useSyncExternalStore(subscribe, snapshot, () => DEFAULT_INKS)
 }
+
+/** Light or dark as the page shows it now (auto resolved), for art that keeps its own fixed colours per theme. */
+export function useInkTheme(): InkTheme {
+  return useSyncExternalStore(subscribe, () => readTheme(document.documentElement), () => 'light')
+}

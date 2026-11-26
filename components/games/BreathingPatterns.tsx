@@ -1,10 +1,16 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react'
-import { Button } from '@/components/ui/Button'
+import { Go } from '@/components/seedpress/Go'
+import { Icon } from '@/components/seedpress/icons/Icon'
 import { KeyHints } from '@/components/seedpress/KeyHints'
+import { QuietButton } from '@/components/seedpress/QuietButton'
+import { Stamp } from '@/components/seedpress/Stamp'
+import { StickyTray } from '@/components/seedpress/StickyTray'
 import { cn } from '@/lib/utils/cn'
-import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
+import { contrast, luminance, mixOklab } from '@/lib/design/color'
+import { useInks, useInkTheme, type Inks } from '@/lib/design/inks'
+import { useSense } from '@/lib/design/sense'
 import { buzz, playTones, useCanBuzz, useSoundAudible, wakeTones, type Tone } from '@/components/games/gentleCues'
 import { hushAmbient } from '@/lib/audio/ambient-hush'
 import {
@@ -21,6 +27,7 @@ import { cutBand, harmonistKeepsake, keepsakeMelon, restingLid } from '@/lib/kee
 import { KEEPSAKE_HEIGHT, KEEPSAKE_WIDTH } from '@/lib/keepsake/plan'
 import { inkColour } from '@/lib/keepsake/render'
 import { Keepsake } from '@/components/games/Keepsake'
+import styles from './BreathingPatterns.module.css'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -200,7 +207,12 @@ function guidePoint(sides: number, phaseIndex: number, t: number, cx: number, cy
 // Canvas renderer
 // ---------------------------------------------------------------------------
 
-interface Palette {
+/**
+ * The Harmonist's game ink map (docs/design-system/PLAN.md §9.2), resolved from the active palette:
+ * moss for the breath in, clay for the hold and dusk for the breath out, so the three phases differ
+ * by hue and by their words. The melon is rind, a paler band of rind, and its flesh.
+ */
+interface MelonInks {
   rind: string
   band: string
   flesh: string
@@ -211,32 +223,35 @@ interface Palette {
   faint: string
 }
 
-function readPalette(): Palette {
-  const css = getComputedStyle(document.documentElement)
-  const v = (name: string, fallback: string) => css.getPropertyValue(name).trim() || fallback
+function melonInks(inks: Inks): MelonInks {
+  const dark = luminance(inks.paper) < 0.18
+  // Seeds are dark: of the palette's inks darker than the flesh, the one that reads best on it
+  const darker = [inks.ink, inks['on-flesh'], inks.well, inks.paper].filter((c) => luminance(c) < luminance(inks.flesh))
+  const seed = darker.reduce((best, candidate) => (contrast(candidate, inks.flesh) > contrast(best, inks.flesh) ? candidate : best), darker[0] ?? inks.ink)
   return {
-    rind: v('--melon-green', '#1a4d2e'),
-    band: v('--melon-green-light', '#74c69d'),
-    flesh: v('--melon-red', '#e63946'),
-    seed: '#1a1a1a',
-    in: v('--success', '#74c69d'),
-    hold: v('--warm', '#f6ad55'),
-    // Not red: red is kept for the one main action on a screen.
-    out: v('--melon-blue', '#3b82f6'),
-    faint: v('--card-border', '#e8e8e8'),
+    rind: inks.rind,
+    // The same pale rind the Go prints: a little rind in the sheet, or a lot of it over ink in the dark
+    band: dark ? mixOklab(inks.rind, 0.55, inks.ink) : mixOklab(inks.rind, 0.24, inks.sheet),
+    flesh: inks.flesh,
+    seed,
+    in: inks.moss,
+    hold: inks.clay,
+    out: inks.dusk,
+    faint: inks.rule,
   }
 }
 
-const SEED_FADE_MS = 1200
+/** A seed stamps in over this long (S2, at most 700 ms). */
+const SEED_FADE_MS = 700
 
 function drawMelon(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
   r: number,
-  palette: Palette,
+  palette: MelonInks,
   seeds: Seed[],
-  newestSeedAlpha: number,
+  newestSeedArrival: number,
 ) {
   ctx.beginPath()
   ctx.arc(cx, cy, r, 0, Math.PI * 2)
@@ -253,10 +268,14 @@ function drawMelon(
 
   ctx.fillStyle = palette.seed
   seeds.forEach((seed, n) => {
+    const arriving = n === seeds.length - 1 && newestSeedArrival < 1
+    // The newest seed is pressed in: it lands a little large, then settles to its size
+    const stamp = arriving ? 1 + 0.6 * (1 - newestSeedArrival) ** 2 : 1
     ctx.save()
-    ctx.globalAlpha = n === seeds.length - 1 ? newestSeedAlpha : 1
+    ctx.globalAlpha = arriving ? newestSeedArrival : 1
     ctx.translate(cx + seed.x * r, cy + seed.y * r)
     ctx.rotate(seed.angle + Math.PI / 2)
+    ctx.scale(stamp, stamp)
     ctx.beginPath()
     ctx.ellipse(0, 0, r * seed.width, r * seed.length, 0, 0, Math.PI * 2)
     ctx.fill()
@@ -291,9 +310,9 @@ function renderGuided(
   size: number,
   phases: BreathingPhase[],
   position: BreathPosition,
-  palette: Palette,
+  palette: MelonInks,
   seeds: Seed[],
-  newestSeedAlpha: number,
+  newestSeedArrival: number,
 ) {
   ctx.clearRect(0, 0, size, size)
   const c = size / 2
@@ -317,16 +336,14 @@ function renderGuided(
   strokeSide(ctx, sides, position.phaseIndex, position.phaseProgress, c, c, r)
 
   const melonRadius = lerp(r * 0.16, fullMelonRadius(sides, r), position.expansion)
-  drawMelon(ctx, c, c, melonRadius, palette, seeds, newestSeedAlpha)
+  drawMelon(ctx, c, c, melonRadius, palette, seeds, newestSeedArrival)
 
   const [px, py] = guidePoint(sides, position.phaseIndex, position.phaseProgress, c, c, r)
-  const halo = ctx.createRadialGradient(px, py, 0, px, py, 18)
-  halo.addColorStop(0, colour(position.phaseIndex))
-  halo.addColorStop(1, 'rgba(0,0,0,0)')
-  ctx.globalAlpha = 0.35
+  // A flat halo: the print has no gradients
+  ctx.globalAlpha = 0.25
   ctx.beginPath()
-  ctx.arc(px, py, 18, 0, Math.PI * 2)
-  ctx.fillStyle = halo
+  ctx.arc(px, py, 16, 0, Math.PI * 2)
+  ctx.fillStyle = colour(position.phaseIndex)
   ctx.fill()
   ctx.globalAlpha = 1
   ctx.beginPath()
@@ -339,7 +356,7 @@ function renderFree(
   ctx: CanvasRenderingContext2D,
   size: number,
   freeBreaths: number[],
-  palette: Palette,
+  palette: MelonInks,
   time: number,
   seeds: Seed[],
 ) {
@@ -365,11 +382,8 @@ function renderFree(
 }
 
 // ---------------------------------------------------------------------------
-// Static guide for reduced motion: changes once per phase, never animates.
+// Static guide for Quiet and reduced motion: changes once per phase, never animates.
 // ---------------------------------------------------------------------------
-
-const KIND_STROKE: Record<PhaseKind, string> = { in: 'stroke-success', hold: 'stroke-warm', out: 'stroke-[var(--melon-blue)]' }
-const KIND_FILL: Record<PhaseKind, string> = { in: 'fill-success', hold: 'fill-warm', out: 'fill-[var(--melon-blue)]' }
 
 function sidePath(sides: number, k: number, c: number, r: number): string {
   if (sides === 2) {
@@ -382,12 +396,12 @@ function sidePath(sides: number, k: number, c: number, r: number): string {
   return `M${x1} ${y1} L${x2} ${y2}`
 }
 
-function MelonSvg({ c, r, breaths }: { c: number; r: number; breaths: Breath[] }) {
+function MelonSvg({ c, r, breaths, melon }: { c: number; r: number; breaths: Breath[]; melon: MelonInks }) {
   return (
     <g>
-      <circle cx={c} cy={c} r={r} className="fill-melon-green" />
-      <circle cx={c} cy={c} r={r * 0.88} className="fill-melon-green-light" />
-      <circle cx={c} cy={c} r={r * 0.8} className="fill-melon-red" />
+      <circle cx={c} cy={c} r={r} fill={melon.rind} />
+      <circle cx={c} cy={c} r={r * 0.88} fill={melon.band} />
+      <circle cx={c} cy={c} r={r * 0.8} fill={melon.flesh} />
       {melonSeeds(breaths).map((seed, n) => {
         const x = c + seed.x * r
         const y = c + seed.y * r
@@ -398,7 +412,7 @@ function MelonSvg({ c, r, breaths }: { c: number; r: number; breaths: Breath[] }
             cy={y}
             rx={r * seed.width}
             ry={r * seed.length}
-            fill="#1a1a1a"
+            fill={melon.seed}
             transform={`rotate(${(seed.angle * 180) / Math.PI + 90} ${x} ${y})`}
           />
         )
@@ -432,6 +446,9 @@ const OPENING_STYLES = `
 // aside, turning over to show its cut face, and the seeds are there. It plays exactly over the
 // picture to keep, drawn from the same geometry, then fades to leave that one picture.
 function OpeningMelon({ breaths }: { breaths: Breath[] }) {
+  // The picture to keep prints the melon in its own fixed colours per theme, so the opening uses the same ones
+  const theme = useInkTheme()
+  const ink = (name: Parameters<typeof inkColour>[0]) => inkColour(name, theme)
   const melon = useMemo(() => keepsakeMelon(breaths), [breaths])
   const [cx, cy] = melon.centre
   const r = melon.radius
@@ -467,13 +484,13 @@ function OpeningMelon({ breaths }: { breaths: Breath[] }) {
     >
       <style>{OPENING_STYLES}</style>
       <rect x={left} y={top} width={right - left} height={bottom - top} className="harmonist-paper" />
-      <ellipse cx={cx + 16} cy={cy + r - 6} rx={r * 0.92} ry={30} className="fill-foreground" opacity={0.08} />
-      <circle cx={cx} cy={cy} r={r} className="fill-melon-green" />
+      <ellipse cx={cx + 16} cy={cy + r - 6} rx={r * 0.92} ry={30} fill={ink('ink')} opacity={0.08} />
+      <circle cx={cx} cy={cy} r={r} fill={ink('rind')} />
       {melon.stripes.map((s, n) => (
-        <ellipse key={n} cx={s.x} cy={s.y} rx={s.rx} ry={s.ry} className="fill-melon-green-light" opacity={0.3} />
+        <ellipse key={n} cx={s.x} cy={s.y} rx={s.rx} ry={s.ry} fill={ink('rindLight')} opacity={0.3} />
       ))}
-      <polygon points={lid} className="fill-melon-green-light" />
-      <polygon points={pointsOf(melon.flesh)} className="fill-melon-red" />
+      <polygon points={lid} fill={ink('rindLight')} />
+      <polygon points={pointsOf(melon.flesh)} fill={ink('flesh')} />
       {melon.seeds.map((s, n) => (
         <ellipse
           key={n}
@@ -482,22 +499,23 @@ function OpeningMelon({ breaths }: { breaths: Breath[] }) {
           cy={s.y}
           rx={s.rx}
           ry={s.ry}
-          fill="#1a1a1a"
+          fill={ink('seed')}
           transform={`rotate(${(s.angle * 180) / Math.PI} ${s.x} ${s.y})`}
         />
       ))}
       <polygon
         points={pointsOf(resting)}
-        className="fill-foreground"
+        fill={ink('ink')}
         style={{ opacity: 0.1, animation: 'harmonist-shadow 0.6s ease-out 1.4s both' }}
       />
       <g style={lidStyle}>
         <g style={{ opacity: 0, animation: 'harmonist-face-out 0.12s linear 1.34s both' }}>
-          <polygon points={lid} className="fill-melon-green" />
+          <polygon points={lid} fill={ink('rind')} />
           <polygon
             points={lid}
             pathLength={1}
-            className="fill-none stroke-melon-green-light"
+            fill="none"
+            stroke={ink('rindLight')}
             strokeWidth={1.5 * k}
             strokeLinejoin="round"
             strokeDasharray="1 1"
@@ -505,10 +523,10 @@ function OpeningMelon({ breaths }: { breaths: Breath[] }) {
           />
         </g>
         <g data-cut-face="" style={{ animation: 'harmonist-face-in 0.12s linear 1.4s both' }}>
-          <polygon points={lid} transform="translate(0 8)" className="fill-melon-green" />
-          <polygon points={lid} className="fill-melon-green" />
-          <polygon points={pointsOf(cutBand(melon))} className="fill-melon-green-light" />
-          <polygon points={pointsOf(melon.flesh)} className="fill-melon-red" />
+          <polygon points={lid} transform="translate(0 8)" fill={ink('rind')} />
+          <polygon points={lid} fill={ink('rind')} />
+          <polygon points={pointsOf(cutBand(melon))} fill={ink('rindLight')} />
+          <polygon points={pointsOf(melon.flesh)} fill={ink('flesh')} />
         </g>
       </g>
     </svg>
@@ -527,48 +545,50 @@ function MelonEnding({ breaths, still }: { breaths: Breath[]; still: boolean }) 
   )
 }
 
-function StillGuide({ phases, phaseIndex, breaths }: { phases: BreathingPhase[]; phaseIndex: number; breaths: Breath[] }) {
+function StillGuide({ phases, phaseIndex, breaths, melon }: { phases: BreathingPhase[]; phaseIndex: number; breaths: Breath[]; melon: MelonInks }) {
   const c = 100
   const r = 80
   const sides = phases.length
   const [px, py] = guidePoint(sides, phaseIndex, 0.5, c, c, r)
   const kind = phaseKind(phases, phaseIndex)
   return (
-    <svg viewBox="0 0 200 200" className="w-full h-full" aria-hidden="true">
+    <svg viewBox="0 0 200 200" className="size-full" aria-hidden="true">
       {phases.map((_, k) => (
         <path
           key={k}
           d={sidePath(sides, k, c, r)}
-          className={cn('fill-none', KIND_STROKE[phaseKind(phases, k)])}
+          fill="none"
+          stroke={melon[phaseKind(phases, k)]}
           strokeWidth={k === phaseIndex ? 6 : 4}
           strokeOpacity={k === phaseIndex ? 1 : 0.4}
           strokeLinecap="round"
         />
       ))}
-      <MelonSvg c={c} r={phases[phaseIndex].fill > 0.5 ? fullMelonRadius(sides, r) : r * 0.22} breaths={breaths} />
-      <circle cx={px} cy={py} r={8} className={KIND_FILL[kind]} />
+      <MelonSvg c={c} r={phases[phaseIndex].fill > 0.5 ? fullMelonRadius(sides, r) : r * 0.22} breaths={breaths} melon={melon} />
+      <circle cx={px} cy={py} r={8} fill={melon[kind]} />
     </svg>
   )
 }
 
-function PatternGlyph({ phases }: { phases: BreathingPhase[] }) {
+function PatternGlyph({ phases, melon }: { phases: BreathingPhase[]; melon: MelonInks }) {
   const sides = phases.length
   return (
-    <svg viewBox="0 0 40 40" className="w-10 h-10 flex-shrink-0" aria-hidden="true">
+    <svg viewBox="0 0 40 40" className={styles.glyph} aria-hidden="true">
       {sides === 0 ? (
-        <circle cx="20" cy="20" r="14" className="fill-none stroke-success" strokeWidth="2.5" strokeDasharray="3 5" strokeLinecap="round" />
+        <circle cx="20" cy="20" r="14" fill="none" stroke={melon.in} strokeWidth="2.5" strokeDasharray="3 5" strokeLinecap="round" />
       ) : (
         phases.map((_, k) => (
           <path
             key={k}
             d={sidePath(sides, k, 20, 15)}
-            className={cn('fill-none', KIND_STROKE[phaseKind(phases, k)])}
+            fill="none"
+            stroke={melon[phaseKind(phases, k)]}
             strokeWidth="3"
             strokeLinecap="round"
           />
         ))
       )}
-      <circle cx="20" cy="20" r="5" className="fill-melon-red" />
+      <circle cx="20" cy="20" r="5" fill={melon.rind} />
     </svg>
   )
 }
@@ -612,23 +632,6 @@ function formatDay(iso: string): string {
   return new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(iso))
 }
 
-function Chip({ pressed, onToggle, children }: { pressed: boolean; onToggle: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={pressed}
-      onClick={onToggle}
-      className={cn(
-        'px-3 py-1.5 rounded-full text-sm border transition-colors duration-75',
-        'focus:outline-none focus:ring-2 focus:ring-focus-ring',
-        pressed ? 'border-chosen-line bg-chosen text-foreground' : 'border-card-border text-foreground/75 hover:border-accent/50',
-      )}
-    >
-      {children}
-    </button>
-  )
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -644,7 +647,13 @@ export default function BreathingPatterns() {
   const [checkIn, setCheckIn] = useState<CheckIn | null>(null)
   const [buzzWithBreath, setBuzzWithBreath] = useState(false)
   const [tonesOn, setTonesOn] = useState(false)
-  const prefersReducedMotion = useReducedMotion()
+  const still = useSense().motionScale === 0
+  const inks = useInks()
+  const melon = useMemo(() => melonInks(inks), [inks])
+  const melonRef = useRef(melon)
+  useEffect(() => {
+    melonRef.current = melon
+  }, [melon])
   const audible = useSoundAudible()
   const canBuzz = useCanBuzz()
   const seeds = breaths.length
@@ -858,7 +867,7 @@ export default function BreathingPatterns() {
         const size = canvas.width / dpr
         ctx.save()
         ctx.scale(dpr, dpr)
-        const palette = readPalette()
+        const palette = melonRef.current
         if (breath) {
           const sinceSeed = guidedBreaths > 0 ? (elapsed - patternStartRef.current) % cycleMs : SEED_FADE_MS
           renderGuided(ctx, size, pattern.phases, breath, palette, seedsOf(log), Math.min(1, sinceSeed / SEED_FADE_MS))
@@ -876,7 +885,7 @@ export default function BreathingPatterns() {
       cancelAnimationFrame(frame)
       ro.disconnect()
     }
-  }, [isRunning, prefersReducedMotion, isFreeMode, pattern, targetMs, logGuidedBreaths])
+  }, [isRunning, still, isFreeMode, pattern, targetMs, logGuidedBreaths])
 
   // On a phone the guide starts below the choices, so bring it into view and move focus
   // to it; Space and Escape keep working from there.
@@ -890,9 +899,9 @@ export default function BreathingPatterns() {
     if (top >= 0 && bottom <= window.innerHeight) return
     card.scrollIntoView({
       block: bottom - top <= window.innerHeight ? 'nearest' : 'start',
-      behavior: prefersReducedMotion ? 'instant' : 'smooth',
+      behavior: still ? 'instant' : 'smooth',
     })
-  }, [sessionState, prefersReducedMotion])
+  }, [sessionState, still])
 
   // The ending opens with the melon, so it is brought to the top of the screen; focus waits on
   // Breathe again without scrolling there, which on a phone would push the melon off the top.
@@ -903,9 +912,9 @@ export default function BreathingPatterns() {
     ending.querySelector<HTMLButtonElement>('[data-breathe-again]')?.focus({ preventScroll: true })
     const { top } = ending.getBoundingClientRect()
     if (top < 0 || top > window.innerHeight / 3) {
-      ending.scrollIntoView({ block: 'start', behavior: prefersReducedMotion ? 'instant' : 'smooth' })
+      ending.scrollIntoView({ block: 'start', behavior: still ? 'instant' : 'smooth' })
     }
-  }, [sessionState, prefersReducedMotion])
+  }, [sessionState, still])
 
   // The sea's fixed swell would compete with the breath, so it rests during a session.
   useEffect(() => {
@@ -992,57 +1001,51 @@ export default function BreathingPatterns() {
     const onlyFree = isFreeMode && breathed.every((id) => id === 'free')
 
     return (
-      <section ref={endingRef} className="max-w-2xl mx-auto scroll-mt-20" aria-label="Breathing guide">
-        <div className="bg-card-bg border border-card-border rounded-lg px-4 py-6 sm:p-12 text-center min-h-[400px] flex flex-col justify-center">
-          <div className="animate-fade">
+      <section ref={endingRef} className="mx-auto w-full max-w-2xl scroll-mt-20 py-2" aria-label="Breathing guide">
+        <div className="grid gap-4">
+          <div>
             {/* The heading comes first, so the keepsake's own heading sits beneath it rather than before it */}
-            <h2 className="text-2xl sm:text-3xl font-semibold mb-4 text-foreground">
-              {seeds > 0 ? 'Your breaths, gathered' : 'A short pause'}
-            </h2>
+            <h2 className="sp-h2 mb-4">{seeds > 0 ? 'Your breaths, gathered' : 'A short pause'}</h2>
             {seeds > 0 ? (
-              <MelonEnding breaths={breaths} still={prefersReducedMotion} />
+              <MelonEnding breaths={breaths} still={still} />
             ) : (
-              <svg viewBox="0 0 200 200" className="w-36 h-36 mx-auto mb-4" role="img" aria-label="A whole melon, waiting">
-                <MelonSvg c={100} r={92} breaths={breaths} />
+              <svg viewBox="0 0 200 200" className="mb-4 size-36" role="img" aria-label="A whole melon, waiting">
+                <MelonSvg c={100} r={92} breaths={breaths} melon={melon} />
               </svg>
             )}
-            {seeds === 0 && <p className="text-lg text-foreground/80 mb-2">A pause, however short, is still a pause.</p>}
+            {seeds === 0 && <p className="mb-2 text-body">A pause, however short, is still a pause.</p>}
             {seeds > 0 && (
-              <p className="text-sm text-foreground/70">
+              <p className="text-small text-ink-soft">
                 Each seed is a breath you {onlyFree ? 'marked' : 'finished'}. Its shape comes from the rhythm, and
                 longer breaths grew longer seeds.
               </p>
             )}
             {!onlyFree && usedNames.length > 0 && (
-              <p className="text-sm text-foreground/70 mt-1">
+              <p className="mt-1 text-small text-ink-soft">
                 {`${usedNames.length > 1 ? 'Patterns' : 'Pattern'}: ${usedNames.join(', ')}`}
               </p>
             )}
           </div>
 
-          <fieldset className="mt-8">
-            <legend className="text-base text-foreground mb-3 mx-auto">How do you feel now?</legend>
-            <div className="flex flex-wrap justify-center gap-2">
+          <fieldset className="grid gap-3">
+            <legend className="mb-3 font-bold">How do you feel now?</legend>
+            <div className="sp-stamp-row">
               {CHECK_INS.map((option) => (
-                <Chip key={option.id} pressed={checkIn === option.id} onToggle={() => setCheckIn(option.id)}>
+                <Stamp key={option.id} aria-pressed={checkIn === option.id} onClick={() => setCheckIn(option.id)}>
                   {option.label}
-                </Chip>
+                </Stamp>
               ))}
             </div>
-            <p className="mt-3 min-h-6 text-sm text-foreground/80" aria-live="polite">
+            <p className="min-h-6 text-small text-ink-soft" aria-live="polite">
               {reply?.reply}
             </p>
           </fieldset>
 
-          <div className="flex flex-wrap justify-center gap-3 mt-4">
-            {checkIn === 'tense' && (
-              <Button variant="secondary" onClick={() => startSession('sigh', 1)}>
-                One minute of sighs
-              </Button>
-            )}
-            <Button variant="primary" onClick={resetSession} data-breathe-again="">
+          <div className="flex flex-wrap items-center gap-3">
+            <Go onClick={resetSession} data-breathe-again="">
               Breathe again
-            </Button>
+            </Go>
+            {checkIn === 'tense' && <Stamp onClick={() => startSession('sigh', 1)}>One minute of sighs</Stamp>}
           </div>
         </div>
       </section>
@@ -1059,36 +1062,36 @@ export default function BreathingPatterns() {
       : 'Breathe at your own pace'
 
     return (
-      <section className="max-w-2xl mx-auto" aria-label="Breathing guide">
+      <section className="mx-auto w-full max-w-2xl" aria-label="Breathing guide">
         {/* Screen reader announcements */}
         <div aria-live="polite" aria-atomic="true" className="sr-only">
           {sessionState === 'paused' ? 'Session paused' : position ? phaseLabel : ''}
         </div>
 
-        <div ref={guideCardRef} className="bg-card-bg border border-card-border rounded-lg px-4 py-6 sm:p-8 text-center flex flex-col justify-center relative scroll-mt-4">
-          <p className="text-sm text-foreground/70 mb-2">{pattern.name}</p>
+        <div ref={guideCardRef} className="relative grid scroll-mt-4 justify-items-center gap-3 py-2 text-center">
+          <p className="text-small text-ink-soft">{pattern.name}</p>
 
-          {/* Canvas or reduced-motion fallback */}
-          {prefersReducedMotion ? (
+          {/* Canvas, or the still guide in Quiet and under reduced motion */}
+          {still ? (
             <div
-              className={cn('w-56 h-56 sm:w-64 sm:h-64 mx-auto mb-4', isFreeMode && 'cursor-pointer')}
+              className={cn('size-56 sm:size-64', isFreeMode && 'cursor-pointer')}
               role="img"
               aria-label={`Breathing visualization - ${phaseLabel}`}
               onClick={isFreeMode && isRunning ? markBreath : undefined}
             >
               {position ? (
-                <StillGuide phases={pattern.phases} phaseIndex={position.phaseIndex} breaths={breaths} />
+                <StillGuide phases={pattern.phases} phaseIndex={position.phaseIndex} breaths={breaths} melon={melon} />
               ) : (
-                <svg viewBox="0 0 200 200" className="w-full h-full" aria-hidden="true">
-                  <circle cx="100" cy="100" r="80" className="fill-none stroke-success" strokeWidth="3" strokeDasharray="6 10" strokeLinecap="round" />
-                  <MelonSvg c={100} r={48} breaths={breaths} />
+                <svg viewBox="0 0 200 200" className="size-full" aria-hidden="true">
+                  <circle cx="100" cy="100" r="80" fill="none" stroke={melon.in} strokeWidth="3" strokeDasharray="6 10" strokeLinecap="round" />
+                  <MelonSvg c={100} r={48} breaths={breaths} melon={melon} />
                 </svg>
               )}
             </div>
           ) : (
             <canvas
               ref={canvasRef}
-              className={cn('w-full aspect-square max-w-[300px] mx-auto mb-4', isFreeMode && 'cursor-pointer')}
+              className={cn(styles.canvas, isFreeMode && 'cursor-pointer')}
               role="img"
               aria-label={`Breathing visualization - ${phaseLabel}`}
               onClick={isFreeMode && isRunning ? markBreath : undefined}
@@ -1098,59 +1101,44 @@ export default function BreathingPatterns() {
           <h2
             ref={phaseHeadingRef}
             tabIndex={-1}
-            className={cn(
-              'text-2xl sm:text-3xl font-semibold mb-2 text-foreground focus:outline-none',
-              sessionState === 'paused' && 'opacity-60',
-            )}
+            className={cn('sp-h2 focus:outline-none', sessionState === 'paused' && 'opacity-60')}
           >
             {sessionState === 'paused' ? 'Paused' : phaseLabel}
           </h2>
 
           {position && (
-            <div className="w-48 h-1.5 mx-auto bg-foreground/10 rounded-full overflow-hidden mb-3">
-              <div
-                className="h-full bg-success rounded-full"
-                data-testid="phase-progress"
-                style={{ width: `${position.phaseProgress * 100}%` }}
-              />
+            <div className={styles.bar}>
+              <div className={styles.barFill} data-testid="phase-progress" style={{ width: `${position.phaseProgress * 100}%` }} />
             </div>
           )}
 
           {isFreeMode && (
-            <p className="text-sm text-foreground/70 mb-3" aria-live="polite">
+            <p className="text-small text-ink-soft" aria-live="polite">
               {`${plural(freeBreathCount, 'breath')} marked`}
             </p>
           )}
 
           {/* No clock: the seeds gather in the melon, and nothing counts the time or hurries the end. */}
-          <p className="text-sm text-foreground/70 mb-5 min-h-5">
-            {finishing && !isFreeMode && 'Finishing this breath'}
-          </p>
+          <p className="min-h-6 text-small text-ink-soft">{finishing && !isFreeMode && 'Finishing this breath'}</p>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <StickyTray className="flex w-full flex-wrap items-center justify-center gap-3">
             {isFreeMode && (
-              <Button variant="secondary" size="sm" onClick={markBreath} disabled={!isRunning}>
+              <Stamp aria-disabled={!isRunning || undefined} onClick={() => isRunning && markBreath()}>
                 Mark a breath
-              </Button>
+              </Stamp>
             )}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={sessionState === 'paused' ? resumeSession : pauseSession}
-            >
+            <Stamp icon={sessionState === 'paused' ? 'play' : 'pause'} onClick={sessionState === 'paused' ? resumeSession : pauseSession}>
               {sessionState === 'paused' ? 'Resume' : 'Pause'}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={endSession}>
-              End session
-            </Button>
-          </div>
+            </Stamp>
+            <QuietButton onClick={endSession}>End session</QuietButton>
+          </StickyTray>
 
-          <div className="mt-6 pt-4 border-t border-card-border">
+          <div className="grid w-full justify-items-center gap-3 border-t border-rule pt-4">
             {sessionState === 'paused' ? (
               <div
                 role="radiogroup"
                 aria-label="Change rhythm"
-                className="flex flex-wrap justify-center gap-1.5"
+                className="flex flex-wrap justify-center gap-2"
                 onKeyDown={(e) => moveInRadioGroup(e, PATTERNS.map((p) => `rhythm-${p.id}`), patternIndex, (i) => switchPattern(PATTERNS[i].id))}
               >
                 {PATTERNS.map((p) => (
@@ -1162,24 +1150,16 @@ export default function BreathingPatterns() {
                     aria-checked={p.id === selectedPatternId}
                     tabIndex={p.id === selectedPatternId ? 0 : -1}
                     onClick={() => switchPattern(p.id)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-full text-xs border transition-colors duration-75',
-                      'focus:outline-none focus:ring-2 focus:ring-focus-ring',
-                      p.id === selectedPatternId
-                        ? 'border-chosen-line bg-chosen text-foreground'
-                        : 'border-card-border text-foreground/75 hover:border-accent/50',
-                    )}
+                    className={cn(styles.choice, styles.small)}
                   >
                     {p.name.replace(/ (Breathing|Relaxation)$/, '')}
                   </button>
                 ))}
               </div>
             ) : (
-              <Button variant="ghost" size="sm" onClick={pauseToChangeRhythm}>
-                Change rhythm
-              </Button>
+              <QuietButton onClick={pauseToChangeRhythm}>Change rhythm</QuietButton>
             )}
-            <KeyHints className="mt-3">
+            <KeyHints>
               {sessionState === 'paused'
                 ? 'Choose a rhythm, then Resume. Escape ends.'
                 : isFreeMode
@@ -1197,68 +1177,66 @@ export default function BreathingPatterns() {
   // ---------------------------------------------------------------------------
 
   return (
-    <section className="max-w-2xl mx-auto" aria-label="Breathing guide">
+    <section className="mx-auto grid w-full max-w-2xl gap-3 sm:gap-4" aria-label="Breathing guide">
       {shownMelon && (
-        <figure className="flex items-center justify-center gap-3 mb-3 sm:mb-4">
-          <svg viewBox="0 0 200 200" className="w-12 h-12 sm:w-14 sm:h-14 shrink-0" aria-hidden="true">
-            <MelonSvg c={100} r={96} breaths={shownMelon.breaths} />
+        <figure className="flex items-center gap-3">
+          <svg viewBox="0 0 200 200" className="size-10 shrink-0 sm:size-12" aria-hidden="true">
+            <MelonSvg c={100} r={96} breaths={shownMelon.breaths} melon={melon} />
           </svg>
-          <figcaption className="text-sm text-foreground/75">
+          <figcaption className="text-small text-ink-soft">
             Your last melon{shownMelon.at ? `, from ${formatDay(shownMelon.at)}` : ''}: {plural(shownMelon.breaths.length, 'seed')}.
           </figcaption>
         </figure>
       )}
 
-      <div
-        className="grid grid-cols-1 gap-1.5 sm:gap-2 mb-3 sm:mb-5"
-        role="radiogroup"
-        aria-label="Breathing pattern"
-        onKeyDown={(e) => {
-          beginOnEnter(e, () => startSession())
-          moveInRadioGroup(e, PATTERNS.map((p) => `breathing-pattern-${p.id}`), patternIndex, (i) => setSelectedPatternId(PATTERNS[i].id))
-        }}
-      >
-        {PATTERNS.map((p) => (
-          <button
-            key={p.id}
-            id={`breathing-pattern-${p.id}`}
-            type="button"
-            role="radio"
-            aria-checked={selectedPatternId === p.id}
-            tabIndex={selectedPatternId === p.id ? 0 : -1}
-            onClick={() => setSelectedPatternId(p.id)}
-            className={cn(
-              'text-left px-4 py-2 sm:py-3 rounded-lg border transition-all duration-75',
-              'focus:outline-none focus:ring-2 focus:ring-focus-ring',
-              selectedPatternId === p.id
-                ? 'border-chosen-line bg-chosen'
-                : 'border-card-border bg-card-bg hover:border-accent/40',
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <PatternGlyph phases={p.phases} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-semibold text-foreground">{p.name}</span>
-                  {p.phases.length > 0 && (
-                    <span className="text-xs text-foreground/70 whitespace-nowrap">
-                      {p.phases.map((ph) => ph.duration).join('-')}s
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-foreground/75">{p.description}</p>
-              </div>
-            </div>
-          </button>
-        ))}
+      <div className="grid gap-2">
+        <div
+          className={styles.patterns}
+          role="radiogroup"
+          aria-label="Breathing pattern"
+          onKeyDown={(e) => {
+            beginOnEnter(e, () => startSession())
+            moveInRadioGroup(e, PATTERNS.map((p) => `breathing-pattern-${p.id}`), patternIndex, (i) => setSelectedPatternId(PATTERNS[i].id))
+          }}
+        >
+          {PATTERNS.map((p) => {
+            const chosen = selectedPatternId === p.id
+            return (
+              <button
+                key={p.id}
+                id={`breathing-pattern-${p.id}`}
+                type="button"
+                role="radio"
+                aria-checked={chosen}
+                tabIndex={chosen ? 0 : -1}
+                onClick={() => setSelectedPatternId(p.id)}
+                className={cn(styles.choice, styles.pattern)}
+              >
+                <PatternGlyph phases={p.phases} melon={melon} />
+                <span className={styles.words}>
+                  <span className={styles.name}>{p.name}</span>
+                  {p.phases.length > 0 && <span className={styles.timing}>{p.phases.map((ph) => ph.duration).join('-')}s</span>}
+                  <span className={styles.desc}>{p.description}</span>
+                </span>
+                {chosen && (
+                  <>
+                    <Icon name="done" className={styles.doneMark} />
+                    <span className={styles.chosenWord} aria-hidden="true">Chosen</span>
+                  </>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        <p className={styles.chosenNote} aria-hidden="true">{pattern.description}</p>
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
-        <span id="length-label" className="text-sm text-foreground/75 mr-1">Length</span>
+      <div className={styles.lengthRow}>
+        <span id="length-label" className={styles.lengthLabel}>Length</span>
         <div
           role="radiogroup"
           aria-labelledby="length-label"
-          className="flex gap-1.5"
+          className="flex flex-wrap gap-2"
           onKeyDown={(e) => {
             beginOnEnter(e, () => startSession())
             moveInRadioGroup(e, LENGTHS.map((l) => `length-${l.minutes ?? 'open'}`), lengthIndex, (i) => setLengthMinutes(LENGTHS[i].minutes))
@@ -1273,40 +1251,35 @@ export default function BreathingPatterns() {
               aria-checked={lengthMinutes === l.minutes}
               tabIndex={lengthMinutes === l.minutes ? 0 : -1}
               onClick={() => setLengthMinutes(l.minutes)}
-              className={cn(
-                'px-3 py-1.5 rounded-full text-sm border transition-colors duration-75',
-                'focus:outline-none focus:ring-2 focus:ring-focus-ring',
-                lengthMinutes === l.minutes
-                  ? 'border-chosen-line bg-chosen text-foreground'
-                  : 'border-card-border text-foreground/75 hover:border-accent/50',
-              )}
+              className={cn(styles.choice, styles.small)}
             >
+              {lengthMinutes === l.minutes && <Icon name="done" size={12} className={styles.done} />}
               {l.label}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="text-center">
-        <Button variant="primary" size="lg" onClick={() => startSession()}>
-          Begin breathing
-        </Button>
-        <KeyHints className="mt-3">Arrow keys choose. Enter begins.</KeyHints>
+      <div className="flex flex-wrap items-center gap-3">
+        <Go onClick={() => startSession()}>Begin breathing</Go>
+        <KeyHints>Arrow keys choose. Enter begins.</KeyHints>
       </div>
-      <div className="flex flex-wrap justify-center gap-2 mt-6 mb-2">
-        <Chip pressed={tonesOn} onToggle={() => setTonesOn((on) => !on)}>Breath tones</Chip>
-        {canBuzz && (
-          <Chip pressed={buzzWithBreath} onToggle={() => setBuzzWithBreath((on) => !on)}>Buzz as each breath turns</Chip>
-        )}
-      </div>
-      <p className="text-center text-sm text-foreground/75 max-w-md mx-auto">
-        {!tonesOn
-          ? 'Breath tones let you follow along with your eyes closed.'
-          : audible
-            ? 'A rising note means breathe in, a falling one means breathe out. They play on their own, with or without the background sound.'
-            : 'Sound is muted in the accessibility settings, so the tones stay silent.'}
-      </p>
 
+      <div className="grid gap-2 border-t border-rule pt-3">
+        <div className="sp-stamp-row">
+          <Stamp aria-pressed={tonesOn} onClick={() => setTonesOn((on) => !on)}>Breath tones</Stamp>
+          {canBuzz && (
+            <Stamp aria-pressed={buzzWithBreath} onClick={() => setBuzzWithBreath((on) => !on)}>Buzz as each breath turns</Stamp>
+          )}
+        </div>
+        <p className="max-w-md text-small text-ink-soft">
+          {!tonesOn
+            ? 'Breath tones let you follow along with your eyes closed.'
+            : audible
+              ? 'A rising note means breathe in, a falling one means breathe out. They play on their own, with or without the background sound.'
+              : 'Sound is muted in the accessibility settings, so the tones stay silent.'}
+        </p>
+      </div>
     </section>
   )
 }

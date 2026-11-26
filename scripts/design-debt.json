@@ -71,11 +71,6 @@
   "components/ErrorBoundary.tsx": {
     "infinite": 1
   },
-  "components/games/BreathingPatterns.tsx": {
-    "animate": 1,
-    "arbitrary-colour": 2,
-    "raw-colour": 11
-  },
   "components/games/CalmGarden.tsx": {
     "animate": 3,
     "arbitrary-colour": 1,
