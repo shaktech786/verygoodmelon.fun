@@ -40,6 +40,8 @@ for (const { name, url } of PAGES) {
           ([key, sense]) => window.localStorage.setItem(key, JSON.stringify({ sense, reduceMotion: true })),
           [SETTINGS_KEY, look.sense] as const
         )
+        // Today's packet follows the visitor's day, so the day is held still
+        await page.clock.setFixedTime(new Date('2026-11-26T12:00:00'))
         await page.goto(url)
         await expect(page.locator('html')).toHaveAttribute('data-sense', look.sense)
         await page.evaluate(() => document.fonts.ready)
