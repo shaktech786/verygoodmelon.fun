@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Icon } from '@/components/seedpress/icons/Icon'
+import { Go } from '@/components/seedpress/Go'
 
 export const metadata: Metadata = {
   title: 'About these conversations - The Sage | VeryGoodMelon.Fun',
@@ -206,12 +207,7 @@ export default function DisclaimerPage() {
         </section>
 
         <div className="text-center pt-2">
-          <Link data-go=""
-            href="/games/ancient-voices"
-            className="inline-block px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
-          >
-            Return to The Sage
-          </Link>
+          <Go href="/games/ancient-voices">Return to The Sage</Go>
         </div>
       </div>
     </div>

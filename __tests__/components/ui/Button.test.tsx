@@ -11,7 +11,7 @@ describe('Button', () => {
   it('applies primary variant styles', () => {
     render(<Button variant="primary">Primary</Button>)
     const button = screen.getByRole('button')
-    expect(button).toHaveClass('bg-accent', 'text-white')
+    expect(button).toHaveClass('bg-flesh', 'text-on-flesh')
   })
 
   it('applies secondary variant styles', () => {
@@ -23,7 +23,7 @@ describe('Button', () => {
   it('applies danger variant styles', () => {
     render(<Button variant="danger">Delete</Button>)
     const button = screen.getByRole('button')
-    expect(button).toHaveClass('bg-danger', 'text-white')
+    expect(button).toHaveClass('bg-seed', 'text-paper')
   })
 
   it('handles click events', () => {
