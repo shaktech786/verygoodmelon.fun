@@ -336,6 +336,16 @@ test.describe('The Philosopher', () => {
     for (const name of await hand(page).getByTestId('card-name').all()) {
       expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), 'card names fit').toBe(true)
     }
+    // A term's explanation opened beside the edge stays on screen and does not widen the page
+    const terms = await page.getByRole('button', { name: 'Resolve', exact: true }).all()
+    expect(terms.length).toBeGreaterThan(0)
+    for (const term of terms) {
+      await term.click()
+      const tip = await page.getByRole('tooltip').filter({ visible: true }).boundingBox()
+      expect(tip && tip.x >= 0 && tip.x + tip.width <= 390, 'the tooltip fits on screen').toBe(true)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+      await page.keyboard.press('Escape')
+    }
   })
 
   for (const colorScheme of ['light', 'dark'] as const) {
