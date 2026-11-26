@@ -14,6 +14,13 @@
   max-width: 32rem;
 }
 
+/* The wide stage drops its padding on a phone, so the intro brings its own gutter. */
+@media (max-width: 639px) {
+  .intro {
+    padding-inline: var(--game-gutter);
+  }
+}
+
 .flask {
   margin-bottom: var(--s-5);
   color: var(--brass);
