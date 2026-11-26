@@ -1,5 +1,6 @@
 'use client'
 
+import { useLoadedOnClient } from '@/lib/hooks/useLoadedOnClient'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Go } from '@/components/seedpress/Go'
 import { Icon } from '@/components/seedpress/icons/Icon'
@@ -368,9 +369,12 @@ export default function TheUnrusher() {
   const soundOn = useSoundChosen()
   const canBuzz = useCanBuzz()
 
-  useEffect(() => {
-    setStrip(loadStrip())
-  }, [])
+  const storedStrip = useLoadedOnClient(loadStrip)
+  const [stripFrom, setStripFrom] = useState<typeof storedStrip>(null)
+  if (storedStrip && storedStrip !== stripFrom) {
+    setStripFrom(storedStrip)
+    setStrip(storedStrip)
+  }
 
   useEffect(() => {
     buzzAtEndRef.current = buzzAtEnd
@@ -552,7 +556,7 @@ export default function TheUnrusher() {
     }
   }, [view])
 
-  const startTask = (task: Moment) => {
+  const startTask = useCallback((task: Moment) => {
     const now = Date.now()
     startedAtRef.current = now
     countedMsRef.current = 0
@@ -575,7 +579,7 @@ export default function TheUnrusher() {
     setLookedAt('')
     setFeelings([])
     setHeard([])
-  }
+  }, [])
 
   const rewardRecord = strip.find((r) => r.key === rewardKey) ?? null
 
