@@ -3,10 +3,13 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { pickRandomThinker, thinkers as allThinkers, getThinkerById } from '@/lib/games/timeless-minds/thinkers'
 import type { Thinker } from '@/lib/games/timeless-minds/thinkers'
-import { Hand, Send, Mic, MicOff, Video, VideoOff, Volume2, VolumeX, Users, Plus, MoreHorizontal, BookmarkPlus, BookmarkCheck, Library, PhoneOff, UserRound } from 'lucide-react'
+import { Hand, Send, Mic, MicOff, Video, VideoOff, Volume2, VolumeX, Users, Plus, MoreHorizontal, Library, PhoneOff, UserRound } from 'lucide-react'
 import ThinkerPhoneBook from './ThinkerPhoneBook'
 import RequestThinkerModal from './RequestThinkerModal'
 import { Button } from '@/components/ui/Button'
+import { Go } from '@/components/seedpress/Go'
+import { NoteDialog } from '@/components/seedpress/NoteDialog'
+import { Stamp } from '@/components/seedpress/Stamp'
 import { synthesizeSpeech, stopSpeech, isSpeechSynthesisSupported } from '@/lib/games/timeless-minds/speech-synthesis'
 import { SpeechRecognitionManager } from '@/lib/games/timeless-minds/speech-recognition'
 import type { AvatarEmotion } from '@/lib/games/timeless-minds/avatar-provider'
@@ -87,22 +90,6 @@ html[data-contrast="extra-high"] .sage-call {
 }
 `
 
-// Tab and Shift+Tab cycle within an open dialog instead of wandering to the page behind it.
-function keepTabInside(e: React.KeyboardEvent<HTMLElement>) {
-  if (e.key !== 'Tab') return
-  const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('button:not([disabled]), a[href]'))
-  if (items.length === 0) return
-  const first = items[0]
-  const last = items[items.length - 1]
-  if (e.shiftKey && (document.activeElement === first || !items.includes(document.activeElement as HTMLElement))) {
-    e.preventDefault()
-    last.focus()
-  } else if (!e.shiftKey && document.activeElement === last) {
-    e.preventDefault()
-    first.focus()
-  }
-}
-
 // A reply let go after its time limit is an expected pause, not a fault worth logging
 function isTimeout(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'TimeoutError'
@@ -166,7 +153,8 @@ export default function TimelessMinds() {
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const leaveButtonRef = useRef<HTMLButtonElement>(null)
   const goodbyeButtonRef = useRef<HTMLButtonElement>(null)
-  const endCallOpenerRef = useRef<React.RefObject<HTMLButtonElement | null>>(menuButtonRef)
+  // Where focus goes when the dialog on show closes; each opener sets it.
+  const returnFocusRef = useRef<HTMLElement | null>(null)
   const menuWrapRef = useRef<HTMLDivElement>(null)
   const inputRowRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -340,14 +328,6 @@ export default function TimelessMinds() {
     return () => document.removeEventListener('pointerdown', closeOutside)
   }, [menuOpen])
 
-  useEffect(() => {
-    if (showEndCallDialog) endCallCancelRef.current?.focus()
-  }, [showEndCallDialog])
-
-  useEffect(() => {
-    if (farewell) farewellHeadingRef.current?.focus()
-  }, [farewell])
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -464,7 +444,7 @@ export default function TimelessMinds() {
   }
 
   const handleEndCall = (opener: React.RefObject<HTMLButtonElement | null>) => {
-    endCallOpenerRef.current = opener
+    returnFocusRef.current = opener.current
     setShowEndCallDialog(true)
   }
 
@@ -530,6 +510,7 @@ export default function TimelessMinds() {
 
   const leaveFarewell = (openDirectory: boolean) => {
     const leaving = farewell?.thinker ?? thinker
+    returnFocusRef.current = inputRef.current
     setFarewell(null)
     setKeepNote('')
     if (!leaving) return
@@ -538,6 +519,7 @@ export default function TimelessMinds() {
   }
 
   const stayInConversation = () => {
+    returnFocusRef.current = inputRef.current
     setFarewell(null)
     setKeepNote('')
     inputRef.current?.focus()
@@ -551,14 +533,11 @@ export default function TimelessMinds() {
     setTimeout(() => viewport.removeEventListener('resize', reveal), KEYBOARD_SETTLE_MS)
   }
 
-  const closeDirectory = () => {
-    setShowPhoneBook(false)
-    // Choosing someone has already put focus in the message box; otherwise it would fall to the page
-    if (document.activeElement !== inputRef.current) menuButtonRef.current?.focus()
-  }
+  const closeDirectory = () => setShowPhoneBook(false)
 
   const fromMenu = (action: () => void) => () => {
     setMenuOpen(false)
+    returnFocusRef.current = menuButtonRef.current
     action()
   }
 
@@ -599,38 +578,17 @@ export default function TimelessMinds() {
     saveKeptLines(next)
   }
 
-  const closeKeptLines = () => {
-    setShowKeptLines(false)
-    menuButtonRef.current?.focus()
-  }
-
-  const handleKeptLinesKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
-    if (e.key === 'Escape') closeKeptLines()
-    keepTabInside(e)
-  }
+  const closeKeptLines = () => setShowKeptLines(false)
 
   const handleSelectThinker = (thinkerId: string) => {
     const selectedThinker = getThinkerById(thinkerId)
-    if (selectedThinker) startConversation(selectedThinker)
+    if (!selectedThinker) return
+    // The directory is still open, so the message box cannot take focus yet; it does on close
+    returnFocusRef.current = inputRef.current
+    startConversation(selectedThinker)
   }
 
-  const cancelEndCall = () => {
-    setShowEndCallDialog(false)
-    endCallOpenerRef.current.current?.focus()
-  }
-
-  const handleEndCallDialogKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
-    if (e.key === 'Escape') cancelEndCall()
-    keepTabInside(e)
-  }
-
-  const handleFarewellKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
-    if (e.key === 'Escape' && farewell?.text) {
-      if (care) stayInConversation()
-      else leaveFarewell(false)
-    }
-    keepTabInside(e)
-  }
+  const cancelEndCall = () => setShowEndCallDialog(false)
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (!e.shiftKey || e.metaKey || e.ctrlKey)) {
@@ -1023,120 +981,76 @@ export default function TimelessMinds() {
         </div>
       </div>
 
-      {/* End Call Dialog */}
       {showEndCallDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="end-call-title"
-            onKeyDown={handleEndCallDialogKeyDown}
-            className="bg-card-bg rounded-xl p-4 sm:p-6 max-w-md w-full shadow-2xl animate-fade"
-          >
-            <h3 id="end-call-title" className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3 text-foreground">
-              Say goodbye to {thinker.name}?
-            </h3>
-            <p className="text-sm sm:text-base text-foreground/70 mb-4 leading-relaxed">
-              {care
-                ? `${thinker.name} will say a few parting words. Then you can choose who to talk with next, or stay a while longer.`
-                : `${thinker.name} will leave you with a parting thought from your conversation. Then you can meet someone new.`}
-            </p>
-            <div className="flex gap-2 sm:gap-3">
-              <button
-                ref={endCallCancelRef}
-                onClick={cancelEndCall}
-                className="flex-1 px-3 py-1.5 sm:px-4 sm:py-2 min-h-[44px] border border-foreground/20 text-foreground rounded-lg hover:bg-foreground/5 transition-colors text-sm sm:text-base"
-              >
+        <NoteDialog
+          title={`Say goodbye to ${thinker.name}?`}
+          description={
+            care
+              ? `${thinker.name} will say a few parting words. Then you can choose who to talk with next, or stay a while longer.`
+              : `${thinker.name} will leave you with a parting thought from your conversation. Then you can meet someone new.`
+          }
+          size="small"
+          onClose={cancelEndCall}
+          initialFocusRef={endCallCancelRef}
+          returnFocusRef={returnFocusRef}
+          actions={
+            <>
+              <Stamp ref={endCallCancelRef} onClick={cancelEndCall}>
                 Keep talking
-              </button>
-              <button
-                onClick={confirmEndCall}
-                className="flex-1 px-3 py-2 sm:px-4 min-h-[44px] bg-melon-green text-background rounded-lg hover:opacity-90 transition-opacity text-sm sm:text-base"
-              >
-                Say goodbye
-              </button>
-            </div>
-          </div>
-        </div>
+              </Stamp>
+              <Go onClick={confirmEndCall}>Say goodbye</Go>
+            </>
+          }
+        />
       )}
 
       {farewell && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4 overflow-y-auto">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="farewell-title"
-            onKeyDown={handleFarewellKeyDown}
-            className="bg-card-bg text-foreground border-card-border rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl animate-fade border my-8"
-          >
-            <h3
-              id="farewell-title"
-              ref={farewellHeadingRef}
-              tabIndex={-1}
-              className="text-sm font-semibold uppercase tracking-wide text-foreground/70 focus-visible:shadow-none!"
-            >
-              Parting words from {farewell.thinker.name}
-            </h3>
-            <div className="mt-4 min-h-[5rem]" role="status" aria-live="polite">
-              {farewell.text ? (
-                <p className="font-serif text-xl sm:text-2xl leading-relaxed text-foreground">{farewell.text}</p>
-              ) : (
-                <p className="text-foreground/70">{farewell.thinker.name} is choosing what to leave you with...</p>
-              )}
-            </div>
-            {!care && farewell.text && (
-              <div className="mt-3">
-                {isKept(keptLines, farewell.thinker.id, farewell.text) ? (
-                  <button
-                    type="button"
-                    aria-disabled="true"
-                    className="inline-flex items-center gap-2 px-3 min-h-[44px] -ml-3 rounded-lg text-sm text-foreground cursor-default"
-                  >
-                    <BookmarkCheck size={18} className="text-melon-green" aria-hidden="true" />
-                    Kept
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={keepFarewell}
-                    className="bg-background inline-flex items-center gap-2 px-3 min-h-[44px] rounded-lg border border-card-border text-sm text-foreground hover:border-chosen-line transition-colors"
-                  >
-                    <BookmarkPlus size={18} className="text-foreground/70" aria-hidden="true" />
-                    Keep this
-                  </button>
-                )}
-              </div>
-            )}
-            <p className="mt-1 text-sm text-foreground/70 min-h-0" aria-live="polite">{keepNote}</p>
-            <p className="mt-3 text-xs text-foreground/70">{IMAGINED_NOTE}</p>
-            {care && <TimelessMindsCarePanel className="mt-4 rounded-lg p-3" />}
-            <div className="mt-5 flex flex-col sm:flex-row gap-2 sm:gap-3">
+        <NoteDialog
+          title={`Parting words from ${farewell.thinker.name}`}
+          onClose={() => {
+            if (!farewell.text) return
+            if (care) stayInConversation()
+            else leaveFarewell(false)
+          }}
+          titleRef={farewellHeadingRef}
+          returnFocusRef={returnFocusRef}
+          actions={
+            <>
               {care ? (
-                <button
-                  onClick={stayInConversation}
-                  className="flex-1 px-4 py-2 min-h-[44px] bg-melon-green text-background rounded-lg hover:opacity-90 transition-opacity"
-                >
-                  Stay with {farewell.thinker.name}
-                </button>
+                <Go onClick={stayInConversation}>Stay with {farewell.thinker.name}</Go>
               ) : (
-                <button
-                  onClick={() => leaveFarewell(false)}
-                  disabled={!farewell.text}
-                  className="flex-1 px-4 py-2 min-h-[44px] bg-melon-green text-background rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
+                <Go onClick={() => leaveFarewell(false)} unavailable={farewell.text ? undefined : 'Their words are on the way.'}>
                   Meet someone new
-                </button>
+                </Go>
               )}
-              <button
-                onClick={() => leaveFarewell(true)}
-                disabled={!farewell.text}
-                className="flex-1 px-4 py-2 min-h-[44px] border border-foreground/20 text-foreground rounded-lg hover:bg-hover-bg transition-colors disabled:opacity-50"
-              >
+              <Stamp onClick={() => leaveFarewell(true)} disabled={!farewell.text}>
                 Choose who is next
-              </button>
-            </div>
+              </Stamp>
+            </>
+          }
+        >
+          <div role="status" aria-live="polite" className="sp-farewell__words">
+            {farewell.text ? (
+              <p className="sp-farewell__text">{farewell.text}</p>
+            ) : (
+              <p className="sp-soft">{farewell.thinker.name} is choosing what to leave you with...</p>
+            )}
           </div>
-        </div>
+          {!care && farewell.text && (
+            <div>
+              {isKept(keptLines, farewell.thinker.id, farewell.text) ? (
+                <Stamp aria-disabled="true" icon="done">
+                  Kept
+                </Stamp>
+              ) : (
+                <Stamp onClick={keepFarewell}>Keep this</Stamp>
+              )}
+            </div>
+          )}
+          <p className="sp-farewell__note" aria-live="polite">{keepNote}</p>
+          <p className="sp-farewell__imagined">{IMAGINED_NOTE}</p>
+          {care && <TimelessMindsCarePanel />}
+        </NoteDialog>
       )}
 
       {/* Mounted only while open, so each visit starts with an empty search. */}
@@ -1146,6 +1060,7 @@ export default function TimelessMinds() {
           onClose={closeDirectory}
           thinkers={allThinkers}
           onSelectThinker={handleSelectThinker}
+          returnFocusRef={returnFocusRef}
         />
       )}
 
@@ -1154,7 +1069,7 @@ export default function TimelessMinds() {
           lines={keptLines}
           onRemove={forgetLine}
           onClose={closeKeptLines}
-          onKeyDown={handleKeptLinesKeyDown}
+          returnFocusRef={returnFocusRef}
         />
       )}
 
@@ -1162,6 +1077,7 @@ export default function TimelessMinds() {
         <RequestThinkerModal
           isOpen={showRequestModal}
           onClose={() => setShowRequestModal(false)}
+          returnFocusRef={returnFocusRef}
         />
       )}
     </div>

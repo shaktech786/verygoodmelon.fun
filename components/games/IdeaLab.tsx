@@ -3,6 +3,8 @@
 import { REPLY_TIMEOUT_MS } from '@/lib/games/reply-timeout'
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
+import { NoteDialog } from '@/components/seedpress/NoteDialog'
+import { Stamp } from '@/components/seedpress/Stamp'
 import { Trash2, RotateCcw, FlaskConical } from 'lucide-react'
 import { BASE_CONCEPTS, findKnownCombination, type Concept } from '@/lib/games/idea-lab/concepts'
 import { WORK_TITLES, goldsFor, isGolden, type GoldenIdea } from '@/lib/games/idea-lab/golds'
@@ -128,7 +130,6 @@ export default function IdeaLab() {
   const [activeConceptId, setActiveConceptId] = useState(BASE_CONCEPTS[0].id)
   const reducedMotion = useReducedMotion()
   const cancelResetRef = useRef<HTMLButtonElement>(null)
-  const confirmResetRef = useRef<HTMLButtonElement>(null)
   const conceptRefs = useRef(new Map<string, HTMLButtonElement>())
   const letterHeadingRef = useRef<HTMLHeadingElement>(null)
   const shelfHeadingRef = useRef<HTMLHeadingElement>(null)
@@ -177,10 +178,6 @@ export default function IdeaLab() {
     const timer = setTimeout(() => setNewConceptId(null), NEW_HIGHLIGHT_MS)
     return () => clearTimeout(timer)
   }, [newConceptId])
-
-  useEffect(() => {
-    if (showResetConfirm) cancelResetRef.current?.focus()
-  }, [showResetConfirm])
 
   useEffect(() => {
     const target = pendingFocus.current
@@ -369,7 +366,6 @@ export default function IdeaLab() {
 
   const closeResetConfirm = () => {
     setShowResetConfirm(false)
-    document.getElementById(RESET_BUTTON_ID)?.focus()
   }
 
   const confirmReset = () => {
@@ -385,19 +381,6 @@ export default function IdeaLab() {
     setLetterWork(null)
     setAnnouncement('')
     closeResetConfirm()
-  }
-
-  const handleResetDialogKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      closeResetConfirm()
-      return
-    }
-
-    if (e.key === 'Tab') {
-      e.preventDefault()
-      const next = document.activeElement === cancelResetRef.current ? confirmResetRef : cancelResetRef
-      next.current?.focus()
-    }
   }
 
   const handleClearSelection = () => {
@@ -711,37 +694,23 @@ export default function IdeaLab() {
       </div>
 
       {showResetConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="idea-lab-reset-title"
-            aria-describedby="idea-lab-reset-description"
-            onKeyDown={handleResetDialogKeyDown}
-            className="bg-card-bg rounded-xl p-6 max-w-sm w-full shadow-2xl border border-card-border"
-          >
-            <h3 id="idea-lab-reset-title" className="text-lg font-semibold mb-2 text-foreground">Reset all discoveries?</h3>
-            <p id="idea-lab-reset-description" className="text-sm text-foreground/75 mb-4">
-              This will erase all your discovered concepts, golds and letters included. Your starting concepts will remain.
-            </p>
-            <div className="flex gap-3">
-              <button
-                ref={cancelResetRef}
-                onClick={closeResetConfirm}
-                className="flex-1 px-4 py-2 min-h-[44px] border border-foreground/20 rounded-lg hover:bg-foreground/5 transition-colors text-sm"
-              >
+        <NoteDialog
+          title="Reset all discoveries?"
+          description="This will erase all your discovered concepts, golds and letters included. Your starting concepts will remain."
+          size="small"
+          onClose={closeResetConfirm}
+          initialFocusRef={cancelResetRef}
+          actions={
+            <>
+              <Stamp ref={cancelResetRef} onClick={closeResetConfirm}>
                 Cancel
-              </button>
-              <button
-                ref={confirmResetRef}
-                onClick={confirmReset}
-                className="flex-1 px-4 py-2 min-h-[44px] bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors text-sm"
-              >
+              </Stamp>
+              <Stamp onClick={confirmReset} className="sp-stamp--careful">
                 Reset
-              </button>
-            </div>
-          </div>
-        </div>
+              </Stamp>
+            </>
+          }
+        />
       )}
     </div>
   )

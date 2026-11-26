@@ -1,12 +1,12 @@
 import NextLink from 'next/link'
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 import { buttonClass } from './buttonClass'
 import { Icon } from './icons/Icon'
 import type { IconName } from './icons/glyphs'
 
 type StampProps = { children: ReactNode; icon?: IconName; className?: string } & (
   | { href: string; scroll?: boolean }
-  | (Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'className'> & { href?: undefined })
+  | (Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'className'> & { href?: undefined; ref?: Ref<HTMLButtonElement> })
 )
 
 /** A secondary action: a rubber stamp with a printed edge that presses down. */

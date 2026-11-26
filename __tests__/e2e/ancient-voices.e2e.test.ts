@@ -417,6 +417,7 @@ test('saying goodbye asks first, can be cancelled with Escape, and ends with par
   await expect(dialog.getByRole('button', { name: 'Keep talking' })).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
+  await expect(menuButton(page)).toBeFocused()
   await expect(bubbles(page)).toHaveCount(3)
   await expect(menuButton(page)).toBeFocused()
 
@@ -549,6 +550,7 @@ test.describe('requesting a thinker', () => {
 
     await page.keyboard.press('Escape')
     await expect(form).toHaveCount(0)
+    await expect(menuButton(page)).toBeFocused()
   })
 
   test('a request the rules turn down explains why', async ({ page }) => {
@@ -930,6 +932,7 @@ test('parting words can be kept on a small shelf on this device, read again late
   expect(await page.evaluate(() => localStorage.getItem('sage_keptLines'))).toBeNull()
   await page.keyboard.press('Escape')
   await expect(shelf).toHaveCount(0)
+  await expect(menuButton(page)).toBeFocused()
 })
 
 test('when this device will not save, keeping a line still works for the visit and says so kindly', async ({ page }) => {

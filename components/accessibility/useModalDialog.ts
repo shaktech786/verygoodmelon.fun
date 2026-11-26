@@ -5,7 +5,7 @@ import { type RefObject, useEffect, useRef } from 'react'
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-function focusableIn(container: HTMLElement): HTMLElement[] {
+export function focusableIn(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
     (element) => element.getClientRects().length > 0
   )

@@ -101,3 +101,11 @@ global.PerformanceObserver = class PerformanceObserver {
 
 // Mock getEntriesByType
 global.performance.getEntriesByType = vi.fn(() => [])
+
+// jsdom has no modal dialogs; an open attribute is enough for the tests to see one.
+HTMLDialogElement.prototype.showModal = function showModal() {
+  this.setAttribute('open', '')
+}
+HTMLDialogElement.prototype.close = function close() {
+  this.removeAttribute('open')
+}

@@ -1532,6 +1532,188 @@ a.sp-packet:focus-visible .sp-print {
   }
 }
 
+/* ---------- Dialogs and confirms (PLAN.md section 7.12) ---------- */
+
+.sp-dialog {
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: min(90dvh, 100%);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+  color: var(--ink);
+  animation: sp-dialog-in calc(var(--d-settle) * var(--motion)) var(--e-out) both;
+}
+
+.sp-dialog--small {
+  width: min(26rem, calc(100vw - 2rem));
+}
+
+.sp-dialog--wide {
+  width: min(64rem, calc(100vw - 2rem));
+}
+
+.sp-dialog::backdrop {
+  background-color: color-mix(in oklab, var(--ink) 40%, transparent);
+  animation: sp-scrim-in calc(var(--d-quick) * var(--motion)) linear both;
+}
+
+:root:where([data-theme='dark']) .sp-dialog::backdrop {
+  background-color: color-mix(in oklab, var(--paper) 60%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where([data-theme='auto']) .sp-dialog::backdrop {
+    background-color: color-mix(in oklab, var(--paper) 60%, transparent);
+  }
+}
+
+.sp-dialog__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  max-height: min(90dvh, 100dvh - 2rem);
+  padding: var(--s-4);
+}
+
+@media (min-width: 640px) {
+  .sp-dialog__inner {
+    padding: var(--s-5);
+  }
+}
+
+.sp-dialog__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.sp-dialog__title {
+  margin: 0;
+}
+
+.sp-dialog__lead {
+  margin: 0;
+  max-width: var(--w-prose);
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+  line-height: var(--lh-small);
+}
+
+.sp-dialog__body {
+  display: grid;
+  align-content: start;
+  gap: var(--s-3);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.sp-dialog__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.sp-dialog__actions > * {
+  justify-content: center;
+}
+
+@media (min-width: 640px) {
+  .sp-dialog__actions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+}
+
+/* The "are you sure" that replaces a button in place: the safe choice first, the careful one second. */
+.sp-confirm {
+  display: grid;
+  gap: var(--s-3);
+  max-width: var(--w-prose);
+  padding: var(--s-4);
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+}
+
+.sp-confirm__question {
+  margin: 0;
+  font-weight: 700;
+}
+
+.sp-confirm__why {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.sp-confirm__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
+.sp-stamp--careful {
+  border-color: var(--seed);
+  box-shadow: 0 3px 0 var(--seed);
+}
+
+.sp-dialog .sp-field {
+  max-width: none;
+}
+
+.sp-dialog--form {
+  width: min(42rem, calc(100vw - 2rem));
+}
+
+.sp-form {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.sp-form__pair {
+  display: grid;
+  gap: var(--s-4);
+}
+
+@media (min-width: 640px) {
+  .sp-form__pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.sp-fineprint {
+  display: grid;
+  gap: var(--s-2);
+  color: var(--ink-soft);
+  font-size: var(--t-meta);
+  line-height: var(--lh-meta);
+}
+
+.sp-fineprint p {
+  margin: 0;
+}
+
+.sp-note__title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.sp-note__list {
+  margin: var(--s-1) 0 0;
+  padding-left: var(--s-5);
+}
+
+@keyframes sp-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
 /* ---------- Status, notes and loading (PLAN.md sections 7.16 to 7.18) ---------- */
 
 .sp-status {
@@ -1887,3 +2069,133 @@ a.sp-packet:focus-visible .sp-print {
     align-self: center;
   }
 }
+
+/* ---------- The directory of thinkers (inside a wide note dialog) ---------- */
+
+.sp-directory__shelves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
+.sp-directory__grid {
+  display: grid;
+  gap: var(--s-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 640px) {
+  .sp-directory__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .sp-directory__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.sp-directory__card {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--s-2);
+  text-align: center;
+}
+
+.sp-directory__avatar {
+  width: 5rem;
+  height: 5rem;
+  border: 2px solid var(--rule-strong);
+  border-radius: 50%;
+  background-color: var(--well);
+  object-fit: cover;
+  object-position: center 20%;
+}
+
+.sp-directory__name {
+  margin: 0;
+  font-size: var(--t-body);
+  font-weight: 700;
+}
+
+.sp-directory__field,
+.sp-directory__facts,
+.sp-directory__line {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-meta);
+  line-height: var(--lh-meta);
+}
+
+.sp-directory__line {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sp-directory__count {
+  margin: 0;
+  font-size: var(--t-meta);
+}
+
+.sp-stamp[aria-pressed='true'] {
+  border-color: var(--rind);
+  background-color: var(--rind-wash);
+  box-shadow: 0 3px 0 var(--rind);
+}
+
+/* ---------- Kept lines (inside a note dialog) ---------- */
+
+.sp-kept {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sp-kept__line {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-2);
+}
+
+.sp-kept__words {
+  margin: 0;
+  font-size: var(--t-lead);
+  line-height: var(--lh-lead);
+  overflow-wrap: anywhere;
+}
+
+.sp-kept__by {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+/* ---------- Parting words (inside a note dialog) ---------- */
+
+.sp-farewell__words {
+  min-height: 5rem;
+}
+
+.sp-farewell__text {
+  margin: 0;
+  font-size: var(--t-lead);
+  line-height: var(--lh-lead);
+  overflow-wrap: anywhere;
+}
+
+.sp-farewell__note,
+.sp-farewell__imagined {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-meta);
+  line-height: var(--lh-meta);
+}
+

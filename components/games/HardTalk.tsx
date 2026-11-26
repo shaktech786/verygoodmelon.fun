@@ -5,6 +5,7 @@ import { Button, buttonClassName } from '@/components/ui/Button'
 import { KeepsakeSave } from '@/components/games/Keepsake'
 import { useCareMode } from '@/components/games/CareMode'
 import { HelplineSentence } from '@/components/games/HelplineSentence'
+import { InlineConfirm } from '@/components/seedpress/InlineConfirm'
 import { soundsLikeDistress } from '@/lib/games/community-words/moderation'
 import { CarryScreen } from '@/components/games/hard-talk/CarryScreen'
 import { BreathMelon, StepOutArt, ThresholdArt } from '@/components/games/hard-talk/ThresholdArt'
@@ -668,12 +669,15 @@ function HardTalkGame() {
   }
 
   const startOverPanel = (
-    <div role="alertdialog" aria-labelledby="hard-talk-start-over" className="mt-4 rounded-lg border border-card-border bg-background p-4">
-      <p id="hard-talk-start-over" className="text-foreground">Start over? Anything you’ve written will be cleared.</p>
-      <div className="mt-3 flex flex-wrap gap-3">
-        <Button onClick={startOver}>Yes, start over</Button>
-        <Button variant="secondary" onClick={() => { setFocusRequest((n) => n + 1); setConfirmingStartOver(null) }} autoFocus>Keep going</Button>
-      </div>
+    <div className="mt-4">
+      <InlineConfirm
+        question="Start over?"
+        why="Anything you’ve written will be cleared."
+        keepLabel="Keep going"
+        confirmLabel="Yes, start over"
+        onKeep={() => { setFocusRequest((n) => n + 1); setConfirmingStartOver(null) }}
+        onConfirm={startOver}
+      />
     </div>
   )
 
