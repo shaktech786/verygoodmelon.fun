@@ -995,8 +995,8 @@ export function BattleScreen({ run }: { run: RunState }) {
                 act((r) => battleAction(r, endTurn))
               }}
               aria-label={`End turn: ${action}.${danger ? ` ${danger.line}` : ''}`}
-              className={danger ? 'sp-stamp tp-danger' : 'sp-go'}
-              data-go={danger ? undefined : ''}
+              className={danger?.certain ? 'sp-stamp tp-danger' : 'sp-go'}
+              data-go={danger?.certain ? undefined : ''}
               data-testid="end-turn"
               data-danger={danger ? (danger.certain ? 'certain' : 'risk') : undefined}
             >

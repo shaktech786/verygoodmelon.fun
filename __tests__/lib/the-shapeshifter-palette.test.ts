@@ -22,7 +22,7 @@ describe('the arcade screen inks', () => {
     expect(arcadePalette(PALETTES.darkQuiet).orb).not.toBe(arcadePalette(PALETTES.dark).orb)
   })
 
-  it('takes an ink at an opacity without leaving the page palette', () => {
-    expect(withAlpha('var(--x)', 0.5)).toBe('color-mix(in srgb, var(--x) 50%, transparent)')
+  it('hands the canvas plain colours at an opacity', () => {
+    expect(withAlpha('#FF8000', 0.5)).toBe('rgba(255,128,0,0.5)')
   })
 })

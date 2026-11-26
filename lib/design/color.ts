@@ -68,3 +68,9 @@ export function mixOklab(a: string, weight: number, b: string): string {
   const [x, y] = [toOklab(a), toOklab(b)]
   return fromOklab([0, 1, 2].map((i) => x[i] * weight + y[i] * (1 - weight)) as unknown as Lab)
 }
+
+/** An ink as `rgba(...)` at an opacity, for a canvas, which should only be handed plain colours. */
+export function withAlpha(hex: string, alpha: number): string {
+  const [r, g, b] = hexToRgb(hex)
+  return `rgba(${r},${g},${b},${alpha})`
+}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { Note } from '@/components/seedpress/Note'
 
 const THEMES = [
   { value: 'patience', label: 'Patience' },
@@ -219,13 +220,10 @@ export function SubmitThought() {
 
         {/* Error message */}
         {state === 'error' && (
-          <div
-            ref={statusRef}
-            tabIndex={-1}
-            role="alert"
-            className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-accent"
-          >
-            {errorMessage}
+          <div ref={statusRef} tabIndex={-1}>
+            <Note tone="look" role="alert">
+              {errorMessage}
+            </Note>
           </div>
         )}
 

@@ -29,9 +29,6 @@
   "components/ErrorBoundary.tsx": {
     "infinite": 1
   },
-  "components/ui/Button.tsx": {
-    "banned-utility": 1
-  },
   "components/ui/LegalPage.tsx": {
     "animate": 1
   },
@@ -82,7 +79,7 @@
   },
   "lib/keepsake/render.ts": {
     "banned-utility": 2,
-    "raw-colour": 18
+    "raw-colour": 17
   },
   "lib/keepsake/shapeshifter.ts": {
     "raw-colour": 12

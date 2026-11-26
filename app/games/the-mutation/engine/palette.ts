@@ -1,7 +1,7 @@
 // The arcade screen's inks. The screen is dark in every site theme, so they come from the dark Seedpress palettes
 // (lib/design/inks.ts) with each spot ink lifted until it holds at least 7:1 on the field. Quiet and the two
 // high-contrast settings pick their own dark palette, so the glass softens or sharpens with the rest of the site.
-import { contrast, mixOklab } from '@/lib/design/color'
+import { contrast, mixOklab, withAlpha } from '@/lib/design/color'
 import { getInks, type InkContrast, type Inks } from '@/lib/design/inks'
 import type { Sense } from '@/lib/design/tokens'
 
@@ -83,10 +83,7 @@ export function readNeon(el: Element): number {
   return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1
 }
 
-/** An ink at a given opacity, for glows and faint fills; the canvas takes color-mix like any other CSS colour. */
-export function withAlpha(colour: string, alpha: number): string {
-  return `color-mix(in srgb, ${colour} ${Math.round(alpha * 100)}%, transparent)`
-}
+export { withAlpha }
 
 /** The same inks as CSS variables on the stage, so the title, pause and rule cards match the canvas exactly. */
 export function paletteVars(palette: Palette): Record<string, string> {

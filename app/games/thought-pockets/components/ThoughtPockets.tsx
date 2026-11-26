@@ -39,13 +39,13 @@ const THEME_CSS = `
   --tp-on-mark: var(--sheet);
   --tp-focus: var(--focus);
   --tp-good: var(--rind);
-  --tp-guard: var(--rind);
+  --tp-guard: var(--brass);
   --tp-warn: var(--seed);
   --tp-enemy-bar: var(--seed);
   --tp-player-bar: var(--moss);
   --tp-evidence: var(--moss);
   --tp-logic: var(--clay);
-  --tp-guard-type: var(--rind);
+  --tp-guard-type: var(--brass);
   --tp-rhetoric: var(--dusk);
   --tp-doubt: var(--ink-soft);
 }

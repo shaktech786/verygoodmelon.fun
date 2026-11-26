@@ -1,3 +1,5 @@
+import { mixOklab } from '@/lib/design/color'
+import { PALETTES as SEEDPRESS } from '@/lib/design/tokens'
 import { ARENA_VOICE_COLOURS } from '@/lib/games/arena-pairings'
 import { PIXEL, type Font, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
 
@@ -11,8 +13,8 @@ const MELON = {
   rindLight: '#74c69d',
   flesh: '#e63946',
   seed: '#2a211c',
-  // Brass: clay's ochre at a lightness that reads on the light paper (4:1) and the dark one (3.9:1), in place of the old yellow gold.
-  gold: '#937545',
+  // Brass, one ochre for both papers: the light and dark brass roles blended toward the light one (about 4:1 on either paper), in place of the old yellow gold.
+  gold: mixOklab(SEEDPRESS.light.brass, 0.65, SEEDPRESS.dark.brass),
   // Cream words set on the rind, such as a band of green across a card.
   onRind: '#fbf7f0',
 } as const
