@@ -1993,6 +1993,20 @@ a.sp-packet:focus-visible .sp-print {
     clip-path: inset(50%);
     white-space: nowrap;
   }
+
+  /* At larger text a one-word title like "The Harmonist" needs the whole row, so the stamps go under the lead. */
+  :root:is([data-text-size='large'], [data-text-size='larger']) .sp-strip {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'back title'
+      'lead lead'
+      'tools tools';
+    row-gap: var(--s-2);
+  }
+
+  :root:is([data-text-size='large'], [data-text-size='larger']) .sp-strip__tools {
+    justify-content: flex-start;
+  }
 }
 
 @media (min-width: 640px) {
