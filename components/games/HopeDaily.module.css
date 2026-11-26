@@ -1,0 +1,320 @@
+/*
+ * The Optimist: clay and rind. The clipping is a sheet; the missing word is a slot in it. A guess that is not the word gets a
+ * gentle "look" note, never red and never a shake. Everything is a Seedpress role, and every duration is multiplied by --motion.
+ */
+
+.wrap {
+  max-width: 36rem;
+  margin-inline: auto;
+}
+
+.intro {
+  margin: 0 0 var(--s-4);
+  color: var(--ink-soft);
+}
+
+.clipping {
+  padding: var(--s-5);
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+  color: var(--ink);
+}
+
+@media (min-width: 640px) {
+  .clipping {
+    padding: var(--s-6);
+  }
+}
+
+.kicker {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+  font-weight: 700;
+}
+
+.slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--s-3);
+}
+
+.slot {
+  display: flex;
+  width: 1.6rem;
+  height: 2.25rem;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 2px;
+  border-bottom: 3px solid var(--rule-strong);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.slotKnown {
+  border-bottom-color: var(--ink);
+}
+
+@media (min-width: 640px) {
+  .slot {
+    width: 1.75rem;
+  }
+}
+
+.slotsNote {
+  margin: 6px 0 0;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.story {
+  margin-top: var(--s-5);
+  line-height: 1.6;
+}
+
+/* The gap in the sentence: a well with a dashed edge, the width of a word. */
+.gap {
+  display: inline-block;
+  width: 4.5em;
+  height: 1.1em;
+  margin-inline: 0.15em;
+  vertical-align: -0.2em;
+  border: 2px dashed var(--rule-strong);
+  border-radius: 6px;
+  background-color: var(--well);
+}
+
+.folded {
+  display: inline-block;
+  height: 0.8em;
+  margin-right: 0.3em;
+  vertical-align: middle;
+  border-radius: 3px;
+  background-color: var(--rule);
+}
+
+.clue {
+  margin: var(--s-4) 0 0;
+  padding-top: var(--s-3);
+  border-top: 2px solid var(--rule);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-5);
+}
+
+.confirm {
+  margin-top: var(--s-4);
+}
+
+.guessRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-3);
+  margin-top: var(--s-5);
+}
+
+.guessRow > :first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.status {
+  margin-top: var(--s-3);
+}
+
+.commentary {
+  margin: var(--s-2) 0 0;
+  color: var(--ink-soft);
+}
+
+.tried {
+  margin: var(--s-4) 0 0;
+  color: var(--ink-soft);
+}
+
+.tried b {
+  color: var(--ink);
+}
+
+.ending {
+  padding: var(--s-5);
+  border: 3px solid var(--rind);
+  border-radius: var(--r-sheet);
+  background-color: var(--sheet);
+  color: var(--ink);
+}
+
+@media (min-width: 640px) {
+  .ending {
+    padding: var(--s-6);
+  }
+}
+
+.endingTitle {
+  margin: var(--s-3) 0 0;
+  font-family: var(--font-display);
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.endingTitle:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+}
+
+@media (min-width: 640px) {
+  .endingTitle {
+    font-size: 2.25rem;
+  }
+}
+
+.solved {
+  display: flex;
+  gap: 0.2em;
+  margin-top: 4px;
+}
+
+.solvedSlot {
+  display: flex;
+  width: 1.05em;
+  height: 1.45em;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 2px;
+  overflow: hidden;
+  border-bottom: 3px solid var(--rind);
+}
+
+.solvedLetter {
+  display: inline-block;
+  line-height: 1;
+}
+
+.category {
+  margin: var(--s-4) 0 0;
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+  font-weight: 700;
+}
+
+.goodNews {
+  margin: var(--s-2) 0 0;
+  line-height: 1.6;
+}
+
+.arrive {
+  animation: hope-arrive calc(350ms * var(--motion)) var(--e-out) calc(var(--i, 0) * 350ms * var(--motion)) both;
+}
+
+@keyframes hope-arrive {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The word that was missing presses into its sentence once the letters have landed, then three seeds settle beside it. */
+.word {
+  display: inline-block;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.pressed {
+  animation: hope-press calc(700ms * var(--motion)) var(--e-stamp) calc(var(--land, 0ms) * var(--motion)) both;
+}
+
+@keyframes hope-press {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5em);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0.08em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.seedsBeside {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 0.35em;
+  vertical-align: 0.15em;
+}
+
+.seedsBeside i {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-slice);
+  background-color: var(--rind);
+}
+
+.settled i {
+  animation: hope-seed calc(400ms * var(--motion)) var(--e-out) calc((var(--land, 0ms) + 700ms + var(--n) * 120ms) * var(--motion)) both;
+}
+
+@keyframes hope-seed {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.source {
+  margin: var(--s-2) 0 0;
+  color: var(--ink-soft);
+}
+
+.reflection {
+  margin: var(--s-5) 0 0;
+  padding-left: var(--s-4);
+  border-left: 4px solid var(--rind);
+}
+
+.passOn {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-5);
+}
+
+.done {
+  margin: var(--s-5) 0 0;
+  padding-top: var(--s-4);
+  border-top: 2px solid var(--rule);
+  color: var(--ink-soft);
+}
+
+.waiting {
+  padding-block: var(--s-6);
+  color: var(--ink-soft);
+  text-align: left;
+}
+
+.rule {
+  margin-top: var(--s-6);
+  padding-top: var(--s-5);
+  border-top: 2px solid var(--rule);
+}

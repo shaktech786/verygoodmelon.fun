@@ -161,7 +161,7 @@ test('reading on unfolds the story, then the clue, then letters, and the player 
   await page.getByRole('button', { name: 'Show a letter' }).click()
 
   // The last letter does not end the game for them: the word waits in the box to be tried.
-  await expect(status(page)).toHaveText('Letter 5 is R. Every letter is showing. Press Try it to finish.')
+  await expect(status(page)).toHaveText('Letter 5 is R. Every letter is showing. Press Try this word to finish.')
   await expect(input(page)).toHaveValue('SOLAR')
   await expect(input(page)).toBeFocused()
   await expect(page.getByRole('button', { name: 'Show a letter' })).toHaveCount(0)
@@ -414,7 +414,9 @@ test('with reduced motion the good news appears without animation', async ({ pag
   await openGame(page)
   await guess(page, 'solar')
   await expect(page.getByTestId('good-news')).toHaveText(FACT)
-  await expect(page.getByTestId('good-news').locator('.animate-fade')).toHaveCount(0)
+  // Anything that arrives does so at once: every animation on the story has no duration under reduced motion
+  const durations = await page.getByTestId('good-news').evaluate(el => el.getAnimations({ subtree: true }).map(a => Number(a.effect?.getComputedTiming().duration)))
+  expect(durations.every(duration => duration <= 0.01)).toBe(true)
   // The found word is simply in its slots
   await expect(page.getByTestId('solved-word')).toHaveText('SOLAR')
   expect(await letterDrops(page)).toEqual([])
@@ -561,7 +563,8 @@ test.describe('on a phone', () => {
   test('nothing blank is left reserved under the guess box before anything has been said', async ({ page }) => {
     await pinDailyWord(page)
     await openGame(page)
-    const hint = await page.getByText('5 letters. No limit on guesses.').boundingBox()
+    // The hint sits above the field now, so the guess row ends with the field and its Go
+    const hint = await page.getByRole('button', { name: 'Try this word' }).boundingBox()
     const game = await page.locator('.sp-stage').boundingBox()
     const gameBottom = (game?.y ?? 0) + (game?.height ?? 0)
     expect(gameBottom - ((hint?.y ?? 0) + (hint?.height ?? 0))).toBeLessThanOrEqual(48)
@@ -571,16 +574,16 @@ test.describe('on a phone', () => {
     await pinDailyWord(page)
     await openGame(page)
 
-    for (const locator of [page.getByText('Name the missing word, or just read on.'), story(page), input(page), page.getByRole('button', { name: 'Try it' })]) {
+    for (const locator of [page.getByText('Name the missing word, or just read on.'), story(page), input(page), page.getByRole('button', { name: 'Try this word' })]) {
       const box = await locator.boundingBox()
       expect(box && box.y + box.height).toBeLessThanOrEqual(844)
     }
   })
 
-  test('tapping Try it keeps focus in the guess box after every attempt, right or short', async ({ page }) => {
+  test('tapping Try this word keeps focus in the guess box after every attempt, right or short', async ({ page }) => {
     await pinDailyWord(page)
     await openGame(page)
-    const tryIt = page.getByRole('button', { name: 'Try it' })
+    const tryIt = page.getByRole('button', { name: 'Try this word' })
 
     await input(page).fill('PLANT')
     await tryIt.tap()
@@ -619,7 +622,7 @@ test.describe('on a phone', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
     const slots = await page.getByTestId('word-slots').boundingBox()
     expect(slots && slots.x + slots.width).toBeLessThanOrEqual(390)
-    for (const name of ['Try it', 'Read on']) {
+    for (const name of ['Try this word', 'Read on']) {
       const button = await page.getByRole('button', { name }).boundingBox()
       // Sub-pixel layout can land a hair under 44
       expect(button?.height).toBeGreaterThanOrEqual(43.9)

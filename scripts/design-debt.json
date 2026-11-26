@@ -71,10 +71,6 @@
   "components/ErrorBoundary.tsx": {
     "infinite": 1
   },
-  "components/games/HopeDaily.tsx": {
-    "animate": 1,
-    "banned-utility": 13
-  },
   "components/games/IdeaLab.tsx": {
     "animate": 3,
     "banned-utility": 4
