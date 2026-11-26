@@ -2,7 +2,7 @@ import { GROUND_TOP, categoryOf, growthFactor, type Plant, type PlantType, type 
 import { gardenSummary, numberWord } from '@/lib/games/calm-garden/describe'
 import { pickBySeed } from '@/lib/games/calm-garden/colours'
 import type { VisitorKind } from '@/lib/games/calm-garden/moments'
-import { KEEPSAKE_WIDTH, PIXEL, framedKeepsake, hashString, keepsakeDay, keepsakeFileName, mix, seededRandom, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
+import { KEEPSAKE_WIDTH, PIXEL, framedKeepsake, hashString, keepsakeDay, keepsakeFileName, clipTo, mix, seededRandom, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
 
 /** The picture side of the postcard, in keepsake units. */
 export const VIEW = { left: 120, top: 232, width: KEEPSAKE_WIDTH - 240, height: 600 }
@@ -17,15 +17,15 @@ const SKY: Record<TimeOfDay, readonly [Ink, Ink]> = {
 }
 /** How much of the darkest ink each strip of ground carries, by the hour. */
 const SHADE: Record<TimeOfDay, readonly [number, number, number]> = {
-  morning: [0.1, 0.2, 0.3],
-  day: [0.2, 0.32, 0.44],
-  evening: [0.5, 0.58, 0.66],
-  night: [0.62, 0.7, 0.78],
+  morning: [0.55, 0.63, 0.71],
+  day: [0.58, 0.66, 0.74],
+  evening: [0.64, 0.71, 0.78],
+  night: [0.7, 0.76, 0.82],
 }
 const LEAF: Ink = mix('glass-rind', 0.65, 'glass-moss')
-const CANOPY: Record<Season, Ink> = {
-  spring: 'glass-moss',
-  summer: mix('glass-rind', 0.7, 'glass-well'),
+export const CANOPY: Record<Season, Ink> = {
+  spring: mix('glass-moss', 0.8, 'glass-well'),
+  summer: mix('glass-rind', 0.88, 'glass-well'),
   autumn: 'glass-clay',
   winter: mix('glass-moss', 0.5, 'glass-ink-soft'),
 }
@@ -64,6 +64,10 @@ export interface GardenerKeepsakeInput {
   day: Date
 }
 
+export function ground(timeOfDay: TimeOfDay): Ink[] {
+  return SHADE[timeOfDay].map((shade) => mix('glass-well', shade, LEAF))
+}
+
 function land(timeOfDay: TimeOfDay): KeepsakeOp[] {
   const [skyTop, skyLow] = SKY[timeOfDay]
   const ops: KeepsakeOp[] = []
@@ -82,8 +86,8 @@ function land(timeOfDay: TimeOfDay): KeepsakeOp[] {
     }
   }
   const groundH = VIEW.top + VIEW.height - HORIZON
-  SHADE[timeOfDay].forEach((shade, i) => {
-    ops.push({ kind: 'rect', x: VIEW.left, y: HORIZON + (groundH * i) / 3, w: VIEW.width, h: groundH / 3 + PIXEL, ink: mix('glass-well', shade, LEAF) })
+  ground(timeOfDay).forEach((ink, i) => {
+    ops.push({ kind: 'rect', x: VIEW.left, y: HORIZON + (groundH * i) / 3, w: VIEW.width, h: groundH / 3 + PIXEL, ink })
   })
   return ops
 }
@@ -176,10 +180,7 @@ export function gardenerKeepsake({ plants, season, timeOfDay, visitors, visitorK
   const ordered = [...plants].sort((a, b) => a.y - b.y)
   const art: KeepsakeOp[] = [
     { kind: 'rect', x: VIEW.left + 14, y: VIEW.top + 14, w: VIEW.width, h: VIEW.height, ink: 'rule', b: true },
-    ...land(timeOfDay),
-    ...ordered.flatMap((plant) => plantOps(plant, season, now)),
-    ...visitorOps(visitors, visitorKind, seed),
-    ...stamp(season),
+    ...clipTo([...land(timeOfDay), ...ordered.flatMap((plant) => plantOps(plant, season, now)), ...visitorOps(visitors, visitorKind, seed), ...stamp(season)], { x: VIEW.left, y: VIEW.top, w: VIEW.width, h: VIEW.height }),
     { kind: 'rect', x: VIEW.left + 60, y: VIEW.top + VIEW.height + 72, w: VIEW.width - 120, h: 3, ink: 'rule' },
     {
       kind: 'text',

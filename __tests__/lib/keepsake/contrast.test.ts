@@ -81,6 +81,7 @@ function backgroundAt(plan: KeepsakePlan, look: KeepsakeLook, x: number, y: numb
   for (const op of plan.ops) {
     if (op.kind === 'text') continue
     const shift = op.b && !look.plain ? PIXEL : 0
+    if (op.clip && (x < op.clip.x || x > op.clip.x + op.clip.w || y < op.clip.y || y > op.clip.y + op.clip.h)) continue
     if (!covers(op, x - shift, y - shift)) continue
     const ink = rgb(inkColour(op.ink, look))
     colour = blend(op.b ? overprint(colour, ink, look.theme) : ink, colour, op.alpha ?? 1)

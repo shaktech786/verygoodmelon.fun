@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { VIEW, gardenerKeepsake } from '@/lib/keepsake/gardener'
-import { luminance } from '@/lib/design/color'
+import { CANOPY, VIEW, ground, gardenerKeepsake } from '@/lib/keepsake/gardener'
+import { contrast, luminance } from '@/lib/design/color'
 import { inkColour, lookFor } from '@/lib/keepsake/render'
 import type { KeepsakeOp } from '@/lib/keepsake/plan'
 import type { Plant, PlantType } from '@/lib/games/calm-garden/garden'
@@ -57,5 +57,20 @@ describe('gardenerKeepsake', () => {
     const plan = gardenerKeepsake({ ...base, plants: [pink] })
     const head = plan.ops.find((op) => op.kind === 'disc' && op.ink === 'glass-seed')
     expect(head?.kind === 'disc' && head.x).toBe(VIEW.left + 0.25 * VIEW.width)
+  })
+
+  it('keeps the foliage clearly apart from the ground in every season and hour, and the scene inside its frame', () => {
+    for (const look of [lookFor('light'), lookFor('dark'), lookFor('light', 'quiet'), lookFor('light', 'gentle', 'high')]) {
+      for (const timeOfDay of ['morning', 'day', 'evening', 'night'] as const) {
+        for (const [season, canopy] of Object.entries(CANOPY)) {
+          for (const earth of ground(timeOfDay)) {
+            expect(contrast(inkColour(canopy, look), inkColour(earth, look)), `${season} at ${timeOfDay} in ${look.inks.paper}`).toBeGreaterThanOrEqual(1.5)
+          }
+        }
+      }
+    }
+    const plan = gardenerKeepsake({ ...base, plants: [plant('p', 'pine', 0.02, 0.7)] })
+    const pine = plan.ops.find((op) => op.kind === 'poly')
+    expect(pine && pine.kind !== 'text' && pine.clip).toEqual({ x: VIEW.left, y: VIEW.top, w: VIEW.width, h: VIEW.height })
   })
 })

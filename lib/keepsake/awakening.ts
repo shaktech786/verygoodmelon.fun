@@ -1,4 +1,4 @@
-import { KEEPSAKE_WIDTH, MARGIN, framedKeepsake, hashString, keepsakeDay, keepsakeFileName, mix, ramp, seededRandom, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
+import { KEEPSAKE_WIDTH, MARGIN, framedKeepsake, hashString, keepsakeDay, keepsakeFileName, clipTo, mix, ramp, seededRandom, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
 
 // A sunrise and a kitchen table look the same whichever theme the page is in: they are printed in the glass inks, the dark palette on either paper.
 const DAWN: readonly Ink[] = [
@@ -119,8 +119,7 @@ export function awakeningKeepsake({ note, day }: AwakeningKeepsakeInput): Keepsa
   const top = Math.max(SCENE.tableTop + 48, Math.round((SCENE.tableTop + SCENE.bottom - height) / 2))
   const box: Box = { ...NOTE_X, top, bottom: top + height }
   const art: KeepsakeOp[] = [
-    ...sky(hashString(plan)),
-    ...table(box),
+    ...clipTo([...sky(hashString(plan)), ...table(box)], { x: SCENE.left, y: SCENE.top, w: SCENE.right - SCENE.left, h: SCENE.bottom - SCENE.top }),
     { kind: 'text', x: KEEPSAKE_WIDTH / 2, y: 320, text: 'Good morning', size: 56, ink: MORNING, font: 'display', align: 'center' },
     { kind: 'text', x: box.left + NOTE_PADDING, y: box.top + 64, text: 'For tomorrow', size: 30, ink: NOTE_INK_SOFT, font: 'display' },
     {

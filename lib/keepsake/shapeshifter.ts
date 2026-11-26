@@ -1,5 +1,5 @@
 import { MECHANIC_OPTIONS, type MechanicCategory, type PathPoint, type Sleeping } from '@/app/games/the-mutation/engine/types'
-import { KEEPSAKE_HEIGHT, KEEPSAKE_WIDTH, MARGIN, framedKeepsake, keepsakeDay, keepsakeFileName, mix, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
+import { KEEPSAKE_HEIGHT, KEEPSAKE_WIDTH, MARGIN, framedKeepsake, keepsakeDay, keepsakeFileName, clipTo, mix, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
 
 // The field is night-dark in both themes, like the arcade screen it comes from, so it takes the glass inks and every
 // rule's colour glows on it.
@@ -201,7 +201,7 @@ export function shapeshifterKeepsake({ path, rules, sleeping = [], field, name, 
   // The sleeping clues are part of the picture, so a still run is framed to hold them too
   const { at } = framePath([...path, ...sleeping.map((z) => ({ x: z.x, y: z.y, wave: 0 }))], field)
 
-  const art: KeepsakeOp[] = [
+  let art: KeepsakeOp[] = [
     { kind: 'rect', x: left, y: top, w, h, ink: FIELD_EDGE },
     { kind: 'rect', x: left + 12, y: top + 12, w: w - 24, h: h - 24, ink: FIELD },
   ]
@@ -253,6 +253,9 @@ export function shapeshifterKeepsake({ path, rules, sleeping = [], field, name, 
     const [x, y] = at(last)
     art.push({ kind: 'disc', x, y, r: 34, ink: ORB_GLOW, alpha: 0.25 }, { kind: 'disc', x, y, r: 17, ink: ORB })
   }
+
+  // Marks and glow near the edge stay inside the field's frame
+  art = clipTo(art, { x: left, y: top, w, h })
 
   const columns = 2
   const columnW = FIELD_MAX_W / columns

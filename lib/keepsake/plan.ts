@@ -33,6 +33,8 @@ interface Shape {
   alpha?: number
   /** Printed in the second ink: overprinted on the first, a pixel out of register. */
   b?: boolean
+  /** Nothing of this shape is drawn outside this rectangle, so a scene's art stays inside its frame. */
+  clip?: { x: number; y: number; w: number; h: number }
 }
 
 export type KeepsakeOp =
@@ -58,6 +60,11 @@ export type KeepsakeOp =
       maxLines?: number
       alpha?: number
     }
+
+/** Clips every shape in `ops` to `frame`; words are left alone. */
+export function clipTo(ops: KeepsakeOp[], frame: { x: number; y: number; w: number; h: number }): KeepsakeOp[] {
+  return ops.map((op) => (op.kind === 'text' ? op : { ...op, clip: frame }))
+}
 
 export interface KeepsakePlan {
   /** The game's name, which also names the picture for screen readers. */

@@ -84,6 +84,12 @@ function drawShape(ctx: CanvasRenderingContext2D, op: ShapeOp, look: KeepsakeLoo
   ctx.strokeStyle = ctx.fillStyle
   // The second ink lands one art pixel out of register, as a second pass through a press does
   const shift = op.b && !look.plain ? 1 : 0
+  ctx.save()
+  if (op.clip) {
+    ctx.beginPath()
+    ctx.rect(Math.round(op.clip.x * s), Math.round(op.clip.y * s), Math.round(op.clip.w * s), Math.round(op.clip.h * s))
+    ctx.clip()
+  }
   ctx.setTransform(1, 0, 0, 1, shift, shift)
   switch (op.kind) {
     case 'rect':
@@ -115,8 +121,7 @@ function drawShape(ctx: CanvasRenderingContext2D, op: ShapeOp, look: KeepsakeLoo
       op.points.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x * s, y * s) : ctx.lineTo(x * s, y * s)))
       ctx.stroke()
   }
-  ctx.setTransform(1, 0, 0, 1, 0, 0)
-  ctx.globalCompositeOperation = 'source-over'
+  ctx.restore()
 }
 
 function weightOf(op: TextOp): number {

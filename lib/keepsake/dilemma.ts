@@ -1,5 +1,5 @@
 import { THEMES, THEME_TITLE, readingLine, type ChosenValue, type Theme } from '@/lib/games/hard-choices/reading'
-import { KEEPSAKE_WIDTH, MARGIN, framedKeepsake, hashString, keepsakeDay, keepsakeFileName, mix, seededRandom, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
+import { KEEPSAKE_WIDTH, MARGIN, framedKeepsake, hashString, keepsakeDay, keepsakeFileName, clipTo, mix, seededRandom, type Ink, type KeepsakeOp, type KeepsakePlan } from './plan'
 
 // The chart is a night sky in both themes, as a star chart is: the glass inks, the dark palette on either paper.
 const NIGHT: Ink = mix('glass-dusk', 0.18, 'glass-well')
@@ -147,7 +147,7 @@ export function dilemmaKeepsake({ chosen, day }: DilemmaKeepsakeInput): Keepsake
   return framedKeepsake({
     title: 'The Dilemma',
     subtitle: keepsakeDay(day),
-    art,
+    art: clipTo(art, { x: MARGIN, y: SKY.top, w: KEEPSAKE_WIDTH - MARGIN * 2, h: SKY.bottom - SKY.top }),
     alt,
     text,
     fileName: keepsakeFileName('The Dilemma', day),
