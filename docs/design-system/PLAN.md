@@ -1397,6 +1397,14 @@ Each batch converts the buttons and choice cards to seedpress, moves art onto `g
 
 **Risk:** medium. Canvas font loading timing; keep the existing `document.fonts.ready` redraw.
 
+**As built (Phase 5):**
+- `getInks()` is reached through `lookFor(theme, sense, contrast)` in `render.ts`. Named inks are the colour roles, and `glass-<role>` takes the dark palette on either paper (as the arcade screen does) for scenes that stay lit the same: Awakening, Dilemma, Gardener, Shapeshifter, the Patient One's sky. `mix(a, weight, b)` and `ramp()` build tints and sky bands; no raw hex remains.
+- Overprint: shapes flagged `b` are the second ink, drawn `multiply` (light) or `screen` (dark) one art pixel out. Quiet and high contrast print flat (no offset, no grain). Grain is a seeded ±7 levels on the art grid, skipped under each line of words. Glass scenes carry no `b` shapes, since multiply on a dark ground would vanish.
+- `hand` and `serif` are retired; `Font` is `sans` (Atkinson) or `display` (Bricolage, short titles only). Italics, capitals and the old caps titles are gone; the Optimist's story shows today's word as written, and only the letter tiles stay capitals.
+- Shapeshifter rule colours moved to glass inks; the colour words in its alt text changed (violet to coral, orange to cream) and Quiet colours sit closer, so the dash and shape tell rules apart.
+- `contrast.test.ts` runs all six palettes. `ARENA_VOICE_COLOURS` and `petalColour` were removed (dusk and clay, and tokens, are used directly).
+- OG images: `ImageResponse` reads ttf, not woff2, so static ttf instances live in `app/fonts/og` (recipe in `app/fonts/README`). Both routes share `lib/og/game-card.tsx`, which draws the game's packet print as an SVG image (no blend mode: ink B is just offset 1 unit).
+
 ### Phase 6: Content pages, 404, offline, give slot (S)
 
 **What ships:**
