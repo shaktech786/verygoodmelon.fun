@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Go } from '@/components/seedpress/Go'
 import { Icon } from '@/components/seedpress/icons/Icon'
 import { Note } from '@/components/seedpress/Note'
@@ -22,8 +22,15 @@ export function SubmitThought() {
   const statusRef = useRef<HTMLDivElement>(null)
 
   const charCount = body.length
-  const isValidLength = charCount >= 20 && charCount <= 2000
+  const tooShort = charCount < 20
+  const tooLong = charCount > 2000
+  const isValidLength = !tooShort && !tooLong
   const submitting = state === 'submitting'
+
+  // The status line only exists once the state changes, so focus moves after it has mounted
+  useEffect(() => {
+    if (state === 'success' || state === 'error') statusRef.current?.focus()
+  }, [state])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -49,7 +56,6 @@ export function SubmitThought() {
       if (!res.ok) {
         setState('error')
         setErrorMessage(data.error ?? 'Something went wrong. Please try again.')
-        statusRef.current?.focus()
         return
       }
 
@@ -57,11 +63,9 @@ export function SubmitThought() {
       setBody('')
       setTheme('')
       setAuthorName('')
-      statusRef.current?.focus()
     } catch {
       setState('error')
       setErrorMessage('Could not connect. Please check your connection and try again.')
-      statusRef.current?.focus()
     }
   }
 
@@ -94,9 +98,13 @@ export function SubmitThought() {
           required
           disabled={submitting}
           note={
-            charCount > 0
-              ? `${charCount.toLocaleString()} / 2,000 characters${charCount < 20 ? ' (a little longer, please)' : ''}`
-              : '20–2,000 characters'
+            tooLong ? (
+              <span className="sp-slip__over">{charCount.toLocaleString()} / 2,000 characters (a little shorter, please)</span>
+            ) : charCount > 0 ? (
+              `${charCount.toLocaleString()} / 2,000 characters${tooShort ? ' (a little longer, please)' : ''}`
+            ) : (
+              '20–2,000 characters'
+            )
           }
         />
 
@@ -144,7 +152,7 @@ export function SubmitThought() {
           <Go
             type="submit"
             loading={submitting}
-            unavailable={!isValidLength ? 'Write a little more first.' : !theme ? 'Choose a theme first.' : undefined}
+            unavailable={tooLong ? 'A little shorter, please.' : tooShort ? 'Write a little more first.' : !theme ? 'Choose a theme first.' : undefined}
           >
             Submit thought
           </Go>
