@@ -53,7 +53,7 @@ export default function TimelessMindsChooser({ care, onChoose, onSurprise }: Tim
           onClick={onSurprise}
           className="bg-background text-foreground border-card-border min-h-[44px] inline-flex items-center gap-2 rounded-full border px-5 text-sm sm:text-base hover:border-chosen-line transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
-          <Icon name="dice" size={16} />
+          <Icon name="dice" size={24} />
           Surprise me
         </button>
       </div>

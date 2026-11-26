@@ -68,7 +68,7 @@ export function IdeaCabinet({ discoveries, combinations, concepts, wide, reduced
             className="w-full flex items-center justify-between gap-3 min-h-[44px] -my-1 text-left font-medium text-foreground/80 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             <span>Your cabinet</span>
-            <Icon name="chevron-down" size={16} className={`shrink-0 text-foreground/60 ${reducedMotion ? '' : 'transition-transform duration-150'} ${open ? 'rotate-180' : ''}`} />
+            <Icon name="chevron-down" size={24} className={`shrink-0 text-foreground/60 ${reducedMotion ? '' : 'transition-transform duration-150'} ${open ? 'rotate-180' : ''}`} />
           </button>
         </h2>
       )}

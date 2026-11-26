@@ -16,5 +16,5 @@ const ICONS: Record<string, IconName> = {
 }
 
 export function MechanicIcon({ id }: { id: string }) {
-  return <Icon name={ICONS[id] ?? 'sparkles'} size={16} />
+  return <Icon name={ICONS[id] ?? 'sparkles'} size={24} />
 }

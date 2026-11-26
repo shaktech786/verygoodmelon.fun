@@ -19,7 +19,9 @@ export async function expectStillCare(page: Page): Promise<void> {
     const blocks = [...document.querySelectorAll('[aria-label="Support"]')]
     return {
       blocks: blocks.length,
+      // A hover or press transition on a button is a response, not motion the block makes on its own
       animations: document.getAnimations().filter((a) => {
+        if (a instanceof CSSTransition) return false
         const target = (a.effect as KeyframeEffect | null)?.target
         return target ? blocks.some((block) => block.contains(target)) : false
       }).length,

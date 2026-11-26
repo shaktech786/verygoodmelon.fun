@@ -733,7 +733,7 @@ export default function TimelessMinds() {
           {/* Your own tile: a placeholder, never a camera */}
           <div aria-hidden="true" className="call-self absolute z-10 bottom-2 right-2 sm:bottom-3 sm:right-3 w-16 h-12 sm:w-40 sm:h-24 rounded-lg flex items-center justify-center">
             <span className="call-avatar w-7 h-7 sm:w-12 sm:h-12 rounded-full flex items-center justify-center">
-              <Icon name="person" size={16} className="sm:w-6 sm:h-6" />
+              <Icon name="person" size={24} />
             </span>
             <span className="absolute bottom-0.5 left-1.5 sm:bottom-1.5 sm:left-2 text-[10px] sm:text-xs font-semibold">You</span>
           </div>
@@ -828,7 +828,7 @@ export default function TimelessMinds() {
                 onClick={() => handleEndCall(goodbyeButtonRef)}
                 className="inline-flex items-center gap-1.5 min-h-11 px-3 text-sm text-foreground underline underline-offset-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
-                <Icon name="hand" size={16} />
+                <Icon name="hand" size={24} />
                 Say goodbye<span className="sr-only"> to {thinker.name}</span>
               </button>
             </div>
@@ -874,7 +874,7 @@ export default function TimelessMinds() {
                 className="px-3 py-2 sm:px-4 min-w-[44px] rounded-full"
                 aria-label="Send message"
               >
-                <Icon name="next" size={16} />
+                <Icon name="next" size={24} />
               </Button>
             </div>
           </div>
@@ -945,22 +945,22 @@ export default function TimelessMinds() {
                 className="absolute right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2 z-30 w-64 rounded-xl border border-card-border bg-card-bg p-1.5 shadow-xl"
               >
                 <button type="button" className={menuItem} onClick={fromMenu(() => setShowPhoneBook(true))}>
-                  <Icon name="people" size={16} className={menuIcon} />
+                  <Icon name="people" size={24} className={menuIcon} />
                   Choose who to talk with
                 </button>
                 <button type="button" className={menuItem} onClick={fromMenu(() => setShowKeptLines(true))}>
-                  <Icon name="library" size={16} className={menuIcon} />
+                  <Icon name="library" size={24} className={menuIcon} />
                   Kept lines
                 </button>
                 {requestsAvailable && (
                   <button type="button" className={menuItem} onClick={fromMenu(() => setShowRequestModal(true))}>
-                    <Icon name="plus" size={16} className={menuIcon} />
+                    <Icon name="plus" size={24} className={menuIcon} />
                     Request
                   </button>
                 )}
                 <div className="my-1 border-t border-card-border" />
                 <button type="button" className={menuItem} onClick={endCallFromMenu}>
-                  <Icon name="hand" size={16} className={menuIcon} />
+                  <Icon name="hand" size={24} className={menuIcon} />
                   Say goodbye
                 </button>
               </div>

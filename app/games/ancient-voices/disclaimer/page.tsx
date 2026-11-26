@@ -14,7 +14,7 @@ export default function DisclaimerPage() {
         href="/games/ancient-voices"
         className="inline-flex items-center gap-2 min-h-11 text-foreground underline underline-offset-2 hover:no-underline mb-6"
       >
-        <Icon name="back" size={16} />
+        <Icon name="back" size={24} />
         Back to The Sage
       </Link>
 

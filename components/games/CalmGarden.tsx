@@ -943,12 +943,12 @@ export default function CalmGarden() {
 
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-card-border pt-3">
           <Button variant="ghost" size="sm" onClick={undo} disabled={history.length === 0} aria-label="Undo last change">
-            <Icon name="undo" size={16} className="inline mr-1 -mt-0.5" />
+            <Icon name="undo" size={24} className="inline mr-1 -mt-0.5" />
             Undo
           </Button>
           {!showClearConfirm ? (
             <Button variant="ghost" size="sm" onClick={() => setShowClearConfirm(true)} disabled={plants.length === 0} aria-label="Clear garden">
-              <Icon name="trash" size={16} className="inline mr-1 -mt-0.5" />
+              <Icon name="trash" size={24} className="inline mr-1 -mt-0.5" />
               Clear
             </Button>
           ) : (
@@ -972,7 +972,7 @@ export default function CalmGarden() {
             canSit ? 'bg-melon-green text-background hover:opacity-90' : 'bg-foreground/10 text-foreground/60 cursor-not-allowed',
           )}
         >
-          <Icon name="sunset" size={16} />
+          <Icon name="sunset" size={24} />
           Sit with your garden
         </button>
         <p id="sit-hint" className="mt-1 text-center text-xs text-foreground/70">

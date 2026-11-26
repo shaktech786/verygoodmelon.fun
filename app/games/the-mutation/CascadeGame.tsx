@@ -511,7 +511,7 @@ export default function CascadeGame() {
               onClick={pause}
               className="inline-flex items-center gap-2 min-h-11 px-4 rounded-lg border border-card-border bg-card-bg text-sm text-foreground/85 hover:text-foreground cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
-              <Icon name="pause" size={16} />
+              <Icon name="pause" size={24} />
               Pause
             </button>
             {!isTouch && <KeyHints>Esc or P also pauses. C tells you where the clues are.</KeyHints>}

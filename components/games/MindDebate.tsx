@@ -566,7 +566,7 @@ export default function MindDebate() {
               disabled={!canStart}
               className={buttonClassName('primary', 'md', 'flex-1 flex items-center justify-center gap-2')}
             >
-              <Icon name="chat" size={16} />
+              <Icon name="chat" size={24} />
               Begin
             </button>
             <Button
@@ -575,7 +575,7 @@ export default function MindDebate() {
               onClick={handleSurprise}
               className="flex items-center justify-center gap-2"
             >
-              <Icon name="dice" size={16} />
+              <Icon name="dice" size={24} />
               Surprise me
             </Button>
           </StickyTray>
@@ -609,7 +609,7 @@ export default function MindDebate() {
         </section>
         <div className="mt-4 flex justify-center">
           <Button onClick={() => backToSetup('topic')} variant="secondary" className={ACTION}>
-            <Icon name="reset" size={16} />
+            <Icon name="reset" size={24} />
             Back to the start
           </Button>
         </div>
@@ -741,30 +741,30 @@ export default function MindDebate() {
             className={buttonClassName('primary', 'md', `${ACTION} aria-disabled:opacity-60 aria-disabled:cursor-default`)}
           >
             Next turn
-            <Icon name="next" size={16} />
+            <Icon name="next" size={24} />
           </button>
         )}
         {phase === 'debating' && (
           <button ref={stopRef} type="button" onClick={handleStop} className={buttonClassName('secondary', 'md', ACTION)}>
-            <Icon name="stop" size={16} />
+            <Icon name="stop" size={24} />
             Stop
           </button>
         )}
         {phase === 'stopped' && history.length < TOTAL_ROUNDS && (
           <button ref={continueRef} type="button" onClick={runDebate} className={buttonClassName('primary', 'md', ACTION)}>
-            <Icon name="play" size={16} />
+            <Icon name="play" size={24} />
             {interruption ? 'Try again' : 'Continue'}
           </button>
         )}
         {phase === 'declined' && declineReason === 'voice' && (
           <button ref={declineActionRef} type="button" onClick={() => backToSetup('person1')} className={buttonClassName('primary', 'md', ACTION)}>
-            <Icon name="person" size={16} />
+            <Icon name="person" size={24} />
             Choose other voices
           </button>
         )}
         {phase === 'declined' && declineReason === 'topic' && (
           <button ref={declineActionRef} type="button" onClick={() => backToSetup('topic')} className={buttonClassName('primary', 'md', ACTION)}>
-            <Icon name="help" size={16} />
+            <Icon name="help" size={24} />
             Ask another question
           </button>
         )}
@@ -775,12 +775,12 @@ export default function MindDebate() {
             onClick={handleSurprise}
             className={buttonClassName(phase === 'declined' && declineReason === null ? 'primary' : 'secondary', 'md', ACTION)}
           >
-            <Icon name="dice" size={16} />
+            <Icon name="dice" size={24} />
             Surprise me
           </button>
         )}
         <Button onClick={() => backToSetup()} variant={phase === 'closing' ? 'primary' : 'secondary'} className={ACTION}>
-          <Icon name="reset" size={16} />
+          <Icon name="reset" size={24} />
           New debate
         </Button>
       </StickyTray>

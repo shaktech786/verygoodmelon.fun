@@ -9,7 +9,7 @@ const PATHS = Object.fromEntries(Object.entries(GLYPHS).map(([name, rows]) => [n
 interface IconProps {
   name: IconName
   /** Whole multiples of the 12-cell grid keep every cell crisp. */
-  size?: 16 | 24 | 36 | 48
+  size?: 12 | 24 | 36 | 48
   className?: string
 }
 

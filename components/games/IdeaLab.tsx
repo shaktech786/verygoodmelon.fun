@@ -462,7 +462,7 @@ export default function IdeaLab() {
     <div className={`${benchCell} ${compact ? 'rounded-lg' : 'rounded-xl'} ${resultTone}`}>
       {isCombining ? (
         <>
-          <Icon name="flask" size={compact ? 16 : 24} className={`text-foreground/70 ${reducedMotion ? '' : 'animate-pulse'}`} />
+          <Icon name="flask" size={compact ? 12 : 24} className={`text-foreground/70 ${reducedMotion ? '' : 'animate-pulse'}`} />
           <span className="text-xs text-foreground/70 mt-1">Combining...</span>
         </>
       ) : lastResult ? (
@@ -493,7 +493,7 @@ export default function IdeaLab() {
 
   const clearButton = hasBench && !isCombining && (
     <Button onClick={handleClearSelection} variant="ghost" className="text-sm inline-flex items-center min-h-[44px]">
-      <Icon name="trash" size={16} className="mr-2" />
+      <Icon name="trash" size={24} className="mr-2" />
       Clear
     </Button>
   )
@@ -516,7 +516,7 @@ export default function IdeaLab() {
                   className="p-2 min-w-[44px] min-h-[44px]"
                   aria-label="Reset all discoveries"
                 >
-                  <Icon name="reset" size={16} />
+                  <Icon name="reset" size={24} />
                 </Button>
               </div>
             </div>

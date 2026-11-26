@@ -124,7 +124,7 @@ export function PairingDeck({ selected, onPick, onWriteOwn }: PairingDeckProps) 
                 className="absolute -top-2 -right-2 flex items-center justify-center w-6 h-6 rounded-full bg-chosen-line text-background"
                 aria-hidden="true"
               >
-                <Icon name="done" size={16} />
+                <Icon name="done" size={12} />
               </span>
             )}
           </button>
@@ -146,7 +146,7 @@ export function PairingDeck({ selected, onPick, onWriteOwn }: PairingDeckProps) 
             className="absolute -top-2 -right-2 flex items-center justify-center w-6 h-6 rounded-full bg-chosen-line text-background"
             aria-hidden="true"
           >
-            <Icon name="done" size={16} />
+            <Icon name="done" size={12} />
           </span>
         )}
       </button>

@@ -451,7 +451,7 @@ export default function HardChoices() {
                               selected ? 'border-melon-green bg-melon-green text-background' : 'border-foreground/25 text-foreground/75'
                             }`}
                           >
-                            {selected ? <Icon name="done" size={16} /> : id}
+                            {selected ? <Icon name="done" size={24} /> : id}
                           </span>
                           <span className="flex-1 pt-0.5 text-lg">
                             {choice.text}

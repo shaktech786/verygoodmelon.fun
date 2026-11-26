@@ -47,7 +47,7 @@ export default function ThoughtsPage() {
             href="/"
             className="inline-flex items-center gap-2 text-primary-light hover:text-foreground transition-colors text-sm"
           >
-            <Icon name="back" size={16} />
+            <Icon name="back" size={24} />
             Back home
           </Link>
         </div>
